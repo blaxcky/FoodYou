@@ -16,6 +16,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.component.SettingsListItem
 import org.koin.compose.viewmodel.koinViewModel
@@ -27,7 +28,13 @@ fun ActivitySettingsScreen(
 ) {
     val viewModel: ActivitySettingsViewModel = koinViewModel()
     val model = viewModel.model.collectAsStateWithLifecycle().value
+    val permissionRequester =
+        rememberHealthConnectStepsPermissionRequester(viewModel::onHealthConnectPermissionResult)
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshHealthConnectStatus()
+        onPauseOrDispose {}
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -47,14 +54,26 @@ fun ActivitySettingsScreen(
         ) {
             SettingsListItem(
                 label = { Text("Health Connect steps") },
-                supportingContent = { Text("Uses Health Connect when available and permitted") },
+                supportingContent = {
+                    Text(model.healthConnectSupportingText())
+                },
                 trailingContent = {
                     Switch(
                         checked = model?.healthConnectEnabled == true,
-                        onCheckedChange = viewModel::setHealthConnectEnabled,
+                        onCheckedChange = {
+                            viewModel.setHealthConnectEnabled(
+                                enabled = it,
+                                requestPermission = permissionRequester::request,
+                            )
+                        },
                     )
                 },
-                onClick = { viewModel.setHealthConnectEnabled(model?.healthConnectEnabled != true) },
+                onClick = {
+                    viewModel.setHealthConnectEnabled(
+                        enabled = model?.healthConnectEnabled != true,
+                        requestPermission = permissionRequester::request,
+                    )
+                },
             )
             OutlinedTextField(
                 value = model?.kcalPerStep ?: "",
@@ -70,3 +89,17 @@ fun ActivitySettingsScreen(
         }
     }
 }
+
+private fun ActivitySettingsModel?.healthConnectSupportingText(): String =
+    when (this?.healthConnectStatus) {
+        null,
+        ActivityHealthConnectStatus.Checking -> "Checking Health Connect"
+        ActivityHealthConnectStatus.Available -> "Uses Health Connect when available and permitted"
+        ActivityHealthConnectStatus.Unavailable -> "Health Connect is not available on this device"
+        ActivityHealthConnectStatus.UpdateRequired -> "Health Connect needs to be installed or updated"
+        ActivityHealthConnectStatus.PermissionMissing -> "Steps permission is required"
+        ActivityHealthConnectStatus.PermissionDenied -> "Steps permission was denied"
+        ActivityHealthConnectStatus.SyncFailed -> "Step sync failed"
+        ActivityHealthConnectStatus.Synced ->
+            lastSyncedEpochSeconds?.let { "Last sync: $it" } ?: "Steps synced"
+    }
