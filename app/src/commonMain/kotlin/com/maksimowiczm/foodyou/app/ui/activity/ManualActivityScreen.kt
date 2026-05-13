@@ -29,8 +29,8 @@ fun ManualActivityScreen(
     onBack: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ManualActivityViewModel = koinViewModel(),
 ) {
+    val viewModel: ManualActivityViewModel = koinViewModel()
     LaunchedEffect(id) {
         if (id != null) viewModel.load(id)
     }

@@ -24,8 +24,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun ActivitySettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ActivitySettingsViewModel = koinViewModel(),
 ) {
+    val viewModel: ActivitySettingsViewModel = koinViewModel()
     val model = viewModel.model.collectAsStateWithLifecycle().value
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(

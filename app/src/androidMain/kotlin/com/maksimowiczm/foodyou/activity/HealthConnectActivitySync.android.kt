@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.first
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
 import org.koin.core.module.Module
-import org.koin.dsl.single
 import java.util.concurrent.TimeUnit
 
 actual fun Module.healthConnectActivitySync() {
