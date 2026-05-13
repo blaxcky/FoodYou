@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.Icon
@@ -58,6 +59,7 @@ fun HomePersonalizationScreen(
     onBack: () -> Unit,
     onMeals: () -> Unit,
     onGoals: () -> Unit,
+    onActivities: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomePersonalizationViewModel = koinViewModel()
@@ -69,6 +71,7 @@ fun HomePersonalizationScreen(
         onBack = onBack,
         onMeals = onMeals,
         onGoals = onGoals,
+        onActivities = onActivities,
         onReorder = viewModel::updateOrder,
         modifier = modifier,
     )
@@ -81,6 +84,7 @@ private fun HomePersonalizationScreen(
     onBack: () -> Unit,
     onMeals: () -> Unit,
     onGoals: () -> Unit,
+    onActivities: () -> Unit,
     onReorder: (List<HomeCard>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -180,6 +184,7 @@ private fun HomePersonalizationScreen(
                                 HomeCard.Calendar -> CalendarCardContent()
                                 HomeCard.Goals -> GoalsCardContent(onMore = onGoals)
                                 HomeCard.Meals -> MealsCardContent(onMore = onMeals)
+                                HomeCard.Activities -> ActivitiesCardContent(onMore = onActivities)
                             }
                         }
                     }
@@ -254,6 +259,24 @@ private fun RowScope.GoalsCardContent(onMore: () -> Unit) {
     }
     Spacer(Modifier.width(16.dp))
     Text(stringResource(Res.string.headline_daily_goals))
+    Spacer(Modifier.weight(1f))
+    IconButton(onClick = onMore) {
+        Icon(
+            imageVector = Icons.Default.MoreVert,
+            contentDescription = stringResource(Res.string.action_show_more),
+        )
+    }
+    DragHandle(modifier = Modifier.hapticDraggableHandle())
+}
+
+@Composable
+context(_: ReorderableCollectionItemScope)
+private fun RowScope.ActivitiesCardContent(onMore: () -> Unit) {
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Icon(imageVector = Icons.Outlined.DirectionsWalk, contentDescription = null)
+    }
+    Spacer(Modifier.width(16.dp))
+    Text("Activities")
     Spacer(Modifier.weight(1f))
     IconButton(onClick = onMore) {
         Icon(

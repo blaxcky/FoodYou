@@ -17,6 +17,8 @@ composeMultiplatformMaterial3 = "1.11.0-alpha03"
 composeNavigation = "2.9.2"
 composeNavigationevent = "1.0.1"
 datastorePreferences = "1.2.0"
+healthConnect = "1.2.0-alpha02"
+workManager = "2.11.0"
 gmazzoBuildConfig = "6.0.7"
 koin = "4.1.1"
 kotlin = "2.3.10"
@@ -40,6 +42,8 @@ accompanist-permissions = { module = "com.google.accompanist:accompanist-permiss
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompatVersion" }
 androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastorePreferences" }
+androidx-health-connect-client = { module = "androidx.health.connect:connect-client", version.ref = "healthConnect" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging3" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging3" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

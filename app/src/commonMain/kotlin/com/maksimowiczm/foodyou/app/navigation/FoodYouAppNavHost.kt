@@ -6,6 +6,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.maksimowiczm.foodyou.app.ui.activity.ActivitySettingsScreen
+import com.maksimowiczm.foodyou.app.ui.activity.ManualActivityScreen
 import com.maksimowiczm.foodyou.app.ui.about.AboutScreen
 import com.maksimowiczm.foodyou.app.ui.database.exportcsvproducts.ExportCsvProductsScreen
 import com.maksimowiczm.foodyou.app.ui.database.externaldatabases.ExternalDatabasesScreen
@@ -65,6 +67,15 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onGoalsCardClick = { epochDate ->
                     navController.navigateSingleTop(Goals(epochDate))
                 },
+                onActivityCardLongClick = {
+                    navController.navigateSingleTop(ActivitySettings)
+                },
+                onAddActivityClick = { epochDay ->
+                    navController.navigateSingleTop(ManualActivity(epochDay, null))
+                },
+                onEditActivityClick = { id ->
+                    navController.navigateSingleTop(ManualActivity(0, id))
+                },
                 onEditDiaryEntryClick = { foodEntryId, manualEntryId ->
                     when {
                         manualEntryId != null ->
@@ -90,6 +101,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onMeals = { navController.navigateSingleTop(MealSetup) },
                 onLanguage = { navController.navigateSingleTop(Language) },
                 onGoals = { navController.navigateSingleTop(GoalsSetup) },
+                onActivities = { navController.navigateSingleTop(ActivitySettings) },
                 onPersonalization = { navController.navigateSingleTop(Personalization) },
                 onDatabase = { navController.navigateSingleTop(DatabaseSettings) },
             )
@@ -118,6 +130,20 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             DailyGoalsScreen(
                 onBack = { navController.popBackStackInclusive<GoalsSetup>() },
                 onSave = { navController.popBackStackInclusive<GoalsSetup>() },
+            )
+        }
+        forwardBackwardComposable<ActivitySettings> {
+            ActivitySettingsScreen(
+                onBack = { navController.popBackStackInclusive<ActivitySettings>() }
+            )
+        }
+        forwardBackwardComposable<ManualActivity> {
+            val route = it.toRoute<ManualActivity>()
+            ManualActivityScreen(
+                date = LocalDate.fromEpochDays(route.epochDay),
+                id = route.id,
+                onBack = { navController.popBackStackInclusive<ManualActivity>() },
+                onSave = { navController.popBackStackInclusive<ManualActivity>() },
             )
         }
         forwardBackwardComposable<DatabaseSettings> {
@@ -360,6 +386,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onBack = { navController.popBackStackInclusive<HomePersonalization>() },
                 onMeals = { navController.navigateSingleTop(MealsPersonalization) },
                 onGoals = { navController.navigateSingleTop(GoalsPersonalization) },
+                onActivities = { navController.navigateSingleTop(ActivitySettings) },
             )
         }
         forwardBackwardComposable<NutritionFactsPersonalization> {
@@ -399,6 +426,10 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private data class Goals(val epochDay: Long)
 
 @Serializable private object GoalsSetup
+
+@Serializable private object ActivitySettings
+
+@Serializable private data class ManualActivity(val epochDay: Long, val id: Long?)
 
 @Serializable private object DatabaseSettings
 

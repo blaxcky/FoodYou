@@ -67,6 +67,8 @@ private fun GoalsCardSettings(
                 GoalsCard(
                     expand = expand,
                     energy = 1600,
+                    burnedEnergy = 250,
+                    netEnergy = 1350,
                     energyGoal = 2000,
                     proteins = 50,
                     proteinsGoal = 75,

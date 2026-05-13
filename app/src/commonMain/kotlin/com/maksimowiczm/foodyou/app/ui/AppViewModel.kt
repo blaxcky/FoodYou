@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.activity.HealthConnectActivitySync
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
@@ -14,10 +15,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-internal class AppViewModel(private val settingsRepository: UserPreferencesRepository<Settings>) :
-    ViewModel() {
+internal class AppViewModel(
+    private val settingsRepository: UserPreferencesRepository<Settings>,
+    healthConnectActivitySync: HealthConnectActivitySync,
+) : ViewModel() {
 
     private val settings = settingsRepository.observe()
+
+    init {
+        healthConnectActivitySync.schedulePeriodicSync()
+    }
 
     val nutrientsOrder =
         settings

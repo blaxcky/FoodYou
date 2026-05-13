@@ -68,6 +68,8 @@ internal fun GoalsCard(
         GoalsCard(
             expand = expand,
             energy = model.energy,
+            burnedEnergy = model.burnedEnergy,
+            netEnergy = model.netEnergy,
             energyGoal = model.energyGoal,
             proteins = model.proteins,
             proteinsGoal = model.proteinsGoal,
@@ -86,6 +88,8 @@ internal fun GoalsCard(
 internal fun GoalsCard(
     expand: Boolean,
     energy: Int,
+    burnedEnergy: Int,
+    netEnergy: Int,
     energyGoal: Int,
     proteins: Int,
     proteinsGoal: Int,
@@ -122,6 +126,8 @@ internal fun GoalsCard(
         Column(modifier = Modifier.padding(16.dp)) {
             GoalsCardContent(
                 energy = energy,
+                burnedEnergy = burnedEnergy,
+                netEnergy = netEnergy,
                 energyGoal = energyGoal,
                 proteinsPercentage = proteinsPercentage,
                 carbsPercentage = carbsPercentage,
@@ -155,6 +161,8 @@ internal fun GoalsCard(
 @Composable
 private fun GoalsCardContent(
     energy: Int,
+    burnedEnergy: Int,
+    netEnergy: Int,
     energyGoal: Int,
     proteinsPercentage: Float,
     carbsPercentage: Float,
@@ -175,14 +183,14 @@ private fun GoalsCardContent(
                 .merge(
                     color =
                         when {
-                            energy < energyGoal -> colorScheme.onSurface
-                            energy == energyGoal -> colorScheme.onSurface
+                            netEnergy < energyGoal -> colorScheme.onSurface
+                            netEnergy == energyGoal -> colorScheme.onSurface
                             else -> colorScheme.error
                         }
                 )
                 .toSpanStyle()
         ) {
-            append(energyFormatter.formatEnergy(energy, withSuffix = false))
+            append(energyFormatter.formatEnergy(netEnergy, withSuffix = false))
             append(" ")
         }
         withStyle(typography.bodyMedium.merge(outlineColor).toSpanStyle()) {
@@ -191,7 +199,7 @@ private fun GoalsCardContent(
         }
     }
 
-    val left = remember(energy, energyGoal) { energyGoal - energy }
+    val left = remember(netEnergy, energyGoal) { energyGoal - netEnergy }
 
     Row(
         modifier = modifier,
@@ -200,6 +208,13 @@ private fun GoalsCardContent(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = caloriesString, style = typography.headlineLargeEmphasized)
+
+            Text(
+                text =
+                    "Eaten ${energyFormatter.formatEnergy(energy)} / burned ${energyFormatter.formatEnergy(burnedEnergy)} / net ${energyFormatter.formatEnergy(netEnergy)}",
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.bodySmall,
+            )
 
             when {
                 left > 0 ->

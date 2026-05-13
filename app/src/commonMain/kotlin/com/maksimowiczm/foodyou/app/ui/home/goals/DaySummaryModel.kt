@@ -5,6 +5,8 @@ import androidx.compose.runtime.*
 @Immutable
 internal data class DaySummaryModel(
     val energy: Int,
+    val burnedEnergy: Int,
+    val netEnergy: Int,
     val energyGoal: Int,
     val proteins: Int,
     val proteinsGoal: Int,

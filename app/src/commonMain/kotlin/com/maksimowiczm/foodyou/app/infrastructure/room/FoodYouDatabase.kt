@@ -10,6 +10,10 @@ import androidx.room.useWriterConnection
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsCyrillicMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.LegacyMigrations
+import com.maksimowiczm.foodyou.app.infrastructure.room.migration.ActivityMigration
+import com.maksimowiczm.foodyou.activity.ActivityDatabase
+import com.maksimowiczm.foodyou.activity.infrastructure.room.DailyStepSummaryEntity
+import com.maksimowiczm.foodyou.activity.infrastructure.room.ManualActivityEntryEntity
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.deleteUsedFoodEvent
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.fixMeasurementSuggestions
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.foodYou3Migration
@@ -63,6 +67,8 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntit
             SponsorshipEntity::class,
             MeasurementSuggestionEntity::class,
             ManualDiaryEntryEntity::class,
+            ManualActivityEntryEntity::class,
+            DailyStepSummaryEntity::class,
             ProductFts::class,
             RecipeFts::class,
         ],
@@ -128,6 +134,7 @@ abstract class FoodYouDatabase :
     FoodDatabase,
     FoodSearchDatabase,
     FoodDiaryDatabase,
+    ActivityDatabase,
     SponsorshipDatabase {
 
     override suspend fun <T> withTransaction(block: suspend DomainTransactionScope<T>.() -> T): T =
@@ -139,7 +146,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 32
+        const val VERSION = 33
 
         private val migrations: List<Migration> =
             listOf(
@@ -157,6 +164,7 @@ abstract class FoodYouDatabase :
                 fixMeasurementSuggestions,
                 FoodSearchFtsMigration,
                 FoodSearchFtsCyrillicMigration,
+                ActivityMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(

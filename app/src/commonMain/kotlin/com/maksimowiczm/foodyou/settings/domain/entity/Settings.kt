@@ -13,4 +13,7 @@ data class Settings(
     val onboardingFinished: Boolean,
     val energyFormat: EnergyFormat,
     val appLaunchInfo: AppLaunchInfo,
+    val stepsCaloriesPerStepKcal: Double?,
+    val healthConnectStepsEnabled: Boolean,
+    val healthConnectStepsLastSyncedEpochSeconds: Long?,
 ) : UserPreferences

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -34,6 +35,7 @@ fun SettingsScreen(
     onMeals: () -> Unit,
     onLanguage: () -> Unit,
     onGoals: () -> Unit,
+    onActivities: () -> Unit,
     onPersonalization: () -> Unit,
     onDatabase: () -> Unit,
     modifier: Modifier = Modifier,
@@ -94,6 +96,18 @@ fun SettingsScreen(
             item {
                 GoalsSettingsListItem(
                     onClick = onGoals,
+                    shape = shape,
+                    color = color,
+                    contentColor = contentColor,
+                )
+            }
+
+            item {
+                SettingsListItem(
+                    icon = { Icon(Icons.Outlined.DirectionsWalk, null) },
+                    label = { Text("Activities") },
+                    supportingContent = { Text("Steps, manual burned calories, and Health Connect") },
+                    onClick = onActivities,
                     shape = shape,
                     color = color,
                     contentColor = contentColor,

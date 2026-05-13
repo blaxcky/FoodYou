@@ -104,6 +104,8 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.appcompat)
+            implementation(libs.androidx.health.connect.client)
+            implementation(libs.androidx.work.runtime.ktx)
             implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqlite.android)

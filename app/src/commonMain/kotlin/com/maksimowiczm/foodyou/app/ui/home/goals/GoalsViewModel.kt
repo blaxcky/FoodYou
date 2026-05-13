@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
+import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.activity.domain.usecase.calculateNetEnergyKcal
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
@@ -26,6 +28,7 @@ internal class GoalsViewModel(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val observeDiaryMealsUseCase: ObserveDiaryMealsUseCase,
     private val goalsRepository: GoalsRepository,
+    private val activityRepository: ActivityRepository,
 ) : ViewModel() {
 
     private val dateState = MutableStateFlow<LocalDate?>(null)
@@ -53,11 +56,21 @@ internal class GoalsViewModel(
                 combine(
                     observeDiaryMealsUseCase.observe(date),
                     goalsRepository.observeDailyGoals(date),
-                ) { meals, goal ->
+                    settingsRepository.observe().flatMapLatest { settings ->
+                        activityRepository.observeDailySummary(
+                            date,
+                            settings.stepsCaloriesPerStepKcal,
+                        )
+                    },
+                ) { meals, goal, activity ->
                     val facts = meals.map { it.nutritionFacts }.sum()
+                    val consumedEnergy = facts.energy.value ?: 0.0
+                    val burnedEnergy = activity.totalEnergyKcal
 
                     DaySummaryModel(
-                        energy = facts.energy.value?.roundToInt() ?: 0,
+                        energy = consumedEnergy.roundToInt(),
+                        burnedEnergy = burnedEnergy.roundToInt(),
+                        netEnergy = calculateNetEnergyKcal(consumedEnergy, burnedEnergy).roundToInt(),
                         energyGoal = goal[NutritionFactsField.Energy].roundToInt(),
                         proteins = facts.proteins.value?.roundToInt() ?: 0,
                         proteinsGoal = goal[NutritionFactsField.Proteins].roundToInt(),

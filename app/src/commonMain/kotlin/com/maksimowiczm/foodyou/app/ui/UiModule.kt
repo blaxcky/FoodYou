@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui
 
+import com.maksimowiczm.foodyou.app.ui.activity.activityUi
 import com.maksimowiczm.foodyou.app.ui.changelog.changelog
 import com.maksimowiczm.foodyou.app.ui.database.database
 import com.maksimowiczm.foodyou.app.ui.food.diary.foodDiary
@@ -17,8 +18,9 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val uiModule = module {
-    viewModel { AppViewModel(settingsRepository = userPreferencesRepository()) }
+    viewModel { AppViewModel(settingsRepository = userPreferencesRepository(), healthConnectActivitySync = get()) }
 
+    activityUi()
     changelog()
     database()
     food()

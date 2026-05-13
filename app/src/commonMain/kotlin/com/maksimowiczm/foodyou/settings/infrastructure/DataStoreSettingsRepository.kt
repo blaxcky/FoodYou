@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -30,6 +31,11 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             onboardingFinished = this[SettingsPreferencesKeys.onboardingFinished] ?: false,
             energyFormat = this.getEnergyFormat(SettingsPreferencesKeys.energyFormat),
             appLaunchInfo = this.getAppLaunchInfo(),
+            stepsCaloriesPerStepKcal = this[SettingsPreferencesKeys.stepsCaloriesPerStepKcal],
+            healthConnectStepsEnabled =
+                this[SettingsPreferencesKeys.healthConnectStepsEnabled] ?: false,
+            healthConnectStepsLastSyncedEpochSeconds =
+                this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds],
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: Settings) {
@@ -43,6 +49,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.onboardingFinished] = updated.onboardingFinished
         setEnergyFormat(SettingsPreferencesKeys.energyFormat, updated.energyFormat)
         setAppLaunchInfo(updated.appLaunchInfo)
+        this[SettingsPreferencesKeys.stepsCaloriesPerStepKcal] = updated.stepsCaloriesPerStepKcal
+        this[SettingsPreferencesKeys.healthConnectStepsEnabled] = updated.healthConnectStepsEnabled
+        this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds] =
+            updated.healthConnectStepsLastSyncedEpochSeconds
     }
 }
 
@@ -66,11 +76,22 @@ private fun Preferences.getNutrientsOrder(key: Preferences.Key<String>): List<Nu
 private fun MutablePreferences.setHomeCardOrder(
     key: Preferences.Key<String>,
     value: List<HomeCard>,
-) = setWithNull(key, value.joinToString(",") { it.ordinal.toString() })
+) = setWithNull(key, value.joinToString(",") { it.name })
 
 private fun Preferences.getHomeCardOrder(key: Preferences.Key<String>): List<HomeCard> =
-    runCatching { this[key]?.split(",")?.map { HomeCard.entries[it.toInt()] } }.getOrNull()
-        ?: HomeCard.defaultOrder
+    runCatching {
+            this[key]
+                ?.split(",")
+                ?.filter(String::isNotBlank)
+                ?.map {
+                    it.toIntOrNull()?.let { ordinal -> HomeCard.entries[ordinal] }
+                        ?: HomeCard.valueOf(it)
+                }
+                ?.let { savedOrder ->
+                    savedOrder + HomeCard.defaultOrder.filterNot(savedOrder::contains)
+                }
+        }
+        .getOrNull() ?: HomeCard.defaultOrder
 
 private fun MutablePreferences.setEnergyFormat(key: Preferences.Key<Int>, value: EnergyFormat) =
     setWithNull(key, value.ordinal)
@@ -133,6 +154,10 @@ private object SettingsPreferencesKeys {
     val expandGoalCard = booleanPreferencesKey("settings:expandGoalCard")
     val onboardingFinished = booleanPreferencesKey("settings:onboardingFinished")
     val energyFormat = intPreferencesKey("settings:energyFormat")
+    val stepsCaloriesPerStepKcal = doublePreferencesKey("settings:stepsCaloriesPerStepKcal")
+    val healthConnectStepsEnabled = booleanPreferencesKey("settings:healthConnectStepsEnabled")
+    val healthConnectStepsLastSyncedEpochSeconds =
+        longPreferencesKey("settings:healthConnectStepsLastSyncedEpochSeconds")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
     val firstLaunchCurrentVersionEpoch = longPreferencesKey("first_launch_current_version_epoch")
