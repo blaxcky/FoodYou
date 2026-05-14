@@ -1,10 +1,5 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,7 +38,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
@@ -106,22 +100,10 @@ internal fun MealCard(
                 onEditEntry = onEditEntry,
                 onDeleteEntry = onDeleteEntry,
                 modifier =
-                    Modifier.fillMaxWidth()
-                        .clip(MaterialTheme.shapes.medium)
-                        .animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
+                    Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium),
             )
 
-            AnimatedVisibility(
-                visible = meal.foods.isNotEmpty(),
-                enter =
-                    expandVertically(
-                        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
-                    ),
-                exit =
-                    shrinkVertically(
-                        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
-                    ),
-            ) {
+            if (meal.foods.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
             }
 
@@ -221,48 +203,22 @@ private fun FoodContainer(
                 }
 
             key(key) {
-                val topStart = animateTopCornerRadius(i)
-                val topEnd = animateTopCornerRadius(i)
-                val bottomStart = foods.animateBottomCornerRadius(i)
-                val bottomEnd = foods.animateBottomCornerRadius(i)
-                val shape = RoundedCornerShape(topStart, topEnd, bottomStart, bottomEnd)
-
                 FoodContainerItem(
                     entry = entry,
                     onEditEntry = onEditEntry,
                     onDeleteEntry = onDeleteEntry,
-                    shape = shape,
+                    shape = foodItemShape(index = i, lastIndex = foods.lastIndex),
                 )
             }
         }
     }
 }
 
-@Composable
-private fun animateTopCornerRadius(index: Int, defaultRadius: Dp = 12.dp): Dp =
-    animateDpAsState(
-            targetValue =
-                when (index) {
-                    0 -> defaultRadius
-                    else -> 0.dp
-                },
-            animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        )
-        .value
-        .coerceAtLeast(0.dp)
-
-@Composable
-private fun <T> List<T>.animateBottomCornerRadius(index: Int, defaultRadius: Dp = 12.dp): Dp =
-    animateDpAsState(
-            targetValue =
-                when (index) {
-                    lastIndex -> defaultRadius
-                    else -> 0.dp
-                },
-            animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        )
-        .value
-        .coerceAtLeast(0.dp)
+private fun foodItemShape(index: Int, lastIndex: Int): Shape {
+    val topRadius = if (index == 0) 12.dp else 0.dp
+    val bottomRadius = if (index == lastIndex) 12.dp else 0.dp
+    return RoundedCornerShape(topRadius, topRadius, bottomRadius, bottomRadius)
+}
 
 @Composable
 private fun FoodContainerItem(

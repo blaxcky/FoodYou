@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -22,7 +21,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.calendar.CalendarCard
 import com.maksimowiczm.foodyou.app.ui.home.activity.ActivitiesCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCard
-import com.maksimowiczm.foodyou.app.ui.home.meals.card.MealsCards
+import com.maksimowiczm.foodyou.app.ui.home.meals.card.mealsCards
+import com.maksimowiczm.foodyou.app.ui.home.meals.card.rememberMealsCardsState
 import com.maksimowiczm.foodyou.app.ui.home.poll.PollsCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.rememberHomeState
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
@@ -48,6 +48,14 @@ fun HomeScreen(
     val viewModel: HomeViewModel = koinViewModel()
     val order by viewModel.homeOrder.collectAsStateWithLifecycle()
     val homeState = rememberHomeState()
+    val mealsCardsState =
+        rememberMealsCardsState(
+            homeState = homeState,
+            onAdd = onMealCardAddClick,
+            onQuickAdd = onMealCardQuickAddClick,
+            onEditEntry = onEditDiaryEntryClick,
+            onLongClick = onMealCardLongClick,
+        )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
@@ -81,45 +89,50 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = paddingValues,
         ) {
-            item {
+            item(key = "polls", contentType = "polls") {
                 PollsCard(modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp))
             }
 
-            items(order) {
-                when (it) {
+            order.forEach { homeCard ->
+                when (homeCard) {
                     HomeCard.Calendar ->
-                        CalendarCard(
-                            homeState = homeState,
-                            modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                        )
+                        item(key = HomeCard.Calendar, contentType = HomeCard.Calendar) {
+                            CalendarCard(
+                                homeState = homeState,
+                                modifier =
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                            )
+                        }
 
                     HomeCard.Goals ->
-                        GoalsCard(
-                            homeState = homeState,
-                            onClick = onGoalsCardClick,
-                            onLongClick = onGoalsCardLongClick,
-                            modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                        )
+                        item(key = HomeCard.Goals, contentType = HomeCard.Goals) {
+                            GoalsCard(
+                                homeState = homeState,
+                                onClick = onGoalsCardClick,
+                                onLongClick = onGoalsCardLongClick,
+                                modifier =
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                            )
+                        }
 
                     HomeCard.Meals ->
-                        MealsCards(
-                            homeState = homeState,
-                            onAdd = onMealCardAddClick,
-                            onQuickAdd = onMealCardQuickAddClick,
-                            onEditEntry = onEditDiaryEntryClick,
-                            onLongClick = onMealCardLongClick,
+                        mealsCards(
+                            state = mealsCardsState,
                             contentPadding = PaddingValues(horizontal = 8.dp),
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
 
                     HomeCard.Activities ->
-                        ActivitiesCard(
-                            homeState = homeState,
-                            onAdd = onAddActivityClick,
-                            onEdit = onEditActivityClick,
-                            onLongClick = onActivityCardLongClick,
-                            modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                        )
+                        item(key = HomeCard.Activities, contentType = HomeCard.Activities) {
+                            ActivitiesCard(
+                                homeState = homeState,
+                                onAdd = onAddActivityClick,
+                                onEdit = onEditActivityClick,
+                                onLongClick = onActivityCardLongClick,
+                                modifier =
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                            )
+                        }
                 }
             }
         }
