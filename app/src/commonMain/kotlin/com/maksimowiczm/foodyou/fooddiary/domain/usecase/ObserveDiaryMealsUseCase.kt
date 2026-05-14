@@ -8,9 +8,10 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -26,7 +27,7 @@ class ObserveDiaryMealsUseCase(
         return combine(
                 mealRepository.observeMeals(),
                 mealsPreferencesRepository.observe(),
-                dateProvider.observeTime(1.seconds),
+                dateProvider.observeTime(1.minutes),
             ) { meals, prefs, time ->
                 val timeBased = prefs.useTimeBasedSorting
                 val ignoreAllDayMeals = prefs.ignoreAllDayMeals
@@ -43,6 +44,7 @@ class ObserveDiaryMealsUseCase(
                     }
                 }
             }
+            .distinctUntilChanged()
             .flatMapLatest { meals ->
                 val diaryEntries =
                     meals.map { meal ->
