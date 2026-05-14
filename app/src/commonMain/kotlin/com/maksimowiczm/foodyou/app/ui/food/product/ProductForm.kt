@@ -75,7 +75,7 @@ internal fun ProductForm(
     FullScreenCameraNutritionLabelScanner(
         visible = showNutritionLabelScanner,
         onTextRecognized = {
-            nutritionLabelScanResult = NutritionLabelParser.parse(it.map { line -> line.text })
+            nutritionLabelScanResult = NutritionLabelParser.parse(it)
             showNutritionLabelScanner = false
         },
         onClose = { showNutritionLabelScanner = false },

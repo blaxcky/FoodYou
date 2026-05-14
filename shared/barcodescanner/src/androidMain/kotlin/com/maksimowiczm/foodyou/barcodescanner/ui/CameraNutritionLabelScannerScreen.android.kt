@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.barcodescanner.ui
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.graphics.Rect
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.LocalActivity
@@ -272,7 +273,20 @@ private fun recognizeText(
         .addOnSuccessListener { text ->
             val lines =
                 text.textBlocks.flatMap { block ->
-                    block.lines.map { line -> RecognizedTextLine(line.text) }
+                    block.lines.mapNotNull { line ->
+                        val lineBounds = line.boundingBox?.toTextBounds() ?: return@mapNotNull null
+                        RecognizedTextLine(
+                            text = line.text,
+                            bounds = lineBounds,
+                            elements =
+                                line.elements.mapNotNull { element ->
+                                    val bounds =
+                                        element.boundingBox?.toTextBounds()
+                                            ?: return@mapNotNull null
+                                    RecognizedTextElement(text = element.text, bounds = bounds)
+                                },
+                        )
+                    }
                 }
             onSuccess(lines)
         }
@@ -288,6 +302,9 @@ private fun createPhotoUri(context: Context): Uri {
         file,
     )
 }
+
+private fun Rect.toTextBounds(): TextBounds =
+    TextBounds(left = left, top = top, right = right, bottom = bottom)
 
 private fun redirectToSettings(context: Context) {
     val intent =

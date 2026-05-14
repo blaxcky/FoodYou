@@ -1,5 +1,8 @@
 package com.maksimowiczm.foodyou.app.ui.food.product
 
+import com.maksimowiczm.foodyou.barcodescanner.ui.RecognizedTextElement
+import com.maksimowiczm.foodyou.barcodescanner.ui.RecognizedTextLine
+import com.maksimowiczm.foodyou.barcodescanner.ui.TextBounds
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -8,165 +11,189 @@ import kotlin.test.assertTrue
 
 class NutritionLabelParserTest {
     @Test
-    fun parsesGermanLabelWithCommaValues() {
+    fun parsesOnlyValuesInPro100Column() {
+        val result = NutritionLabelParser.parse(nutritionTable())
+
+        assertTrue(result.hasPer100Basis)
+        assertEquals(66f, result.energy?.value)
+        assertEquals(NutritionLabelUnit.Kcal, result.energy?.unit)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
+    }
+
+    @Test
+    fun ignoresServingAndReferenceIntakeColumns() {
+        val result = NutritionLabelParser.parse(nutritionTable())
+
+        assertEquals(66f, result.energy?.value)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
+        assertFalse(result.fields.any { it.value in listOf(9f, 9.8f, 11f) })
+    }
+
+    @Test
+    fun neverUsesPer100HeaderAsMacroValue() {
         val result =
             NutritionLabelParser.parse(
                 listOf(
-                    "Nahrwerte pro 100 g",
-                    "Brennwert 850 kJ / 203 kcal",
-                    "Fett 10,5 g",
-                    "Kohlenhydrate 20,2 g",
-                    "Eiweiß 3,5 g",
+                    line(
+                        0,
+                        "Fett Pro 100 g",
+                        "Fett" at 10,
+                        "Pro" at 210,
+                        "100" at 240,
+                        "g" at 275,
+                    )
                 )
             )
 
         assertTrue(result.hasPer100Basis)
-        assertEquals(203f, result.energy?.value)
-        assertEquals(NutritionLabelUnit.Kcal, result.energy?.unit)
-        assertEquals(3.5f, result.proteins?.value)
-        assertEquals(10.5f, result.fats?.value)
-        assertEquals(20.2f, result.carbohydrates?.value)
+        assertNull(result.fats)
     }
 
     @Test
-    fun parsesEnglishLabelWithPointValues() {
+    fun neverUsesEnergyNumbersAsMacroValues() {
         val result =
             NutritionLabelParser.parse(
                 listOf(
-                    "Nutrition facts per 100 ml",
-                    "Energy 42 kcal",
-                    "Fat 0.8 g",
-                    "Carbohydrates 9.1 g",
-                    "Proteins 0.3 g",
+                    line(0, "Pro 100 g", "Pro" at 210, "100" at 240, "g" at 275),
+                    line(
+                        40,
+                        "Kohlenhydrate 274 kJ 66 kcal",
+                        "Kohlenhydrate" at 10,
+                        "274" at 225,
+                        "kJ" at 260,
+                        "66" at 305,
+                        "kcal" at 335,
+                    ),
                 )
             )
 
-        assertTrue(result.hasPer100Basis)
-        assertEquals(42f, result.energy?.value)
-        assertEquals(0.8f, result.fats?.value)
-        assertEquals(9.1f, result.carbohydrates?.value)
-        assertEquals(0.3f, result.proteins?.value)
+        assertNull(result.carbohydrates)
     }
 
     @Test
-    fun prefersKcalWhenEnergyLineContainsKjAndKcal() {
+    fun returnsNoValuesWithoutBoundingBoxBasedPro100Column() {
         val result =
-            NutritionLabelParser.parse(listOf("per 100 g", "Energy 1700 kJ / 406 kcal"))
+            NutritionLabelParser.parse(
+                listOf(
+                    line(40, "Energy 42 kcal", "Energy" at 10, "42" at 225, "kcal" at 255),
+                    line(80, "Fat 0.8 g", "Fat" at 10, "0.8" at 225, "g" at 260),
+                )
+            )
 
-        assertEquals(406f, result.energy?.value)
-        assertEquals(NutritionLabelUnit.Kcal, result.energy?.unit)
+        assertFalse(result.hasPer100Basis)
+        assertTrue(result.fields.isEmpty())
     }
 
     @Test
-    fun acceptsKjEnergyAsFallback() {
-        val result = NutritionLabelParser.parse(listOf("pro 100 g", "Energie 418 kJ"))
+    fun acceptsKjEnergyWhenKcalIsAbsent() {
+        val result =
+            NutritionLabelParser.parse(
+                listOf(
+                    line(0, "per 100 ml", "per" at 210, "100" at 240, "ml" at 275),
+                    line(40, "Energy 418 kJ", "Energy" at 10, "418" at 225, "kJ" at 265),
+                )
+            )
 
         assertEquals(418f, result.energy?.value)
         assertEquals(NutritionLabelUnit.Kj, result.energy?.unit)
     }
+}
 
-    @Test
-    fun doesNotParseEnergyWithoutUnit() {
-        val result = NutritionLabelParser.parse(listOf("pro 100 g", "Energy 123"))
+private fun nutritionTable(): List<RecognizedTextLine> =
+    listOf(
+        line(
+            0,
+            "Pro 100 g Pro Portion % RI",
+            "Pro" at 210,
+            "100" at 240,
+            "g" at 275,
+            "Pro" at 370,
+            "Portion" at 400,
+            "%" at 515,
+            "RI" at 540,
+        ),
+        line(
+            40,
+            "Brennwert 274 kJ 66 kcal 685 kJ 164 kcal 8 %",
+            "Brennwert" at 10,
+            "274" at 210,
+            "kJ" at 250,
+            "66" at 285,
+            "kcal" at 315,
+            "685" at 370,
+            "kJ" at 410,
+            "164" at 445,
+            "kcal" at 485,
+            "8" at 540,
+            "%" at 565,
+        ),
+        line(
+            80,
+            "Fett 3,6 g 9 g 13 %",
+            "Fett" at 10,
+            "3,6" at 225,
+            "g" at 265,
+            "9" at 390,
+            "g" at 420,
+            "13" at 540,
+            "%" at 570,
+        ),
+        line(
+            120,
+            "Kohlenhydrate 3,9 g 9,8 g 4 %",
+            "Kohlenhydrate" at 10,
+            "3,9" at 225,
+            "g" at 265,
+            "9,8" at 390,
+            "g" at 430,
+            "4" at 540,
+            "%" at 570,
+        ),
+        line(
+            160,
+            "Eiweiss 4,4 g 11 g 22 %",
+            "Eiweiss" at 10,
+            "4,4" at 225,
+            "g" at 265,
+            "11" at 390,
+            "g" at 425,
+            "22" at 540,
+            "%" at 570,
+        ),
+    )
 
-        assertNull(result.energy)
-    }
+private infix fun String.at(left: Int): RecognizedTextElement {
+    val width = length * 10
+    return RecognizedTextElement(this, TextBounds(left, 0, left + width, 20))
+}
 
-    @Test
-    fun marksResultUncertainWithoutPer100Column() {
-        val result =
-            NutritionLabelParser.parse(
-                listOf("per serving", "Energy 42 kcal", "Fat 0.8 g", "Carbs 9.1 g")
+private fun line(
+    top: Int,
+    text: String,
+    vararg elements: RecognizedTextElement,
+): RecognizedTextLine {
+    val shiftedElements =
+        elements.map { element ->
+            element.copy(
+                bounds =
+                    TextBounds(
+                        left = element.bounds.left,
+                        top = top,
+                        right = element.bounds.right,
+                        bottom = top + 20,
+                    )
             )
-
-        assertFalse(result.hasPer100Basis)
-        assertFalse(result.fats?.isPer100Basis ?: true)
-    }
-
-    @Test
-    fun handlesCommonOcrSplitsAndConfusions() {
-        val result =
-            NutritionLabelParser.parse(
-                listOf(
-                    "pro 100 g",
-                    "Eiwei0ß 4,4 g",
-                    "Kohlen hydrate 12,0 g",
-                    "Energie kcal/kJ 99 kcal 414 kJ",
-                )
-            )
-
-        assertEquals(4.4f, result.proteins?.value)
-        assertEquals(12f, result.carbohydrates?.value)
-        assertEquals(99f, result.energy?.value)
-    }
-
-    @Test
-    fun parsesValuesWhenOcrSplitsTableLabelsAndColumns() {
-        val result =
-            NutritionLabelParser.parse(
-                listOf(
-                    "Durchschnittliche Nährwerte",
-                    "Pro 100 g /",
-                    "100 g termékben /",
-                    "Brennwert / Energia /",
-                    "274 kJ",
-                    "66 kcal",
-                    "Fett / Zsir / Maščobe",
-                    "3,6 g",
-                    "Kohlenhydrate / Szénhidrát /",
-                    "3,9 g",
-                    "Eiweiss / Fehérje / Beljakovine",
-                    "4,4 g",
-                )
-            )
-
-        assertTrue(result.hasPer100Basis)
-        assertEquals(66f, result.energy?.value)
-        assertEquals(3.6f, result.fats?.value)
-        assertEquals(3.9f, result.carbohydrates?.value)
-        assertEquals(4.4f, result.proteins?.value)
-    }
-
-    @Test
-    fun doesNotUsePer100HeaderAsNutrientValue() {
-        val result =
-            NutritionLabelParser.parse(
-                listOf(
-                    "Fett / Zsir / Maščobe | Pro 100 g/",
-                    "3,6 g",
-                    "Kohlenhydrate / Szénhidrát / | Pro 100 g/",
-                    "3,9 g",
-                )
-            )
-
-        assertEquals(3.6f, result.fats?.value)
-        assertEquals(3.9f, result.carbohydrates?.value)
-    }
-
-    @Test
-    fun skipsPer100HeaderBetweenLabelAndValue() {
-        val result =
-            NutritionLabelParser.parse(
-                listOf(
-                    "Brennwert / Energia /",
-                    "Pro 100 g/",
-                    "274 kJ",
-                    "66 kcal",
-                    "Fett / Zsir / Maščobe",
-                    "Pro 100 g/",
-                    "3,6 g",
-                    "Kohlenhydrate / Szénhidrát /",
-                    "Pro 100 g/",
-                    "3,9 g",
-                    "Eiweiss / Fehérje / Beljakovine",
-                    "Pro 100 g/",
-                    "4,4 g",
-                )
-            )
-
-        assertEquals(66f, result.energy?.value)
-        assertEquals(3.6f, result.fats?.value)
-        assertEquals(3.9f, result.carbohydrates?.value)
-        assertEquals(4.4f, result.proteins?.value)
-    }
+        }
+    val bounds =
+        TextBounds(
+            left = shiftedElements.minOf { it.bounds.left },
+            top = top,
+            right = shiftedElements.maxOf { it.bounds.right },
+            bottom = top + 20,
+        )
+    return RecognizedTextLine(text = text, bounds = bounds, elements = shiftedElements)
 }
