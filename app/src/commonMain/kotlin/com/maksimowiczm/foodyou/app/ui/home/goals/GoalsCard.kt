@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -51,14 +53,14 @@ import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
-private val GoalsCardShape = RoundedCornerShape(26.dp)
+private val GoalsCardShape = RoundedCornerShape(24.dp)
 private val GoalsCardColor = Color(0xFFFFFFFF)
-private val GoalsTextColor = Color(0xFF25272D)
-private val GoalsMutedTextColor = Color(0xFF6F7681)
+private val GoalsTextColor = Color(0xFF202124)
+private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE3EDF7)
 private val GoalsProgressColor = Color(0xFF45AEE6)
 private val GoalsErrorColor = Color(0xFFE25555)
-private val MacroTrackColor = Color(0xFFF5F7F8)
+private val MacroTrackColor = Color(0xFFF7F9FA)
 private val FatColor = Color(0xFFF4D5DC)
 private val CarbsColor = Color(0xFFF4E6C9)
 private val ProteinColor = Color(0xFFCFE6CD)
@@ -138,8 +140,8 @@ internal fun GoalsCard(
         Column(
             modifier =
                 Modifier.fillMaxWidth()
-                    .defaultMinSize(minHeight = 388.dp)
-                    .padding(start = 48.dp, top = 32.dp, end = 48.dp, bottom = 28.dp),
+                    .defaultMinSize(minHeight = 387.dp)
+                    .padding(start = 48.dp, top = 31.dp, end = 48.dp, bottom = 27.dp),
         ) {
             CaloriesOverview(
                 energy = energy,
@@ -154,7 +156,7 @@ internal fun GoalsCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 MacroGoal(
                     label = stringResource(Res.string.goal_fat),
@@ -162,7 +164,7 @@ internal fun GoalsCard(
                     goal = fatsGoal,
                     progress = fatsProgress,
                     color = FatColor,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.width(133.dp),
                 )
                 MacroGoal(
                     label = stringResource(Res.string.goal_carbs_short),
@@ -170,7 +172,7 @@ internal fun GoalsCard(
                     goal = carbohydratesGoal,
                     progress = carbsProgress,
                     color = CarbsColor,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.width(133.dp),
                 )
                 MacroGoal(
                     label = stringResource(Res.string.goal_protein),
@@ -178,7 +180,7 @@ internal fun GoalsCard(
                     goal = proteinsGoal,
                     progress = proteinsProgress,
                     color = ProteinColor,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.width(133.dp),
                 )
             }
         }
@@ -213,43 +215,39 @@ private fun CaloriesOverview(
     val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
     val valueColor = if (left < 0) GoalsErrorColor else GoalsTextColor
 
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    Box(modifier = modifier.height(247.dp)) {
+        GaugeMetric(
+            value = energyFormatter.formatEnergy(left, withSuffix = false),
+            label = stringResource(Res.string.goal_left),
+            progress = progress,
+            valueColor = valueColor,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+
         SideMetric(
             value = energyFormatter.formatEnergy(energy, withSuffix = false),
             label = stringResource(Res.string.goal_eaten),
             supportingValue = "$reached %",
             supportingLabel =
                 stringResource(Res.string.goal_reached_percentage, reached).substringAfter("% "),
-            modifier = Modifier.weight(1f),
-        )
-
-        GaugeMetric(
-            value = energyFormatter.formatEnergy(left, withSuffix = false),
-            unit = energyFormatter.suffix(),
-            label = stringResource(Res.string.goal_left),
-            progress = progress,
-            valueColor = valueColor,
-            modifier = Modifier.weight(1.9f),
+            modifier = Modifier.width(158.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         )
 
         Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.End,
+            modifier = Modifier.align(Alignment.TopEnd).width(96.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(30.dp),
         ) {
             SideMetric(
                 value = energyFormatter.formatEnergy(burnedEnergy, withSuffix = false),
                 label = stringResource(Res.string.goal_burned),
-                horizontalAlignment = Alignment.End,
+                horizontalAlignment = Alignment.CenterHorizontally,
             )
             SideMetric(
                 value = energyFormatter.formatEnergy(energyGoal, withSuffix = false),
                 label = stringResource(Res.string.goal_goal),
-                horizontalAlignment = Alignment.End,
+                horizontalAlignment = Alignment.CenterHorizontally,
             )
         }
     }
@@ -274,8 +272,8 @@ private fun SideMetric(
             color = GoalsTextColor,
             style =
                 MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 24.sp,
-                    lineHeight = 28.sp,
+                    fontSize = 31.sp,
+                    lineHeight = 36.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
@@ -283,7 +281,11 @@ private fun SideMetric(
         Text(
             text = label,
             color = GoalsTextColor,
-            style = MaterialTheme.typography.labelMedium,
+            style =
+                MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 19.sp,
+                    lineHeight = 22.sp,
+                ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
         )
@@ -292,7 +294,11 @@ private fun SideMetric(
             Text(
                 text = supportingValue,
                 color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelMedium.copy(fontSize = 15.sp),
+                style =
+                    MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 19.sp,
+                        lineHeight = 22.sp,
+                    ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
             )
@@ -301,7 +307,11 @@ private fun SideMetric(
             Text(
                 text = supportingLabel,
                 color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelMedium.copy(fontSize = 15.sp),
+                style =
+                    MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 19.sp,
+                        lineHeight = 22.sp,
+                    ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
             )
@@ -312,20 +322,22 @@ private fun SideMetric(
 @Composable
 private fun GaugeMetric(
     value: String,
-    unit: String,
     label: String,
     progress: Float,
     valueColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.height(220.dp), contentAlignment = Alignment.TopCenter) {
+    Box(
+        modifier = modifier.size(width = 254.dp, height = 235.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
         SemiCircleGauge(
             progress = progress,
-            modifier = Modifier.requiredWidth(196.dp).height(168.dp),
+            modifier = Modifier.size(width = 254.dp, height = 235.dp),
         )
 
         Column(
-            modifier = Modifier.padding(top = 58.dp),
+            modifier = Modifier.offset(y = 106.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -333,24 +345,21 @@ private fun GaugeMetric(
                 color = valueColor,
                 style =
                     MaterialTheme.typography.headlineLarge.copy(
-                        fontSize = 34.sp,
-                        lineHeight = 38.sp,
+                        fontSize = 38.sp,
+                        lineHeight = 42.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
             )
             Text(
-                text = unit,
-                color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp),
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-            )
-            Text(
                 text = label,
                 color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
+                style =
+                    MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 20.sp,
+                        lineHeight = 24.sp,
+                    ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
@@ -363,10 +372,9 @@ private fun GaugeMetric(
 private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val strokeWidth = 13.dp.toPx()
-        val inset = strokeWidth / 2
-        val arcWidth = size.width - strokeWidth
-        val arcHeight = (size.height - strokeWidth) * 2.04f
-        val topLeft = Offset(inset, inset)
+        val arcDiameter = 112.dp.toPx()
+        val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
+        val arcSize = Size(width = arcDiameter, height = arcDiameter)
 
         drawArc(
             color = GoalsTrackColor,
@@ -374,7 +382,7 @@ private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
             sweepAngle = 180f,
             useCenter = false,
             topLeft = topLeft,
-            size = Size(width = arcWidth, height = arcHeight),
+            size = arcSize,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
         drawArc(
@@ -383,7 +391,7 @@ private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
             sweepAngle = 180f * progress.coerceIn(0f, 1f),
             useCenter = false,
             topLeft = topLeft,
-            size = Size(width = arcWidth, height = arcHeight),
+            size = arcSize,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
     }
@@ -409,7 +417,11 @@ private fun MacroGoal(
         Text(
             text = label,
             color = GoalsTextColor,
-            style = MaterialTheme.typography.labelMedium,
+            style =
+                MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 15.sp,
+                    lineHeight = 18.sp,
+                ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
         )
@@ -417,7 +429,11 @@ private fun MacroGoal(
         Text(
             text = "$value/$goal $gramShort",
             color = valueColor,
-            style = MaterialTheme.typography.labelMedium,
+            style =
+                MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 15.sp,
+                    lineHeight = 18.sp,
+                ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
             textAlign = TextAlign.Center,
@@ -468,73 +484,65 @@ private fun GoalsCardSkeleton(
         Column(
             modifier =
                 Modifier.fillMaxWidth()
-                    .defaultMinSize(minHeight = 388.dp)
-                    .padding(start = 48.dp, top = 32.dp, end = 48.dp, bottom = 28.dp),
+                    .defaultMinSize(minHeight = 387.dp)
+                    .padding(start = 48.dp, top = 31.dp, end = 48.dp, bottom = 27.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    SkeletonBlock(
-                        shimmer,
-                        Modifier.width(54.dp).height(MaterialTheme.typography.titleLarge.toDp()),
-                    )
-                    SkeletonBlock(
-                        shimmer,
-                        Modifier.width(70.dp).height(MaterialTheme.typography.labelMedium.toDp()),
-                    )
-                    SkeletonBlock(
-                        shimmer,
-                        Modifier.width(42.dp).height(MaterialTheme.typography.labelSmall.toDp()),
-                    )
-                }
-
+            Box(modifier = Modifier.fillMaxWidth().height(247.dp)) {
                 Box(
-                    modifier = Modifier.weight(1.9f).height(220.dp),
+                    modifier =
+                        Modifier.align(Alignment.TopCenter).size(width = 254.dp, height = 235.dp),
                     contentAlignment = Alignment.TopCenter,
                 ) {
                     SkeletonBlock(
                         shimmer,
-                        Modifier.requiredWidth(196.dp)
-                            .height(168.dp)
+                        Modifier.requiredWidth(125.dp)
+                            .height(125.dp)
                             .clip(RoundedCornerShape(topStart = 120.dp, topEnd = 120.dp)),
                     )
                     Column(
-                        modifier = Modifier.padding(top = 58.dp),
+                        modifier = Modifier.offset(y = 106.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         SkeletonBlock(
                             shimmer,
                             Modifier.width(74.dp)
-                                .height(MaterialTheme.typography.headlineMedium.toDp()),
-                        )
-                        Spacer(Modifier.height(5.dp))
-                        SkeletonBlock(
-                            shimmer,
-                            Modifier.width(34.dp)
-                                .height(MaterialTheme.typography.labelMedium.toDp()),
+                                .height(42.dp),
                         )
                         Spacer(Modifier.height(5.dp))
                         SkeletonBlock(
                             shimmer,
                             Modifier.width(44.dp)
-                                .height(MaterialTheme.typography.labelMedium.toDp()),
+                                .height(24.dp),
                         )
                     }
                 }
 
                 Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.width(158.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    SkeletonBlock(
+                        shimmer,
+                        Modifier.width(54.dp).height(36.dp),
+                    )
+                    SkeletonBlock(
+                        shimmer,
+                        Modifier.width(70.dp).height(22.dp),
+                    )
+                    SkeletonBlock(
+                        shimmer,
+                        Modifier.width(42.dp).height(22.dp),
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.align(Alignment.TopEnd).width(96.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(30.dp),
                 ) {
-                    SkeletonSideMetric(shimmer, Alignment.End)
-                    SkeletonSideMetric(shimmer, Alignment.End)
+                    SkeletonSideMetric(shimmer, Alignment.CenterHorizontally)
+                    SkeletonSideMetric(shimmer, Alignment.CenterHorizontally)
                 }
             }
 
@@ -542,11 +550,11 @@ private fun GoalsCardSkeleton(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 repeat(3) {
                     Column(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.width(133.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {

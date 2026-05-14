@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.gmazzo.buildconfig)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+    alias(libs.plugins.roborazzi)
 }
 
 room { schemaDirectory("$projectDir/schemas") }
@@ -118,6 +119,17 @@ kotlin {
             implementation(libs.androidx.testExt.junit)
         }
 
+        androidUnitTest.dependencies {
+            implementation(libs.androidx.testCore)
+            implementation(libs.androidx.testExt.junit)
+            implementation(libs.jetbrains.compose.ui.test.junit4)
+            implementation(libs.junit)
+            implementation(libs.robolectric)
+            implementation(libs.roborazzi)
+            implementation(libs.roborazzi.compose)
+            implementation(libs.roborazzi.junit.rule)
+        }
+
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }
     }
 }
@@ -139,6 +151,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all { it.systemProperties["robolectric.pixelCopyRenderMode"] = "hardware" }
+        }
+    }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = true
@@ -170,6 +188,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 }
+
+roborazzi { outputDir.set(file("src/test/screenshots")) }
 
 dependencies {
     debugImplementation(libs.jetbrains.compose.ui.tooling)
