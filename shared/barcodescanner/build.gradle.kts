@@ -38,6 +38,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.accompanist.permissions)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.mlkit.text.recognition)
 
             // Zxing
             implementation(libs.zxing.android.embedded)

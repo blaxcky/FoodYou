@@ -17,6 +17,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,6 +33,7 @@ import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -43,10 +48,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraBarcodeScanner
+import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraNutritionLabelScanner
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
+import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.app.ui.food.component.Icon
 import com.maksimowiczm.foodyou.app.ui.food.component.stringResource
 import com.maksimowiczm.foodyou.common.compose.component.unorderedList
@@ -63,6 +70,27 @@ internal fun ProductForm(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    var showNutritionLabelScanner by rememberSaveable { mutableStateOf(false) }
+    var nutritionLabelScanResult by remember { mutableStateOf<NutritionLabelScanResult?>(null) }
+    FullScreenCameraNutritionLabelScanner(
+        visible = showNutritionLabelScanner,
+        onTextRecognized = {
+            nutritionLabelScanResult = NutritionLabelParser.parse(it.map { line -> line.text })
+            showNutritionLabelScanner = false
+        },
+        onClose = { showNutritionLabelScanner = false },
+    )
+    nutritionLabelScanResult?.let { result ->
+        NutritionLabelScanReviewDialog(
+            result = result,
+            onDismissRequest = { nutritionLabelScanResult = null },
+            onApply = {
+                state.applyNutritionLabelScan(result)
+                nutritionLabelScanResult = null
+            },
+        )
+    }
+
     val layoutDirection = LocalLayoutDirection.current
     val horizontalPadding =
         PaddingValues(
@@ -88,6 +116,19 @@ internal fun ProductForm(
             modifier = Modifier.padding(horizontalPadding).fillMaxWidth(),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
+        )
+
+        AssistChip(
+            onClick = { showNutritionLabelScanner = true },
+            label = { Text(stringResource(Res.string.action_scan_nutrition_label)) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.PhotoCamera,
+                    contentDescription = null,
+                    modifier = Modifier.size(AssistChipDefaults.IconSize),
+                )
+            },
+            modifier = Modifier.padding(horizontalPadding),
         )
 
         order.forEach { field ->
@@ -136,6 +177,116 @@ internal fun ProductForm(
                 NutrientsOrder.Minerals -> Minerals(state, horizontalPadding)
             }
         }
+    }
+}
+
+@Composable
+private fun NutritionLabelScanReviewDialog(
+    result: NutritionLabelScanResult,
+    onDismissRequest: () -> Unit,
+    onApply: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val canApply = result.hasPer100Basis && result.fields.isNotEmpty()
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(onClick = onApply, enabled = canApply) {
+                Text(stringResource(Res.string.action_apply_scan))
+            }
+        },
+        modifier = modifier,
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(Res.string.action_cancel))
+            }
+        },
+        title = { Text(stringResource(Res.string.headline_review_nutrition_label_scan)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!result.hasPer100Basis) {
+                    Text(
+                        text = stringResource(Res.string.description_nutrition_label_scan_uncertain),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                if (result.fields.isEmpty()) {
+                    Text(stringResource(Res.string.neutral_no_nutrition_label_values_found))
+                } else {
+                    result.energy.ScanFieldRow()
+                    result.proteins.ScanFieldRow()
+                    result.fats.ScanFieldRow()
+                    result.carbohydrates.ScanFieldRow()
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun NutritionLabelField?.ScanFieldRow() {
+    if (this == null) {
+        return
+    }
+    val label =
+        when (nutrient) {
+            ScannedNutrient.Energy -> stringResource(Res.string.unit_energy)
+            ScannedNutrient.Proteins -> stringResource(Res.string.nutriment_proteins)
+            ScannedNutrient.Fats -> stringResource(Res.string.nutriment_fats)
+            ScannedNutrient.Carbohydrates -> stringResource(Res.string.nutriment_carbohydrates)
+        }
+    val unit =
+        when (unit) {
+            NutritionLabelUnit.Kcal -> stringResource(Res.string.unit_kcal)
+            NutritionLabelUnit.Kj -> stringResource(Res.string.unit_kilojoules)
+            NutritionLabelUnit.Gram -> stringResource(Res.string.unit_gram_short)
+        }
+
+    Column {
+        Text(
+            text = "$label: ${value.formatClipZeros()} $unit",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = sourceText,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun ProductFormState.applyNutritionLabelScan(result: NutritionLabelScanResult) {
+    if (!result.hasPer100Basis) {
+        return
+    }
+
+    applyScannedValue(proteins, result.proteins)
+    applyScannedValue(fats, result.fats)
+    applyScannedValue(carbohydrates, result.carbohydrates)
+
+    val energyField = result.energy
+    if (energy.value == null && energyField != null && energyField.isPer100Basis) {
+        val kcal =
+            when (energyField.unit) {
+                NutritionLabelUnit.Kcal -> energyField.value.toDouble()
+                NutritionLabelUnit.Kj -> energyField.value.toDouble() / 4.184
+                NutritionLabelUnit.Gram -> return
+            }
+        val value = energyFormatter.fromKcal(kcal).toFloat().formatClipZeros()
+        energy.textFieldState.setTextAndPlaceCursorAtEnd(value)
+        autoCalculateEnergy = false
+    }
+}
+
+private fun applyScannedValue(
+    target: FormField<Float?, ProductFormFieldError>,
+    field: NutritionLabelField?,
+) {
+    if (target.value == null && field != null && field.isPer100Basis) {
+        target.textFieldState.setTextAndPlaceCursorAtEnd(field.value.formatClipZeros())
     }
 }
 
