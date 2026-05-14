@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
-import com.valentinilk.shimmer.Shimmer
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -38,7 +37,6 @@ internal fun rememberMealsCardsState(
         },
         onDeleteEntry = viewModel::onDeleteEntry,
         onLongClick = onLongClick,
-        shimmer = homeState.shimmer,
     )
 }
 
@@ -50,7 +48,6 @@ internal class MealsCardsState(
     val onEditEntry: (MealEntryModel) -> Unit,
     val onDeleteEntry: (MealEntryModel) -> Unit,
     val onLongClick: (mealId: Long) -> Unit,
-    val shimmer: Shimmer,
 )
 
 internal fun LazyListScope.mealsCards(
@@ -68,7 +65,6 @@ internal fun LazyListScope.mealsCards(
                     onEditEntry = state.onEditEntry,
                     onDeleteEntry = state.onDeleteEntry,
                     onLongClick = state.onLongClick,
-                    shimmer = state.shimmer,
                     contentPadding = contentPadding,
                     modifier = modifier,
                 )
@@ -81,7 +77,7 @@ internal fun LazyListScope.mealsCards(
                     key = { index -> "meal-skeleton-$index" },
                     contentType = { "meal-skeleton" },
                 ) {
-                    MealCardSkeleton(state.shimmer, modifier = modifier.padding(contentPadding))
+                    MealCardSkeleton(modifier = modifier.padding(contentPadding))
                 }
             } else {
                 items(

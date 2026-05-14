@@ -6,13 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -211,7 +210,7 @@ private fun CalendarCardDatePicker(
     }
 
     LazyRow(modifier = modifier, state = calendarState.lazyListState) {
-        items(calendarState.lazyListCount) {
+        items(count = calendarState.lazyListCount, key = { it }, contentType = { "date" }) {
             val date = calendarState.zeroDate.plus(it.toLong(), DateTimeUnit.DAY)
             DatePickerRowItem(
                 calendarState = calendarState,
@@ -265,8 +264,8 @@ private fun DatePickerRowItem(
     Box(
         modifier =
             modifier
-                .height(IntrinsicSize.Min)
                 .padding(4.dp)
+                .size(48.dp)
                 .clip(MaterialTheme.shapes.medium)
                 .clickable { onClick() }
                 .drawBehind { drawRect(backgroundColor) }
@@ -274,7 +273,6 @@ private fun DatePickerRowItem(
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.aspectRatio(1f),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(

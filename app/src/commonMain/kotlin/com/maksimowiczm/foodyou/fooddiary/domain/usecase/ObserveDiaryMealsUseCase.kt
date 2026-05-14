@@ -1,6 +1,8 @@
 package com.maksimowiczm.foodyou.fooddiary.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.common.domain.food.sum
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryMeal
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
@@ -63,6 +66,28 @@ class ObserveDiaryMealsUseCase(
                 }
             }
     }
+
+    fun observeNutritionFacts(date: LocalDate): Flow<NutritionFacts> =
+        mealRepository
+            .observeMeals()
+            .flatMapLatest { meals ->
+                if (meals.isEmpty()) {
+                    return@flatMapLatest flowOf(NutritionFacts.Empty)
+                }
+
+                val nutritionFacts =
+                    meals.map { meal ->
+                        combine(
+                            manualEntryRepository.observeAll(mealId = meal.id, date = date),
+                            foodEntryRepository.observeAll(mealId = meal.id, date = date),
+                        ) { manualEntries, foodEntries ->
+                            (manualEntries + foodEntries).map { it.nutritionFacts }.sum()
+                        }
+                    }
+
+                combine(nutritionFacts) { it.toList().sum() }
+            }
+            .distinctUntilChanged()
 }
 
 private fun shouldShowMeal(meal: Meal, time: LocalTime, ignoreAllDayMeals: Boolean): Boolean =

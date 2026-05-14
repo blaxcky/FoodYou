@@ -40,6 +40,8 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.valentinilk.shimmer.Shimmer
+import com.valentinilk.shimmer.ShimmerBounds
+import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.goal_burned
@@ -83,7 +85,6 @@ internal fun GoalsCard(
 
     if (model == null) {
         GoalsCardSkeleton(
-            shimmer = homeState.shimmer,
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
             modifier = modifier,
@@ -596,11 +597,12 @@ private fun MacroProgressBar(
 
 @Composable
 private fun GoalsCardSkeleton(
-    shimmer: Shimmer,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val shimmer = rememberShimmer(shimmerBounds = ShimmerBounds.Window)
+
     FoodYouHomeCard(
         modifier = modifier,
         color = GoalsCardColor,

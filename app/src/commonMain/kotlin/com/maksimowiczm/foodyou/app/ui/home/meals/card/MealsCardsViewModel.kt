@@ -16,6 +16,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -38,6 +39,7 @@ internal class MealsCardsViewModel(
             .filterNotNull()
             .flatMapLatest { date -> observeDiaryMealsUseCase.observe(date) }
             .map { list -> list.map { it.toMealModel() } }
+            .distinctUntilChanged()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(60_000),

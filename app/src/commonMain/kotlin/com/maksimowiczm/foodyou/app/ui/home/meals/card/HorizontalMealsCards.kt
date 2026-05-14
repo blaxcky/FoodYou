@@ -11,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
-import com.valentinilk.shimmer.Shimmer
 
 @Composable
 internal fun HorizontalMealsCards(
@@ -21,7 +20,6 @@ internal fun HorizontalMealsCards(
     onEditEntry: (MealEntryModel) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     onLongClick: (mealId: Long) -> Unit,
-    shimmer: Shimmer,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -57,7 +55,6 @@ internal fun HorizontalMealsCards(
             )
         } else {
             MealCardSkeleton(
-                shimmer = shimmer,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
             )
         }

@@ -5,7 +5,6 @@ import com.maksimowiczm.foodyou.activity.domain.usecase.calculateNetEnergyKcal
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
-import com.maksimowiczm.foodyou.common.domain.food.sum
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -54,7 +54,7 @@ internal class GoalsViewModel(
             .filterNotNull()
             .flatMapLatest { date ->
                 combine(
-                    observeDiaryMealsUseCase.observe(date),
+                    observeDiaryMealsUseCase.observeNutritionFacts(date),
                     goalsRepository.observeDailyGoals(date),
                     settingsRepository.observe().flatMapLatest { settings ->
                         activityRepository.observeDailySummary(
@@ -62,8 +62,7 @@ internal class GoalsViewModel(
                             settings.stepsCaloriesPerStepKcal,
                         )
                     },
-                ) { meals, goal, activity ->
-                    val facts = meals.map { it.nutritionFacts }.sum()
+                ) { facts, goal, activity ->
                     val consumedEnergy = facts.energy.value ?: 0.0
                     val burnedEnergy = activity.totalEnergyKcal
 
@@ -81,6 +80,7 @@ internal class GoalsViewModel(
                     )
                 }
             }
+            .distinctUntilChanged()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(2_000),

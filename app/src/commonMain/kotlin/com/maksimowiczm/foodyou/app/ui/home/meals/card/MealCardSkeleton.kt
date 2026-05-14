@@ -19,11 +19,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
-import com.valentinilk.shimmer.Shimmer
+import com.valentinilk.shimmer.ShimmerBounds
+import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 
 @Composable
-internal fun MealCardSkeleton(shimmer: Shimmer, modifier: Modifier = Modifier) {
+internal fun MealCardSkeleton(modifier: Modifier = Modifier) {
+    val shimmer = rememberShimmer(shimmerBounds = ShimmerBounds.Window)
+
     FoodYouHomeCard(modifier) {
         Column(Modifier.padding(16.dp)) {
             Box(
