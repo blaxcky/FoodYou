@@ -126,4 +126,47 @@ class NutritionLabelParserTest {
         assertEquals(3.9f, result.carbohydrates?.value)
         assertEquals(4.4f, result.proteins?.value)
     }
+
+    @Test
+    fun doesNotUsePer100HeaderAsNutrientValue() {
+        val result =
+            NutritionLabelParser.parse(
+                listOf(
+                    "Fett / Zsir / Maščobe | Pro 100 g/",
+                    "3,6 g",
+                    "Kohlenhydrate / Szénhidrát / | Pro 100 g/",
+                    "3,9 g",
+                )
+            )
+
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+    }
+
+    @Test
+    fun skipsPer100HeaderBetweenLabelAndValue() {
+        val result =
+            NutritionLabelParser.parse(
+                listOf(
+                    "Brennwert / Energia /",
+                    "Pro 100 g/",
+                    "274 kJ",
+                    "66 kcal",
+                    "Fett / Zsir / Maščobe",
+                    "Pro 100 g/",
+                    "3,6 g",
+                    "Kohlenhydrate / Szénhidrát /",
+                    "Pro 100 g/",
+                    "3,9 g",
+                    "Eiweiss / Fehérje / Beljakovine",
+                    "Pro 100 g/",
+                    "4,4 g",
+                )
+            )
+
+        assertEquals(66f, result.energy?.value)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
+    }
 }

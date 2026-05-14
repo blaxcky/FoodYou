@@ -73,6 +73,10 @@ internal object NutritionLabelParser {
         }
 
     private fun findEnergyValue(line: String, sourceText: String): NutritionLabelField? {
+        if (containsPer100Basis(line)) {
+            return null
+        }
+
         val matches = numberWithOptionalUnitRegex.findAll(line).toList()
         val kcal = matches.firstOrNull { it.groupValues[2].equals("kcal", ignoreCase = true) }
         val kj = matches.firstOrNull { it.groupValues[2].equals("kj", ignoreCase = true) }
@@ -130,13 +134,23 @@ internal object NutritionLabelParser {
             )
         }
 
-    private fun findGramValue(line: String): Float? =
-        gramValueRegex.find(line)?.groupValues?.get(1)?.parseDecimal()
+    private fun findGramValue(line: String): Float? {
+        if (containsPer100Basis(line) || containsServingBasis(line)) {
+            return null
+        }
+
+        return gramValueRegex.find(line)?.groupValues?.get(1)?.parseDecimal()
             ?: numberRegex.findAll(line).firstOrNull()?.groupValues?.get(1)?.parseDecimal()
+    }
 
     private fun containsPer100Basis(line: String): Boolean {
         val normalized = normalize(line)
         return per100Regex.containsMatchIn(normalized)
+    }
+
+    private fun containsServingBasis(line: String): Boolean {
+        val normalized = normalize(line)
+        return servingRegex.containsMatchIn(normalized)
     }
 
     private fun normalize(value: String): String =
@@ -156,6 +170,7 @@ internal object NutritionLabelParser {
     private val gramValueRegex =
         Regex("""(?<![\p{L}\d])(\d+(?:[,.]\d+)?)\s*g\b""", RegexOption.IGNORE_CASE)
     private val per100Regex = Regex("""\b(?:pro|per|je)?\s*100\s*(?:g|gr|ml|milliliter)\b""")
+    private val servingRegex = Regex("""\b(?:portion|serving|porcja|250\s*g)\b""")
 
     private val energyKeywords = listOf("energie", "energy", "brennwert")
     private val proteinKeywords = listOf("eiweis", "eiweiss", "eiwei", "protein", "proteins")
