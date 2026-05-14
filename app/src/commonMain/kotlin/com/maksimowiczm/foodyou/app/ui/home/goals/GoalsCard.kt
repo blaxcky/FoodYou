@@ -286,7 +286,7 @@ private fun CaloriesOverview(
                         label = stringResource(Res.string.goal_goal),
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        mutedLabel = true,
+                        muted = true,
                     )
                 }
             }
@@ -333,7 +333,7 @@ private fun CaloriesOverview(
                         label = stringResource(Res.string.goal_goal),
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        mutedLabel = true,
+                        muted = true,
                     )
                 }
             }
@@ -352,7 +352,7 @@ private fun SideMetric(
     supportingValue: String? = null,
     supportingLabel: String? = null,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    mutedLabel: Boolean = false,
+    muted: Boolean = false,
 ) {
     Column(
         modifier = modifier,
@@ -362,12 +362,19 @@ private fun SideMetric(
         Text(
             text = value,
             modifier = Modifier.fillMaxWidth(),
-            color = GoalsTextColor,
+            color = if (muted) GoalsMutedTextColor else GoalsTextColor,
             style =
-                MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 22.sp,
-                    lineHeight = 26.sp,
-                ),
+                if (muted) {
+                    MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                    )
+                } else {
+                    MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 22.sp,
+                        lineHeight = 26.sp,
+                    )
+                },
             fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Clip,
@@ -376,7 +383,7 @@ private fun SideMetric(
         Text(
             text = label,
             modifier = Modifier.fillMaxWidth(),
-            color = if (mutedLabel) GoalsMutedTextColor else GoalsTextColor,
+            color = if (muted) GoalsMutedTextColor else GoalsTextColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontSize = 13.sp,
