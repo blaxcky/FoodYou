@@ -152,7 +152,7 @@ internal fun GoalsCard(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(36.dp))
+            Spacer(Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -217,7 +217,7 @@ private fun CaloriesOverview(
 
     Box(modifier = modifier.height(247.dp)) {
         GaugeMetric(
-            value = energyFormatter.formatEnergy(left, withSuffix = false),
+            value = energyFormatter.formatEnergy(left, withSuffix = false).groupDigits(),
             label = stringResource(Res.string.goal_left),
             progress = progress,
             valueColor = valueColor,
@@ -225,27 +225,27 @@ private fun CaloriesOverview(
         )
 
         SideMetric(
-            value = energyFormatter.formatEnergy(energy, withSuffix = false),
+            value = energyFormatter.formatEnergy(energy, withSuffix = false).groupDigits(),
             label = stringResource(Res.string.goal_eaten),
             supportingValue = "$reached %",
             supportingLabel =
                 stringResource(Res.string.goal_reached_percentage, reached).substringAfter("% "),
-            modifier = Modifier.width(158.dp),
+            modifier = Modifier.offset(y = 50.dp).width(158.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         )
 
         Column(
-            modifier = Modifier.align(Alignment.TopEnd).width(96.dp),
+            modifier = Modifier.align(Alignment.TopEnd).offset(y = 50.dp).width(96.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(30.dp),
+            verticalArrangement = Arrangement.spacedBy(40.dp),
         ) {
             SideMetric(
-                value = energyFormatter.formatEnergy(burnedEnergy, withSuffix = false),
+                value = energyFormatter.formatEnergy(burnedEnergy, withSuffix = false).groupDigits(),
                 label = stringResource(Res.string.goal_burned),
                 horizontalAlignment = Alignment.CenterHorizontally,
             )
             SideMetric(
-                value = energyFormatter.formatEnergy(energyGoal, withSuffix = false),
+                value = energyFormatter.formatEnergy(energyGoal, withSuffix = false).groupDigits(),
                 label = stringResource(Res.string.goal_goal),
                 horizontalAlignment = Alignment.CenterHorizontally,
             )
@@ -328,16 +328,16 @@ private fun GaugeMetric(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.size(width = 254.dp, height = 235.dp),
+        modifier = modifier.size(width = 254.dp, height = 247.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
         SemiCircleGauge(
             progress = progress,
-            modifier = Modifier.size(width = 254.dp, height = 235.dp),
+            modifier = Modifier.size(width = 254.dp, height = 247.dp),
         )
 
         Column(
-            modifier = Modifier.offset(y = 106.dp),
+            modifier = Modifier.offset(y = 90.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -372,14 +372,14 @@ private fun GaugeMetric(
 private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val strokeWidth = 13.dp.toPx()
-        val arcDiameter = 112.dp.toPx()
+        val arcDiameter = 254.dp.toPx()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
 
         drawArc(
             color = GoalsTrackColor,
-            startAngle = 180f,
-            sweepAngle = 180f,
+            startAngle = 140f,
+            sweepAngle = 260f,
             useCenter = false,
             topLeft = topLeft,
             size = arcSize,
@@ -387,14 +387,28 @@ private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
         )
         drawArc(
             color = GoalsProgressColor,
-            startAngle = 180f,
-            sweepAngle = 180f * progress.coerceIn(0f, 1f),
+            startAngle = 140f,
+            sweepAngle = 260f * progress.coerceIn(0f, 1f),
             useCenter = false,
             topLeft = topLeft,
             size = arcSize,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
     }
+}
+
+private fun String.groupDigits(): String {
+    val sign = if (startsWith("-")) "-" else ""
+    val digits = if (sign.isEmpty()) this else drop(1)
+
+    if (digits.length <= 3 || digits.any { !it.isDigit() }) return this
+
+    return sign +
+        digits
+            .reversed()
+            .chunked(3)
+            .joinToString(" ")
+            .reversed()
 }
 
 @Composable
