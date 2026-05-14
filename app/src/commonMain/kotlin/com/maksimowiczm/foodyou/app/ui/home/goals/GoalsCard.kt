@@ -5,6 +5,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -137,51 +140,60 @@ internal fun GoalsCard(
         onClick = onClick,
         onLongClick = onLongClick,
     ) {
-        Column(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .defaultMinSize(minHeight = 387.dp)
-                    .padding(start = 48.dp, top = 31.dp, end = 48.dp, bottom = 27.dp),
-        ) {
-            CaloriesOverview(
-                energy = energy,
-                burnedEnergy = burnedEnergy,
-                netEnergy = netEnergy,
-                energyGoal = energyGoal,
-                progress = energyProgress,
-                modifier = Modifier.fillMaxWidth(),
-            )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
 
-            Spacer(Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Column(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .defaultMinSize(minHeight = 387.dp)
+                        .padding(
+                            start = horizontalPadding,
+                            top = 31.dp,
+                            end = horizontalPadding,
+                            bottom = 27.dp,
+                        ),
             ) {
-                MacroGoal(
-                    label = stringResource(Res.string.goal_fat),
-                    value = fats,
-                    goal = fatsGoal,
-                    progress = fatsProgress,
-                    color = FatColor,
-                    modifier = Modifier.width(133.dp),
+                CaloriesOverview(
+                    energy = energy,
+                    burnedEnergy = burnedEnergy,
+                    netEnergy = netEnergy,
+                    energyGoal = energyGoal,
+                    progress = energyProgress,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                MacroGoal(
-                    label = stringResource(Res.string.goal_carbs_short),
-                    value = carbohydrates,
-                    goal = carbohydratesGoal,
-                    progress = carbsProgress,
-                    color = CarbsColor,
-                    modifier = Modifier.width(133.dp),
-                )
-                MacroGoal(
-                    label = stringResource(Res.string.goal_protein),
-                    value = proteins,
-                    goal = proteinsGoal,
-                    progress = proteinsProgress,
-                    color = ProteinColor,
-                    modifier = Modifier.width(133.dp),
-                )
+
+                Spacer(Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    MacroGoal(
+                        label = stringResource(Res.string.goal_fat),
+                        value = fats,
+                        goal = fatsGoal,
+                        progress = fatsProgress,
+                        color = FatColor,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MacroGoal(
+                        label = stringResource(Res.string.goal_carbs_short),
+                        value = carbohydrates,
+                        goal = carbohydratesGoal,
+                        progress = carbsProgress,
+                        color = CarbsColor,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MacroGoal(
+                        label = stringResource(Res.string.goal_protein),
+                        value = proteins,
+                        goal = proteinsGoal,
+                        progress = proteinsProgress,
+                        color = ProteinColor,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
@@ -215,43 +227,111 @@ private fun CaloriesOverview(
     val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
     val valueColor = if (left < 0) GoalsErrorColor else GoalsTextColor
 
-    Box(modifier = modifier.height(247.dp)) {
-        GaugeMetric(
-            value = energyFormatter.formatEnergy(left, withSuffix = false).groupDigits(),
-            label = stringResource(Res.string.goal_left),
-            progress = progress,
-            valueColor = valueColor,
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
+    BoxWithConstraints(modifier = modifier) {
+        val gaugeDiameter = maxWidth.coerceIn(220.dp, 254.dp)
+        val compact = maxWidth < 430.dp
 
-        SideMetric(
-            value = energyFormatter.formatEnergy(energy, withSuffix = false).groupDigits(),
-            label = stringResource(Res.string.goal_eaten),
-            supportingValue = "$reached %",
-            supportingLabel =
-                stringResource(Res.string.goal_reached_percentage, reached).substringAfter("% "),
-            modifier = Modifier.offset(y = 50.dp).width(158.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        )
+        if (compact) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                GaugeMetric(
+                    value = energyFormatter.formatEnergy(left, withSuffix = false).groupDigits(),
+                    label = stringResource(Res.string.goal_left),
+                    progress = progress,
+                    valueColor = valueColor,
+                    diameter = gaugeDiameter,
+                )
 
-        Column(
-            modifier = Modifier.align(Alignment.TopEnd).offset(y = 50.dp).width(96.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(40.dp),
-        ) {
-            SideMetric(
-                value = energyFormatter.formatEnergy(burnedEnergy, withSuffix = false).groupDigits(),
-                label = stringResource(Res.string.goal_burned),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            )
-            SideMetric(
-                value = energyFormatter.formatEnergy(energyGoal, withSuffix = false).groupDigits(),
-                label = stringResource(Res.string.goal_goal),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            )
+                Spacer(Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    SideMetric(
+                        value =
+                            energyFormatter.formatEnergy(energy, withSuffix = false).groupDigits(),
+                        label = stringResource(Res.string.goal_eaten),
+                        supportingValue = "$reached %",
+                        supportingLabel =
+                            stringResource(Res.string.goal_reached_percentage, reached)
+                                .substringAfter("% "),
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    )
+                    SideMetric(
+                        value =
+                            energyFormatter.formatEnergy(burnedEnergy, withSuffix = false)
+                                .groupDigits(),
+                        label = stringResource(Res.string.goal_burned),
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    )
+                    SideMetric(
+                        value =
+                            energyFormatter.formatEnergy(energyGoal, withSuffix = false)
+                                .groupDigits(),
+                        label = stringResource(Res.string.goal_goal),
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(247.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                SideMetric(
+                    value = energyFormatter.formatEnergy(energy, withSuffix = false).groupDigits(),
+                    label = stringResource(Res.string.goal_eaten),
+                    supportingValue = "$reached %",
+                    supportingLabel =
+                        stringResource(Res.string.goal_reached_percentage, reached)
+                            .substringAfter("% "),
+                    modifier = Modifier.weight(1f).padding(top = 50.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                )
+                GaugeMetric(
+                    value = energyFormatter.formatEnergy(left, withSuffix = false).groupDigits(),
+                    label = stringResource(Res.string.goal_left),
+                    progress = progress,
+                    valueColor = valueColor,
+                    diameter = gaugeDiameter,
+                )
+                Column(
+                    modifier = Modifier.weight(1f).padding(top = 50.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(40.dp),
+                ) {
+                    SideMetric(
+                        value =
+                            energyFormatter.formatEnergy(burnedEnergy, withSuffix = false)
+                                .groupDigits(),
+                        label = stringResource(Res.string.goal_burned),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    )
+                    SideMetric(
+                        value =
+                            energyFormatter.formatEnergy(energyGoal, withSuffix = false)
+                                .groupDigits(),
+                        label = stringResource(Res.string.goal_goal),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    )
+                }
+            }
         }
     }
 }
+
+private fun Dp.coerceIn(minimumValue: Dp, maximumValue: Dp): Dp =
+    coerceAtLeast(minimumValue).coerceAtMost(maximumValue)
 
 @Composable
 private fun SideMetric(
@@ -269,51 +349,63 @@ private fun SideMetric(
     ) {
         Text(
             text = value,
+            modifier = Modifier.fillMaxWidth(),
             color = GoalsTextColor,
             style =
                 MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 31.sp,
-                    lineHeight = 36.sp,
+                    fontSize = 24.sp,
+                    lineHeight = 29.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
+            overflow = TextOverflow.Clip,
+            textAlign = TextAlign.Center,
         )
         Text(
             text = label,
+            modifier = Modifier.fillMaxWidth(),
             color = GoalsTextColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 19.sp,
-                    lineHeight = 22.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 17.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
+            overflow = TextOverflow.Clip,
+            textAlign = TextAlign.Center,
         )
         if (supportingValue != null) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = supportingValue,
+                modifier = Modifier.fillMaxWidth(),
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelMedium.copy(
-                        fontSize = 19.sp,
-                        lineHeight = 22.sp,
+                        fontSize = 14.sp,
+                        lineHeight = 17.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
+                overflow = TextOverflow.Clip,
+                textAlign = TextAlign.Center,
             )
         }
         if (supportingLabel != null) {
             Text(
                 text = supportingLabel,
+                modifier = Modifier.fillMaxWidth(),
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelMedium.copy(
-                        fontSize = 19.sp,
-                        lineHeight = 22.sp,
+                        fontSize = 14.sp,
+                        lineHeight = 17.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
+                overflow = TextOverflow.Clip,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -325,19 +417,21 @@ private fun GaugeMetric(
     label: String,
     progress: Float,
     valueColor: Color,
+    diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.size(width = 254.dp, height = 247.dp),
+        modifier = modifier.size(width = diameter, height = diameter - 7.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
         SemiCircleGauge(
             progress = progress,
-            modifier = Modifier.size(width = 254.dp, height = 247.dp),
+            diameter = diameter,
+            modifier = Modifier.size(width = diameter, height = diameter - 7.dp),
         )
 
         Column(
-            modifier = Modifier.offset(y = 90.dp),
+            modifier = Modifier.offset(y = diameter * 0.35f),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -345,8 +439,8 @@ private fun GaugeMetric(
                 color = valueColor,
                 style =
                     MaterialTheme.typography.headlineLarge.copy(
-                        fontSize = 38.sp,
-                        lineHeight = 42.sp,
+                        fontSize = 36.sp,
+                        lineHeight = 40.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
@@ -357,8 +451,8 @@ private fun GaugeMetric(
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 20.sp,
-                        lineHeight = 24.sp,
+                        fontSize = 18.sp,
+                        lineHeight = 22.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
@@ -369,10 +463,10 @@ private fun GaugeMetric(
 }
 
 @Composable
-private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
+private fun SemiCircleGauge(progress: Float, diameter: Dp, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val strokeWidth = 13.dp.toPx()
-        val arcDiameter = 254.dp.toPx()
+        val arcDiameter = diameter.toPx()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
 
@@ -430,26 +524,31 @@ private fun MacroGoal(
     ) {
         Text(
             text = label,
+            modifier = Modifier.fillMaxWidth(),
             color = GoalsTextColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 15.sp,
-                    lineHeight = 18.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 17.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
+            overflow = TextOverflow.Clip,
+            textAlign = TextAlign.Center,
         )
         MacroProgressBar(progress = progress, color = color, overflow = goal > 0 && value > goal)
         Text(
             text = "$value/$goal $gramShort",
+            modifier = Modifier.fillMaxWidth(),
             color = valueColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 15.sp,
-                    lineHeight = 18.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 17.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
+            overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
         )
     }
