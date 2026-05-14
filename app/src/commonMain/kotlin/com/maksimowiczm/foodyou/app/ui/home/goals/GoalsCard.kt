@@ -227,7 +227,6 @@ private fun CaloriesOverview(
         val phoneWidth = maxWidth < 430.dp
         val caloriesHeight = if (phoneWidth) 164.dp else 230.dp
         val sideMetricTopPadding = if (phoneWidth) 39.dp else 50.dp
-        val rightMetricSpacing = if (phoneWidth) 25.dp else 40.dp
 
         if (compact) {
             Column(
@@ -305,7 +304,7 @@ private fun CaloriesOverview(
                 Column(
                     modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(rightMetricSpacing),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     SideMetric(
                         value =
