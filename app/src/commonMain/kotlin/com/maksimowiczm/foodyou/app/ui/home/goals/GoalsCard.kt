@@ -353,8 +353,8 @@ private fun SideMetric(
             color = GoalsTextColor,
             style =
                 MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 24.sp,
-                    lineHeight = 29.sp,
+                    fontSize = 22.sp,
+                    lineHeight = 26.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
@@ -367,8 +367,8 @@ private fun SideMetric(
             color = GoalsTextColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 14.sp,
-                    lineHeight = 17.sp,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
@@ -383,8 +383,8 @@ private fun SideMetric(
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelMedium.copy(
-                        fontSize = 14.sp,
-                        lineHeight = 17.sp,
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
@@ -399,8 +399,8 @@ private fun SideMetric(
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelMedium.copy(
-                        fontSize = 14.sp,
-                        lineHeight = 17.sp,
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
@@ -451,8 +451,8 @@ private fun GaugeMetric(
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 18.sp,
-                        lineHeight = 22.sp,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
