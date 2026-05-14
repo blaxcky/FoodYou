@@ -228,8 +228,8 @@ private fun CaloriesOverview(
     val valueColor = if (left < 0) GoalsErrorColor else GoalsTextColor
 
     BoxWithConstraints(modifier = modifier) {
-        val gaugeDiameter = maxWidth.coerceIn(220.dp, 254.dp)
-        val compact = maxWidth < 430.dp
+        val gaugeDiameter = (maxWidth * 0.45f).coerceIn(156.dp, 178.dp)
+        val compact = maxWidth < 320.dp
 
         if (compact) {
             Column(
@@ -283,7 +283,7 @@ private fun CaloriesOverview(
         } else {
             Row(
                 modifier = Modifier.fillMaxWidth().height(247.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 SideMetric(
