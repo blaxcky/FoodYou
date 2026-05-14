@@ -22,11 +22,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeGesturesPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -37,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,10 +67,12 @@ import foodyou.app.generated.resources.Res
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 private const val TAG = "NutritionLabelScanner"
 private const val OCR_INTERVAL_MS = 800L
+private const val CAMERA_START_TIMEOUT_MS = 4_000L
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -119,14 +124,23 @@ actual fun CameraNutritionLabelScannerScreen(
             NutritionLabelLiveCameraScreen(
                 lifecycleOwner = lifecycleOwner,
                 onTextRecognized = onTextRecognized,
+                modifier = Modifier.fillMaxSize(),
             )
         } else {
             RequestCameraPermissionScreen(
                 onRequest = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                 shouldShowRationale = permissionState.status.shouldShowRationale,
+                modifier = Modifier.fillMaxSize(),
             )
         }
     }
+}
+
+private enum class CameraStartState {
+    Waiting,
+    Starting,
+    Ready,
+    Failed,
 }
 
 @Composable
@@ -137,21 +151,44 @@ private fun NutritionLabelLiveCameraScreen(
 ) {
     val context = LocalContext.current
     val latestOnTextRecognized by rememberUpdatedState(onTextRecognized)
-    val analyzerExecutor = remember { Executors.newSingleThreadExecutor() }
-    val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
-    val analyzer =
-        remember {
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
+    var startState by remember { mutableStateOf(CameraStartState.Waiting) }
+    var startAttempt by remember { mutableStateOf(0) }
+    var startCamera by remember { mutableStateOf(false) }
+
+    LaunchedEffect(startAttempt) {
+        startState = CameraStartState.Starting
+        startCamera = false
+        delay(1)
+        startCamera = true
+    }
+
+    LaunchedEffect(startState, startAttempt) {
+        if (startState == CameraStartState.Starting) {
+            delay(CAMERA_START_TIMEOUT_MS)
+            if (startState == CameraStartState.Starting) {
+                startState = CameraStartState.Failed
+            }
+        }
+    }
+
+    DisposableEffect(previewView, lifecycleOwner, startAttempt) {
+        val view = previewView ?: return@DisposableEffect onDispose {}
+        if (!startCamera) {
+            return@DisposableEffect onDispose {}
+        }
+
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        var cameraProvider: ProcessCameraProvider? = null
+        var preview: Preview? = null
+        var imageAnalysis: ImageAnalysis? = null
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        val analyzerExecutor = Executors.newSingleThreadExecutor()
+        val analyzer =
             NutritionLabelTextAnalyzer(
                 recognizer = recognizer,
                 onTextRecognized = { latestOnTextRecognized(it) },
             )
-        }
-    var previewView by remember { mutableStateOf<PreviewView?>(null) }
-
-    DisposableEffect(previewView, lifecycleOwner) {
-        val view = previewView ?: return@DisposableEffect onDispose {}
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-        var cameraProvider: ProcessCameraProvider? = null
         var disposed = false
 
         cameraProviderFuture.addListener(
@@ -160,26 +197,33 @@ private fun NutritionLabelLiveCameraScreen(
                     return@addListener
                 }
 
-                val provider = cameraProviderFuture.get()
-                cameraProvider = provider
-                val preview =
-                    Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
-                val imageAnalysis =
-                    ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also { it.setAnalyzer(analyzerExecutor, analyzer) }
-
                 try {
-                    provider.unbindAll()
+                    val provider = cameraProviderFuture.get()
+                    cameraProvider = provider
+                    val scannerPreview =
+                        Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
+                    val scannerImageAnalysis =
+                        ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+                            .also { it.setAnalyzer(analyzerExecutor, analyzer) }
+
                     provider.bindToLifecycle(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        imageAnalysis,
+                        scannerPreview,
+                        scannerImageAnalysis,
                     )
+                    preview = scannerPreview
+                    imageAnalysis = scannerImageAnalysis
+                    if (!disposed) {
+                        startState = CameraStartState.Ready
+                    }
                 } catch (error: Exception) {
                     Log.e(TAG, "Failed to bind nutrition label camera", error)
+                    if (!disposed) {
+                        startState = CameraStartState.Failed
+                    }
                 }
             },
             ContextCompat.getMainExecutor(context),
@@ -187,27 +231,51 @@ private fun NutritionLabelLiveCameraScreen(
 
         onDispose {
             disposed = true
-            cameraProvider?.unbindAll()
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
+            imageAnalysis?.clearAnalyzer()
+            val scannerPreview = preview
+            val scannerImageAnalysis = imageAnalysis
+            if (scannerPreview != null && scannerImageAnalysis != null) {
+                cameraProvider?.unbind(scannerPreview, scannerImageAnalysis)
+            } else if (scannerPreview != null) {
+                cameraProvider?.unbind(scannerPreview)
+            } else if (scannerImageAnalysis != null) {
+                cameraProvider?.unbind(scannerImageAnalysis)
+            }
             analyzerExecutor.shutdown()
             recognizer.close()
         }
     }
 
-    AndroidView(
-        modifier = modifier.fillMaxSize(),
-        factory = { viewContext ->
-            PreviewView(viewContext).apply {
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                previewView = this
-            }
-        },
-    )
+    Box(modifier = modifier) {
+        if (startCamera) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { viewContext ->
+                    PreviewView(viewContext).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                        previewView = this
+                    }
+                },
+            )
+        }
+
+        when (startState) {
+            CameraStartState.Waiting,
+            CameraStartState.Starting -> CameraStartingScreen(modifier = Modifier.fillMaxSize())
+
+            CameraStartState.Failed ->
+                CameraStartErrorScreen(
+                    onRetry = {
+                        previewView = null
+                        startAttempt += 1
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+            CameraStartState.Ready -> Unit
+        }
+    }
 }
 
 private class NutritionLabelTextAnalyzer(
@@ -266,6 +334,46 @@ private class NutritionLabelTextAnalyzer(
                 isRecognizing.set(false)
                 imageProxy.close()
             }
+    }
+}
+
+@Composable
+private fun CameraStartingScreen(modifier: Modifier = Modifier) {
+    Surface(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize().safeContentPadding(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(Res.string.neutral_nutrition_label_camera_starting),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CameraStartErrorScreen(onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize().safeContentPadding().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(Res.string.neutral_nutrition_label_camera_failed),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Spacer(Modifier.height(16.dp))
+            TextButton(onClick = onRetry) {
+                Text(stringResource(Res.string.action_retry))
+            }
+        }
     }
 }
 

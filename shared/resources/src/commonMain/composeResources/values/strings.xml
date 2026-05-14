@@ -191,6 +191,8 @@
     <string name="neutral_barcode_scanner_camera_request_rationale">You must allow access in order to scan barcodes</string>
     <string name="neutral_barcode_scanner_camera_request_redirect_to_settings">Camera permission is required to scan barcodes. Please allow it in the app settings.</string>
     <string name="neutral_nutrition_label_camera_request">Allow access to your camera to scan nutrition labels</string>
+    <string name="neutral_nutrition_label_camera_starting">Starting camera...</string>
+    <string name="neutral_nutrition_label_camera_failed">Could not start the camera. Close this screen or try again.</string>
     <string name="neutral_take_nutrition_label_photo">Take a clear photo of the nutrition label.</string>
     <string name="neutral_nutrition_label_scan_failed">Text recognition failed. Try another photo.</string>
     <string name="neutral_nutrition_label_scan_empty">No stable value yet</string>
