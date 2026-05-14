@@ -2,9 +2,20 @@ package com.maksimowiczm.foodyou.app.ui.food.product
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NutritionLabelScanAccumulatorTest {
+    @Test
+    fun emptyStateHasNoStableResult() {
+        val state = NutritionLabelScanAccumulator().state()
+
+        assertFalse(state.hasStableValues)
+        assertTrue(state.stableResult.fields.isEmpty())
+        assertFalse(state.stableResult.hasPer100Basis)
+    }
+
     @Test
     fun singleMatchDoesNotStabilizeField() {
         val accumulator = NutritionLabelScanAccumulator()
@@ -23,6 +34,9 @@ class NutritionLabelScanAccumulatorTest {
         val state = accumulator.add(result(proteins = field(ScannedNutrient.Proteins, 4.4f)))
 
         assertEquals(4.4f, state.proteins.stable?.value)
+        assertTrue(state.hasStableValues)
+        assertEquals(4.4f, state.stableResult.proteins?.value)
+        assertTrue(state.stableResult.hasPer100Basis)
     }
 
     @Test

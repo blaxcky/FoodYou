@@ -18,17 +18,31 @@ internal data class NutritionLabelScanAccumulatorState(
     val carbohydrates: NutritionLabelAccumulatedField,
 ) {
     val hasStableValues: Boolean
-        get() = stableResult.fields.isNotEmpty()
+        get() =
+            energy.stable != null ||
+                proteins.stable != null ||
+                fats.stable != null ||
+                carbohydrates.stable != null
 
     val stableResult: NutritionLabelStableScanResult
-        get() =
-            NutritionLabelStableScanResult(
-                energy = energy.stable,
-                proteins = proteins.stable,
-                fats = fats.stable,
-                carbohydrates = carbohydrates.stable,
-                hasPer100Basis = hasStableValues,
+        get() {
+            val stableEnergy = energy.stable
+            val stableProteins = proteins.stable
+            val stableFats = fats.stable
+            val stableCarbohydrates = carbohydrates.stable
+
+            return NutritionLabelStableScanResult(
+                energy = stableEnergy,
+                proteins = stableProteins,
+                fats = stableFats,
+                carbohydrates = stableCarbohydrates,
+                hasPer100Basis =
+                    stableEnergy != null ||
+                        stableProteins != null ||
+                        stableFats != null ||
+                        stableCarbohydrates != null,
             )
+        }
 }
 
 internal data class NutritionLabelAccumulatedField(
