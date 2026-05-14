@@ -87,6 +87,14 @@
     <string name="nutriment_sugars">Sugars</string>
     <string name="nutriment_fats">Fats</string>
     <string name="nutriment_fats_short">F</string>
+    <string name="goal_eaten">eaten</string>
+    <string name="goal_burned">burned</string>
+    <string name="goal_left">left</string>
+    <string name="goal_goal">Goal</string>
+    <string name="goal_fat">Fat</string>
+    <string name="goal_carbs_short">Carbs</string>
+    <string name="goal_protein">Protein</string>
+    <string name="goal_reached_percentage">%1$d %% reached</string>
     <string name="nutriment_saturated_fats">Saturated fats</string>
     <string name="nutriment_polyunsaturated_fats">Polyunsaturated fats</string>
     <string name="nutriment_monounsaturated_fats">Monounsaturated fats</string>

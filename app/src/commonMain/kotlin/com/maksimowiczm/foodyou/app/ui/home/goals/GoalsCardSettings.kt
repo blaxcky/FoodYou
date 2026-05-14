@@ -8,18 +8,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun GoalsCardSettings(
@@ -27,24 +24,17 @@ fun GoalsCardSettings(
     onGoalsSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val viewModel: GoalsViewModel = koinViewModel()
-    val expand by viewModel.expandGoalsCard.collectAsStateWithLifecycle()
-
-    GoalsCardSettings(
+    GoalsCardSettingsContent(
         onBack = onBack,
-        expand = expand,
-        onShowDetailsChange = viewModel::setExpandGoalsCard,
         onGoalsSettings = onGoalsSettings,
         modifier = modifier,
     )
 }
 
 @Composable
-private fun GoalsCardSettings(
+private fun GoalsCardSettingsContent(
     onBack: () -> Unit,
     onGoalsSettings: () -> Unit,
-    onShowDetailsChange: (Boolean) -> Unit,
-    expand: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -65,7 +55,6 @@ private fun GoalsCardSettings(
         ) {
             stickyHeader {
                 GoalsCard(
-                    expand = expand,
                     energy = 1600,
                     burnedEnergy = 250,
                     netEnergy = 1350,
@@ -79,21 +68,6 @@ private fun GoalsCardSettings(
                     onClick = {},
                     onLongClick = {},
                     modifier = Modifier.padding(16.dp),
-                )
-            }
-
-            item { HorizontalDivider() }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(Res.string.action_show_details)) },
-                    modifier = Modifier.clickable { onShowDetailsChange(!expand) },
-                    supportingContent = {
-                        Text(stringResource(Res.string.description_show_macronutrients_goals))
-                    },
-                    trailingContent = {
-                        Switch(checked = expand, onCheckedChange = onShowDetailsChange)
-                    },
                 )
             }
 
