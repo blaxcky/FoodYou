@@ -148,12 +148,12 @@ internal fun GoalsCard(
             Column(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .defaultMinSize(minHeight = 387.dp)
+                        .defaultMinSize(minHeight = 259.dp)
                         .padding(
                             start = horizontalPadding,
-                            top = 31.dp,
+                            top = 21.dp,
                             end = horizontalPadding,
-                            bottom = 27.dp,
+                            bottom = 14.dp,
                         ),
             ) {
                 CaloriesOverview(
@@ -165,7 +165,7 @@ internal fun GoalsCard(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -235,6 +235,10 @@ private fun CaloriesOverview(
     BoxWithConstraints(modifier = modifier) {
         val gaugeDiameter = (maxWidth * 0.48f).coerceIn(156.dp, 254.dp)
         val compact = maxWidth < 320.dp
+        val phoneWidth = maxWidth < 430.dp
+        val caloriesHeight = if (phoneWidth) 164.dp else 230.dp
+        val sideMetricTopPadding = if (phoneWidth) 39.dp else 50.dp
+        val rightMetricSpacing = if (phoneWidth) 25.dp else 40.dp
 
         if (compact) {
             Column(
@@ -287,7 +291,7 @@ private fun CaloriesOverview(
             }
         } else {
             Row(
-                modifier = Modifier.fillMaxWidth().height(247.dp),
+                modifier = Modifier.fillMaxWidth().height(caloriesHeight),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.Top,
             ) {
@@ -298,7 +302,7 @@ private fun CaloriesOverview(
                     supportingLabel =
                         stringResource(Res.string.goal_reached_percentage, reached)
                             .substringAfter("% "),
-                    modifier = Modifier.weight(1f).padding(top = 50.dp),
+                    modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 GaugeMetric(
@@ -309,9 +313,9 @@ private fun CaloriesOverview(
                     diameter = gaugeDiameter,
                 )
                 Column(
-                    modifier = Modifier.weight(1f).padding(top = 50.dp),
+                    modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(40.dp),
+                    verticalArrangement = Arrangement.spacedBy(rightMetricSpacing),
                 ) {
                     SideMetric(
                         value =
@@ -526,7 +530,7 @@ private fun MacroGoal(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Text(
             text = label,
@@ -606,97 +610,109 @@ private fun GoalsCardSkeleton(
         onClick = onClick,
         onLongClick = onLongClick,
     ) {
-        Column(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .defaultMinSize(minHeight = 387.dp)
-                    .padding(start = 48.dp, top = 31.dp, end = 48.dp, bottom = 27.dp),
-        ) {
-            Box(modifier = Modifier.fillMaxWidth().height(247.dp)) {
-                Box(
-                    modifier =
-                        Modifier.align(Alignment.TopCenter).size(width = 254.dp, height = 235.dp),
-                    contentAlignment = Alignment.TopCenter,
-                ) {
-                    SkeletonBlock(
-                        shimmer,
-                        Modifier.requiredWidth(125.dp)
-                            .height(125.dp)
-                            .clip(RoundedCornerShape(topStart = 120.dp, topEnd = 120.dp)),
-                    )
-                    Column(
-                        modifier = Modifier.offset(y = 106.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
+            val contentWidth = maxWidth - horizontalPadding * 2
+            val phoneWidth = contentWidth < 430.dp
+            val caloriesHeight = if (phoneWidth) 164.dp else 230.dp
+            val gaugeDiameter = (contentWidth * 0.48f).coerceIn(156.dp, 254.dp)
+
+            Column(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .defaultMinSize(minHeight = 259.dp)
+                        .padding(
+                            start = horizontalPadding,
+                            top = 21.dp,
+                            end = horizontalPadding,
+                            bottom = 14.dp,
+                        ),
+            ) {
+                Box(modifier = Modifier.fillMaxWidth().height(caloriesHeight)) {
+                    Box(
+                        modifier =
+                            Modifier.align(Alignment.TopCenter)
+                                .size(width = gaugeDiameter, height = gaugeDiameter - 7.dp),
+                        contentAlignment = Alignment.TopCenter,
                     ) {
                         SkeletonBlock(
                             shimmer,
-                            Modifier.width(74.dp)
-                                .height(42.dp),
+                            Modifier.requiredWidth(125.dp)
+                                .height(125.dp)
+                                .clip(RoundedCornerShape(topStart = 120.dp, topEnd = 120.dp)),
                         )
-                        Spacer(Modifier.height(5.dp))
+                        Column(
+                            modifier = Modifier.offset(y = 106.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            SkeletonBlock(
+                                shimmer,
+                                Modifier.width(74.dp).height(42.dp),
+                            )
+                            Spacer(Modifier.height(5.dp))
+                            SkeletonBlock(
+                                shimmer,
+                                Modifier.width(44.dp).height(24.dp),
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.width(158.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         SkeletonBlock(
                             shimmer,
-                            Modifier.width(44.dp)
-                                .height(24.dp),
+                            Modifier.width(54.dp).height(36.dp),
                         )
+                        SkeletonBlock(
+                            shimmer,
+                            Modifier.width(70.dp).height(22.dp),
+                        )
+                        SkeletonBlock(
+                            shimmer,
+                            Modifier.width(42.dp).height(22.dp),
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier.align(Alignment.TopEnd).width(96.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(30.dp),
+                    ) {
+                        SkeletonSideMetric(shimmer, Alignment.CenterHorizontally)
+                        SkeletonSideMetric(shimmer, Alignment.CenterHorizontally)
                     }
                 }
 
-                Column(
-                    modifier = Modifier.width(158.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    SkeletonBlock(
-                        shimmer,
-                        Modifier.width(54.dp).height(36.dp),
-                    )
-                    SkeletonBlock(
-                        shimmer,
-                        Modifier.width(70.dp).height(22.dp),
-                    )
-                    SkeletonBlock(
-                        shimmer,
-                        Modifier.width(42.dp).height(22.dp),
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.align(Alignment.TopEnd).width(96.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(30.dp),
-                ) {
-                    SkeletonSideMetric(shimmer, Alignment.CenterHorizontally)
-                    SkeletonSideMetric(shimmer, Alignment.CenterHorizontally)
-                }
-            }
-
-            Spacer(Modifier.height(36.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                repeat(3) {
-                    Column(
-                        modifier = Modifier.width(133.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SkeletonBlock(
-                            shimmer,
-                            Modifier.width(48.dp)
-                                .height(MaterialTheme.typography.labelMedium.toDp()),
-                        )
-                        SkeletonBlock(
-                            shimmer,
-                            Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
-                        )
-                        SkeletonBlock(
-                            shimmer,
-                            Modifier.width(58.dp)
-                                .height(MaterialTheme.typography.labelMedium.toDp()),
-                        )
+                    repeat(3) {
+                        Column(
+                            modifier = Modifier.width(133.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            SkeletonBlock(
+                                shimmer,
+                                Modifier.width(48.dp)
+                                    .height(MaterialTheme.typography.labelMedium.toDp()),
+                            )
+                            SkeletonBlock(
+                                shimmer,
+                                Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
+                            )
+                            SkeletonBlock(
+                                shimmer,
+                                Modifier.width(58.dp)
+                                    .height(MaterialTheme.typography.labelMedium.toDp()),
+                            )
+                        }
                     }
                 }
             }

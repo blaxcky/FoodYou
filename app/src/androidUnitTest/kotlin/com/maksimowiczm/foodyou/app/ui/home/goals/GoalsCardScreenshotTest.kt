@@ -101,22 +101,49 @@ class GoalsCardScreenshotTest {
         )
     }
 
-    private fun captureGoalsCard(filePath: String, fixture: GoalsCardFixture) {
+    @Test
+    fun phoneOverGoal() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.phone-over-goal.png",
+            fixture =
+                GoalsCardFixture(
+                    energy = 2380,
+                    burnedEnergy = 160,
+                    netEnergy = 2220,
+                    energyGoal = 2100,
+                    proteins = 152,
+                    proteinsGoal = 130,
+                    carbohydrates = 282,
+                    carbohydratesGoal = 230,
+                    fats = 89,
+                    fatsGoal = 70,
+                ),
+            width = 414,
+            height = 280,
+        )
+    }
+
+    private fun captureGoalsCard(
+        filePath: String,
+        fixture: GoalsCardFixture,
+        width: Int = 620,
+        height: Int = 388,
+    ) {
         captureRoboImage(
             filePath = filePath,
-            roborazziComposeOptions = GoalsCardOptions,
+            roborazziComposeOptions = goalsCardOptions(width = width, height = height),
         ) {
-            GoalsCardGolden(fixture)
+            GoalsCardGolden(fixture = fixture, width = width, height = height)
         }
     }
 
     @Composable
-    private fun GoalsCardGolden(fixture: GoalsCardFixture) {
+    private fun GoalsCardGolden(fixture: GoalsCardFixture, width: Int, height: Int) {
         EnergyFormatterProvider(EnergyFormatter.kilocalories) {
             MaterialTheme {
                 Box(
                     modifier =
-                        Modifier.requiredSize(width = 620.dp, height = 388.dp)
+                        Modifier.requiredSize(width = width.dp, height = height.dp)
                             .background(Color(0xFFEEF5FA))
                 ) {
                     GoalsCard(
@@ -153,9 +180,8 @@ class GoalsCardScreenshotTest {
     )
 
     private companion object {
-        val GoalsCardOptions: RoborazziComposeOptions =
-            RoborazziComposeOptions.Builder()
-                .size(widthDp = 620, heightDp = 388)
+        fun goalsCardOptions(width: Int, height: Int): RoborazziComposeOptions =
+            RoborazziComposeOptions.Builder().size(widthDp = width, heightDp = height)
                 .locale("de-rDE")
                 .build()
 
