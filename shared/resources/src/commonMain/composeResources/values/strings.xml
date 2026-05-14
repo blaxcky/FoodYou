@@ -193,6 +193,9 @@
     <string name="neutral_nutrition_label_camera_request">Allow access to your camera to scan nutrition labels</string>
     <string name="neutral_take_nutrition_label_photo">Take a clear photo of the nutrition label.</string>
     <string name="neutral_nutrition_label_scan_failed">Text recognition failed. Try another photo.</string>
+    <string name="neutral_nutrition_label_scan_empty">No stable value yet</string>
+    <string name="neutral_nutrition_label_scan_candidate">Recognized...</string>
+    <string name="neutral_nutrition_label_scan_stable">Stable</string>
     <string name="neutral_no_nutrition_label_values_found">No supported nutrition values were found.</string>
     <string name="neutral_no_food_found">No food found</string>
     <plurals name="neutral_remaining_calories">

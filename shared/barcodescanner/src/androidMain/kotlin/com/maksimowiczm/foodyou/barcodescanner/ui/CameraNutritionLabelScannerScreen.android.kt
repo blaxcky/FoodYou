@@ -6,25 +6,27 @@ import android.content.Intent
 import android.graphics.Rect
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeGesturesPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -34,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,11 +44,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale
-import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -55,8 +61,13 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import foodyou.app.generated.resources.*
 import foodyou.app.generated.resources.Res
-import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import org.jetbrains.compose.resources.stringResource
+
+private const val TAG = "NutritionLabelScanner"
+private const val OCR_INTERVAL_MS = 800L
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -67,12 +78,9 @@ actual fun CameraNutritionLabelScannerScreen(
 ) {
     val permissionState = rememberPermissionState(Manifest.permission.CAMERA)
     val activity = LocalActivity.current
-    val latestOnTextRecognized by rememberUpdatedState(onTextRecognized)
+    val context = LocalContext.current
 
     var requestInSettings by remember { mutableStateOf(false) }
-    var isRecognizing by remember { mutableStateOf(false) }
-    var recognitionFailed by remember { mutableStateOf(false) }
-    var photoUri by remember { mutableStateOf<Uri?>(null) }
 
     val permissionLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
@@ -84,29 +92,6 @@ actual fun CameraNutritionLabelScannerScreen(
             ) {
                 requestInSettings = true
             }
-        }
-
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val imageLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
-            val uri = photoUri
-            if (!saved || uri == null) {
-                return@rememberLauncherForActivityResult
-            }
-            isRecognizing = true
-            recognitionFailed = false
-            recognizeText(
-                context = context,
-                uri = uri,
-                onSuccess = {
-                    isRecognizing = false
-                    latestOnTextRecognized(it)
-                },
-                onFailure = {
-                    isRecognizing = false
-                    recognitionFailed = true
-                },
-            )
         }
 
     if (requestInSettings && !permissionState.status.isGranted) {
@@ -129,15 +114,11 @@ actual fun CameraNutritionLabelScannerScreen(
             }
         }
 
-        if (permissionState.status.isGranted) {
-            NutritionLabelCaptureScreen(
-                isRecognizing = isRecognizing,
-                recognitionFailed = recognitionFailed,
-                onTakePhoto = {
-                    val uri = createPhotoUri(context)
-                    photoUri = uri
-                    imageLauncher.launch(uri)
-                },
+        val lifecycleOwner = activity as? LifecycleOwner
+        if (permissionState.status.isGranted && lifecycleOwner != null) {
+            NutritionLabelLiveCameraScreen(
+                lifecycleOwner = lifecycleOwner,
+                onTextRecognized = onTextRecognized,
             )
         } else {
             RequestCameraPermissionScreen(
@@ -149,44 +130,127 @@ actual fun CameraNutritionLabelScannerScreen(
 }
 
 @Composable
-private fun NutritionLabelCaptureScreen(
-    isRecognizing: Boolean,
-    recognitionFailed: Boolean,
-    onTakePhoto: () -> Unit,
+private fun NutritionLabelLiveCameraScreen(
+    lifecycleOwner: LifecycleOwner,
+    onTextRecognized: (List<RecognizedTextLine>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize().safeContentPadding().padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = stringResource(Res.string.neutral_take_nutrition_label_photo),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge,
+    val context = LocalContext.current
+    val latestOnTextRecognized by rememberUpdatedState(onTextRecognized)
+    val analyzerExecutor = remember { Executors.newSingleThreadExecutor() }
+    val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    val analyzer =
+        remember {
+            NutritionLabelTextAnalyzer(
+                recognizer = recognizer,
+                onTextRecognized = { latestOnTextRecognized(it) },
             )
-            Spacer(Modifier.height(24.dp))
-            if (isRecognizing) {
-                CircularProgressIndicator()
-            } else {
-                Button(onClick = onTakePhoto) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.PhotoCamera, contentDescription = null)
-                        Text(stringResource(Res.string.action_scan_nutrition_label))
-                    }
-                }
-            }
-            if (recognitionFailed) {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = stringResource(Res.string.neutral_nutrition_label_scan_failed),
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
         }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            analyzerExecutor.shutdown()
+            recognizer.close()
+        }
+    }
+
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { viewContext ->
+            PreviewView(viewContext).apply {
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            }
+        },
+        update = { previewView ->
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+            cameraProviderFuture.addListener(
+                {
+                    val cameraProvider = cameraProviderFuture.get()
+                    val preview =
+                        Preview.Builder().build().also {
+                            it.surfaceProvider = previewView.surfaceProvider
+                        }
+                    val imageAnalysis =
+                        ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+                            .also { it.setAnalyzer(analyzerExecutor, analyzer) }
+
+                    try {
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            CameraSelector.DEFAULT_BACK_CAMERA,
+                            preview,
+                            imageAnalysis,
+                        )
+                    } catch (error: Exception) {
+                        Log.e(TAG, "Failed to bind nutrition label camera", error)
+                    }
+                },
+                ContextCompat.getMainExecutor(context),
+            )
+        },
+    )
+}
+
+private class NutritionLabelTextAnalyzer(
+    private val recognizer: com.google.mlkit.vision.text.TextRecognizer,
+    private val onTextRecognized: (List<RecognizedTextLine>) -> Unit,
+) : ImageAnalysis.Analyzer {
+    private val lastAnalyzedAt = AtomicLong(0L)
+    private val isRecognizing = AtomicBoolean(false)
+
+    override fun analyze(imageProxy: ImageProxy) {
+        val now = System.currentTimeMillis()
+        if (
+            now - lastAnalyzedAt.get() < OCR_INTERVAL_MS ||
+                !isRecognizing.compareAndSet(false, true)
+        ) {
+            imageProxy.close()
+            return
+        }
+        lastAnalyzedAt.set(now)
+
+        val mediaImage = imageProxy.image
+        if (mediaImage == null) {
+            isRecognizing.set(false)
+            imageProxy.close()
+            return
+        }
+
+        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+        recognizer
+            .process(image)
+            .addOnSuccessListener { text ->
+                val lines =
+                    text.textBlocks.flatMap { block ->
+                        block.lines.mapNotNull { line ->
+                            val lineBounds =
+                                line.boundingBox?.toTextBounds() ?: return@mapNotNull null
+                            RecognizedTextLine(
+                                text = line.text,
+                                bounds = lineBounds,
+                                elements =
+                                    line.elements.mapNotNull { element ->
+                                        val bounds =
+                                            element.boundingBox?.toTextBounds()
+                                                ?: return@mapNotNull null
+                                        RecognizedTextElement(text = element.text, bounds = bounds)
+                                    },
+                            )
+                        }
+                    }
+                onTextRecognized(lines)
+            }
+            .addOnFailureListener { error ->
+                Log.d(TAG, "Nutrition label text recognition failed", error)
+            }
+            .addOnCompleteListener {
+                isRecognizing.set(false)
+                imageProxy.close()
+            }
     }
 }
 
@@ -251,55 +315,6 @@ private fun RedirectToSettingsAlertDialog(
                 )
             )
         },
-    )
-}
-
-private fun recognizeText(
-    context: Context,
-    uri: Uri,
-    onSuccess: (List<RecognizedTextLine>) -> Unit,
-    onFailure: () -> Unit,
-) {
-    val image =
-        try {
-            InputImage.fromFilePath(context, uri)
-        } catch (_: Exception) {
-            onFailure()
-            return
-        }
-    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    recognizer
-        .process(image)
-        .addOnSuccessListener { text ->
-            val lines =
-                text.textBlocks.flatMap { block ->
-                    block.lines.mapNotNull { line ->
-                        val lineBounds = line.boundingBox?.toTextBounds() ?: return@mapNotNull null
-                        RecognizedTextLine(
-                            text = line.text,
-                            bounds = lineBounds,
-                            elements =
-                                line.elements.mapNotNull { element ->
-                                    val bounds =
-                                        element.boundingBox?.toTextBounds()
-                                            ?: return@mapNotNull null
-                                    RecognizedTextElement(text = element.text, bounds = bounds)
-                                },
-                        )
-                    }
-                }
-            onSuccess(lines)
-        }
-        .addOnFailureListener { onFailure() }
-}
-
-private fun createPhotoUri(context: Context): Uri {
-    val directory = File(context.cacheDir, "nutrition-label-scans").apply { mkdirs() }
-    val file = File.createTempFile("nutrition-label-", ".jpg", directory)
-    return FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.barcodescanner.fileprovider",
-        file,
     )
 }
 

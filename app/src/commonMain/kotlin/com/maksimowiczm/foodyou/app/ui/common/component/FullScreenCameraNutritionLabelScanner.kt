@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.common.component
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import com.maksimowiczm.foodyou.barcodescanner.ui.CameraNutritionLabelScannerScreen
 import com.maksimowiczm.foodyou.barcodescanner.ui.RecognizedTextLine
@@ -10,10 +12,17 @@ fun FullScreenCameraNutritionLabelScanner(
     visible: Boolean,
     onTextRecognized: (List<RecognizedTextLine>) -> Unit,
     onClose: () -> Unit,
+    overlay: @Composable BoxScope.() -> Unit = {},
 ) {
     if (visible) {
         FullScreenDialog(onDismissRequest = onClose) {
-            CameraNutritionLabelScannerScreen(onTextRecognized = onTextRecognized, onClose = onClose)
+            Box {
+                CameraNutritionLabelScannerScreen(
+                    onTextRecognized = onTextRecognized,
+                    onClose = onClose,
+                )
+                overlay()
+            }
         }
     }
 }

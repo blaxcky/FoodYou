@@ -75,6 +75,19 @@ class NutritionLabelParserTest {
     }
 
     @Test
+    fun doesNotUseDecimalWithoutGramUnitAsMacroValue() {
+        val result =
+            NutritionLabelParser.parse(
+                listOf(
+                    line(0, "Pro 100 g", "Pro" at 210, "100" at 240, "g" at 275),
+                    line(40, "Eiweiss 4,49", "Eiweiss" at 10, "4,49" at 225),
+                )
+            )
+
+        assertNull(result.proteins)
+    }
+
+    @Test
     fun returnsNoValuesWithoutBoundingBoxBasedPro100Column() {
         val result =
             NutritionLabelParser.parse(

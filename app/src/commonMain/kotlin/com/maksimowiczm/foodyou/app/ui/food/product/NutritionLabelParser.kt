@@ -211,9 +211,7 @@ internal object NutritionLabelParser {
         }
 
         val value =
-            gramValueRegex.find(text)?.groupValues?.get(1)?.parseDecimal()
-                ?: decimalNumberRegex.find(text)?.groupValues?.get(1)?.parseDecimal()
-                ?: return null
+            gramValueRegex.find(text)?.groupValues?.get(1)?.parseDecimal() ?: return null
         if (value < 0f || value > 100f || value == 100f) {
             return null
         }
@@ -286,7 +284,6 @@ internal object NutritionLabelParser {
 
     private val gramValueRegex =
         Regex("""(?<![\p{L}\d])(\d+(?:[,.]\d+)?)\s*g\b""", RegexOption.IGNORE_CASE)
-    private val decimalNumberRegex = Regex("""(?<![\p{L}\d])(\d+[,.]\d+)(?![\p{L}\d])""")
     private val numberWithEnergyUnitRegex =
         Regex("""(?<![\p{L}\d])(\d+(?:[,.]\d+)?)\s*(kcal|kj)\b""", RegexOption.IGNORE_CASE)
     private val energyUnitRegex = Regex("""\b(?:kcal|kj)\b""", RegexOption.IGNORE_CASE)

@@ -266,6 +266,9 @@
     <string name="neutral_nutrition_label_camera_request">Erlaube den Zugriff auf deine Kamera zum Scannen von Nährwertetiketten</string>
     <string name="neutral_take_nutrition_label_photo">Fotografiere das Nährwertetikett gut lesbar.</string>
     <string name="neutral_nutrition_label_scan_failed">Texterkennung fehlgeschlagen. Versuche ein neues Foto.</string>
+    <string name="neutral_nutrition_label_scan_empty">Noch kein stabiler Wert</string>
+    <string name="neutral_nutrition_label_scan_candidate">Erkannt...</string>
+    <string name="neutral_nutrition_label_scan_stable">Stabil</string>
     <string name="neutral_no_nutrition_label_values_found">Es wurden keine unterstützten Nährwerte gefunden.</string>
     <string name="neutral_no_food_found">Lebensmittel nicht gefunden</string>
     <plurals name="neutral_remaining_calories">
