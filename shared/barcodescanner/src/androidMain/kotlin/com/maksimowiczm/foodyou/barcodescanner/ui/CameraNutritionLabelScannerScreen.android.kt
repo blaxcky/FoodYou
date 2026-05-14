@@ -86,10 +86,25 @@ actual fun CameraNutritionLabelScannerScreen(
     val context = LocalContext.current
 
     var requestInSettings by remember { mutableStateOf(false) }
+    var lifecycleOwnerRetry by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        Log.d(TAG, "CameraNutritionLabelScannerScreen composed")
+    }
+
+    LaunchedEffect(permissionState.status, activity) {
+        Log.d(
+            TAG,
+            "Camera permission status: granted=${permissionState.status.isGranted}, " +
+                "shouldShowRationale=${permissionState.status.shouldShowRationale}, " +
+                "activity=${activity?.javaClass?.name}",
+        )
+    }
 
     val permissionLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
             isGranted ->
+            Log.d(TAG, "Camera permission result: granted=$isGranted")
             if (
                 activity != null &&
                     !isGranted &&
@@ -126,9 +141,27 @@ actual fun CameraNutritionLabelScannerScreen(
                 onTextRecognized = onTextRecognized,
                 modifier = Modifier.fillMaxSize(),
             )
+        } else if (permissionState.status.isGranted) {
+            LaunchedEffect(activity, lifecycleOwnerRetry) {
+                Log.e(
+                    TAG,
+                    "Camera permission granted but LocalActivity is not a LifecycleOwner: " +
+                        "${activity?.javaClass?.name}",
+                )
+            }
+            CameraStartErrorScreen(
+                onRetry = {
+                    Log.d(TAG, "Retry requested after missing LifecycleOwner")
+                    lifecycleOwnerRetry += 1
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
         } else {
             RequestCameraPermissionScreen(
-                onRequest = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                onRequest = {
+                    Log.d(TAG, "Requesting camera permission")
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                },
                 shouldShowRationale = permissionState.status.shouldShowRationale,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -156,7 +189,12 @@ private fun NutritionLabelLiveCameraScreen(
     var startAttempt by remember { mutableStateOf(0) }
     var startCamera by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        Log.d(TAG, "Entered NutritionLabelLiveCameraScreen")
+    }
+
     LaunchedEffect(startAttempt) {
+        Log.d(TAG, "Starting nutrition label camera attempt=$startAttempt")
         startState = CameraStartState.Starting
         startCamera = false
         delay(1)
@@ -167,6 +205,7 @@ private fun NutritionLabelLiveCameraScreen(
         if (startState == CameraStartState.Starting) {
             delay(CAMERA_START_TIMEOUT_MS)
             if (startState == CameraStartState.Starting) {
+                Log.e(TAG, "Nutrition label camera start timed out")
                 startState = CameraStartState.Failed
             }
         }
@@ -178,6 +217,7 @@ private fun NutritionLabelLiveCameraScreen(
             return@DisposableEffect onDispose {}
         }
 
+        Log.d(TAG, "Requesting ProcessCameraProvider.getInstance")
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         var cameraProvider: ProcessCameraProvider? = null
         var preview: Preview? = null
@@ -214,6 +254,7 @@ private fun NutritionLabelLiveCameraScreen(
                         scannerPreview,
                         scannerImageAnalysis,
                     )
+                    Log.d(TAG, "bindToLifecycle succeeded for nutrition label camera")
                     preview = scannerPreview
                     imageAnalysis = scannerImageAnalysis
                     if (!disposed) {
@@ -254,6 +295,7 @@ private fun NutritionLabelLiveCameraScreen(
                     PreviewView(viewContext).apply {
                         scaleType = PreviewView.ScaleType.FILL_CENTER
                         implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                        Log.d(TAG, "PreviewView created for nutrition label camera")
                         previewView = this
                     }
                 },

@@ -56,6 +56,7 @@ import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
+import com.maksimowiczm.foodyou.app.infrastructure.FoodYouLogger
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.app.ui.food.component.Icon
 import com.maksimowiczm.foodyou.app.ui.food.component.stringResource
@@ -66,6 +67,8 @@ import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+private const val NUTRITION_LABEL_SCANNER_TAG = "NutritionLabelScanner"
 
 @Composable
 internal fun ProductForm(
@@ -78,6 +81,17 @@ internal fun ProductForm(
     var nutritionLabelAccumulatorState by remember {
         mutableStateOf(nutritionLabelAccumulator.state())
     }
+
+    LaunchedEffect(showNutritionLabelScanner) {
+        if (showNutritionLabelScanner) {
+            FoodYouLogger.d(NUTRITION_LABEL_SCANNER_TAG) {
+                "Nutrition label scanner visible=true; resetting accumulator"
+            }
+            nutritionLabelAccumulator = NutritionLabelScanAccumulator()
+            nutritionLabelAccumulatorState = nutritionLabelAccumulator.state()
+        }
+    }
+
     FullScreenCameraNutritionLabelScanner(
         visible = showNutritionLabelScanner,
         onTextRecognized = {
@@ -95,12 +109,6 @@ internal fun ProductForm(
             )
         },
     )
-
-    fun startNutritionLabelScanner() {
-        nutritionLabelAccumulator = NutritionLabelScanAccumulator()
-        nutritionLabelAccumulatorState = nutritionLabelAccumulator.state()
-        showNutritionLabelScanner = true
-    }
 
     val layoutDirection = LocalLayoutDirection.current
     val horizontalPadding =
@@ -130,7 +138,12 @@ internal fun ProductForm(
         )
 
         AssistChip(
-            onClick = { startNutritionLabelScanner() },
+            onClick = {
+                FoodYouLogger.d(NUTRITION_LABEL_SCANNER_TAG) {
+                    "Nutrition label scanner button clicked"
+                }
+                showNutritionLabelScanner = true
+            },
             label = { Text(stringResource(Res.string.action_scan_nutrition_label)) },
             leadingIcon = {
                 Icon(
