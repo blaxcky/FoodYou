@@ -3,7 +3,6 @@ package com.maksimowiczm.foodyou.barcodescanner.ui
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.LocalActivity
@@ -45,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale
+import androidx.core.content.FileProvider
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -54,6 +54,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import foodyou.app.generated.resources.*
 import foodyou.app.generated.resources.Res
+import java.io.File
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -70,6 +71,7 @@ actual fun CameraNutritionLabelScannerScreen(
     var requestInSettings by remember { mutableStateOf(false) }
     var isRecognizing by remember { mutableStateOf(false) }
     var recognitionFailed by remember { mutableStateOf(false) }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
 
     val permissionLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
@@ -83,15 +85,18 @@ actual fun CameraNutritionLabelScannerScreen(
             }
         }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     val imageLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-            if (bitmap == null) {
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+            val uri = photoUri
+            if (!saved || uri == null) {
                 return@rememberLauncherForActivityResult
             }
             isRecognizing = true
             recognitionFailed = false
             recognizeText(
-                bitmap = bitmap,
+                context = context,
+                uri = uri,
                 onSuccess = {
                     isRecognizing = false
                     latestOnTextRecognized(it)
@@ -103,7 +108,6 @@ actual fun CameraNutritionLabelScannerScreen(
             )
         }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
     if (requestInSettings && !permissionState.status.isGranted) {
         RedirectToSettingsAlertDialog(
             onDismissRequest = { requestInSettings = false },
@@ -128,7 +132,11 @@ actual fun CameraNutritionLabelScannerScreen(
             NutritionLabelCaptureScreen(
                 isRecognizing = isRecognizing,
                 recognitionFailed = recognitionFailed,
-                onTakePhoto = { imageLauncher.launch(null) },
+                onTakePhoto = {
+                    val uri = createPhotoUri(context)
+                    photoUri = uri
+                    imageLauncher.launch(uri)
+                },
             )
         } else {
             RequestCameraPermissionScreen(
@@ -246,11 +254,18 @@ private fun RedirectToSettingsAlertDialog(
 }
 
 private fun recognizeText(
-    bitmap: Bitmap,
+    context: Context,
+    uri: Uri,
     onSuccess: (List<RecognizedTextLine>) -> Unit,
     onFailure: () -> Unit,
 ) {
-    val image = InputImage.fromBitmap(bitmap, 0)
+    val image =
+        try {
+            InputImage.fromFilePath(context, uri)
+        } catch (_: Exception) {
+            onFailure()
+            return
+        }
     val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     recognizer
         .process(image)
@@ -262,6 +277,16 @@ private fun recognizeText(
             onSuccess(lines)
         }
         .addOnFailureListener { onFailure() }
+}
+
+private fun createPhotoUri(context: Context): Uri {
+    val directory = File(context.cacheDir, "nutrition-label-scans").apply { mkdirs() }
+    val file = File.createTempFile("nutrition-label-", ".jpg", directory)
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.barcodescanner.fileprovider",
+        file,
+    )
 }
 
 private fun redirectToSettings(context: Context) {

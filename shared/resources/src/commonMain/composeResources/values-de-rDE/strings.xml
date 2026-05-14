@@ -213,6 +213,8 @@
     <string name="mineral_chromium">Chrom</string>
     <string name="action_search">Suche</string>
     <string name="action_scan_barcode">Barcode scannen</string>
+    <string name="action_scan_nutrition_label">Etikett scannen</string>
+    <string name="action_apply_scan">Scan übernehmen</string>
     <string name="action_add">Hinzufügen</string>
     <string name="action_go_back">Gehe zurück</string>
     <string name="action_tap_to_allow_access">Tippe, um den Zugriff zu erlauben</string>
@@ -261,6 +263,10 @@
     <string name="neutral_barcode_scanner_camera_request">Erlaube den Zugriff auf deine Kamera zum Scannen von Barcodes</string>
     <string name="neutral_barcode_scanner_camera_request_rationale">Um die Barcodes zu scannen, musst du den Zugriff erlauben</string>
     <string name="neutral_barcode_scanner_camera_request_redirect_to_settings">Zum Scannen von Barcodes ist eine Kameraerlaubnis erforderlich. Bitte erlaube es in den App-Einstellungen.</string>
+    <string name="neutral_nutrition_label_camera_request">Erlaube den Zugriff auf deine Kamera zum Scannen von Nährwertetiketten</string>
+    <string name="neutral_take_nutrition_label_photo">Fotografiere das Nährwertetikett gut lesbar.</string>
+    <string name="neutral_nutrition_label_scan_failed">Texterkennung fehlgeschlagen. Versuche ein neues Foto.</string>
+    <string name="neutral_no_nutrition_label_values_found">Es wurden keine unterstützten Nährwerte gefunden.</string>
     <string name="neutral_no_food_found">Lebensmittel nicht gefunden</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d verbleibende Kalorie</item>
@@ -419,6 +425,8 @@
     <string name="action_skip_for_now">Vorerst überspringen</string>
     <string name="headline_add_more_details">Weitere Details hinzufügen</string>
     <string name="description_add_more_details_product_form">Das Ausfüllen von Protein, Fett, Kohlenhydraten und Energiewerten trägt dazu bei, genauere Einsichten in Nährwerte zu vermitteln</string>
+    <string name="headline_review_nutrition_label_scan">Etikett-Scan prüfen</string>
+    <string name="description_nutrition_label_scan_uncertain">Es wurde keine eindeutige Spalte mit Werten pro 100 g/ml gefunden. Diese Werte können nicht automatisch übernommen werden.</string>
     <string name="headline_favorite">Favorit</string>
     <string name="action_add_a_photo">Foto hinzufügen</string>
     <string name="action_remove_a_photo">Foto entfernen</string>

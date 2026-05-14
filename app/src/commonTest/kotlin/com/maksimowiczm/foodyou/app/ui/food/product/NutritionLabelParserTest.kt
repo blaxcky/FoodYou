@@ -99,4 +99,31 @@ class NutritionLabelParserTest {
         assertEquals(12f, result.carbohydrates?.value)
         assertEquals(99f, result.energy?.value)
     }
+
+    @Test
+    fun parsesValuesWhenOcrSplitsTableLabelsAndColumns() {
+        val result =
+            NutritionLabelParser.parse(
+                listOf(
+                    "Durchschnittliche Nährwerte",
+                    "Pro 100 g /",
+                    "100 g termékben /",
+                    "Brennwert / Energia /",
+                    "274 kJ",
+                    "66 kcal",
+                    "Fett / Zsir / Maščobe",
+                    "3,6 g",
+                    "Kohlenhydrate / Szénhidrát /",
+                    "3,9 g",
+                    "Eiweiss / Fehérje / Beljakovine",
+                    "4,4 g",
+                )
+            )
+
+        assertTrue(result.hasPer100Basis)
+        assertEquals(66f, result.energy?.value)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
+    }
 }

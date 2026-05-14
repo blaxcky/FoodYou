@@ -38,8 +38,7 @@ internal object NutritionLabelParser {
         val hasPer100Basis = normalizedLines.any(::containsPer100Basis)
 
         return NutritionLabelScanResult(
-            energy =
-                findEnergy(normalizedLines)?.copy(isPer100Basis = hasPer100Basis),
+            energy = findEnergy(normalizedLines)?.copy(isPer100Basis = hasPer100Basis),
             proteins =
                 findNutrient(normalizedLines, ScannedNutrient.Proteins, proteinKeywords)
                     ?.copy(isPer100Basis = hasPer100Basis),
@@ -54,59 +53,86 @@ internal object NutritionLabelParser {
     }
 
     private fun findEnergy(lines: List<String>): NutritionLabelField? =
-        lines.firstNotNullOfOrNull { line ->
+        lines.withIndex().firstNotNullOfOrNull { (index, line) ->
             val normalized = normalize(line)
             if (energyKeywords.none { normalized.contains(it) }) {
                 return@firstNotNullOfOrNull null
             }
 
-            val matches = numberWithOptionalUnitRegex.findAll(line).toList()
-            val kcal = matches.firstOrNull { it.groupValues[2].equals("kcal", ignoreCase = true) }
-            val kj =
-                matches.firstOrNull {
-                    it.groupValues[2].equals("kj", ignoreCase = true) ||
-                        it.groupValues[2].equals("kJ", ignoreCase = true)
-                }
-            val selected = kcal ?: kj ?: return@firstNotNullOfOrNull null
-            val unit =
-                if (selected.groupValues[2].equals("kcal", ignoreCase = true)) {
-                    NutritionLabelUnit.Kcal
-                } else {
-                    NutritionLabelUnit.Kj
-                }
-
-            NutritionLabelField(
-                nutrient = ScannedNutrient.Energy,
-                value = selected.groupValues[1].parseDecimal() ?: return@firstNotNullOfOrNull null,
-                unit = unit,
-                sourceText = line,
-                isPer100Basis = false,
-            )
+            findEnergyValue(line, sourceText = line)
+                ?: lines
+                    .drop(index + 1)
+                    .take(FOLLOWING_VALUE_LOOKAHEAD)
+                    .mapNotNull { followingLine ->
+                        findEnergyValue(
+                            line = followingLine,
+                            sourceText = "$line | $followingLine",
+                        )
+                    }
+                    .preferKcal()
         }
+
+    private fun findEnergyValue(line: String, sourceText: String): NutritionLabelField? {
+        val matches = numberWithOptionalUnitRegex.findAll(line).toList()
+        val kcal = matches.firstOrNull { it.groupValues[2].equals("kcal", ignoreCase = true) }
+        val kj = matches.firstOrNull { it.groupValues[2].equals("kj", ignoreCase = true) }
+        val selected = kcal ?: kj ?: return null
+        val unit =
+            if (selected.groupValues[2].equals("kcal", ignoreCase = true)) {
+                NutritionLabelUnit.Kcal
+            } else {
+                NutritionLabelUnit.Kj
+            }
+
+        return NutritionLabelField(
+            nutrient = ScannedNutrient.Energy,
+            value = selected.groupValues[1].parseDecimal() ?: return null,
+            unit = unit,
+            sourceText = sourceText,
+            isPer100Basis = false,
+        )
+    }
+
+    private fun List<NutritionLabelField>.preferKcal(): NutritionLabelField? =
+        firstOrNull { it.unit == NutritionLabelUnit.Kcal } ?: firstOrNull()
 
     private fun findNutrient(
         lines: List<String>,
         nutrient: ScannedNutrient,
         keywords: List<String>,
     ): NutritionLabelField? =
-        lines.firstNotNullOfOrNull { line ->
+        lines.withIndex().firstNotNullOfOrNull { (index, line) ->
             val normalized = normalize(line)
             if (keywords.none { normalized.contains(it) }) {
                 return@firstNotNullOfOrNull null
             }
 
+            val sameLineValue = findGramValue(line)
+            val followingLine =
+                if (sameLineValue == null) {
+                    lines
+                        .drop(index + 1)
+                        .take(FOLLOWING_VALUE_LOOKAHEAD)
+                        .firstOrNull { findGramValue(it) != null }
+                } else {
+                    null
+                }
             val value =
-                numberRegex.findAll(line).firstOrNull()?.groupValues?.get(1)?.parseDecimal()
+                sameLineValue ?: followingLine?.let(::findGramValue)
                     ?: return@firstNotNullOfOrNull null
 
             NutritionLabelField(
                 nutrient = nutrient,
                 value = value,
                 unit = NutritionLabelUnit.Gram,
-                sourceText = line,
+                sourceText = followingLine?.let { "$line | $it" } ?: line,
                 isPer100Basis = false,
             )
         }
+
+    private fun findGramValue(line: String): Float? =
+        gramValueRegex.find(line)?.groupValues?.get(1)?.parseDecimal()
+            ?: numberRegex.findAll(line).firstOrNull()?.groupValues?.get(1)?.parseDecimal()
 
     private fun containsPer100Basis(line: String): Boolean {
         val normalized = normalize(line)
@@ -127,10 +153,15 @@ internal object NutritionLabelParser {
     private val numberRegex = Regex("""(?<![\p{L}\d])(\d+(?:[,.]\d+)?)(?![\p{L}\d])""")
     private val numberWithOptionalUnitRegex =
         Regex("""(?<!\d)(\d+(?:[,.]\d+)?)\s*(kcal|kj)?""", RegexOption.IGNORE_CASE)
+    private val gramValueRegex =
+        Regex("""(?<![\p{L}\d])(\d+(?:[,.]\d+)?)\s*g\b""", RegexOption.IGNORE_CASE)
     private val per100Regex = Regex("""\b(?:pro|per|je)?\s*100\s*(?:g|gr|ml|milliliter)\b""")
 
     private val energyKeywords = listOf("energie", "energy", "brennwert")
     private val proteinKeywords = listOf("eiweis", "eiweiss", "eiwei", "protein", "proteins")
     private val fatKeywords = listOf("fett", "fat")
-    private val carbohydrateKeywords = listOf("kohlenhydrate", "kohlen hydrate", "carbohydrates", "carbs")
+    private val carbohydrateKeywords =
+        listOf("kohlenhydrate", "kohlen hydrate", "carbohydrates", "carbs")
+
+    private const val FOLLOWING_VALUE_LOOKAHEAD = 6
 }
