@@ -87,7 +87,13 @@ internal fun LazyListScope.mealsCards(
                 items(
                     items = state.meals,
                     key = { meal -> "meal-${meal.id}" },
-                    contentType = { "meal" },
+                    contentType = { meal ->
+                        if (meal.foods.isEmpty()) {
+                            "meal-empty"
+                        } else {
+                            "meal-foods"
+                        }
+                    },
                 ) { meal ->
                     MealCard(
                         meal = meal,

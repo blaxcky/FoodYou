@@ -1,6 +1,5 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -125,15 +124,10 @@ internal fun GoalsCard(
     modifier: Modifier = Modifier,
 ) {
     val goal = energyGoal.coerceAtLeast(1)
-    val energyProgress =
-        animateFloatAsState(
-                targetValue = (netEnergy.toFloat() / goal).coerceIn(0f, 1f),
-                animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
-            )
-            .value
-    val proteinsProgress = animatedGoalProgress(proteins, proteinsGoal)
-    val carbsProgress = animatedGoalProgress(carbohydrates, carbohydratesGoal)
-    val fatsProgress = animatedGoalProgress(fats, fatsGoal)
+    val energyProgress = (netEnergy.toFloat() / goal).coerceIn(0f, 1f)
+    val proteinsProgress = goalProgress(proteins, proteinsGoal)
+    val carbsProgress = goalProgress(carbohydrates, carbohydratesGoal)
+    val fatsProgress = goalProgress(fats, fatsGoal)
 
     FoodYouHomeCard(
         modifier = modifier,
@@ -204,18 +198,12 @@ internal fun GoalsCard(
     }
 }
 
-@Composable
-private fun animatedGoalProgress(value: Int, goal: Int): Float =
-    animateFloatAsState(
-            targetValue =
-                if (goal <= 0) {
-                    0f
-                } else {
-                    (value.toFloat() / goal).coerceIn(0f, 1f)
-                },
-            animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
-        )
-        .value
+private fun goalProgress(value: Int, goal: Int): Float =
+    if (goal <= 0) {
+        0f
+    } else {
+        (value.toFloat() / goal).coerceIn(0f, 1f)
+    }
 
 @Composable
 private fun CaloriesOverview(

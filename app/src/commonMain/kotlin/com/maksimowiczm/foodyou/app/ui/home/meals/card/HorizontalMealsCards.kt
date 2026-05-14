@@ -1,16 +1,11 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +13,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import com.valentinilk.shimmer.Shimmer
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 internal fun HorizontalMealsCards(
     meals: List<MealModel>?,
@@ -37,14 +31,9 @@ internal fun HorizontalMealsCards(
     // Let's assume that user won't use more than 20 meals
     val pagerState = rememberPagerState(pageCount = { meals?.size ?: 20 })
 
-    val transition = updateTransition(meals)
-
     HorizontalPager(
         state = pagerState,
-        modifier =
-            modifier.animateContentSize(
-                animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
-            ),
+        modifier = modifier,
         verticalAlignment = Alignment.Top,
         contentPadding =
             PaddingValues(
@@ -56,22 +45,21 @@ internal fun HorizontalMealsCards(
     ) { page ->
         val meal = meals?.getOrNull(page)
 
-        transition.Crossfade(
-            contentKey = { it != null },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-        ) {
-            if (it != null && meal != null) {
-                MealCard(
-                    meal = meal,
-                    onAddFood = { onAdd(meal.id) },
-                    onQuickAdd = { onQuickAdd(meal.id) },
-                    onEditEntry = onEditEntry,
-                    onDeleteEntry = onDeleteEntry,
-                    onLongClick = { onLongClick(meal.id) },
-                )
-            } else {
-                MealCardSkeleton(shimmer = shimmer)
-            }
+        if (meal != null) {
+            MealCard(
+                meal = meal,
+                onAddFood = { onAdd(meal.id) },
+                onQuickAdd = { onQuickAdd(meal.id) },
+                onEditEntry = onEditEntry,
+                onDeleteEntry = onDeleteEntry,
+                onLongClick = { onLongClick(meal.id) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            )
+        } else {
+            MealCardSkeleton(
+                shimmer = shimmer,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            )
         }
     }
 }
