@@ -286,6 +286,7 @@ private fun CaloriesOverview(
                         label = stringResource(Res.string.goal_goal),
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        mutedLabel = true,
                     )
                 }
             }
@@ -332,6 +333,7 @@ private fun CaloriesOverview(
                         label = stringResource(Res.string.goal_goal),
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        mutedLabel = true,
                     )
                 }
             }
@@ -350,6 +352,7 @@ private fun SideMetric(
     supportingValue: String? = null,
     supportingLabel: String? = null,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    mutedLabel: Boolean = false,
 ) {
     Column(
         modifier = modifier,
@@ -373,7 +376,7 @@ private fun SideMetric(
         Text(
             text = label,
             modifier = Modifier.fillMaxWidth(),
-            color = GoalsTextColor,
+            color = if (mutedLabel) GoalsMutedTextColor else GoalsTextColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontSize = 13.sp,
