@@ -7,8 +7,6 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
@@ -17,17 +15,13 @@ import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRep
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.todayIn
 import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.GlobalContext
 import org.koin.core.module.Module
 
 actual fun Module.healthConnectActivitySync() {
@@ -129,15 +123,8 @@ private class AndroidHealthConnectActivitySync(
 
     private fun client(): HealthConnectClient = HealthConnectClient.getOrCreate(context)
 
-    override fun schedulePeriodicSync() {
-        val request =
-            PeriodicWorkRequestBuilder<ActivityStepsSyncWorker>(1, TimeUnit.HOURS).build()
-        WorkManager.getInstance(context)
-            .enqueueUniquePeriodicWork(
-                ActivityStepsSyncWorker.NAME,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                request,
-            )
+    override fun cancelPeriodicSync() {
+        WorkManager.getInstance(context).cancelUniqueWork(ActivityStepsSyncWorker.NAME)
     }
 }
 
@@ -153,38 +140,7 @@ object ActivityHealthConnectPermissions {
 
 class ActivityStepsSyncWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
-        val granted =
-            try {
-                if (HealthConnectClient.getSdkStatus(applicationContext) !=
-                    HealthConnectClient.SDK_AVAILABLE
-                ) {
-                    return Result.success()
-                }
-                HealthConnectClient.getOrCreate(applicationContext)
-                    .permissionController
-                    .getGrantedPermissions()
-            } catch (_: SecurityException) {
-                return Result.success()
-            } catch (_: IOException) {
-                return Result.success()
-            } catch (_: RemoteException) {
-                return Result.success()
-            } catch (_: RuntimeException) {
-                return Result.success()
-            }
-        if (
-            ActivityHealthConnectPermissions.readSteps !in granted ||
-                ActivityHealthConnectPermissions.backgroundRead !in granted
-        ) {
-            return Result.success()
-        }
-
-        val sync: HealthConnectActivitySync = GlobalContext.get().get()
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        sync.syncSteps(listOf(today, today.minus(1, kotlinx.datetime.DateTimeUnit.DAY)))
-        return Result.success()
-    }
+    override suspend fun doWork(): Result = Result.success()
 
     companion object {
         const val NAME = "activity_steps_sync"

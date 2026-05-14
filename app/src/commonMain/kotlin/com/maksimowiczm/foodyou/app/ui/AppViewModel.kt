@@ -23,7 +23,7 @@ internal class AppViewModel(
     private val settings = settingsRepository.observe()
 
     init {
-        healthConnectActivitySync.schedulePeriodicSync()
+        healthConnectActivitySync.cancelPeriodicSync()
     }
 
     val nutrientsOrder =

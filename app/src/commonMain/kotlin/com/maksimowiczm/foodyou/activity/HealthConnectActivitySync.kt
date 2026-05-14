@@ -10,7 +10,7 @@ interface HealthConnectActivitySync {
 
     suspend fun syncSteps(dates: List<LocalDate>): HealthConnectSyncResult
 
-    fun schedulePeriodicSync()
+    fun cancelPeriodicSync()
 }
 
 enum class HealthConnectAvailability {

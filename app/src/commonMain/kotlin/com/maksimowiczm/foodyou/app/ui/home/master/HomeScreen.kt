@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +50,7 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = koinViewModel()
     val order by viewModel.homeOrder.collectAsStateWithLifecycle()
+    val activitySyncState by viewModel.activitySyncState.collectAsStateWithLifecycle()
     val homeState = rememberHomeState()
     val mealsCardsState =
         rememberMealsCardsState(
@@ -74,6 +78,21 @@ fun HomeScreen(
                     )
                 },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.syncActivities(homeState.selectedDate) },
+                        enabled = !activitySyncState.isSyncing,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Sync,
+                            contentDescription = "Health Connect synchronisieren",
+                            tint =
+                                when {
+                                    activitySyncState.isSyncing -> MaterialTheme.colorScheme.outline
+                                    activitySyncState.isStale -> MaterialTheme.colorScheme.error
+                                    else -> Color(0xFF2E7D32)
+                                },
+                        )
+                    }
                     IconButton(onClick = onSettings) {
                         Icon(
                             imageVector = Icons.Filled.Settings,

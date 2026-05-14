@@ -4,10 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.HealthConnectActivitySync
 import com.maksimowiczm.foodyou.activity.HealthConnectAvailability
-import com.maksimowiczm.foodyou.activity.HealthConnectSyncResult
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
-import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,10 +13,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.todayIn
 
 internal data class ActivitySettingsModel(
     val kcalPerStep: String,
@@ -117,7 +111,7 @@ internal class ActivitySettingsViewModel(
             }
 
             settingsRepository.update { copy(healthConnectStepsEnabled = true) }
-            syncCurrentSteps()
+            healthConnectStatus.value = ActivityHealthConnectStatus.Available
         }
     }
 
@@ -136,7 +130,7 @@ internal class ActivitySettingsViewModel(
                 HealthConnectAvailability.Available -> {
                     if (healthConnectActivitySync.hasReadStepsPermission()) {
                         settingsRepository.update { copy(healthConnectStepsEnabled = true) }
-                        syncCurrentSteps()
+                        healthConnectStatus.value = ActivityHealthConnectStatus.Available
                     } else {
                         healthConnectStatus.value = ActivityHealthConnectStatus.PermissionMissing
                         requestPermission()
@@ -156,22 +150,6 @@ internal class ActivitySettingsViewModel(
     private suspend fun disableHealthConnectIfNeeded(settings: Settings) {
         if (settings.healthConnectStepsEnabled) {
             settingsRepository.update { copy(healthConnectStepsEnabled = false) }
-        }
-    }
-
-    private suspend fun syncCurrentSteps() {
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        when (healthConnectActivitySync.syncSteps(listOf(today, today.minus(1, DateTimeUnit.DAY)))) {
-            HealthConnectSyncResult.Synced -> healthConnectStatus.value = ActivityHealthConnectStatus.Synced
-            HealthConnectSyncResult.MissingPermission -> {
-                settingsRepository.update { copy(healthConnectStepsEnabled = false) }
-                healthConnectStatus.value = ActivityHealthConnectStatus.PermissionMissing
-            }
-            HealthConnectSyncResult.Unavailable -> healthConnectStatus.value = ActivityHealthConnectStatus.Unavailable
-            HealthConnectSyncResult.UpdateRequired ->
-                healthConnectStatus.value = ActivityHealthConnectStatus.UpdateRequired
-            HealthConnectSyncResult.Disabled -> healthConnectStatus.value = ActivityHealthConnectStatus.Available
-            HealthConnectSyncResult.Failed -> healthConnectStatus.value = ActivityHealthConnectStatus.SyncFailed
         }
     }
 }

@@ -2,7 +2,6 @@ package com.maksimowiczm.foodyou.app.ui.home.activity
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.maksimowiczm.foodyou.activity.HealthConnectActivitySync
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
@@ -28,7 +27,6 @@ internal data class ActivitiesCardModel(
 internal class ActivitiesCardViewModel(
     private val activityRepository: ActivityRepository,
     private val settingsRepository: UserPreferencesRepository<Settings>,
-    private val healthConnectActivitySync: HealthConnectActivitySync,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
 
@@ -58,6 +56,5 @@ internal class ActivitiesCardViewModel(
 
     fun setDate(date: LocalDate) {
         dateState.value = date
-        viewModelScope.launch { healthConnectActivitySync.syncSteps(listOf(date)) }
     }
 }

@@ -16,5 +16,5 @@ private object NoOpHealthConnectActivitySync : HealthConnectActivitySync {
         dates: List<kotlinx.datetime.LocalDate>
     ): HealthConnectSyncResult = HealthConnectSyncResult.Unavailable
 
-    override fun schedulePeriodicSync() = Unit
+    override fun cancelPeriodicSync() = Unit
 }
