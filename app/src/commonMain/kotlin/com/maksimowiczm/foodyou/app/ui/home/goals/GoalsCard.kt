@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
@@ -48,17 +51,17 @@ import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
-private val GoalsCardShape = RoundedCornerShape(28.dp)
+private val GoalsCardShape = RoundedCornerShape(26.dp)
 private val GoalsCardColor = Color(0xFFFFFFFF)
-private val GoalsTextColor = Color(0xFF202126)
-private val GoalsMutedTextColor = Color(0xFF8A8F98)
-private val GoalsTrackColor = Color(0xFFDCEFF8)
-private val GoalsProgressColor = Color(0xFF4CAFE2)
+private val GoalsTextColor = Color(0xFF25272D)
+private val GoalsMutedTextColor = Color(0xFF6F7681)
+private val GoalsTrackColor = Color(0xFFE3EDF7)
+private val GoalsProgressColor = Color(0xFF45AEE6)
 private val GoalsErrorColor = Color(0xFFE25555)
-private val MacroTrackColor = Color(0xFFEFF3F6)
-private val FatColor = Color(0xFFF2C99E)
-private val CarbsColor = Color(0xFFA8D7EE)
-private val ProteinColor = Color(0xFFB9DDB7)
+private val MacroTrackColor = Color(0xFFF5F7F8)
+private val FatColor = Color(0xFFF4D5DC)
+private val CarbsColor = Color(0xFFF4E6C9)
+private val ProteinColor = Color(0xFFCFE6CD)
 
 @Composable
 internal fun GoalsCard(
@@ -133,8 +136,10 @@ internal fun GoalsCard(
         onLongClick = onLongClick,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .defaultMinSize(minHeight = 388.dp)
+                    .padding(start = 48.dp, top = 32.dp, end = 48.dp, bottom = 28.dp),
         ) {
             CaloriesOverview(
                 energy = energy,
@@ -145,9 +150,11 @@ internal fun GoalsCard(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            Spacer(Modifier.height(36.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 MacroGoal(
                     label = stringResource(Res.string.goal_fat),
@@ -208,13 +215,15 @@ private fun CaloriesOverview(
 
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SideMetric(
             value = energyFormatter.formatEnergy(energy, withSuffix = false),
             label = stringResource(Res.string.goal_eaten),
-            supporting = stringResource(Res.string.goal_reached_percentage, reached),
+            supportingValue = "$reached %",
+            supportingLabel =
+                stringResource(Res.string.goal_reached_percentage, reached).substringAfter("% "),
             modifier = Modifier.weight(1f),
         )
 
@@ -224,13 +233,13 @@ private fun CaloriesOverview(
             label = stringResource(Res.string.goal_left),
             progress = progress,
             valueColor = valueColor,
-            modifier = Modifier.weight(1.45f),
+            modifier = Modifier.weight(1.9f),
         )
 
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(30.dp),
         ) {
             SideMetric(
                 value = energyFormatter.formatEnergy(burnedEnergy, withSuffix = false),
@@ -251,32 +260,49 @@ private fun SideMetric(
     value: String,
     label: String,
     modifier: Modifier = Modifier,
-    supporting: String? = null,
+    supportingValue: String? = null,
+    supportingLabel: String? = null,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
 ) {
     Column(
         modifier = modifier,
         horizontalAlignment = horizontalAlignment,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Text(
             text = value,
             color = GoalsTextColor,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
+            style =
+                MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 24.sp,
+                    lineHeight = 28.sp,
+                ),
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
         )
         Text(
             text = label,
-            color = GoalsMutedTextColor,
+            color = GoalsTextColor,
             style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
         )
-        if (supporting != null) {
+        if (supportingValue != null) {
+            Spacer(Modifier.height(10.dp))
             Text(
-                text = supporting,
+                text = supportingValue,
                 color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium.copy(fontSize = 15.sp),
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+            )
+        }
+        if (supportingLabel != null) {
+            Text(
+                text = supportingLabel,
+                color = GoalsMutedTextColor,
+                style = MaterialTheme.typography.labelMedium.copy(fontSize = 15.sp),
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
             )
         }
@@ -292,30 +318,40 @@ private fun GaugeMetric(
     valueColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.height(104.dp), contentAlignment = Alignment.BottomCenter) {
-        SemiCircleGauge(progress = progress, modifier = Modifier.fillMaxWidth().height(74.dp))
+    Box(modifier = modifier.height(220.dp), contentAlignment = Alignment.TopCenter) {
+        SemiCircleGauge(
+            progress = progress,
+            modifier = Modifier.requiredWidth(196.dp).height(168.dp),
+        )
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.padding(top = 58.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Text(
                 text = value,
                 color = valueColor,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+                style =
+                    MaterialTheme.typography.headlineLarge.copy(
+                        fontSize = 34.sp,
+                        lineHeight = 38.sp,
+                    ),
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = unit,
                 color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp),
                 maxLines = 1,
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = label,
                 color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
             )
@@ -326,9 +362,10 @@ private fun GaugeMetric(
 @Composable
 private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
-        val strokeWidth = 9.dp.toPx()
+        val strokeWidth = 13.dp.toPx()
         val inset = strokeWidth / 2
-        val arcSize = Size(width = size.width - strokeWidth, height = (size.height - inset) * 2)
+        val arcWidth = size.width - strokeWidth
+        val arcHeight = (size.height - strokeWidth) * 2.04f
         val topLeft = Offset(inset, inset)
 
         drawArc(
@@ -337,7 +374,7 @@ private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
             sweepAngle = 180f,
             useCenter = false,
             topLeft = topLeft,
-            size = arcSize,
+            size = Size(width = arcWidth, height = arcHeight),
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
         drawArc(
@@ -346,7 +383,7 @@ private fun SemiCircleGauge(progress: Float, modifier: Modifier = Modifier) {
             sweepAngle = 180f * progress.coerceIn(0f, 1f),
             useCenter = false,
             topLeft = topLeft,
-            size = arcSize,
+            size = Size(width = arcWidth, height = arcHeight),
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
     }
@@ -364,11 +401,16 @@ private fun MacroGoal(
     val gramShort = stringResource(Res.string.unit_gram_short)
     val valueColor = if (goal > 0 && value > goal) GoalsErrorColor else GoalsTextColor
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Text(
             text = label,
-            color = GoalsMutedTextColor,
+            color = GoalsTextColor,
             style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
         )
         MacroProgressBar(progress = progress, color = color, overflow = goal > 0 && value > goal)
@@ -376,8 +418,9 @@ private fun MacroGoal(
             text = "$value/$goal $gramShort",
             color = valueColor,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -394,14 +437,14 @@ private fun MacroProgressBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(7.dp)
+                .height(6.dp)
                 .clip(barShape)
                 .background(MacroTrackColor)
     ) {
         Box(
             modifier =
                 Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(7.dp)
+                    .height(6.dp)
                     .clip(barShape)
                     .background(if (overflow) GoalsErrorColor else color)
         )
@@ -423,12 +466,14 @@ private fun GoalsCardSkeleton(
         onLongClick = onLongClick,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .defaultMinSize(minHeight = 388.dp)
+                    .padding(start = 48.dp, top = 32.dp, end = 48.dp, bottom = 28.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Column(
@@ -450,16 +495,19 @@ private fun GoalsCardSkeleton(
                 }
 
                 Box(
-                    modifier = Modifier.weight(1.45f).height(104.dp),
-                    contentAlignment = Alignment.BottomCenter,
+                    modifier = Modifier.weight(1.9f).height(220.dp),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
                     SkeletonBlock(
                         shimmer,
-                        Modifier.fillMaxWidth()
-                            .height(74.dp)
-                            .clip(RoundedCornerShape(topStart = 80.dp, topEnd = 80.dp)),
+                        Modifier.requiredWidth(196.dp)
+                            .height(168.dp)
+                            .clip(RoundedCornerShape(topStart = 120.dp, topEnd = 120.dp)),
                     )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier.padding(top = 58.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         SkeletonBlock(
                             shimmer,
                             Modifier.width(74.dp)
@@ -483,21 +531,24 @@ private fun GoalsCardSkeleton(
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(30.dp),
                 ) {
                     SkeletonSideMetric(shimmer, Alignment.End)
                     SkeletonSideMetric(shimmer, Alignment.End)
                 }
             }
 
+            Spacer(Modifier.height(36.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 repeat(3) {
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         SkeletonBlock(
                             shimmer,
@@ -506,7 +557,7 @@ private fun GoalsCardSkeleton(
                         )
                         SkeletonBlock(
                             shimmer,
-                            Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(50)),
+                            Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
                         )
                         SkeletonBlock(
                             shimmer,
