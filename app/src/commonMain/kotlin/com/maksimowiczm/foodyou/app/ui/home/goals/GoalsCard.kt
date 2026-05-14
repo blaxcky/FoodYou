@@ -52,6 +52,7 @@ import foodyou.app.generated.resources.goal_goal
 import foodyou.app.generated.resources.goal_left
 import foodyou.app.generated.resources.goal_protein
 import foodyou.app.generated.resources.goal_reached_percentage
+import foodyou.app.generated.resources.goal_too_much
 import foodyou.app.generated.resources.unit_gram_short
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
@@ -219,7 +220,11 @@ private fun CaloriesOverview(
     val left = energyGoal - netEnergy
     val goal = energyGoal.coerceAtLeast(1)
     val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
-    val valueColor = if (left < 0) GoalsErrorColor else GoalsTextColor
+    val overflow = left < 0
+    val remainingValue = if (overflow) -left else left
+    val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
+    val remainingLabel =
+        stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
 
     BoxWithConstraints(modifier = modifier) {
         val gaugeDiameter = (maxWidth * 0.48f).coerceIn(156.dp, 254.dp)
@@ -234,8 +239,10 @@ private fun CaloriesOverview(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 GaugeMetric(
-                    value = energyFormatter.formatEnergy(left, withSuffix = false).groupDigits(),
-                    label = stringResource(Res.string.goal_left),
+                    value =
+                        energyFormatter.formatEnergy(remainingValue, withSuffix = false)
+                            .groupDigits(),
+                    label = remainingLabel,
                     progress = progress,
                     valueColor = valueColor,
                     diameter = gaugeDiameter,
@@ -295,8 +302,10 @@ private fun CaloriesOverview(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 GaugeMetric(
-                    value = energyFormatter.formatEnergy(left, withSuffix = false).groupDigits(),
-                    label = stringResource(Res.string.goal_left),
+                    value =
+                        energyFormatter.formatEnergy(remainingValue, withSuffix = false)
+                            .groupDigits(),
+                    label = remainingLabel,
                     progress = progress,
                     valueColor = valueColor,
                     diameter = gaugeDiameter,

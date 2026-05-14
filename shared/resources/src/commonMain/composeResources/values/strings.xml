@@ -90,6 +90,7 @@
     <string name="goal_eaten">eaten</string>
     <string name="goal_burned">burned</string>
     <string name="goal_left">left</string>
+    <string name="goal_too_much">too much</string>
     <string name="goal_goal">Goal</string>
     <string name="goal_fat">Fat</string>
     <string name="goal_carbs_short">Carbs</string>

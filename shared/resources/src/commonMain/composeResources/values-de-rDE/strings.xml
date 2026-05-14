@@ -167,6 +167,7 @@
     <string name="goal_eaten">gegessen</string>
     <string name="goal_burned">verbrannt</string>
     <string name="goal_left">übrig</string>
+    <string name="goal_too_much">zu viel</string>
     <string name="goal_goal">Ziel</string>
     <string name="goal_fat">Fett</string>
     <string name="goal_carbs_short">KH</string>
