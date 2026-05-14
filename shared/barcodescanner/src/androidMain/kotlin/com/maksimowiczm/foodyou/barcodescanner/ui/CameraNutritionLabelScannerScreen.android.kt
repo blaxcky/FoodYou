@@ -146,6 +146,50 @@ private fun NutritionLabelLiveCameraScreen(
                 onTextRecognized = { latestOnTextRecognized(it) },
             )
         }
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
+
+    DisposableEffect(previewView, lifecycleOwner) {
+        val view = previewView ?: return@DisposableEffect onDispose {}
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        var cameraProvider: ProcessCameraProvider? = null
+        var disposed = false
+
+        cameraProviderFuture.addListener(
+            {
+                if (disposed) {
+                    return@addListener
+                }
+
+                val provider = cameraProviderFuture.get()
+                cameraProvider = provider
+                val preview =
+                    Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
+                val imageAnalysis =
+                    ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also { it.setAnalyzer(analyzerExecutor, analyzer) }
+
+                try {
+                    provider.unbindAll()
+                    provider.bindToLifecycle(
+                        lifecycleOwner,
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview,
+                        imageAnalysis,
+                    )
+                } catch (error: Exception) {
+                    Log.e(TAG, "Failed to bind nutrition label camera", error)
+                }
+            },
+            ContextCompat.getMainExecutor(context),
+        )
+
+        onDispose {
+            disposed = true
+            cameraProvider?.unbindAll()
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -160,37 +204,8 @@ private fun NutritionLabelLiveCameraScreen(
             PreviewView(viewContext).apply {
                 scaleType = PreviewView.ScaleType.FILL_CENTER
                 implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                previewView = this
             }
-        },
-        update = { previewView ->
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-            cameraProviderFuture.addListener(
-                {
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview =
-                        Preview.Builder().build().also {
-                            it.surfaceProvider = previewView.surfaceProvider
-                        }
-                    val imageAnalysis =
-                        ImageAnalysis.Builder()
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .build()
-                            .also { it.setAnalyzer(analyzerExecutor, analyzer) }
-
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
-                            preview,
-                            imageAnalysis,
-                        )
-                    } catch (error: Exception) {
-                        Log.e(TAG, "Failed to bind nutrition label camera", error)
-                    }
-                },
-                ContextCompat.getMainExecutor(context),
-            )
         },
     )
 }
