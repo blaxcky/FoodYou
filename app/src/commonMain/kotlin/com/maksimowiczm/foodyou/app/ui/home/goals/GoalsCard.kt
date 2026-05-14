@@ -60,12 +60,14 @@ private val GoalsCardShape = RoundedCornerShape(24.dp)
 private val GoalsCardColor = Color(0xFFFFFFFF)
 private val GoalsTextColor = Color(0xFF202124)
 private val GoalsMutedTextColor = Color(0xFF5F6368)
-private val GoalsTrackColor = Color(0xFFE3EDF7)
+private val GoalsTrackColor = Color(0xFFE4EEF5)
 private val GoalsProgressColor = Color(0xFF45AEE6)
 private val GoalsErrorColor = Color(0xFFE25555)
-private val MacroTrackColor = Color(0xFFF7F9FA)
+private val FatTrackColor = Color(0xFFFFE5E5)
 private val FatColor = Color(0xFFF4D5DC)
+private val CarbsTrackColor = Color(0xFFFFF3DC)
 private val CarbsColor = Color(0xFFF4E6C9)
+private val ProteinTrackColor = Color(0xFFE3F7E9)
 private val ProteinColor = Color(0xFFCFE6CD)
 
 @Composable
@@ -174,6 +176,7 @@ internal fun GoalsCard(
                         value = fats,
                         goal = fatsGoal,
                         progress = fatsProgress,
+                        trackColor = FatTrackColor,
                         color = FatColor,
                         modifier = Modifier.weight(1f),
                     )
@@ -182,6 +185,7 @@ internal fun GoalsCard(
                         value = carbohydrates,
                         goal = carbohydratesGoal,
                         progress = carbsProgress,
+                        trackColor = CarbsTrackColor,
                         color = CarbsColor,
                         modifier = Modifier.weight(1f),
                     )
@@ -190,6 +194,7 @@ internal fun GoalsCard(
                         value = proteins,
                         goal = proteinsGoal,
                         progress = proteinsProgress,
+                        trackColor = ProteinTrackColor,
                         color = ProteinColor,
                         modifier = Modifier.weight(1f),
                     )
@@ -228,7 +233,7 @@ private fun CaloriesOverview(
     val valueColor = if (left < 0) GoalsErrorColor else GoalsTextColor
 
     BoxWithConstraints(modifier = modifier) {
-        val gaugeDiameter = (maxWidth * 0.45f).coerceIn(156.dp, 178.dp)
+        val gaugeDiameter = (maxWidth * 0.48f).coerceIn(156.dp, 254.dp)
         val compact = maxWidth < 320.dp
 
         if (compact) {
@@ -472,8 +477,8 @@ private fun SemiCircleGauge(progress: Float, diameter: Dp, modifier: Modifier = 
 
         drawArc(
             color = GoalsTrackColor,
-            startAngle = 140f,
-            sweepAngle = 260f,
+            startAngle = 135f,
+            sweepAngle = 270f,
             useCenter = false,
             topLeft = topLeft,
             size = arcSize,
@@ -481,8 +486,8 @@ private fun SemiCircleGauge(progress: Float, diameter: Dp, modifier: Modifier = 
         )
         drawArc(
             color = GoalsProgressColor,
-            startAngle = 140f,
-            sweepAngle = 260f * progress.coerceIn(0f, 1f),
+            startAngle = 135f,
+            sweepAngle = 270f * progress.coerceIn(0f, 1f),
             useCenter = false,
             topLeft = topLeft,
             size = arcSize,
@@ -511,6 +516,7 @@ private fun MacroGoal(
     value: Int,
     goal: Int,
     progress: Float,
+    trackColor: Color,
     color: Color,
     modifier: Modifier = Modifier,
 ) {
@@ -536,7 +542,12 @@ private fun MacroGoal(
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
         )
-        MacroProgressBar(progress = progress, color = color, overflow = goal > 0 && value > goal)
+        MacroProgressBar(
+            progress = progress,
+            trackColor = trackColor,
+            color = color,
+            overflow = goal > 0 && value > goal,
+        )
         Text(
             text = "$value/$goal $gramShort",
             modifier = Modifier.fillMaxWidth(),
@@ -557,6 +568,7 @@ private fun MacroGoal(
 @Composable
 private fun MacroProgressBar(
     progress: Float,
+    trackColor: Color,
     color: Color,
     overflow: Boolean,
     modifier: Modifier = Modifier,
@@ -565,10 +577,10 @@ private fun MacroProgressBar(
     Box(
         modifier =
             modifier
-                .fillMaxWidth()
+                .width(132.dp)
                 .height(6.dp)
                 .clip(barShape)
-                .background(MacroTrackColor)
+                .background(trackColor)
     ) {
         Box(
             modifier =
