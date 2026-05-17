@@ -17,5 +17,6 @@ data class RecognizedTextLine(
 expect fun CameraNutritionLabelScannerScreen(
     onTextRecognized: (List<RecognizedTextLine>) -> Unit,
     onClose: () -> Unit,
+    captureEnabled: Boolean = true,
     modifier: Modifier = Modifier,
 )

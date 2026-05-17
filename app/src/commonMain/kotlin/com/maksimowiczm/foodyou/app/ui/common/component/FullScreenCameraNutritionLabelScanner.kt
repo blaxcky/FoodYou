@@ -41,6 +41,7 @@ fun FullScreenCameraNutritionLabelScanner(
     visible: Boolean,
     onTextRecognized: (List<RecognizedTextLine>) -> Unit,
     onClose: () -> Unit,
+    captureEnabled: Boolean = true,
     overlay: @Composable BoxScope.() -> Unit = {},
 ) {
     if (visible) {
@@ -66,6 +67,7 @@ fun FullScreenCameraNutritionLabelScanner(
                     CameraNutritionLabelScannerScreen(
                         onTextRecognized = onTextRecognized,
                         onClose = onClose,
+                        captureEnabled = captureEnabled,
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
