@@ -340,6 +340,38 @@ class NutritionLabelParserTest {
     }
 
     @Test
+    fun parsesReferencePhotoMlKitOcrOutput() {
+        val result =
+            NutritionLabelParser.parse(
+                listOf(
+                    line(0, "Durdhschnittliche Naerte /", "Durdhschnittliche" at 10),
+                    line(40, "Bennwert /Energia /", "Bennwert" at 10),
+                    line(80, "Fett/Zsir / Maškobe", "Fett" at 10),
+                    line(120, "Kohlenhydrate / Szénhidrät /", "Kohlenhydrate" at 10),
+                    line(160, "Eveis / Fehérje/ Beljakovine", "Eveis" at 10),
+                    line(200, "Na 100g", "Na" at 210, "100g" at 250),
+                    line(240, "TECHHIK", "TECHHIK" at 210),
+                    line(280, "274KJ", "274KJ" at 210),
+                    line(320, "66 ral", "66" at 210, "ral" at 250),
+                    line(360, "369", "369" at 210),
+                    line(400, "23g", "23g" at 210),
+                    line(440, "399", "399" at 210),
+                    line(480, "39g", "39g" at 210),
+                    line(520, "44g", "44g" at 210),
+                    line(560, "0,139", "0,139" at 210),
+                    line(600, "635 KJ", "635" at 370, "KJ" at 410),
+                )
+            )
+
+        assertTrue(result.hasPer100Basis)
+        assertEquals(66f, result.energy?.value)
+        assertEquals(NutritionLabelUnit.Kcal, result.energy?.unit)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
+    }
+
+    @Test
     fun treatsLikelyMissingDecimalMacroOcrValuesAsUncertain() {
         val result =
             NutritionLabelParser.parse(

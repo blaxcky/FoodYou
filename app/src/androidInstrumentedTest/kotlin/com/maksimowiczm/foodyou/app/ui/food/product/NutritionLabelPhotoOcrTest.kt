@@ -14,30 +14,43 @@ import org.junit.Test
 
 class NutritionLabelPhotoOcrTest {
     @Test
-    fun parsesNutritionValuesFromReferencePhoto() {
+    fun parsesNutritionValuesFromReferencePhotoRepeatedly() {
         val context = InstrumentationRegistry.getInstrumentation().context
         val bitmap =
             context.assets.open("nutrition-labels/naehrstoffe.jpg").use { input ->
                 BitmapFactory.decodeStream(input)
             }
-        val image = InputImage.fromBitmap(bitmap, 0)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
-        val text =
-            try {
-                Tasks.await(recognizer.process(image))
-            } finally {
-                recognizer.close()
-            }
-        val result = NutritionLabelParser.parse(text.toRecognizedTextLines())
+        try {
+            repeat(REFERENCE_PHOTO_OCR_RUNS) { index ->
+                val image = InputImage.fromBitmap(bitmap, 0)
+                val text = Tasks.await(recognizer.process(image))
+                val lines = text.toRecognizedTextLines()
+                val result = NutritionLabelParser.parse(lines)
+                val message = "run ${index + 1}; lines=${lines.joinToString { it.text }}"
 
-        assertEquals(66f, result.energy?.value)
-        assertEquals(NutritionLabelUnit.Kcal, result.energy?.unit)
-        assertEquals(3.6f, result.fats?.value)
-        assertEquals(3.9f, result.carbohydrates?.value)
-        assertEquals(4.4f, result.proteins?.value)
+                assertEquals("energy value at $message", 66f, result.energy?.value)
+                assertEquals(
+                    "energy unit at $message",
+                    NutritionLabelUnit.Kcal,
+                    result.energy?.unit,
+                )
+                assertEquals("fats at $message", 3.6f, result.fats?.value)
+                assertEquals(
+                    "carbohydrates at $message",
+                    3.9f,
+                    result.carbohydrates?.value,
+                )
+                assertEquals("proteins at $message", 4.4f, result.proteins?.value)
+            }
+        } finally {
+            recognizer.close()
+        }
     }
 }
+
+private const val REFERENCE_PHOTO_OCR_RUNS = 25
 
 private fun com.google.mlkit.vision.text.Text.toRecognizedTextLines(): List<RecognizedTextLine> =
     textBlocks.flatMap { block ->
