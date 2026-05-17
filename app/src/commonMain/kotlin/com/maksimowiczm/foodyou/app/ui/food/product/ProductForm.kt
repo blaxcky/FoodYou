@@ -4,15 +4,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeGesturesPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -20,10 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Keyboard
-import androidx.compose.material.icons.outlined.PhotoCamera
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,9 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -52,13 +43,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraBarcodeScanner
-import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraNutritionLabelScanner
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
-import com.maksimowiczm.foodyou.app.infrastructure.FoodYouLogger
-import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.app.ui.food.component.Icon
 import com.maksimowiczm.foodyou.app.ui.food.component.stringResource
 import com.maksimowiczm.foodyou.common.compose.component.unorderedList
@@ -69,52 +57,12 @@ import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-private const val NUTRITION_LABEL_SCANNER_TAG = "NutritionLabelScanner"
-
 @Composable
 internal fun ProductForm(
     state: ProductFormState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
-    var showNutritionLabelScanner by rememberSaveable { mutableStateOf(false) }
-    var nutritionLabelScanResult by remember { mutableStateOf<NutritionLabelScanResult?>(null) }
-
-    LaunchedEffect(showNutritionLabelScanner) {
-        if (showNutritionLabelScanner) {
-            FoodYouLogger.d(NUTRITION_LABEL_SCANNER_TAG) {
-                "Nutrition label scanner visible=true; resetting result"
-            }
-            nutritionLabelScanResult = null
-        }
-    }
-
-    FullScreenCameraNutritionLabelScanner(
-        visible = showNutritionLabelScanner,
-        onTextRecognized = {
-            val parsed = NutritionLabelParser.parse(it)
-            FoodYouLogger.d(NUTRITION_LABEL_SCANNER_TAG) {
-                "OCR lines=${it.joinToString { line -> "${line.text}@${line.bounds}" }}; " +
-                    "fields=${parsed.fields.joinToString { field -> "${field.nutrient}=${field.sourceText}@${field.sourceBounds}" }}"
-            }
-            nutritionLabelScanResult = parsed
-        },
-        onClose = { showNutritionLabelScanner = false },
-        captureEnabled = nutritionLabelScanResult == null,
-        overlay = {
-            nutritionLabelScanResult?.let { result ->
-                NutritionLabelScanOverlay(
-                    result = result,
-                    onApply = {
-                        state.applyNutritionLabelScan(result)
-                        showNutritionLabelScanner = false
-                    },
-                    onRetake = { nutritionLabelScanResult = null },
-                )
-            }
-        },
-    )
-
     val layoutDirection = LocalLayoutDirection.current
     val horizontalPadding =
         PaddingValues(
@@ -140,24 +88,6 @@ internal fun ProductForm(
             modifier = Modifier.padding(horizontalPadding).fillMaxWidth(),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
-        )
-
-        AssistChip(
-            onClick = {
-                FoodYouLogger.d(NUTRITION_LABEL_SCANNER_TAG) {
-                    "Nutrition label scanner button clicked"
-                }
-                showNutritionLabelScanner = true
-            },
-            label = { Text(stringResource(Res.string.action_scan_nutrition_label)) },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Outlined.PhotoCamera,
-                    contentDescription = null,
-                    modifier = Modifier.size(AssistChipDefaults.IconSize),
-                )
-            },
-            modifier = Modifier.padding(horizontalPadding),
         )
 
         order.forEach { field ->
@@ -206,119 +136,6 @@ internal fun ProductForm(
                 NutrientsOrder.Minerals -> Minerals(state, horizontalPadding)
             }
         }
-    }
-}
-
-@Composable
-private fun BoxScope.NutritionLabelScanOverlay(
-    result: NutritionLabelScanResult,
-    onApply: () -> Unit,
-    onRetake: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier =
-            modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .safeGesturesPadding()
-                .navigationBarsPadding()
-                .padding(12.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        tonalElevation = 6.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ScanOverlayFieldRow(
-                label = stringResource(Res.string.unit_energy),
-                field = result.energy,
-            )
-            ScanOverlayFieldRow(
-                label = stringResource(Res.string.nutriment_proteins),
-                field = result.proteins,
-            )
-            ScanOverlayFieldRow(
-                label = stringResource(Res.string.nutriment_fats),
-                field = result.fats,
-            )
-            ScanOverlayFieldRow(
-                label = stringResource(Res.string.nutriment_carbohydrates),
-                field = result.carbohydrates,
-            )
-            Row(
-                modifier = Modifier.align(Alignment.End),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TextButton(onClick = onRetake) {
-                    Text(stringResource(Res.string.action_try_again))
-                }
-                Button(
-                    onClick = onApply,
-                    enabled = result.hasPer100Basis && result.fields.isNotEmpty(),
-                ) {
-                    Text(stringResource(Res.string.action_apply_scan))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ScanOverlayFieldRow(label: String, field: NutritionLabelField?) {
-    val text =
-        field?.let { "${it.value.formatClipZeros()} ${it.unit.displayText()}" }
-            ?: stringResource(Res.string.not_available_short)
-
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium)
-        Text(text = text, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-private fun NutritionLabelUnit.displayText(): String =
-    when (this) {
-        NutritionLabelUnit.Kcal -> stringResource(Res.string.unit_kcal)
-        NutritionLabelUnit.Kj -> stringResource(Res.string.unit_kilojoules)
-        NutritionLabelUnit.Gram -> stringResource(Res.string.unit_gram_short)
-    }
-
-private fun ProductFormState.applyNutritionLabelScan(result: NutritionLabelScanResult) {
-    if (!result.hasPer100Basis) {
-        return
-    }
-
-    applyScannedValue(proteins, result.proteins)
-    applyScannedValue(fats, result.fats)
-    applyScannedValue(carbohydrates, result.carbohydrates)
-
-    val energyField = result.energy
-    if (energy.value == null && energyField != null && energyField.isPer100Basis) {
-        val kcal =
-            when (energyField.unit) {
-                NutritionLabelUnit.Kcal -> energyField.value.toDouble()
-                NutritionLabelUnit.Kj -> energyField.value.toDouble() / 4.184
-                NutritionLabelUnit.Gram -> return
-            }
-        val value = energyFormatter.fromKcal(kcal).toFloat().formatClipZeros()
-        energy.textFieldState.setTextAndPlaceCursorAtEnd(value)
-        autoCalculateEnergy = false
-    }
-}
-
-private fun applyScannedValue(
-    target: FormField<Float?, ProductFormFieldError>,
-    field: NutritionLabelField?,
-) {
-    if (target.value == null && field != null && field.isPer100Basis) {
-        target.textFieldState.setTextAndPlaceCursorAtEnd(field.value.formatClipZeros())
     }
 }
 

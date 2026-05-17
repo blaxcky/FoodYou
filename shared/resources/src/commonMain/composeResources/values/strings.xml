@@ -139,8 +139,6 @@
 
     <string name="action_search">Search</string>
     <string name="action_scan_barcode">Scan barcode</string>
-    <string name="action_scan_nutrition_label">Scan label</string>
-    <string name="action_apply_scan">Apply scan</string>
     <string name="action_add">Add</string>
     <string name="action_go_back">Go back</string>
     <string name="action_tap_to_allow_access">Tap to allow access</string>
@@ -190,15 +188,6 @@
     <string name="neutral_barcode_scanner_camera_request">Allow access to your camera to scan barcodes</string>
     <string name="neutral_barcode_scanner_camera_request_rationale">You must allow access in order to scan barcodes</string>
     <string name="neutral_barcode_scanner_camera_request_redirect_to_settings">Camera permission is required to scan barcodes. Please allow it in the app settings.</string>
-    <string name="neutral_nutrition_label_camera_request">Allow access to your camera to scan nutrition labels</string>
-    <string name="neutral_nutrition_label_camera_starting">Starting camera...</string>
-    <string name="neutral_nutrition_label_camera_failed">Could not start the camera. Close this screen or try again.</string>
-    <string name="neutral_take_nutrition_label_photo">Take a clear photo of the nutrition label.</string>
-    <string name="neutral_nutrition_label_scan_failed">Text recognition failed. Try another photo.</string>
-    <string name="neutral_nutrition_label_scan_empty">No stable value yet</string>
-    <string name="neutral_nutrition_label_scan_candidate">Recognized...</string>
-    <string name="neutral_nutrition_label_scan_stable">Stable</string>
-    <string name="neutral_no_nutrition_label_values_found">No supported nutrition values were found.</string>
     <string name="neutral_no_food_found">No food found</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d calorie left</item>
@@ -533,8 +522,6 @@
 
     <string name="headline_add_more_details">Add more details</string>
     <string name="description_add_more_details_product_form">Filling in proteins, fats, carbohydrates, and energy values helps provide more accurate nutritional insights</string>
-    <string name="headline_review_nutrition_label_scan">Review label scan</string>
-    <string name="description_nutrition_label_scan_uncertain">No clear values per 100 g/ml column was found. These values cannot be applied automatically.</string>
 
     <string name="headline_favorite">Favorite</string>
 

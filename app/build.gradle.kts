@@ -117,7 +117,6 @@ kotlin {
             implementation(libs.androidx.testCore.ktx)
             implementation(libs.androidx.testRunner)
             implementation(libs.androidx.testExt.junit)
-            implementation(libs.mlkit.text.recognition)
         }
 
         androidUnitTest.dependencies {

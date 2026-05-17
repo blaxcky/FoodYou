@@ -42,7 +42,6 @@ kotlin {
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.view)
-            implementation(libs.mlkit.text.recognition)
 
             // Zxing
             implementation(libs.zxing.android.embedded)
