@@ -272,7 +272,7 @@ class NutritionLabelParserTest {
     }
 
     @Test
-    fun geometryFallbackKeepsAmbiguousIntegerMacroValuesUncertain() {
+    fun geometryFallbackRecoversLikelyMissingDecimalMacroValues() {
         val result =
             NutritionLabelParser.parse(
                 listOf(
@@ -283,8 +283,10 @@ class NutritionLabelParserTest {
                 )
             )
 
-        assertFalse(result.hasPer100Basis)
-        assertTrue(result.fields.isEmpty())
+        assertTrue(result.hasPer100Basis)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
     }
 
     @Test
@@ -372,7 +374,48 @@ class NutritionLabelParserTest {
     }
 
     @Test
-    fun treatsLikelyMissingDecimalMacroOcrValuesAsUncertain() {
+    fun parsesNutellaPhotoMlKitOcrOutput() {
+        val result =
+            NutritionLabelParser.parse(
+                listOf(
+                    line(0, "a SOIA) Nanill. SE) Ingredienser: aringverdi /Ravintoarvot /", "a" at 10),
+                    line(40, "SIWIOKSPÜLVER8 %, etreducerad Nähnerte", "SIWIOKSPÜLVER8" at 10),
+                    line(80, "SOR VƏnlli (n) lngredienser: Sukker,", "SOR" at 10),
+                    line(120, "palmuöljy,", "palmuöljy" at 10),
+                    line(160, "Naiesainen kaalao 7,49%,", "Naiesainen" at 10),
+                    line(200, "HASELNÜsSE Fedt/ Fet/ Rasva", "HASELNÜsSE" at 10),
+                    line(240, "heraf maetede fedtsrer/varav màta fet /", "heraf" at 10),
+                    line(280, "Kulhydrat / Kolbydrat /Kartbohydrat/", "Kulhydrat" at 10),
+                    line(320, "Per/je Perponton/pos", "Per/je" at 210),
+                    line(360, "k/ 2252/", "k/" at 210, "2252/" at 245),
+                    line(400, "kcal) 539", "kcal)" at 210, "539" at 270),
+                    line(440, "(o 30,9", "(o" at 210, "30,9" at 245),
+                    line(480, "(o) 10,6", "(o)" at 210, "10,6" at 250),
+                    line(520, "(d)", "(d)" at 210),
+                    line(560, "57,5", "57,5" at 210),
+                    line(600, "hera sukkerater /varav Socterate/o 56.3", "hera" at 10, "56.3" at 300),
+                    line(640, "Protein / Proteini /Eweiß", "Protein" at 10),
+                    line(680, "Sl/ Suola / Salz", "Sl/" at 10),
+                    line(720, "336/", "336/" at 370),
+                    line(760, "80", "80" at 370),
+                    line(800, "46", "46" at 370),
+                    line(840, "1,6", "1,6" at 370),
+                    line(880, "8,6", "8,6" at 370),
+                    line(920, "(d 63 09", "(d" at 210, "63" at 245, "09" at 280),
+                    line(960, "(g 0,107 0016", "(g" at 210, "0,107" at 245, "0016" at 300),
+                )
+            )
+
+        assertTrue(result.hasPer100Basis)
+        assertEquals(539f, result.energy?.value)
+        assertEquals(NutritionLabelUnit.Kcal, result.energy?.unit)
+        assertEquals(10.6f, result.fats?.value)
+        assertEquals(57.5f, result.carbohydrates?.value)
+        assertEquals(6.3f, result.proteins?.value)
+    }
+
+    @Test
+    fun recoversLikelyMissingDecimalMacroOcrValues() {
         val result =
             NutritionLabelParser.parse(
                 listOf(
@@ -389,13 +432,13 @@ class NutritionLabelParserTest {
                 )
             )
 
-        assertNull(result.fats)
-        assertNull(result.carbohydrates)
-        assertNull(result.proteins)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
     }
 
     @Test
-    fun treatsSeparateUnitIntegerMacroOcrValuesAsUncertain() {
+    fun recoversSeparateUnitIntegerMacroOcrValues() {
         val result =
             NutritionLabelParser.parse(
                 listOf(
@@ -440,9 +483,9 @@ class NutritionLabelParserTest {
                 )
             )
 
-        assertNull(result.fats)
-        assertNull(result.carbohydrates)
-        assertNull(result.proteins)
+        assertEquals(3.6f, result.fats?.value)
+        assertEquals(3.9f, result.carbohydrates?.value)
+        assertEquals(4.4f, result.proteins?.value)
     }
 
     @Test
@@ -508,7 +551,237 @@ class NutritionLabelParserTest {
         assertNull(result.fats)
         assertNull(result.carbohydrates)
     }
+
+    @Test
+    fun parsesReferenceOcrCorpusFixtures() {
+        referenceOcrFixtures.forEach { fixture ->
+            assertFixture(fixture.name, fixture.lines, fixture.expected)
+        }
+    }
+
+    @Test
+    fun parsesDeterministicOcrCorpusMutations() {
+        referenceOcrFixtures.flatMap { fixture ->
+            fixture.mutations().map { mutation ->
+                "${fixture.name}/${mutation.name}" to fixture.copy(lines = mutation.apply(fixture.lines))
+            }
+        }.forEach { (name, fixture) ->
+            assertFixture(name, fixture.lines, fixture.expected)
+        }
+    }
 }
+
+private fun assertFixture(
+    name: String,
+    lines: List<RecognizedTextLine>,
+    expected: ExpectedNutritionValues,
+) {
+    val result = NutritionLabelParser.parse(lines)
+    try {
+        assertTrue(result.hasPer100Basis)
+        assertEquals(expected.energyKcal, result.energy?.value)
+        assertEquals(NutritionLabelUnit.Kcal, result.energy?.unit)
+        assertEquals(expected.fats, result.fats?.value)
+        assertEquals(expected.carbohydrates, result.carbohydrates?.value)
+        assertEquals(expected.proteins, result.proteins?.value)
+    } catch (error: AssertionError) {
+        val dump =
+            buildString {
+                appendLine("Fixture: $name")
+                appendLine("OCR lines:")
+                lines.forEach { line ->
+                    appendLine(
+                        "  [${line.bounds.left},${line.bounds.top},${line.bounds.right},${line.bounds.bottom}] ${line.text}"
+                    )
+                    line.elements.forEach { element ->
+                        appendLine(
+                            "    [${element.bounds.left},${element.bounds.top},${element.bounds.right},${element.bounds.bottom}] ${element.text}"
+                        )
+                    }
+                }
+                appendLine("Parsed: $result")
+            }
+        throw AssertionError(dump, error)
+    }
+}
+
+private data class OcrFixture(
+    val name: String,
+    val lines: List<RecognizedTextLine>,
+    val expected: ExpectedNutritionValues,
+)
+
+private data class ExpectedNutritionValues(
+    val energyKcal: Float,
+    val fats: Float,
+    val carbohydrates: Float,
+    val proteins: Float,
+)
+
+private data class OcrMutation(
+    val name: String,
+    val apply: (List<RecognizedTextLine>) -> List<RecognizedTextLine>,
+)
+
+private val referenceOcrFixtures =
+    listOf(
+        OcrFixture(
+            name = "naehrstoffe.jpg",
+            lines = naehrstoffeMlKitFixture(),
+            expected =
+                ExpectedNutritionValues(
+                    energyKcal = 66f,
+                    fats = 3.6f,
+                    carbohydrates = 3.9f,
+                    proteins = 4.4f,
+                ),
+        ),
+        OcrFixture(
+            name = "nutella.jpg",
+            lines = nutellaMlKitFixture(),
+            expected =
+                ExpectedNutritionValues(
+                    energyKcal = 539f,
+                    fats = 10.6f,
+                    carbohydrates = 57.5f,
+                    proteins = 6.3f,
+                ),
+        ),
+    )
+
+private fun OcrFixture.mutations(): List<OcrMutation> =
+    listOf(
+        OcrMutation("decimal-comma-dropped") { lines ->
+            lines.replaceText("3,6" to "36", "3,9" to "39", "4,4" to "44", "6,3" to "63")
+        },
+        OcrMutation("decimal-comma-dropped-with-extra-tail") { lines ->
+            lines.replaceText("3,6" to "369", "3,9" to "399", "4,4" to "449", "6,3" to "639")
+        },
+        OcrMutation("gram-read-as-o") { lines ->
+            lines.mapElements(
+                predicate = { line, element -> line.bounds.top > 0 && element.text == "g" },
+                transform = { "o" },
+            )
+        },
+        OcrMutation("gram-parenthesis-read-as-o") { lines ->
+            lines.replaceText("(g)" to "(o)", "(d)" to "(o)", "(o" to "(o)")
+        },
+        OcrMutation("damaged-kcal") { lines ->
+            lines.replaceText("kcal" to "ral", "kcal)" to "ral)")
+        },
+        OcrMutation("protein-label-variants") { lines ->
+            lines.replaceText(
+                "Eiweiss" to "Eweiß",
+                "Eveis" to "Proteini",
+                "Protein" to "Proteini",
+            )
+        },
+        OcrMutation("fat-label-variants") { lines ->
+            lines.replaceText("Fett" to "Fedt", "Fat" to "Fet")
+        },
+        OcrMutation("carbohydrate-label-variants") { lines ->
+            lines.replaceText("Kohlenhydrate" to "Kulhydrat", "Carbohydrates" to "Kolbydrat")
+        },
+        OcrMutation("swapped-serving-and-ri-noise") { lines ->
+            lines.swapElements("44", "12,4").swapElements("40", "2,5")
+        },
+        OcrMutation("split-table-keeps-value-order") { lines ->
+            lines.sortedWith(compareBy<RecognizedTextLine> { if (it.text.any(Char::isDigit)) 1 else 0 }.thenBy { it.bounds.top })
+        },
+    )
+
+private fun naehrstoffeMlKitFixture(): List<RecognizedTextLine> =
+    listOf(
+        line(0, "Durdhschnittliche Naerte /", "Durdhschnittliche" at 10),
+        line(40, "Bennwert /Energia /", "Bennwert" at 10),
+        line(80, "Fett/Zsir / Maškobe", "Fett" at 10),
+        line(120, "Kohlenhydrate / Szénhidrät /", "Kohlenhydrate" at 10),
+        line(160, "Eveis / Fehérje/ Beljakovine", "Eveis" at 10),
+        line(200, "Na 100g", "Na" at 210, "100g" at 250),
+        line(240, "TECHHIK", "TECHHIK" at 210),
+        line(280, "274KJ", "274KJ" at 210),
+        line(320, "66 ral", "66" at 210, "ral" at 250),
+        line(360, "369", "369" at 210),
+        line(400, "23g", "23g" at 210),
+        line(440, "399", "399" at 210),
+        line(480, "39g", "39g" at 210),
+        line(520, "44g", "44g" at 210),
+        line(560, "0,139", "0,139" at 210),
+        line(600, "635 KJ", "635" at 370, "KJ" at 410),
+    )
+
+private fun nutellaMlKitFixture(): List<RecognizedTextLine> =
+    listOf(
+        line(0, "a SOIA) Nanill. SE) Ingredienser: aringverdi /Ravintoarvot /", "a" at 10),
+        line(40, "SIWIOKSPÜLVER8 %, etreducerad Nähnerte", "SIWIOKSPÜLVER8" at 10),
+        line(80, "SOR VƏnlli (n) lngredienser: Sukker,", "SOR" at 10),
+        line(120, "palmuöljy,", "palmuöljy" at 10),
+        line(160, "Naiesainen kaalao 7,49%,", "Naiesainen" at 10),
+        line(200, "HASELNÜsSE Fedt/ Fet/ Rasva", "HASELNÜsSE" at 10),
+        line(240, "heraf maetede fedtsrer/varav màta fet /", "heraf" at 10),
+        line(280, "Kulhydrat / Kolbydrat /Kartbohydrat/", "Kulhydrat" at 10),
+        line(320, "Per/je Perponton/pos", "Per/je" at 210),
+        line(360, "k/ 2252/", "k/" at 210, "2252/" at 245),
+        line(400, "kcal) 539", "kcal)" at 210, "539" at 270),
+        line(440, "(o 30,9", "(o" at 210, "30,9" at 245),
+        line(480, "(o) 10,6", "(o)" at 210, "10,6" at 250),
+        line(520, "(d)", "(d)" at 210),
+        line(560, "57,5", "57,5" at 210),
+        line(600, "hera sukkerater /varav Socterate/o 56.3", "hera" at 10, "56.3" at 300),
+        line(640, "Protein / Proteini /Eweiß", "Protein" at 10),
+        line(680, "Sl/ Suola / Salz", "Sl/" at 10),
+        line(720, "336/", "336/" at 370),
+        line(760, "80", "80" at 370),
+        line(800, "46", "46" at 370),
+        line(840, "1,6", "1,6" at 370),
+        line(880, "8,6", "8,6" at 370),
+        line(920, "(d 63 09", "(d" at 210, "63" at 245, "09" at 280),
+        line(960, "(g 0,107 0016", "(g" at 210, "0,107" at 245, "0016" at 300),
+    )
+
+private fun List<RecognizedTextLine>.replaceText(
+    vararg replacements: Pair<String, String>
+): List<RecognizedTextLine> =
+    map { line ->
+        val elements =
+            line.elements.map { element ->
+                element.copy(text = element.text.replaceAll(replacements))
+            }
+        line.copy(
+            text = line.text.replaceAll(replacements),
+            elements = elements,
+        )
+    }
+
+private fun String.replaceAll(replacements: Array<out Pair<String, String>>): String =
+    replacements.fold(this) { text, replacement ->
+        text.replace(replacement.first, replacement.second)
+    }
+
+private fun List<RecognizedTextLine>.mapElements(
+    predicate: (RecognizedTextLine, RecognizedTextElement) -> Boolean,
+    transform: (String) -> String,
+): List<RecognizedTextLine> =
+    map { line ->
+        val elements =
+            line.elements.map { element ->
+                if (predicate(line, element)) {
+                    element.copy(text = transform(element.text))
+                } else {
+                    element
+                }
+            }
+        line.copy(text = elements.joinToString(" ") { it.text }, elements = elements)
+    }
+
+private fun List<RecognizedTextLine>.swapElements(
+    first: String,
+    second: String,
+): List<RecognizedTextLine> =
+    mapElements(
+        predicate = { _, element -> element.text == first || element.text == second },
+        transform = { text -> if (text == first) second else first },
+    )
 
 private fun nutritionTable(): List<RecognizedTextLine> =
     listOf(

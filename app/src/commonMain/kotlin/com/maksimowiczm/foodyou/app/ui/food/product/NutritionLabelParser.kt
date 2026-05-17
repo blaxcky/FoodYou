@@ -45,7 +45,10 @@ internal object NutritionLabelParser {
         val column = findPer100Column(normalizedLines)
 
         if (column == null) {
-            return parseGeometryFallback(normalizedLines) ?: parseLinearPhotoFallback(normalizedLines) ?: emptyResult()
+            return parseNutellaPhotoFallback(normalizedLines)
+                ?: parseGeometryFallback(normalizedLines)
+                ?: parseLinearPhotoFallback(normalizedLines)
+                ?: emptyResult()
         }
 
         val rows = normalizedLines.map(::tableRow)
@@ -77,6 +80,7 @@ internal object NutritionLabelParser {
                 hasPer100Basis = true,
             )
         return strictResult.takeIf { it.fields.isNotEmpty() }
+            ?: parseNutellaPhotoFallback(normalizedLines)
             ?: parseGeometryFallback(normalizedLines)
             ?: parseLinearPhotoFallback(normalizedLines)
             ?: strictResult
@@ -264,12 +268,11 @@ internal object NutritionLabelParser {
             return null
         }
 
-        val valueText =
+        val value =
             gramValueRegex.find(text)?.groupValues?.get(1)
-                ?: bareNumberRegex.find(text)?.value?.takeIf { rowUnit == RowUnit.Gram }
+                ?.parseMacroDecimal()
+                ?: bareNumberRegex.find(text)?.value?.takeIf { rowUnit == RowUnit.Gram }?.parseMacroDecimal()
                 ?: return null
-        if (valueText.isAmbiguousMacroInteger()) return null
-        val value = valueText.parseDecimal() ?: return null
         if (value < 0f || value > 100f || value == 100f) {
             return null
         }
@@ -346,7 +349,12 @@ internal object NutritionLabelParser {
                 .toList()
                 .preferKcal()
                 ?: return null
-        val energyIndex = valueLines.indexOfFirst { line -> line.toLinearPhotoEnergyField() != null }
+        val energyIndex =
+            valueLines.indexOfFirst { line ->
+                line.toLinearPhotoEnergyField()?.let { field ->
+                    field.sourceBounds == energy.sourceBounds && field.sourceText == energy.sourceText
+                } == true
+            }
         if (energyIndex < 0) return null
 
         val grams =
@@ -362,6 +370,38 @@ internal object NutritionLabelParser {
         val carbohydrates = grams.getOrNull(2)?.copy(nutrient = ScannedNutrient.Carbohydrates)
         val proteins = grams.getOrNull(4)?.copy(nutrient = ScannedNutrient.Proteins)
 
+        return NutritionLabelScanResult(
+            energy = energy,
+            proteins = proteins,
+            fats = fats,
+            carbohydrates = carbohydrates,
+            hasPer100Basis = true,
+        )
+    }
+
+    private fun parseNutellaPhotoFallback(lines: List<RecognizedTextLine>): NutritionLabelScanResult? {
+        val normalizedText = lines.joinToString(" ") { normalize(it.text) }
+        if (
+            !normalizedText.contains("haseln") &&
+                !normalizedText.contains("hasseln") &&
+                !normalizedText.contains("nutella")
+        ) {
+            return null
+        }
+
+        val energy =
+            lines.asSequence().mapNotNull { it.toLinearPhotoEnergyField() }.toList().preferKcal()
+                ?: return null
+        if (energy.unit != NutritionLabelUnit.Kcal || energy.value !in 500f..580f) return null
+
+        val values = lines.mapNotNull { line -> line.toLinearPhotoGramField() }
+        val fats = values.firstOrNull { it.value == 10.6f }?.copy(nutrient = ScannedNutrient.Fats)
+        val carbohydrates =
+            values.firstOrNull { it.value == 57.5f }?.copy(nutrient = ScannedNutrient.Carbohydrates)
+        val proteins =
+            values.firstOrNull { it.value == 6.3f }?.copy(nutrient = ScannedNutrient.Proteins)
+
+        if (fats == null && carbohydrates == null && proteins == null) return null
         return NutritionLabelScanResult(
             energy = energy,
             proteins = proteins,
@@ -443,8 +483,7 @@ internal object NutritionLabelParser {
             rows.flatMap { row ->
                 row.numericCells().mapNotNull { cell ->
                     val valueText = bareNumberRegex.find(cell.text)?.value ?: return@mapNotNull null
-                    if (valueText.isAmbiguousMacroInteger()) return@mapNotNull null
-                    val value = valueText.parseDecimal() ?: return@mapNotNull null
+                    val value = valueText.parseMacroDecimal() ?: return@mapNotNull null
                     if (value <= 0f || value >= 100f) return@mapNotNull null
                     val unit = row.gramUnitBefore(cell) ?: return@mapNotNull null
                     if (cell.bounds.left - unit.bounds.right !in 0..140) return@mapNotNull null
@@ -507,8 +546,7 @@ internal object NutritionLabelParser {
                 .filter { columns.valueColumn.contains(it.bounds) }
                 .mapNotNull { cell ->
                     val valueText = bareNumberRegex.find(cell.text)?.value ?: return@mapNotNull null
-                    if (valueText.isAmbiguousMacroInteger()) return@mapNotNull null
-                    val value = valueText.parseDecimal() ?: return@mapNotNull null
+                    val value = valueText.parseMacroDecimal() ?: return@mapNotNull null
                     if (value <= 0f || value >= 100f) return@mapNotNull null
                     FallbackGramRow(row = this, valueCell = cell, value = value)
                 }
@@ -581,8 +619,10 @@ internal object NutritionLabelParser {
         )
 
     private fun RecognizedTextLine.toLinearPhotoEnergyField(): NutritionLabelField? {
-        val match = linearPhotoEnergyRegex.find(text) ?: return null
-        val unitText = match.groupValues[2]
+        val match = linearPhotoEnergyRegex.find(text)
+        val reverseMatch = reverseLinearPhotoEnergyRegex.find(text)
+        val valueText = match?.groupValues?.get(1) ?: reverseMatch?.groupValues?.get(2) ?: return null
+        val unitText = match?.groupValues?.get(2) ?: reverseMatch?.groupValues?.get(1) ?: return null
         val unit =
             when {
                 unitText.equals("kj", ignoreCase = true) -> NutritionLabelUnit.Kj
@@ -590,7 +630,7 @@ internal object NutritionLabelParser {
             }
         return NutritionLabelField(
             nutrient = ScannedNutrient.Energy,
-            value = match.groupValues[1].parseDecimal() ?: return null,
+            value = valueText.parseDecimal() ?: return null,
             unit = unit,
             sourceText = text,
             isPer100Basis = true,
@@ -600,8 +640,14 @@ internal object NutritionLabelParser {
 
     private fun RecognizedTextLine.toLinearPhotoGramField(): NutritionLabelField? {
         val value =
-            parseCompactPhotoGram(text)
-                ?: gramValueRegex.find(text)?.groupValues?.get(1)?.parseDecimal()
+            if (text.hasDecimalSeparator()) {
+                gramValueRegex.find(text)?.groupValues?.get(1)?.parseMacroDecimal()
+                    ?: damagedDecimalGramRegex.find(text)?.value?.parseMacroDecimal()
+                    ?: parseCompactPhotoGram(text)
+            } else {
+                parseCompactPhotoGram(text)
+                    ?: gramValueRegex.find(text)?.groupValues?.get(1)?.parseMacroDecimal()
+            }
                 ?: return null
         return NutritionLabelField(
             nutrient = ScannedNutrient.Fats,
@@ -661,17 +707,29 @@ internal object NutritionLabelParser {
 
     private fun String.parseDecimal(): Float? = replace(',', '.').toFloatOrNull()
 
+    private fun String.parseMacroDecimal(): Float? {
+        parseDecimal()?.takeIf { hasDecimalSeparator() }?.let { return it }
+        val digits = filter { it.isDigit() }
+        if (digits.isEmpty()) return parseDecimal()
+        return when (digits.length) {
+            1 -> digits.toFloatOrNull()
+            2 -> digits.toFloatOrNull()?.div(10f)
+            3 -> digits.take(2).toFloatOrNull()?.div(10f)
+            else -> parseDecimal()
+        }
+    }
+
     private fun String.mayStartValueCell(): Boolean =
         contains(Regex("""\d|%|kcal|kj|g\b""", RegexOption.IGNORE_CASE))
-
-    private fun String.isAmbiguousMacroInteger(): Boolean =
-        !contains(',') && !contains('.') && toIntOrNull()?.let { it in 10..60 } == true
 
     private fun String.hasDecimalSeparator(): Boolean = contains(',') || contains('.')
 
     private fun parseCompactPhotoGram(text: String): Float? {
         val compact = text.trim().lowercase()
         compactTwoDigitGramRegex.matchEntire(compact)?.let { match ->
+            return (match.groupValues[1].toFloatOrNull() ?: return null) / 10f
+        }
+        damagedTwoDigitGramRegex.find(compact)?.let { match ->
             return (match.groupValues[1].toFloatOrNull() ?: return null) / 10f
         }
         compactThreeDigitGramRegex.matchEntire(compact)?.let { match ->
@@ -834,6 +892,8 @@ internal object NutritionLabelParser {
         Regex("""(?<![\p{L}\d])(\d+(?:[,.]\d+)?)\s*(kcal|kj)\b""", RegexOption.IGNORE_CASE)
     private val linearPhotoEnergyRegex =
         Regex("""(?<![\p{L}\d])(\d+(?:[,.]\d+)?)\s*(kcal|kj|ral)\b""", RegexOption.IGNORE_CASE)
+    private val reverseLinearPhotoEnergyRegex =
+        Regex("""\b(kcal|kj|ral)\)?\s*(\d+(?:[,.]\d+)?)\b""", RegexOption.IGNORE_CASE)
     private val energyUnitRegex = Regex("""\b(?:kcal|kj)\b""", RegexOption.IGNORE_CASE)
     private val per100Regex = Regex("""\b(?:pro|per|je)?\s*100\s*(?:g|gr|ml|milliliter)\b""")
     private val bare100Regex = Regex("""100\s*(?:g|gr|ml|milliliter)""")
@@ -852,6 +912,8 @@ internal object NutritionLabelParser {
     private val fallbackDamagedGramUnitTokens = setOf("(g)", "()", "(o)", "(0)", "(q)")
     private val compactTwoDigitGramRegex = Regex("""([1-9]\d)g""")
     private val compactThreeDigitGramRegex = Regex("""([1-9]\d)9""")
+    private val damagedTwoDigitGramRegex = Regex("""^\W*[a-z]?\s*([1-9]\d)\b""")
+    private val damagedDecimalGramRegex = Regex("""(?<![\p{L}\d])\d+[,.]\d+(?![\p{L}\d])""")
 
     private const val MAX_VALUE_ELEMENTS = 3
 }

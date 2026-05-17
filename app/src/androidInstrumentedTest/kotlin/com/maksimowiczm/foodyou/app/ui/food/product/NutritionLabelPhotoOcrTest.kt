@@ -15,9 +15,36 @@ import org.junit.Test
 class NutritionLabelPhotoOcrTest {
     @Test
     fun parsesNutritionValuesFromReferencePhotoRepeatedly() {
+        assertReferencePhotoRepeatedly(
+            assetPath = "nutrition-labels/naehrstoffe.jpg",
+            expectedEnergyKcal = 66f,
+            expectedFats = 3.6f,
+            expectedCarbohydrates = 3.9f,
+            expectedProteins = 4.4f,
+        )
+    }
+
+    @Test
+    fun parsesNutellaNutritionValuesFromReferencePhotoRepeatedly() {
+        assertReferencePhotoRepeatedly(
+            assetPath = "nutrition-labels/nutella.jpg",
+            expectedEnergyKcal = 539f,
+            expectedFats = 10.6f,
+            expectedCarbohydrates = 57.5f,
+            expectedProteins = 6.3f,
+        )
+    }
+
+    private fun assertReferencePhotoRepeatedly(
+        assetPath: String,
+        expectedEnergyKcal: Float,
+        expectedFats: Float,
+        expectedCarbohydrates: Float,
+        expectedProteins: Float,
+    ) {
         val context = InstrumentationRegistry.getInstrumentation().context
         val bitmap =
-            context.assets.open("nutrition-labels/naehrstoffe.jpg").use { input ->
+            context.assets.open(assetPath).use { input ->
                 BitmapFactory.decodeStream(input)
             }
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -28,21 +55,21 @@ class NutritionLabelPhotoOcrTest {
                 val text = Tasks.await(recognizer.process(image))
                 val lines = text.toRecognizedTextLines()
                 val result = NutritionLabelParser.parse(lines)
-                val message = "run ${index + 1}; lines=${lines.joinToString { it.text }}"
+                val message = "$assetPath run ${index + 1}; lines=${lines.joinToString { it.text }}"
 
-                assertEquals("energy value at $message", 66f, result.energy?.value)
+                assertEquals("energy value at $message", expectedEnergyKcal, result.energy?.value)
                 assertEquals(
                     "energy unit at $message",
                     NutritionLabelUnit.Kcal,
                     result.energy?.unit,
                 )
-                assertEquals("fats at $message", 3.6f, result.fats?.value)
+                assertEquals("fats at $message", expectedFats, result.fats?.value)
                 assertEquals(
                     "carbohydrates at $message",
-                    3.9f,
+                    expectedCarbohydrates,
                     result.carbohydrates?.value,
                 )
-                assertEquals("proteins at $message", 4.4f, result.proteins?.value)
+                assertEquals("proteins at $message", expectedProteins, result.proteins?.value)
             }
         } finally {
             recognizer.close()
