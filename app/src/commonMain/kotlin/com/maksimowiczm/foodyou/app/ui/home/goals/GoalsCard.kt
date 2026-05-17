@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,8 +54,10 @@ import foodyou.app.generated.resources.goal_left
 import foodyou.app.generated.resources.goal_protein
 import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
+import foodyou.app.generated.resources.inter
 import foodyou.app.generated.resources.unit_gram_short
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -71,6 +74,9 @@ private val CarbsTrackColor = Color(0xFFFFF3DC)
 private val CarbsColor = Color(0xFFF4E6C9)
 private val ProteinTrackColor = Color(0xFFE3F7E9)
 private val ProteinColor = Color(0xFFCFE6CD)
+
+@Composable
+private fun interNumberFontFamily(): FontFamily = FontFamily(Font(Res.font.inter))
 
 @Composable
 internal fun GoalsCard(
@@ -351,6 +357,8 @@ private fun SideMetric(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     muted: Boolean = false,
 ) {
+    val numberFontFamily = interNumberFontFamily()
+
     Column(
         modifier = modifier,
         horizontalAlignment = horizontalAlignment,
@@ -363,11 +371,13 @@ private fun SideMetric(
             style =
                 if (muted) {
                     MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = numberFontFamily,
                         fontSize = 13.sp,
                         lineHeight = 16.sp,
                     )
                 } else {
                     MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = numberFontFamily,
                         fontSize = 22.sp,
                         lineHeight = 26.sp,
                     )
@@ -392,13 +402,13 @@ private fun SideMetric(
             textAlign = TextAlign.Center,
         )
         if (supportingValue != null) {
-            Spacer(Modifier.height(6.dp))
             Text(
                 text = supportingValue,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = numberFontFamily,
                         fontSize = 13.sp,
                         lineHeight = 16.sp,
                     ),
@@ -436,6 +446,8 @@ private fun GaugeMetric(
     diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val numberFontFamily = interNumberFontFamily()
+
     Box(
         modifier = modifier.size(width = diameter, height = diameter - 7.dp),
         contentAlignment = Alignment.TopCenter,
@@ -455,8 +467,9 @@ private fun GaugeMetric(
                 color = valueColor,
                 style =
                     MaterialTheme.typography.headlineLarge.copy(
-                        fontSize = 36.sp,
-                        lineHeight = 40.sp,
+                        fontFamily = numberFontFamily,
+                        fontSize = 30.sp,
+                        lineHeight = 34.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
@@ -532,6 +545,7 @@ private fun MacroGoal(
     modifier: Modifier = Modifier,
 ) {
     val gramShort = stringResource(Res.string.unit_gram_short)
+    val numberFontFamily = interNumberFontFamily()
     val valueColor = if (goal > 0 && value > goal) GoalsErrorColor else GoalsTextColor
 
     Column(
@@ -565,6 +579,7 @@ private fun MacroGoal(
             color = valueColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = numberFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 17.sp,
                 ),
