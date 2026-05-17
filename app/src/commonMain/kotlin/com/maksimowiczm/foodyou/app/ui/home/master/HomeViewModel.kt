@@ -17,9 +17,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 
 internal data class HomeActivitySyncState(val isStale: Boolean, val isSyncing: Boolean)
+
+private const val HEALTH_CONNECT_STEPS_SYNC_LOOKBACK_DAYS = 30
 
 internal class HomeViewModel(
     private val settingsRepository: UserPreferencesRepository<Settings>,
@@ -80,7 +87,7 @@ internal class HomeViewModel(
         viewModelScope.launch {
             isSyncing.value = true
             try {
-                when (healthConnectActivitySync.syncSteps(listOf(date))) {
+                when (healthConnectActivitySync.syncSteps(healthConnectStepsSyncDates(date))) {
                     HealthConnectSyncResult.MissingPermission,
                     HealthConnectSyncResult.Unavailable,
                     HealthConnectSyncResult.UpdateRequired,
@@ -97,4 +104,23 @@ internal class HomeViewModel(
             }
         }
     }
+}
+
+internal fun healthConnectStepsSyncDates(
+    selectedDate: LocalDate,
+    today: LocalDate =
+        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+    lookbackDays: Int = HEALTH_CONNECT_STEPS_SYNC_LOOKBACK_DAYS,
+): List<LocalDate> {
+    val start = today.minus(lookbackDays, DateTimeUnit.DAY)
+    val dates = mutableListOf<LocalDate>()
+    var date = start
+    while (date <= today) {
+        dates += date
+        date = date.plus(1, DateTimeUnit.DAY)
+    }
+    if (selectedDate !in dates) {
+        dates += selectedDate
+    }
+    return dates.distinct().sorted()
 }

@@ -238,6 +238,7 @@ private fun CaloriesOverview(
         val phoneWidth = maxWidth < 430.dp
         val caloriesHeight = if (phoneWidth) 164.dp else 230.dp
         val sideMetricTopPadding = if (phoneWidth) 39.dp else 50.dp
+        val secondaryMetricTopPadding = 18.dp
 
         if (compact) {
             Column(
@@ -269,6 +270,7 @@ private fun CaloriesOverview(
                         supportingLabel =
                             stringResource(Res.string.goal_reached_percentage, reached)
                                 .substringAfter("% "),
+                        supportingTopPadding = secondaryMetricTopPadding,
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     )
@@ -304,6 +306,7 @@ private fun CaloriesOverview(
                     supportingLabel =
                         stringResource(Res.string.goal_reached_percentage, reached)
                             .substringAfter("% "),
+                    supportingTopPadding = secondaryMetricTopPadding,
                     modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
@@ -319,7 +322,7 @@ private fun CaloriesOverview(
                 Column(
                     modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(secondaryMetricTopPadding + 3.dp),
                 ) {
                     SideMetric(
                         value =
@@ -354,6 +357,7 @@ private fun SideMetric(
     modifier: Modifier = Modifier,
     supportingValue: String? = null,
     supportingLabel: String? = null,
+    supportingTopPadding: Dp = 0.dp,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     muted: Boolean = false,
 ) {
@@ -404,7 +408,7 @@ private fun SideMetric(
         if (supportingValue != null) {
             Text(
                 text = supportingValue,
-                modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = supportingTopPadding),
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelMedium.copy(
