@@ -420,6 +420,13 @@
 
     <string name="headline_quick_add">Quick add</string>
     <string name="description_quick_add">Quick Add lets you log without searching for specific foods. It's a fast way to record meals when you already know the calorie count or want a simple estimate.</string>
+    <string name="headline_quick_add_csv">CSV import</string>
+    <string name="description_quick_add_csv">Paste header and one data row: name,energy,proteins,carbohydrates,fats</string>
+    <string name="action_apply">Apply</string>
+    <string name="error_quick_add_csv_empty">CSV is empty</string>
+    <string name="error_quick_add_csv_header">CSV header must be: name,energy,proteins,carbohydrates,fats</string>
+    <string name="error_quick_add_csv_data_row_count">CSV must contain exactly one header row and one data row</string>
+    <string name="error_quick_add_csv_empty_name">Name must not be empty</string>
 
     <string name="action_open_poll">Open poll</string>
 

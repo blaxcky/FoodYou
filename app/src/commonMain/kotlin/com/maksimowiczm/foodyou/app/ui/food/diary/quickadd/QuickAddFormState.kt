@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.quickadd
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.*
@@ -9,12 +10,14 @@ import com.maksimowiczm.foodyou.app.ui.common.form.nonBlankStringValidator
 import com.maksimowiczm.foodyou.app.ui.common.form.nullableDoubleParser
 import com.maksimowiczm.foodyou.app.ui.common.form.rememberFormField
 import com.maksimowiczm.foodyou.app.ui.common.form.stringParser
+import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.food.NutrientsHelper
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
+import org.koin.compose.koinInject
 import org.jetbrains.compose.resources.stringResource
 
 internal enum class QuickAddFormFieldError {
@@ -38,6 +41,7 @@ internal fun rememberQuickAddFormState(
     carbohydrates: Double? = null,
     fats: Double? = null,
     energy: Double? = null,
+    quickAddCsvParser: QuickAddCsvParser = koinInject(),
 ): QuickAddFormState {
     val energyFormatter = LocalEnergyFormatter.current
     val energyInUserUnit = energy?.let(energyFormatter::fromKcal)
@@ -89,6 +93,11 @@ internal fun rememberQuickAddFormState(
             },
             textFieldState = rememberTextFieldState(energyInUserUnit?.formatClipZeros() ?: ""),
         )
+
+    val csvTextFieldState = rememberTextFieldState()
+    val csvErrorState = rememberSaveable { mutableStateOf<QuickAddCsvError?>(null) }
+
+    LaunchedEffect(csvTextFieldState.text) { csvErrorState.value = null }
 
     val autoCalculateEnergyState =
         rememberSaveable(proteins, carbohydrates, fats, energy) {
@@ -167,8 +176,12 @@ internal fun rememberQuickAddFormState(
         carbohydratesForm,
         fatsForm,
         energyForm,
+        csvTextFieldState,
+        csvErrorState,
         autoCalculateEnergyState,
         isModifiedState,
+        quickAddCsvParser,
+        energyFormatter,
     ) {
         QuickAddFormState(
             name = nameForm,
@@ -176,6 +189,10 @@ internal fun rememberQuickAddFormState(
             carbohydrates = carbohydratesForm,
             fats = fatsForm,
             energy = energyForm,
+            csvTextFieldState = csvTextFieldState,
+            csvErrorState = csvErrorState,
+            quickAddCsvParser = quickAddCsvParser,
+            energyFormatter = energyFormatter,
             autoCalculateEnergyState = autoCalculateEnergyState,
             isModified = isModifiedState,
         )
@@ -189,10 +206,16 @@ internal class QuickAddFormState(
     val carbohydrates: FormField<Double?, QuickAddFormFieldError>,
     val fats: FormField<Double?, QuickAddFormFieldError>,
     val energy: FormField<Double?, QuickAddFormFieldError>,
+    val csvTextFieldState: TextFieldState,
+    private val csvErrorState: MutableState<QuickAddCsvError?>,
+    private val quickAddCsvParser: QuickAddCsvParser,
+    private val energyFormatter: EnergyFormatter,
     autoCalculateEnergyState: MutableState<Boolean>,
     isModified: State<Boolean>,
 ) {
     var autoCalculateEnergy by autoCalculateEnergyState
+
+    val csvError by csvErrorState
 
     val isModified by isModified
 
@@ -202,5 +225,27 @@ internal class QuickAddFormState(
             carbohydrates.error == null &&
             fats.error == null &&
             energy.error == null
+    }
+
+    suspend fun applyCsv() {
+        when (val result = quickAddCsvParser.parse(csvTextFieldState.text.toString())) {
+            is QuickAddCsvParseResult.Failure -> csvErrorState.value = result.error
+            is QuickAddCsvParseResult.Success -> {
+                csvErrorState.value = null
+                autoCalculateEnergy = false
+
+                name.textFieldState.setTextAndPlaceCursorAtEnd(result.data.name)
+                energy.textFieldState.setTextAndPlaceCursorAtEnd(
+                    energyFormatter.fromKcal(result.data.energyKcal).formatClipZeros()
+                )
+                proteins.textFieldState.setTextAndPlaceCursorAtEnd(
+                    result.data.proteins.formatClipZeros()
+                )
+                carbohydrates.textFieldState.setTextAndPlaceCursorAtEnd(
+                    result.data.carbohydrates.formatClipZeros()
+                )
+                fats.textFieldState.setTextAndPlaceCursorAtEnd(result.data.fats.formatClipZeros())
+            }
+        }
     }
 }

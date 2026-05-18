@@ -1,11 +1,16 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.quickadd
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,13 +31,37 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.common.compose.component.unorderedList
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifier) {
     val energyFormatter = LocalEnergyFormatter.current
+    val coroutineScope = rememberCoroutineScope()
 
     Column(modifier = modifier) {
+        OutlinedTextField(
+            state = state.csvTextFieldState,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(Res.string.headline_quick_add_csv)) },
+            supportingText = {
+                val error = state.csvError
+                if (error == null) {
+                    Text(stringResource(Res.string.description_quick_add_csv))
+                } else {
+                    Text(error.stringResource())
+                }
+            },
+            isError = state.csvError != null,
+            lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 6),
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            FilledTonalButton(onClick = { coroutineScope.launch { state.applyCsv() } }) {
+                Icon(imageVector = Icons.Outlined.Check, contentDescription = null)
+                Text(stringResource(Res.string.action_apply))
+            }
+        }
+
         OutlinedTextField(
             state = state.name.textFieldState,
             modifier = Modifier.fillMaxWidth(),
@@ -163,3 +192,15 @@ private fun FormField<Double?, QuickAddFormFieldError>.TextField(
         label = { Text(label) },
     )
 }
+
+@Composable
+private fun QuickAddCsvError.stringResource(): String =
+    when (this) {
+        QuickAddCsvError.Empty -> stringResource(Res.string.error_quick_add_csv_empty)
+        QuickAddCsvError.InvalidHeader -> stringResource(Res.string.error_quick_add_csv_header)
+        QuickAddCsvError.InvalidDataRowCount ->
+            stringResource(Res.string.error_quick_add_csv_data_row_count)
+        QuickAddCsvError.InvalidNumber -> stringResource(Res.string.error_invalid_number)
+        QuickAddCsvError.NegativeNumber -> stringResource(Res.string.error_invalid_number)
+        QuickAddCsvError.EmptyName -> stringResource(Res.string.error_quick_add_csv_empty_name)
+    }
