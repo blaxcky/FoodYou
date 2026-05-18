@@ -11,6 +11,7 @@ import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.PendingProduct
+import com.maksimowiczm.foodyou.food.domain.usecase.AddPendingProductPhotoUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CompletePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeletePendingProductUseCase
@@ -31,6 +32,7 @@ internal class CompletePendingProductViewModel(
     private val createProductUseCase: CreateProductUseCase,
     private val completePendingProductUseCase: CompletePendingProductUseCase,
     private val deletePendingProductUseCase: DeletePendingProductUseCase,
+    private val addPendingProductPhotoUseCase: AddPendingProductPhotoUseCase,
     private val dateProvider: DateProvider,
 ) : ViewModel() {
     val pendingProduct =
@@ -77,6 +79,12 @@ internal class CompletePendingProductViewModel(
         viewModelScope.launch {
             deletePendingProductUseCase.delete(pendingProduct)
             eventBus.send(CompletePendingProductEvent.Completed)
+        }
+    }
+
+    fun addPhoto(pendingProduct: PendingProduct, photoPath: String) {
+        viewModelScope.launch {
+            addPendingProductPhotoUseCase.addPhoto(pendingProduct, photoPath)
         }
     }
 }

@@ -27,3 +27,6 @@ internal actual fun TakeNutritionPhotoButton(
 ) {
     Text(stringResource(Res.string.neutral_take_nutrition_photo), modifier = modifier)
 }
+
+@Composable
+internal actual fun TakeNutritionPhotoIconButton(onPhotoTaken: (String) -> Unit) = Unit

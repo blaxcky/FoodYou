@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.domain
 
 import com.maksimowiczm.foodyou.common.infrastructure.koin.eventHandlerOf
 import com.maksimowiczm.foodyou.food.domain.event.FoodDiaryEntryCreatedEventHandler
+import com.maksimowiczm.foodyou.food.domain.usecase.AddPendingProductPhotoUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CompletePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreatePendingProductUseCase
@@ -19,6 +20,7 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 
 fun Module.foodDomainModule() {
+    factoryOf(::AddPendingProductPhotoUseCase)
     factoryOf(::CompletePendingProductUseCase)
     factoryOf(::CreatePendingProductUseCase)
     factoryOf(::CreateProductUseCase)

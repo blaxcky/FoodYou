@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -58,7 +59,7 @@ internal actual fun PendingProductPhoto(
         BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
     }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.clipToBounds()) {
         if (bitmap != null) {
             Image(
                 bitmap = bitmap,
@@ -75,7 +76,7 @@ internal actual fun PendingProductPhotoPager(photoPaths: List<String>, modifier:
     val pagerState = rememberPagerState(pageCount = { photoPaths.size })
     var rotation by rememberSaveable(photoPaths) { mutableIntStateOf(0) }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.clipToBounds()) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             ZoomablePendingProductPhoto(
                 photoPath = photoPaths[page],
@@ -151,6 +152,7 @@ private fun ZoomablePendingProductPhoto(
             modifier =
                 modifier
                     .transformable(transformableState)
+                    .clipToBounds()
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
@@ -198,5 +200,41 @@ internal actual fun TakeNutritionPhotoButton(
             modifier = Modifier.padding(end = 8.dp).size(18.dp),
         )
         Text(stringResource(Res.string.neutral_take_nutrition_photo))
+    }
+}
+
+@Composable
+internal actual fun TakeNutritionPhotoIconButton(onPhotoTaken: (String) -> Unit) {
+    val launcher = rememberPendingPhotoLauncher(onPhotoTaken)
+    IconButton(onClick = launcher) {
+        Icon(
+            imageVector = Icons.Outlined.PhotoCamera,
+            contentDescription = stringResource(Res.string.neutral_take_nutrition_photo),
+        )
+    }
+}
+
+@Composable
+private fun rememberPendingPhotoLauncher(onPhotoTaken: (String) -> Unit): () -> Unit {
+    val context = LocalContext.current
+    var pendingFile by remember { mutableStateOf<File?>(null) }
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            val file = pendingFile
+            pendingFile = null
+            if (success && file != null) {
+                onPhotoTaken(file.name)
+            } else {
+                file?.delete()
+            }
+        }
+
+    return {
+        val directory = context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY)
+        directory.mkdirs()
+        val file = directory.resolve("${UUID.randomUUID()}.jpg")
+        pendingFile = file
+        val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        launcher.launch(uri)
     }
 }

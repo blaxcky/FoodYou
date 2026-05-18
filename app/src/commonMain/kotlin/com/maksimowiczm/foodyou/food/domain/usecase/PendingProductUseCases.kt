@@ -79,6 +79,22 @@ class DeletePendingProductUseCase(
         }
 }
 
+class AddPendingProductPhotoUseCase(
+    private val repository: PendingProductRepository,
+    private val transactionProvider: TransactionProvider,
+    private val dateProvider: DateProvider,
+) {
+    suspend fun addPhoto(pendingProduct: PendingProduct, photoPath: String) =
+        transactionProvider.withTransaction {
+            repository.updatePendingProduct(
+                pendingProduct.copy(
+                    photoPaths = pendingProduct.photoPaths + photoPath,
+                    updatedAt = dateProvider.nowInstant(),
+                )
+            )
+        }
+}
+
 class CompletePendingProductUseCase(
     private val repository: PendingProductRepository,
     private val photoStorage: PendingProductPhotoStorage,

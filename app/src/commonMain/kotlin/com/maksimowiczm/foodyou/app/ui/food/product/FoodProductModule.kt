@@ -15,7 +15,7 @@ fun Module.foodProduct() {
     viewModelOf(::CreatePendingProductViewModel)
     viewModelOf(::CreateProductViewModel)
     viewModel { (pendingProductId: Long) ->
-        CompletePendingProductViewModel(pendingProductId, get(), get(), get(), get(), get())
+        CompletePendingProductViewModel(pendingProductId, get(), get(), get(), get(), get(), get())
     }
     viewModelOf(::PendingProductsViewModel)
     viewModelOf(::UpdateProductViewModel)

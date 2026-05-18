@@ -18,4 +18,6 @@ interface PendingProductRepository {
     ): Long
 
     suspend fun deletePendingProduct(pendingProduct: PendingProduct)
+
+    suspend fun updatePendingProduct(pendingProduct: PendingProduct)
 }

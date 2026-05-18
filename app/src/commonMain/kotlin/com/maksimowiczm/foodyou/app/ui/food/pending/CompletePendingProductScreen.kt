@@ -58,6 +58,9 @@ fun CompletePendingProductScreen(
                     navigationIcon = { ArrowBackIconButton(onBack) },
                     actions = {
                         if (product != null) {
+                            TakeNutritionPhotoIconButton(
+                                onPhotoTaken = { viewModel.addPhoto(product, it) }
+                            )
                             IconButton(onClick = { viewModel.delete(product) }) {
                                 Icon(imageVector = Icons.Outlined.Delete, contentDescription = null)
                             }

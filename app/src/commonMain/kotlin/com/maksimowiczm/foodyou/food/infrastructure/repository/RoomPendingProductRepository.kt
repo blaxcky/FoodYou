@@ -36,6 +36,10 @@ internal class RoomPendingProductRepository(private val dao: PendingProductDao) 
     override suspend fun deletePendingProduct(pendingProduct: PendingProduct) {
         dao.deletePendingProduct(pendingProduct.toEntity())
     }
+
+    override suspend fun updatePendingProduct(pendingProduct: PendingProduct) {
+        dao.updatePendingProduct(pendingProduct.toEntity())
+    }
 }
 
 private fun PendingProductEntity.toModel(): PendingProduct =
