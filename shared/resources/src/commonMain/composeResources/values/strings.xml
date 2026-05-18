@@ -199,6 +199,7 @@
     <string name="neutral_no_barcode">No barcode</string>
     <string name="neutral_take_nutrition_photo">Take nutrition photo</string>
     <string name="neutral_pending_product_saved">Pending product saved</string>
+    <string name="neutral_pending_product_photo_count">%1$d photos</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d calorie left</item>
         <item quantity="other">%1$d calories left</item>

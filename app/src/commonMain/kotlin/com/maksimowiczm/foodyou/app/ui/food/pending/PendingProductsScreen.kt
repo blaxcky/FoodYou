@@ -98,7 +98,7 @@ fun PendingProductsScreen(
                             supportingContent = { Text(pendingProduct.createdAt.toString()) },
                             leadingContent = {
                                 PendingProductPhoto(
-                                    photoPath = pendingProduct.photoPath,
+                                    photoPath = pendingProduct.photoPaths.firstOrNull().orEmpty(),
                                     modifier = Modifier.size(64.dp),
                                 )
                             },

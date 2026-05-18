@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 data class PendingProductEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val barcode: String?,
-    val photoPath: String,
+    val photoPaths: String,
     val createdAt: Long,
     val updatedAt: Long?,
 )

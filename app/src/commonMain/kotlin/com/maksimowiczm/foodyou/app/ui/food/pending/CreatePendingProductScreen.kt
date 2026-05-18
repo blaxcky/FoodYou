@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -35,6 +37,7 @@ fun CreatePendingProductScreen(
     var barcode by rememberSaveable { mutableStateOf<String?>(null) }
     var scannerVisible by rememberSaveable { mutableStateOf(false) }
     var barcodeStepFinished by rememberSaveable { mutableStateOf(false) }
+    val photoPaths = remember { mutableStateListOf<String>() }
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
         when (event) {
@@ -62,6 +65,14 @@ fun CreatePendingProductScreen(
             TopAppBar(
                 title = { Text(stringResource(Res.string.action_create_pending_product)) },
                 navigationIcon = { ArrowBackIconButton(onBack) },
+                actions = {
+                    FilledIconButton(
+                        onClick = { viewModel.create(barcode, photoPaths.toList()) },
+                        enabled = barcodeStepFinished && photoPaths.isNotEmpty(),
+                    ) {
+                        Icon(imageVector = Icons.Outlined.Save, contentDescription = null)
+                    }
+                },
             )
         },
     ) { paddingValues ->
@@ -94,8 +105,16 @@ fun CreatePendingProductScreen(
                 }
             } else {
                 Text(scannedBarcode ?: stringResource(Res.string.neutral_no_barcode))
+                Text(
+                    text =
+                        stringResource(
+                            Res.string.neutral_pending_product_photo_count,
+                            photoPaths.size,
+                        ),
+                    modifier = Modifier.padding(top = 8.dp),
+                )
                 TakeNutritionPhotoButton(
-                    onPhotoTaken = { viewModel.create(scannedBarcode, it) },
+                    onPhotoTaken = { photoPaths += it },
                     modifier = Modifier.padding(top = 16.dp),
                 )
             }

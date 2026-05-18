@@ -21,13 +21,13 @@ internal class RoomPendingProductRepository(private val dao: PendingProductDao) 
 
     override suspend fun insertPendingProduct(
         barcode: String?,
-        photoPath: String,
+        photoPaths: List<String>,
         createdAt: Instant,
     ): Long =
         dao.insertPendingProduct(
             PendingProductEntity(
                 barcode = barcode,
-                photoPath = photoPath,
+                photoPaths = photoPaths.joinToString(PHOTO_PATH_SEPARATOR),
                 createdAt = createdAt.toEpochMilliseconds(),
                 updatedAt = null,
             )
@@ -42,7 +42,7 @@ private fun PendingProductEntity.toModel(): PendingProduct =
     PendingProduct(
         id = id,
         barcode = barcode,
-        photoPath = photoPath,
+        photoPaths = photoPaths.split(PHOTO_PATH_SEPARATOR).filter(String::isNotBlank),
         createdAt = Instant.fromEpochMilliseconds(createdAt),
         updatedAt = updatedAt?.let(Instant::fromEpochMilliseconds),
     )
@@ -51,7 +51,9 @@ private fun PendingProduct.toEntity(): PendingProductEntity =
     PendingProductEntity(
         id = id,
         barcode = barcode,
-        photoPath = photoPath,
+        photoPaths = photoPaths.joinToString(PHOTO_PATH_SEPARATOR),
         createdAt = createdAt.toEpochMilliseconds(),
         updatedAt = updatedAt?.toEpochMilliseconds(),
     )
+
+private const val PHOTO_PATH_SEPARATOR = "\n"

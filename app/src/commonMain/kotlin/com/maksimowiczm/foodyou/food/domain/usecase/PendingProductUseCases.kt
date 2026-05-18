@@ -33,14 +33,14 @@ class CreatePendingProductUseCase(
     private val transactionProvider: TransactionProvider,
     private val dateProvider: DateProvider,
 ) {
-    suspend fun create(barcode: String?, photoPath: String): CreatePendingProductResult {
+    suspend fun create(barcode: String?, photoPaths: List<String>): CreatePendingProductResult {
         val normalizedBarcode = barcode?.trim()?.takeIf { it.isNotEmpty() }
         return transactionProvider.withTransaction {
             if (normalizedBarcode != null) {
                 val existingProduct =
                     productRepository.observeProductByBarcode(normalizedBarcode).first()
                 if (existingProduct != null) {
-                    photoStorage.delete(photoPath)
+                    photoPaths.forEach(photoStorage::delete)
                     return@withTransaction CreatePendingProductResult.ExistingProduct(
                         existingProduct.id
                     )
@@ -49,7 +49,7 @@ class CreatePendingProductUseCase(
                 val existingPending =
                     pendingProductRepository.observePendingProductByBarcode(normalizedBarcode).first()
                 if (existingPending != null) {
-                    photoStorage.delete(photoPath)
+                    photoPaths.forEach(photoStorage::delete)
                     return@withTransaction CreatePendingProductResult.ExistingPendingProduct(
                         existingPending.id
                     )
@@ -59,7 +59,7 @@ class CreatePendingProductUseCase(
             val id =
                 pendingProductRepository.insertPendingProduct(
                     barcode = normalizedBarcode,
-                    photoPath = photoPath,
+                    photoPaths = photoPaths,
                     createdAt = dateProvider.nowInstant(),
                 )
             CreatePendingProductResult.Created(id)
@@ -75,7 +75,7 @@ class DeletePendingProductUseCase(
     suspend fun delete(pendingProduct: PendingProduct) =
         transactionProvider.withTransaction {
             repository.deletePendingProduct(pendingProduct)
-            photoStorage.delete(pendingProduct.photoPath)
+            pendingProduct.photoPaths.forEach(photoStorage::delete)
         }
 }
 
@@ -87,6 +87,6 @@ class CompletePendingProductUseCase(
     suspend fun complete(pendingProduct: PendingProduct) =
         transactionProvider.withTransaction {
             repository.deletePendingProduct(pendingProduct)
-            photoStorage.delete(pendingProduct.photoPath)
+            pendingProduct.photoPaths.forEach(photoStorage::delete)
         }
 }

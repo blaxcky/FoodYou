@@ -272,6 +272,7 @@
     <string name="neutral_no_barcode">Kein Barcode</string>
     <string name="neutral_take_nutrition_photo">Nährwertfoto aufnehmen</string>
     <string name="neutral_pending_product_saved">Produkt vorgemerkt</string>
+    <string name="neutral_pending_product_photo_count">%1$d Fotos</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d verbleibende Kalorie</item>
         <item quantity="other">%1$d verbleibende Kalorien</item>

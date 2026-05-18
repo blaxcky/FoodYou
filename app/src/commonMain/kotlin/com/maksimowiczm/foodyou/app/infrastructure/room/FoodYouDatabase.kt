@@ -150,7 +150,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 34
+        const val VERSION = 36
 
         private val migrations: List<Migration> =
             listOf(
@@ -170,6 +170,8 @@ abstract class FoodYouDatabase :
                 FoodSearchFtsCyrillicMigration,
                 ActivityMigration,
                 PendingProductMigration,
+                PendingProductNullableBarcodeMigration,
+                PendingProductMultiplePhotosMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -196,6 +198,66 @@ private object PendingProductMigration : Migration(33, 34) {
             """
                 .trimIndent()
         )
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_PendingProduct_barcode` ON `PendingProduct` (`barcode`)"
+        )
+    }
+}
+
+private object PendingProductNullableBarcodeMigration : Migration(34, 35) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `PendingProduct_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `barcode` TEXT,
+                `photoPath` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER
+            )
+            """
+                .trimIndent()
+        )
+        connection.execSQL(
+            """
+            INSERT INTO `PendingProduct_new` (`id`, `barcode`, `photoPath`, `createdAt`, `updatedAt`)
+            SELECT `id`, `barcode`, `photoPath`, `createdAt`, `updatedAt`
+            FROM `PendingProduct`
+            """
+                .trimIndent()
+        )
+        connection.execSQL("DROP TABLE `PendingProduct`")
+        connection.execSQL("ALTER TABLE `PendingProduct_new` RENAME TO `PendingProduct`")
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_PendingProduct_barcode` ON `PendingProduct` (`barcode`)"
+        )
+    }
+}
+
+private object PendingProductMultiplePhotosMigration : Migration(35, 36) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `PendingProduct_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `barcode` TEXT,
+                `photoPaths` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER
+            )
+            """
+                .trimIndent()
+        )
+        connection.execSQL(
+            """
+            INSERT INTO `PendingProduct_new` (`id`, `barcode`, `photoPaths`, `createdAt`, `updatedAt`)
+            SELECT `id`, `barcode`, `photoPath`, `createdAt`, `updatedAt`
+            FROM `PendingProduct`
+            """
+                .trimIndent()
+        )
+        connection.execSQL("DROP TABLE `PendingProduct`")
+        connection.execSQL("ALTER TABLE `PendingProduct_new` RENAME TO `PendingProduct`")
         connection.execSQL(
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_PendingProduct_barcode` ON `PendingProduct` (`barcode`)"
         )

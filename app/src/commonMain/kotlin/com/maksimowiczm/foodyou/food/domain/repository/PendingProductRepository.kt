@@ -13,7 +13,7 @@ interface PendingProductRepository {
 
     suspend fun insertPendingProduct(
         barcode: String?,
-        photoPath: String,
+        photoPaths: List<String>,
         createdAt: Instant,
     ): Long
 

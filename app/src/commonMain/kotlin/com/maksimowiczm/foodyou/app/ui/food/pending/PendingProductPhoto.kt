@@ -11,6 +11,12 @@ internal expect fun PendingProductPhoto(
 )
 
 @Composable
+internal expect fun PendingProductPhotoPager(
+    photoPaths: List<String>,
+    modifier: Modifier = Modifier,
+)
+
+@Composable
 internal expect fun TakeNutritionPhotoButton(
     onPhotoTaken: (String) -> Unit,
     modifier: Modifier = Modifier,

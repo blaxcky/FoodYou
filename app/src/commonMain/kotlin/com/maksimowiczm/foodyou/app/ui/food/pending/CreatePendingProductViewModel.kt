@@ -20,9 +20,9 @@ internal class CreatePendingProductViewModel(
     private val eventBus = Channel<CreatePendingProductEvent>()
     val events = eventBus.receiveAsFlow()
 
-    fun create(barcode: String?, photoPath: String) {
+    fun create(barcode: String?, photoPaths: List<String>) {
         viewModelScope.launch {
-            when (val result = createPendingProductUseCase.create(barcode, photoPath)) {
+            when (val result = createPendingProductUseCase.create(barcode, photoPaths)) {
                 is CreatePendingProductResult.Created ->
                     eventBus.send(CreatePendingProductEvent.PendingProductReady(result.pendingProductId))
 

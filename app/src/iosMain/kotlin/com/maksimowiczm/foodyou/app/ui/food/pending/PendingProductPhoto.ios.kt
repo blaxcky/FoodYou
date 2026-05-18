@@ -16,6 +16,11 @@ internal actual fun PendingProductPhoto(
 }
 
 @Composable
+internal actual fun PendingProductPhotoPager(photoPaths: List<String>, modifier: Modifier) {
+    Text(photoPaths.firstOrNull().orEmpty(), modifier = modifier)
+}
+
+@Composable
 internal actual fun TakeNutritionPhotoButton(
     onPhotoTaken: (String) -> Unit,
     modifier: Modifier,

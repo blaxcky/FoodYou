@@ -1,32 +1,22 @@
 package com.maksimowiczm.foodyou.app.ui.food.pending
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.RotateLeft
-import androidx.compose.material.icons.automirrored.outlined.RotateRight
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,7 +49,6 @@ fun CompletePendingProductScreen(
     val product = pendingProduct
     key(product?.id) {
         val formState = rememberProductFormState(initialBarcode = product?.barcode)
-        var photoRotation by rememberSaveable(product?.id) { mutableStateOf(0) }
 
         Scaffold(
             modifier = modifier,
@@ -85,50 +74,15 @@ fun CompletePendingProductScreen(
         ) { paddingValues ->
             Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 if (product != null) {
-                    Box(
+                    PendingProductPhotoPager(
+                        photoPaths = product.photoPaths,
                         modifier =
                             Modifier.fillMaxWidth()
-                                .weight(1f)
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        PendingProductPhoto(
-                            photoPath = product.photoPath,
-                            rotationDegrees = photoRotation.toFloat(),
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f),
-                            shape = MaterialTheme.shapes.medium,
-                            modifier = Modifier.align(Alignment.BottomEnd),
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 4.dp),
-                            ) {
-                                IconButton(
-                                    onClick = { photoRotation = (photoRotation + 270) % 360 }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.RotateLeft,
-                                        contentDescription =
-                                            stringResource(Res.string.action_rotate_photo_left),
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { photoRotation = (photoRotation + 90) % 360 }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.RotateRight,
-                                        contentDescription =
-                                            stringResource(Res.string.action_rotate_photo_right),
-                                    )
-                                }
-                            }
-                        }
-                    }
+                                .weight(1f, fill = true)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
 
-                    LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f).imePadding()) {
+                    LazyColumn(modifier = Modifier.fillMaxWidth().weight(2f).imePadding()) {
                         item {
                             ProductForm(
                                 state = formState,
