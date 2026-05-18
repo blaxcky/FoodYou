@@ -47,6 +47,17 @@ class QuickAddCsvParserTest {
     }
 
     @Test
+    fun parsesHeaderWithBomAndWhitespace() = runBlocking {
+        val result =
+            parser.parse(
+                "\uFEFF name, energy, proteins, carbohydrates, fats\n" +
+                    "\"Reis\", 650, 45, 72, 18"
+            )
+
+        assertEquals("Reis", result.dataOrFail().name)
+    }
+
+    @Test
     fun rejectsInvalidHeader() = runBlocking {
         val result =
             parser.parse(

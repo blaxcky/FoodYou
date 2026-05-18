@@ -48,7 +48,7 @@ internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAd
                 return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidDataRowCount)
             }
 
-        if (records.firstOrNull() != Header) {
+        if (records.firstOrNull()?.normalizedHeader() != Header) {
             return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidHeader)
         }
 
@@ -68,7 +68,7 @@ internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAd
 
         val values =
             row.drop(1).map { value ->
-                value?.toDoubleOrNull()
+                value?.trim()?.toDoubleOrNull()
                     ?: return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidNumber)
             }
 
@@ -89,5 +89,16 @@ internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAd
 
     private companion object {
         val Header = listOf("name", "energy", "proteins", "carbohydrates", "fats")
+
+        fun List<String?>.normalizedHeader(): List<String?> =
+            mapIndexed { index, value ->
+                value?.let {
+                    if (index == 0) {
+                        it.removePrefix("\uFEFF")
+                    } else {
+                        it
+                    }
+                }?.trim()
+            }
     }
 }
