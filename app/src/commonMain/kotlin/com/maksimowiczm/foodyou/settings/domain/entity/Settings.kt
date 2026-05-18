@@ -10,6 +10,7 @@ data class Settings(
     val secureScreen: Boolean,
     val homeCardOrder: List<HomeCard>,
     val expandGoalCard: Boolean,
+    val optimizedGoalDisplayEnabled: Boolean,
     val onboardingFinished: Boolean,
     val energyFormat: EnergyFormat,
     val appLaunchInfo: AppLaunchInfo,

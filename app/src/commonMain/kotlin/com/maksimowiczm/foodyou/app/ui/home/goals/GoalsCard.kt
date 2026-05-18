@@ -2,7 +2,9 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -39,6 +41,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +72,7 @@ import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
 import foodyou.app.generated.resources.headline_your_week
 import foodyou.app.generated.resources.inter
+import foodyou.app.generated.resources.label_optimized
 import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
@@ -79,6 +83,7 @@ import foodyou.app.generated.resources.weekly_reached
 import foodyou.app.generated.resources.weekly_so_far
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
@@ -125,6 +130,7 @@ internal fun GoalsCard(
             burnedEnergy = model.burnedEnergy,
             netEnergy = model.netEnergy,
             energyGoal = model.energyGoal,
+            optimizedGoalDisplayEnabled = model.optimizedGoalDisplayEnabled,
             proteins = model.proteins,
             proteinsGoal = model.proteinsGoal,
             carbohydrates = model.carbohydrates,
@@ -133,6 +139,7 @@ internal fun GoalsCard(
             fatsGoal = model.fatsGoal,
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
+            onToggleOptimizedGoalDisplay = viewModel::toggleOptimizedGoalDisplay,
             modifier = modifier,
         )
     }
@@ -165,6 +172,7 @@ internal fun GoalsCard(
     burnedEnergy: Int,
     netEnergy: Int,
     energyGoal: Int,
+    optimizedGoalDisplayEnabled: Boolean = false,
     proteins: Int,
     proteinsGoal: Int,
     carbohydrates: Int,
@@ -173,6 +181,7 @@ internal fun GoalsCard(
     fatsGoal: Int,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onToggleOptimizedGoalDisplay: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val goal = energyGoal.coerceAtLeast(1)
@@ -207,6 +216,8 @@ internal fun GoalsCard(
                     burnedEnergy = burnedEnergy,
                     netEnergy = netEnergy,
                     energyGoal = energyGoal,
+                    optimizedGoalDisplayEnabled = optimizedGoalDisplayEnabled,
+                    onToggleOptimizedGoalDisplay = onToggleOptimizedGoalDisplay,
                     progress = energyProgress,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -559,6 +570,8 @@ private fun CaloriesOverview(
     burnedEnergy: Int,
     netEnergy: Int,
     energyGoal: Int,
+    optimizedGoalDisplayEnabled: Boolean,
+    onToggleOptimizedGoalDisplay: () -> Unit,
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -572,7 +585,27 @@ private fun CaloriesOverview(
     val remainingLabel =
         stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
 
-    BoxWithConstraints(modifier = modifier) {
+    BoxWithConstraints(
+        modifier =
+            modifier
+                .detectOptimizedGoalSwipe(onToggleOptimizedGoalDisplay)
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    if (optimizedGoalDisplayEnabled) Color(0xFFEAF6FE) else Color.Transparent
+                )
+                .then(
+                    if (optimizedGoalDisplayEnabled) {
+                        Modifier.border(
+                            width = 1.dp,
+                            color = GoalsProgressColor.copy(alpha = 0.55f),
+                            shape = RoundedCornerShape(20.dp),
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
         val gaugeDiameter = (maxWidth * 0.48f).coerceIn(156.dp, 254.dp)
         val compact = maxWidth < 320.dp
         val phoneWidth = maxWidth < 430.dp
@@ -684,8 +717,47 @@ private fun CaloriesOverview(
                 }
             }
         }
+
+        if (optimizedGoalDisplayEnabled) {
+            Text(
+                text = stringResource(Res.string.label_optimized),
+                modifier =
+                    Modifier.align(Alignment.TopEnd)
+                        .clip(RoundedCornerShape(50))
+                        .background(GoalsProgressColor.copy(alpha = 0.16f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                color = GoalsProgressColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
+
+private fun Modifier.detectOptimizedGoalSwipe(onSwipeDown: () -> Unit): Modifier =
+    pointerInput(onSwipeDown) {
+        val threshold = 48.dp.toPx()
+        var totalX = 0f
+        var totalY = 0f
+        var toggled = false
+
+        detectDragGestures(
+            onDragStart = {
+                totalX = 0f
+                totalY = 0f
+                toggled = false
+            },
+            onDrag = { _, dragAmount ->
+                totalX += dragAmount.x
+                totalY += dragAmount.y
+
+                if (!toggled && totalY > threshold && totalY > abs(totalX) * 1.5f) {
+                    toggled = true
+                    onSwipeDown()
+                }
+            },
+        )
+    }
 
 private fun Dp.coerceIn(minimumValue: Dp, maximumValue: Dp): Dp =
     coerceAtLeast(minimumValue).coerceAtMost(maximumValue)

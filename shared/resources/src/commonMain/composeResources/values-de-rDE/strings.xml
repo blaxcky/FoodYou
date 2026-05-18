@@ -177,6 +177,7 @@
     <string name="goal_carbs_short">KH</string>
     <string name="goal_protein">Protein</string>
     <string name="goal_reached_percentage">%1$d %% erreicht</string>
+    <string name="label_optimized">Optimiert</string>
     <string name="weekly_so_far">Bisher</string>
     <string name="weekly_difference">Differenz</string>
     <string name="weekly_percent">Prozent</string>

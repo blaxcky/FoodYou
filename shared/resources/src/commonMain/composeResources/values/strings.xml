@@ -100,6 +100,7 @@
     <string name="goal_carbs_short">Carbs</string>
     <string name="goal_protein">Protein</string>
     <string name="goal_reached_percentage">%1$d %% reached</string>
+    <string name="label_optimized">Optimized</string>
     <string name="weekly_so_far">So far</string>
     <string name="weekly_difference">Difference</string>
     <string name="weekly_percent">Percent</string>

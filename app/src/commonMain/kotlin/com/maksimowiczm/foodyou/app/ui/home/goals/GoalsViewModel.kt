@@ -1,9 +1,9 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
-import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
-import com.maksimowiczm.foodyou.activity.domain.usecase.calculateNetEnergyKcal
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.activity.domain.usecase.calculateNetEnergyKcal
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -26,7 +27,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
-import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 internal class GoalsViewModel(
@@ -55,34 +55,110 @@ internal class GoalsViewModel(
         viewModelScope.launch { settingsRepository.update { copy(expandGoalCard = expand) } }
     }
 
+    fun toggleOptimizedGoalDisplay() {
+        viewModelScope.launch {
+            settingsRepository.update {
+                copy(optimizedGoalDisplayEnabled = !optimizedGoalDisplayEnabled)
+            }
+        }
+    }
+
     val model: StateFlow<DaySummaryModel?> =
-        dateState
-            .filterNotNull()
-            .flatMapLatest { date ->
-                combine(
-                    observeDiaryMealsUseCase.observeNutritionFacts(date),
-                    goalsRepository.observeDailyGoals(date),
-                    settingsRepository.observe().flatMapLatest { settings ->
+        combine(dateState.filterNotNull(), dateProvider.observeDate(), settingsRepository.observe()) {
+                selectedDate,
+                today,
+                settings ->
+                Triple(selectedDate, today, settings)
+            }
+            .flatMapLatest { (date, today, settings) ->
+                val currentWeek = date.startOfWeek() == today.startOfWeek()
+                val optimizedDisplay = settings.optimizedGoalDisplayEnabled && currentWeek
+                val selectedDay =
+                    combine(
+                        observeDiaryMealsUseCase.observeNutritionFacts(date),
+                        goalsRepository.observeDailyGoals(date),
                         activityRepository.observeDailySummary(
                             date,
                             settings.stepsCaloriesPerStepKcal,
+                        ),
+                    ) { facts, goal, activity ->
+                        val consumedEnergy = facts.energy.value ?: 0.0
+                        val burnedEnergy = activity.totalEnergyKcal
+                        val baseEnergyGoal = goal[NutritionFactsField.Energy]
+
+                        SelectedGoalDay(
+                            consumedEnergy = consumedEnergy,
+                            burnedEnergy = burnedEnergy,
+                            baseEnergyGoal = baseEnergyGoal,
+                            proteins = facts.proteins.value?.roundToInt() ?: 0,
+                            proteinsGoal = goal[NutritionFactsField.Proteins].roundToInt(),
+                            carbohydrates = facts.carbohydrates.value?.roundToInt() ?: 0,
+                            carbohydratesGoal =
+                                goal[NutritionFactsField.Carbohydrates].roundToInt(),
+                            fats = facts.fats.value?.roundToInt() ?: 0,
+                            fatsGoal = goal[NutritionFactsField.Fats].roundToInt(),
                         )
-                    },
-                ) { facts, goal, activity ->
-                    val consumedEnergy = facts.energy.value ?: 0.0
-                    val burnedEnergy = activity.totalEnergyKcal
+                    }
+                val previousDays =
+                    if (optimizedDisplay) {
+                        val weekStart = date.startOfWeek()
+                        List(date.dayOfWeek.isoDayNumber - 1) { weekStart.plus(it, DateTimeUnit.DAY) }
+                    } else {
+                        emptyList()
+                    }
+                val previousDaySummaries =
+                    if (previousDays.isEmpty()) {
+                        flowOf(emptyList())
+                    } else {
+                        combine(
+                            previousDays.map { previousDate ->
+                                combine(
+                                    observeDiaryMealsUseCase.observeNutritionFacts(previousDate),
+                                    goalsRepository.observeDailyGoals(previousDate),
+                                    activityRepository.observeDailySummary(
+                                        previousDate,
+                                        settings.stepsCaloriesPerStepKcal,
+                                    ),
+                                ) { facts, goal, activity ->
+                                    GoalEnergyOptimizationDay(
+                                        consumedEnergyKcal = facts.energy.value ?: 0.0,
+                                        baseEnergyGoalKcal = goal[NutritionFactsField.Energy],
+                                        burnedEnergyKcal = activity.totalEnergyKcal,
+                                    )
+                                }
+                            }
+                        ) {
+                            it.toList()
+                        }
+                    }
+
+                combine(selectedDay, previousDaySummaries) { day, previous ->
+                    val energyGoal =
+                        if (optimizedDisplay) {
+                            optimizedEnergyGoalKcal(
+                                selectedDate = date,
+                                today = today,
+                                baseEnergyGoalKcal = day.baseEnergyGoal,
+                                previousDays = previous,
+                            )
+                        } else {
+                            day.baseEnergyGoal
+                        }
 
                     DaySummaryModel(
-                        energy = consumedEnergy.roundToInt(),
-                        burnedEnergy = burnedEnergy.roundToInt(),
-                        netEnergy = calculateNetEnergyKcal(consumedEnergy, burnedEnergy).roundToInt(),
-                        energyGoal = goal[NutritionFactsField.Energy].roundToInt(),
-                        proteins = facts.proteins.value?.roundToInt() ?: 0,
-                        proteinsGoal = goal[NutritionFactsField.Proteins].roundToInt(),
-                        carbohydrates = facts.carbohydrates.value?.roundToInt() ?: 0,
-                        carbohydratesGoal = goal[NutritionFactsField.Carbohydrates].roundToInt(),
-                        fats = facts.fats.value?.roundToInt() ?: 0,
-                        fatsGoal = goal[NutritionFactsField.Fats].roundToInt(),
+                        energy = day.consumedEnergy.roundToInt(),
+                        burnedEnergy = day.burnedEnergy.roundToInt(),
+                        netEnergy =
+                            calculateNetEnergyKcal(day.consumedEnergy, day.burnedEnergy)
+                                .roundToInt(),
+                        energyGoal = energyGoal.roundToInt(),
+                        optimizedGoalDisplayEnabled = optimizedDisplay,
+                        proteins = day.proteins,
+                        proteinsGoal = day.proteinsGoal,
+                        carbohydrates = day.carbohydrates,
+                        carbohydratesGoal = day.carbohydratesGoal,
+                        fats = day.fats,
+                        fatsGoal = day.fatsGoal,
                     )
                 }
             }
@@ -94,22 +170,28 @@ internal class GoalsViewModel(
             )
 
     val weekModel: StateFlow<WeekSummaryModel?> =
-        combine(dateState.filterNotNull(), dateProvider.observeDate()) { selectedDate, today ->
-                selectedDate to today
+        combine(dateState.filterNotNull(), dateProvider.observeDate(), settingsRepository.observe()) {
+                selectedDate,
+                today,
+                settings ->
+                Triple(selectedDate, today, settings.stepsCaloriesPerStepKcal)
             }
-            .flatMapLatest { (selectedDate, today) ->
+            .flatMapLatest { (selectedDate, today, kcalPerStep) ->
                 val dates = selectedDate.weekDates(today)
                 val dayFlows =
                     dates.map { date ->
                         combine(
                             observeDiaryMealsUseCase.observeNutritionFacts(date),
                             goalsRepository.observeDailyGoals(date),
-                        ) { facts, goal ->
+                            activityRepository.observeDailySummary(date, kcalPerStep),
+                        ) { facts, goal, activity ->
                             val consumedEnergy = facts.energy.value ?: 0.0
+                            val baseGoal = goal[NutritionFactsField.Energy]
+                            val adjustedGoal = baseGoal + activity.totalEnergyKcal
                             WeekDaySummaryModel(
                                 date = date,
                                 energy = consumedEnergy.roundToInt(),
-                                goal = goal[NutritionFactsField.Energy].roundToInt(),
+                                goal = adjustedGoal.roundToInt(),
                             )
                         }
                     }
@@ -145,5 +227,14 @@ private fun LocalDate.weekDates(today: LocalDate): List<LocalDate> {
     return List(dayCount) { weekStart.plus(it, DateTimeUnit.DAY) }
 }
 
-private fun LocalDate.startOfWeek(): LocalDate =
-    minus(dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY)
+private data class SelectedGoalDay(
+    val consumedEnergy: Double,
+    val burnedEnergy: Double,
+    val baseEnergyGoal: Double,
+    val proteins: Int,
+    val proteinsGoal: Int,
+    val carbohydrates: Int,
+    val carbohydratesGoal: Int,
+    val fats: Int,
+    val fatsGoal: Int,
+)
