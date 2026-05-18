@@ -57,4 +57,11 @@ internal class ManualActivityViewModel(private val repository: ActivityRepositor
             onSaved()
         }
     }
+
+    fun delete(id: Long, onDeleted: () -> Unit) {
+        viewModelScope.launch {
+            repository.deleteManualEntry(ManualActivityEntryId(id))
+            onDeleted()
+        }
+    }
 }

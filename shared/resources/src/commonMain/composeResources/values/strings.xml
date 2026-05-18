@@ -54,6 +54,7 @@
     <string name="weight">Weight</string>
     <string name="unit_energy" description="Energy as calories">Energy</string>
     <string name="unit_kcal">kcal</string>
+    <string name="label_burned_kcal">Burned kcal</string>
     <string name="unit_kilojoules">kJ</string>
     <string name="unit_gram_short" translatable="false">g</string>
     <string name="unit_milliliter_short" translatable="false">ml</string>
@@ -153,6 +154,7 @@
     <string name="action_confirm">Confirm</string>
     <string name="action_add_meal">Add meal</string>
     <string name="action_add_activity">Add activity</string>
+    <string name="action_edit_activity">Edit activity</string>
     <string name="action_edit">Edit</string>
     <string name="action_insert_suggested_search">Insert suggested search</string>
     <string name="action_edit_entry">Edit entry</string>
@@ -251,6 +253,7 @@
     </plurals>
 
     <string name="description_delete_food">Food will be deleted permanently</string>
+    <string name="description_delete_activity_entry">This activity entry will be deleted permanently.</string>
     <string name="description_delete_product_entry" description="Tell user that this entry will be deleted only from diary and won't affect the product itself. Product won't be deleted from the database.">This entry will be deleted from your diary. You can add it again anytime.</string>
     <string name="description_about_setting">Learn more about the app</string>
     <string name="description_time_based_meals_sorting">When enabled, meals that are currently happening will be displayed first</string>

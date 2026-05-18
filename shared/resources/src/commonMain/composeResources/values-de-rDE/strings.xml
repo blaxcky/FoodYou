@@ -138,6 +138,7 @@
     <string name="weight">Gewicht</string>
     <string name="unit_energy" description="Energy as calories">Brennwert in Kalorien</string>
     <string name="unit_kcal">kcal</string>
+    <string name="label_burned_kcal">Verbrannte kcal</string>
     <string name="unit_kilojoules">kJ</string>
     <plurals name="unit_gram">
         <item quantity="one">Gramm</item>
@@ -227,6 +228,7 @@
     <string name="action_confirm">Bestätigen</string>
     <string name="action_add_meal">Mahlzeit hinzufügen</string>
     <string name="action_add_activity">Aktivität eintragen</string>
+    <string name="action_edit_activity">Aktivität bearbeiten</string>
     <string name="action_edit">Bearbeiten</string>
     <string name="action_insert_suggested_search">Vorgeschlagene Suche einfügen</string>
     <string name="action_edit_entry">Eintrag bearbeiten</string>
@@ -319,6 +321,7 @@
         <item quantity="other">Um %1$d Kilojoule überschritten</item>
     </plurals>
     <string name="description_delete_food">Lebensmittel werden unwiderruflich gelöscht</string>
+    <string name="description_delete_activity_entry">Dieser Aktivitätseintrag wird unwiderruflich gelöscht.</string>
     <string name="description_delete_product_entry" description="Tell user that this entry will be deleted only from diary and won't affect the product itself. Product won't be deleted from the database.">Dieser Eintrag wird aus Deinem Tagebuch gelöscht. Du kannst ihn jederzeit wieder hinzufügen.</string>
     <string name="description_about_setting">Mehr über die App erfahren</string>
     <string name="description_time_based_meals_sorting">Wenn aktiviert, werden aktuell laufende Mahlzeiten zuerst angezeigt</string>
