@@ -2,6 +2,7 @@
 <resources>
     <string name="not_available_short">N/A</string>
     <string name="headline_create_product">Produkt erstellen</string>
+    <string name="headline_pending_products">Vorgemerkte Produkte</string>
     <string name="headline_settings">Einstellungen</string>
     <string name="headline_daily_goals">Tägliche Ziele</string>
     <string name="headline_general">Allgemein</string>
@@ -251,6 +252,8 @@
     <string name="action_choose_other_date">Anderes Datum auswählen</string>
     <string name="action_show_more" description="Show more settings/options/advanced settings">Mehr anzeigen</string>
     <string name="action_download_product">Produkt herunterladen</string>
+    <string name="action_create_pending_product">Produkt vormerken</string>
+    <string name="action_complete_product">Produkt fertigstellen</string>
     <string name="action_copy_and_open_bug_report">Kopiere und erstelle Bug-Report</string>
     <string name="action_copy_and_report" description="Copy bug report and report a bug">Kopieren &amp; melden</string>
     <string name="action_show_details">Details anzeigen</string>
@@ -262,6 +265,9 @@
     <string name="neutral_barcode_scanner_camera_request_rationale">Um die Barcodes zu scannen, musst du den Zugriff erlauben</string>
     <string name="neutral_barcode_scanner_camera_request_redirect_to_settings">Zum Scannen von Barcodes ist eine Kameraerlaubnis erforderlich. Bitte erlaube es in den App-Einstellungen.</string>
     <string name="neutral_no_food_found">Lebensmittel nicht gefunden</string>
+    <string name="neutral_no_pending_products">Keine vorgemerkten Produkte</string>
+    <string name="neutral_take_nutrition_photo">Nährwertfoto aufnehmen</string>
+    <string name="neutral_pending_product_saved">Produkt vorgemerkt</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d verbleibende Kalorie</item>
         <item quantity="other">%1$d verbleibende Kalorien</item>

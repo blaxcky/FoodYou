@@ -21,6 +21,9 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.CreateQuickAddScreen
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.UpdateQuickAddScreen
 import com.maksimowiczm.foodyou.app.ui.food.diary.search.DiaryFoodSearchScreen
 import com.maksimowiczm.foodyou.app.ui.food.diary.update.UpdateEntryScreen
+import com.maksimowiczm.foodyou.app.ui.food.pending.CompletePendingProductScreen
+import com.maksimowiczm.foodyou.app.ui.food.pending.CreatePendingProductScreen
+import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductsScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.CreateProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.UpdateProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.recipe.CreateRecipeScreen
@@ -55,6 +58,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
         forwardBackwardComposable<Home> {
             HomeScreen(
                 onSettings = { navController.navigateSingleTop(Settings) },
+                onPendingProducts = { navController.navigateSingleTop(PendingProducts) },
                 onTitle = { navController.navigateSingleTop(About) },
                 onMealCardLongClick = { navController.navigateSingleTop(MealsPersonalization) },
                 onMealCardAddClick = { epochDay, mealId ->
@@ -104,6 +108,38 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onActivities = { navController.navigateSingleTop(ActivitySettings) },
                 onPersonalization = { navController.navigateSingleTop(Personalization) },
                 onDatabase = { navController.navigateSingleTop(DatabaseSettings) },
+            )
+        }
+        forwardBackwardComposable<PendingProducts> {
+            PendingProductsScreen(
+                onBack = { navController.popBackStackInclusive<PendingProducts>() },
+                onCreate = { navController.navigateSingleTop(CreatePendingProduct) },
+                onPendingProduct = { navController.navigateSingleTop(CompletePendingProduct(it)) },
+            )
+        }
+        forwardBackwardComposable<CreatePendingProduct> {
+            CreatePendingProductScreen(
+                onBack = { navController.popBackStackInclusive<CreatePendingProduct>() },
+                onPendingProduct = {
+                    navController.navigate(CompletePendingProduct(it)) {
+                        popUpTo<CreatePendingProduct> { inclusive = true }
+                    }
+                },
+                onExistingProduct = {
+                    navController.navigate(UpdateProduct(it)) {
+                        popUpTo<CreatePendingProduct> { inclusive = true }
+                    }
+                },
+            )
+        }
+        forwardBackwardComposable<CompletePendingProduct> {
+            val (pendingProductId) = it.toRoute<CompletePendingProduct>()
+            CompletePendingProductScreen(
+                pendingProductId = pendingProductId,
+                onBack = { navController.popBackStackInclusive<CompletePendingProduct>() },
+                onCompleted = {
+                    navController.popBackStack<PendingProducts>(inclusive = false)
+                },
             )
         }
         forwardBackwardComposable<Language> {
@@ -412,6 +448,12 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object Home
 
 @Serializable private object Settings
+
+@Serializable private object PendingProducts
+
+@Serializable private object CreatePendingProduct
+
+@Serializable private data class CompletePendingProduct(val pendingProductId: Long)
 
 @Serializable private object About
 

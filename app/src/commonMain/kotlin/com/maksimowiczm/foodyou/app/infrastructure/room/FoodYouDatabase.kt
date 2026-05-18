@@ -7,6 +7,8 @@ import androidx.room.TypeConverters
 import androidx.room.immediateTransaction
 import androidx.room.migration.Migration
 import androidx.room.useWriterConnection
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsCyrillicMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.LegacyMigrations
@@ -28,6 +30,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventTypeConverter
 import com.maksimowiczm.foodyou.food.infrastructure.room.LatestMeasurementSuggestion
 import com.maksimowiczm.foodyou.food.infrastructure.room.MeasurementSuggestionEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.PendingProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductFts
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeEntity
@@ -69,6 +72,7 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntit
             ManualDiaryEntryEntity::class,
             ManualActivityEntryEntity::class,
             DailyStepSummaryEntity::class,
+            PendingProductEntity::class,
             ProductFts::class,
             RecipeFts::class,
         ],
@@ -146,7 +150,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 33
+        const val VERSION = 34
 
         private val migrations: List<Migration> =
             listOf(
@@ -165,6 +169,7 @@ abstract class FoodYouDatabase :
                 FoodSearchFtsMigration,
                 FoodSearchFtsCyrillicMigration,
                 ActivityMigration,
+                PendingProductMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -174,5 +179,25 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+private object PendingProductMigration : Migration(33, 34) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `PendingProduct` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `barcode` TEXT NOT NULL,
+                `photoPath` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER
+            )
+            """
+                .trimIndent()
+        )
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_PendingProduct_barcode` ON `PendingProduct` (`barcode`)"
+        )
     }
 }

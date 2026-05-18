@@ -6,6 +6,7 @@
     <string name="not_available_short">N/A</string>
 
     <string name="headline_create_product">Create product</string>
+    <string name="headline_pending_products">Pending products</string>
     <string name="headline_settings">Settings</string>
     <string name="headline_daily_goals">Daily goals</string>
     <string name="headline_general">General</string>
@@ -177,6 +178,8 @@
     <string name="action_choose_other_date">Choose other date</string>
     <string name="action_show_more" description="Show more settings/options/advanced settings">Show more</string>
     <string name="action_download_product">Download product</string>
+    <string name="action_create_pending_product">Add pending product</string>
+    <string name="action_complete_product">Complete product</string>
     <string name="action_copy_and_open_bug_report">Copy and open bug report</string>
     <string name="action_copy_and_report" description="Copy bug report and report a bug">Copy &amp; report</string>
     <string name="action_show_details">Show details</string>
@@ -189,6 +192,9 @@
     <string name="neutral_barcode_scanner_camera_request_rationale">You must allow access in order to scan barcodes</string>
     <string name="neutral_barcode_scanner_camera_request_redirect_to_settings">Camera permission is required to scan barcodes. Please allow it in the app settings.</string>
     <string name="neutral_no_food_found">No food found</string>
+    <string name="neutral_no_pending_products">No pending products</string>
+    <string name="neutral_take_nutrition_photo">Take nutrition photo</string>
+    <string name="neutral_pending_product_saved">Pending product saved</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d calorie left</item>
         <item quantity="other">%1$d calories left</item>

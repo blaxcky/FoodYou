@@ -24,6 +24,16 @@ abstract class ProductDao {
         """
         SELECT *
         FROM Product
+        WHERE barcode = :barcode
+        LIMIT 1
+        """
+    )
+    abstract fun observeProductByBarcode(barcode: String): Flow<ProductEntity?>
+
+    @Query(
+        """
+        SELECT *
+        FROM Product
         LIMIT :limit OFFSET :offset
         """
     )

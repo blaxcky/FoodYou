@@ -33,7 +33,10 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun rememberProductFormState(product: Product? = null): ProductFormState {
+internal fun rememberProductFormState(
+    product: Product? = null,
+    initialBarcode: String? = null,
+): ProductFormState {
     val name =
         rememberFormField(
             initialValue = product?.name ?: "",
@@ -51,9 +54,9 @@ internal fun rememberProductFormState(product: Product? = null): ProductFormStat
 
     val barcode =
         rememberFormField<String?, Nothing>(
-            initialValue = product?.barcode ?: "",
+            initialValue = product?.barcode ?: initialBarcode ?: "",
             parser = nullableStringParser(),
-            textFieldState = rememberTextFieldState(product?.barcode ?: ""),
+            textFieldState = rememberTextFieldState(product?.barcode ?: initialBarcode ?: ""),
         )
 
     val note =

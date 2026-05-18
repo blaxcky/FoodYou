@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +38,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeScreen(
     onSettings: () -> Unit,
+    onPendingProducts: () -> Unit,
     onTitle: () -> Unit,
     onMealCardLongClick: (mealId: Long) -> Unit,
     onMealCardAddClick: (epochDay: Long, mealId: Long) -> Unit,
@@ -62,6 +65,7 @@ fun HomeScreen(
         )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var showSettingsMenu by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -93,10 +97,29 @@ fun HomeScreen(
                                 },
                         )
                     }
-                    IconButton(onClick = onSettings) {
+                    IconButton(onClick = { showSettingsMenu = true }) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
                             contentDescription = stringResource(Res.string.action_go_to_settings),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showSettingsMenu,
+                        onDismissRequest = { showSettingsMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.headline_pending_products)) },
+                            onClick = {
+                                showSettingsMenu = false
+                                onPendingProducts()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.headline_settings)) },
+                            onClick = {
+                                showSettingsMenu = false
+                                onSettings()
+                            },
                         )
                     }
                 },
