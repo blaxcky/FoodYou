@@ -44,6 +44,7 @@
     <string name="headline_api_key">API Schlüssel</string>
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Quelle</string>
     <string name="headline_features">Funktionen</string>
+    <string name="headline_activities">Aktivitäten</string>
     <string name="headline_recent">Zuletzt verwendet</string>
     <string name="headline_today" description="Today, date">Heute, %1$s</string>
     <string name="headline_yesterday" description="Yesterday, date">Gestern, %1$s</string>
@@ -225,6 +226,7 @@
     <string name="action_delete">Löschen</string>
     <string name="action_confirm">Bestätigen</string>
     <string name="action_add_meal">Mahlzeit hinzufügen</string>
+    <string name="action_add_activity">Aktivität eintragen</string>
     <string name="action_edit">Bearbeiten</string>
     <string name="action_insert_suggested_search">Vorgeschlagene Suche einfügen</string>
     <string name="action_edit_entry">Eintrag bearbeiten</string>
@@ -273,6 +275,8 @@
     <string name="neutral_take_nutrition_photo">Nährwertfoto aufnehmen</string>
     <string name="neutral_pending_product_saved">Produkt vorgemerkt</string>
     <string name="neutral_pending_product_photo_count">%1$d Fotos</string>
+    <string name="neutral_loading_activity">Aktivitäten werden geladen</string>
+    <string name="neutral_x_steps">%1$s Schritte</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d verbleibende Kalorie</item>
         <item quantity="other">%1$d verbleibende Kalorien</item>

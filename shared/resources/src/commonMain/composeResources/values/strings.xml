@@ -48,6 +48,7 @@
     <string name="headline_api_key">API key</string>
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Source</string>
     <string name="headline_features">Features</string>
+    <string name="headline_activities">Activities</string>
 
     <string name="x_times_y" translatable="false">%1$s x %2$s</string>
     <string name="weight">Weight</string>
@@ -151,6 +152,7 @@
     <string name="action_delete">Delete</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_add_meal">Add meal</string>
+    <string name="action_add_activity">Add activity</string>
     <string name="action_edit">Edit</string>
     <string name="action_insert_suggested_search">Insert suggested search</string>
     <string name="action_edit_entry">Edit entry</string>
@@ -200,6 +202,8 @@
     <string name="neutral_take_nutrition_photo">Take nutrition photo</string>
     <string name="neutral_pending_product_saved">Pending product saved</string>
     <string name="neutral_pending_product_photo_count">%1$d photos</string>
+    <string name="neutral_loading_activity">Loading activity</string>
+    <string name="neutral_x_steps">%1$s steps</string>
     <plurals name="neutral_remaining_calories">
         <item quantity="one">%1$d calorie left</item>
         <item quantity="other">%1$d calories left</item>
