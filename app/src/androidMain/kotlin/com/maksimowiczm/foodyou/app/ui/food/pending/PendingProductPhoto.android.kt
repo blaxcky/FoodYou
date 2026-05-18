@@ -5,6 +5,11 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,12 +37,11 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.core.content.FileProvider
 import com.maksimowiczm.foodyou.food.infrastructure.PENDING_PRODUCT_PHOTO_DIRECTORY
 import foodyou.app.generated.resources.*
@@ -137,12 +141,6 @@ private fun ZoomablePendingProductPhoto(
     }
     var scale by remember(photoPath) { mutableFloatStateOf(1f) }
     var offset by remember(photoPath) { mutableStateOf(Offset.Zero) }
-    val transformableState =
-        rememberTransformableState { zoomChange, panChange, _ ->
-            val newScale = (scale * zoomChange).coerceIn(1f, 5f)
-            scale = newScale
-            offset = if (newScale == 1f) Offset.Zero else offset + panChange
-        }
 
     if (bitmap != null) {
         Image(
@@ -151,8 +149,36 @@ private fun ZoomablePendingProductPhoto(
             contentScale = ContentScale.Fit,
             modifier =
                 modifier
-                    .transformable(transformableState)
                     .clipToBounds()
+                    .pointerInput(photoPath) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                scale = 1f
+                                offset = Offset.Zero
+                            }
+                        )
+                    }
+                    .pointerInput(photoPath) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Main)
+                                val pressed = event.changes.filter { it.pressed }
+                                val shouldHandleZoom = pressed.size > 1 || scale > 1f
+                                if (shouldHandleZoom) {
+                                    val newScale = (scale * event.calculateZoom()).coerceIn(1f, 5f)
+                                    scale = newScale
+                                    offset =
+                                        if (newScale == 1f) {
+                                            Offset.Zero
+                                        } else {
+                                            offset + event.calculatePan()
+                                        }
+                                    event.changes.forEach { if (it.pressed) it.consume() }
+                                }
+                            } while (pressed.isNotEmpty())
+                        }
+                    }
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
