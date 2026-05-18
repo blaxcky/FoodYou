@@ -94,27 +94,21 @@ internal class GoalsViewModel(
             )
 
     val weekModel: StateFlow<WeekSummaryModel?> =
-        combine(dateState.filterNotNull(), dateProvider.observeDate(), settingsRepository.observe()) {
-                selectedDate,
-                today,
-                settings ->
-                Triple(selectedDate, today, settings.stepsCaloriesPerStepKcal)
+        combine(dateState.filterNotNull(), dateProvider.observeDate()) { selectedDate, today ->
+                selectedDate to today
             }
-            .flatMapLatest { (selectedDate, today, kcalPerStep) ->
+            .flatMapLatest { (selectedDate, today) ->
                 val dates = selectedDate.weekDates(today)
                 val dayFlows =
                     dates.map { date ->
                         combine(
                             observeDiaryMealsUseCase.observeNutritionFacts(date),
                             goalsRepository.observeDailyGoals(date),
-                            activityRepository.observeDailySummary(date, kcalPerStep),
-                        ) { facts, goal, activity ->
+                        ) { facts, goal ->
                             val consumedEnergy = facts.energy.value ?: 0.0
-                            val netEnergy =
-                                calculateNetEnergyKcal(consumedEnergy, activity.totalEnergyKcal)
                             WeekDaySummaryModel(
                                 date = date,
-                                energy = netEnergy.roundToInt(),
+                                energy = consumedEnergy.roundToInt(),
                                 goal = goal[NutritionFactsField.Energy].roundToInt(),
                             )
                         }

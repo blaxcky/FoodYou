@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.calendar.CalendarCard
 import com.maksimowiczm.foodyou.app.ui.home.activity.ActivitiesCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCard
+import com.maksimowiczm.foodyou.app.ui.home.goals.WeeklyGoalsCard
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.mealsCards
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.rememberMealsCardsState
 import com.maksimowiczm.foodyou.app.ui.home.poll.PollsCard
@@ -176,6 +177,13 @@ fun HomeScreen(
                             )
                         }
                 }
+            }
+
+            item(key = "weekly-goals", contentType = "weekly-goals") {
+                WeeklyGoalsCard(
+                    homeState = homeState,
+                    modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                )
             }
         }
     }

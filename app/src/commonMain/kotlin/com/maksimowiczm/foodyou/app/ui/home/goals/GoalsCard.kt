@@ -112,42 +112,50 @@ internal fun GoalsCard(
     LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
 
     val model = viewModel.model.collectAsStateWithLifecycle().value
+
+    if (model == null) {
+        GoalsCardSkeleton(
+            onClick = { onClick(homeState.selectedDate.toEpochDays()) },
+            onLongClick = onLongClick,
+            modifier = modifier,
+        )
+    } else {
+        GoalsCard(
+            energy = model.energy,
+            burnedEnergy = model.burnedEnergy,
+            netEnergy = model.netEnergy,
+            energyGoal = model.energyGoal,
+            proteins = model.proteins,
+            proteinsGoal = model.proteinsGoal,
+            carbohydrates = model.carbohydrates,
+            carbohydratesGoal = model.carbohydratesGoal,
+            fats = model.fats,
+            fatsGoal = model.fatsGoal,
+            onClick = { onClick(homeState.selectedDate.toEpochDays()) },
+            onLongClick = onLongClick,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+internal fun WeeklyGoalsCard(
+    homeState: HomeState,
+    modifier: Modifier = Modifier,
+    viewModel: GoalsViewModel = koinViewModel(),
+) {
+    LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
+
     val weekModel = viewModel.weekModel.collectAsStateWithLifecycle().value
-    val expandWeekDetails = viewModel.expandGoalsCard.collectAsStateWithLifecycle().value
+    val expanded = viewModel.expandGoalsCard.collectAsStateWithLifecycle().value
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (model == null) {
-            GoalsCardSkeleton(
-                onClick = { onClick(homeState.selectedDate.toEpochDays()) },
-                onLongClick = onLongClick,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            GoalsCard(
-                energy = model.energy,
-                burnedEnergy = model.burnedEnergy,
-                netEnergy = model.netEnergy,
-                energyGoal = model.energyGoal,
-                proteins = model.proteins,
-                proteinsGoal = model.proteinsGoal,
-                carbohydrates = model.carbohydrates,
-                carbohydratesGoal = model.carbohydratesGoal,
-                fats = model.fats,
-                fatsGoal = model.fatsGoal,
-                onClick = { onClick(homeState.selectedDate.toEpochDays()) },
-                onLongClick = onLongClick,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        if (weekModel != null) {
-            WeeklyGoalsCard(
-                model = weekModel,
-                expanded = expandWeekDetails,
-                onExpandedChange = viewModel::setExpandGoalsCard,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+    if (weekModel != null) {
+        WeeklyGoalsContent(
+            model = weekModel,
+            expanded = expanded,
+            onExpandedChange = viewModel::setExpandGoalsCard,
+            modifier = modifier,
+        )
     }
 }
 
@@ -250,7 +258,7 @@ private fun goalProgress(value: Int, goal: Int): Float =
     }
 
 @Composable
-private fun WeeklyGoalsCard(
+private fun WeeklyGoalsContent(
     model: WeekSummaryModel,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -341,18 +349,23 @@ private fun WeeklyGoalsChart(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
-        days.forEach { day ->
-            WeeklyBar(
-                day = day,
-                label =
-                    day.chartLabel(
-                        today = today,
-                        todayLabel = todayLabel,
-                        weekDayNamesShort = dateFormatter.weekDayNamesShort,
-                    ),
-                max = max,
-                modifier = Modifier.weight(1f),
-            )
+        repeat(7) { index ->
+            val day = days.getOrNull(index)
+            if (day == null) {
+                Spacer(Modifier.weight(1f))
+            } else {
+                WeeklyBar(
+                    day = day,
+                    label =
+                        day.chartLabel(
+                            today = today,
+                            todayLabel = todayLabel,
+                            weekDayNamesShort = dateFormatter.weekDayNamesShort,
+                        ),
+                    max = max,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -494,7 +507,7 @@ private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Mo
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Top,
     ) {
         WeeklyFooterMetric(
@@ -530,12 +543,12 @@ private fun WeeklyFooterMetric(
             imageVector = icon,
             contentDescription = null,
             tint = GoalsTextColor,
-            modifier = Modifier.size(30.dp).alpha(0.95f),
+            modifier = Modifier.size(22.dp).alpha(0.95f),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         Column {
-            Text(text = value, style = MaterialTheme.typography.titleMedium, color = GoalsTextColor)
-            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = GoalsTextColor)
+            Text(text = value, style = MaterialTheme.typography.bodyMedium, color = GoalsTextColor)
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = GoalsTextColor)
         }
     }
 }
