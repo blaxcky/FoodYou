@@ -12,7 +12,7 @@ interface PendingProductRepository {
     fun observePendingProductByBarcode(barcode: String): Flow<PendingProduct?>
 
     suspend fun insertPendingProduct(
-        barcode: String,
+        barcode: String?,
         photoPath: String,
         createdAt: Instant,
     ): Long

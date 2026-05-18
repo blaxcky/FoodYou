@@ -180,6 +180,9 @@
     <string name="action_download_product">Download product</string>
     <string name="action_create_pending_product">Add pending product</string>
     <string name="action_complete_product">Complete product</string>
+    <string name="action_skip_barcode">Skip barcode</string>
+    <string name="action_rotate_photo_left">Rotate photo left</string>
+    <string name="action_rotate_photo_right">Rotate photo right</string>
     <string name="action_copy_and_open_bug_report">Copy and open bug report</string>
     <string name="action_copy_and_report" description="Copy bug report and report a bug">Copy &amp; report</string>
     <string name="action_show_details">Show details</string>
@@ -193,6 +196,7 @@
     <string name="neutral_barcode_scanner_camera_request_redirect_to_settings">Camera permission is required to scan barcodes. Please allow it in the app settings.</string>
     <string name="neutral_no_food_found">No food found</string>
     <string name="neutral_no_pending_products">No pending products</string>
+    <string name="neutral_no_barcode">No barcode</string>
     <string name="neutral_take_nutrition_photo">Take nutrition photo</string>
     <string name="neutral_pending_product_saved">Pending product saved</string>
     <plurals name="neutral_remaining_calories">

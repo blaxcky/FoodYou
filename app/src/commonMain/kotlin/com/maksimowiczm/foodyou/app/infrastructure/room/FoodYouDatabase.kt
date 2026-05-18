@@ -188,7 +188,7 @@ private object PendingProductMigration : Migration(33, 34) {
             """
             CREATE TABLE IF NOT EXISTS `PendingProduct` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                `barcode` TEXT NOT NULL,
+                `barcode` TEXT,
                 `photoPath` TEXT NOT NULL,
                 `createdAt` INTEGER NOT NULL,
                 `updatedAt` INTEGER

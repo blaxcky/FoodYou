@@ -4,6 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -28,7 +33,8 @@ fun CreatePendingProductScreen(
 ) {
     val viewModel: CreatePendingProductViewModel = koinViewModel()
     var barcode by rememberSaveable { mutableStateOf<String?>(null) }
-    var scannerVisible by rememberSaveable { mutableStateOf(true) }
+    var scannerVisible by rememberSaveable { mutableStateOf(false) }
+    var barcodeStepFinished by rememberSaveable { mutableStateOf(false) }
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
         when (event) {
@@ -42,8 +48,12 @@ fun CreatePendingProductScreen(
         onBarcodeScan = {
             barcode = it
             scannerVisible = false
+            barcodeStepFinished = true
         },
-        onClose = onBack,
+        onClose = {
+            scannerVisible = false
+            barcodeStepFinished = true
+        },
     )
 
     Scaffold(
@@ -61,10 +71,29 @@ fun CreatePendingProductScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             val scannedBarcode = barcode
-            if (scannedBarcode == null) {
+            if (!barcodeStepFinished) {
                 Text(stringResource(Res.string.action_scan_barcode))
+                FilledTonalButton(
+                    onClick = { scannerVisible = true },
+                    modifier = Modifier.padding(top = 16.dp),
+                ) {
+                    Icon(imageVector = Icons.Outlined.QrCodeScanner, contentDescription = null)
+                    Text(
+                        text = stringResource(Res.string.action_scan_barcode),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        scannerVisible = false
+                        barcodeStepFinished = true
+                    },
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text(stringResource(Res.string.action_skip_barcode))
+                }
             } else {
-                Text(scannedBarcode)
+                Text(scannedBarcode ?: stringResource(Res.string.neutral_no_barcode))
                 TakeNutritionPhotoButton(
                     onPhotoTaken = { viewModel.create(scannedBarcode, it) },
                     modifier = Modifier.padding(top = 16.dp),

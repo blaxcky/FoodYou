@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "PendingProduct", indices = [Index(value = ["barcode"], unique = true)])
 data class PendingProductEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val barcode: String,
+    val barcode: String?,
     val photoPath: String,
     val createdAt: Long,
     val updatedAt: Long?,

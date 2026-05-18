@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 34,
-    "identityHash": "a35c3b8c966315419e7a29878e4272a6",
+    "identityHash": "1b971dde933c5d3d4ca903fbfb8b728b",
     "entities": [
       {
         "tableName": "Product",
@@ -1746,7 +1746,7 @@
       },
       {
         "tableName": "PendingProduct",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `barcode` TEXT NOT NULL, `photoPath` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `barcode` TEXT, `photoPath` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1757,8 +1757,7 @@
           {
             "fieldPath": "barcode",
             "columnName": "barcode",
-            "affinity": "TEXT",
-            "notNull": true
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "photoPath",
@@ -1894,7 +1893,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a35c3b8c966315419e7a29878e4272a6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1b971dde933c5d3d4ca903fbfb8b728b')"
     ]
   }
 }

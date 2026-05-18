@@ -89,7 +89,12 @@ fun PendingProductsScreen(
                 items(pendingProducts, key = { it.id }) { pendingProduct ->
                     Surface(onClick = { onPendingProduct(pendingProduct.id) }) {
                         ListItem(
-                            headlineContent = { Text(pendingProduct.barcode) },
+                            headlineContent = {
+                                Text(
+                                    pendingProduct.barcode
+                                        ?: stringResource(Res.string.neutral_no_barcode)
+                                )
+                            },
                             supportingContent = { Text(pendingProduct.createdAt.toString()) },
                             leadingContent = {
                                 PendingProductPhoto(

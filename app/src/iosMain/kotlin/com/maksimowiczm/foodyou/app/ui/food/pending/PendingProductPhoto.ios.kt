@@ -7,7 +7,11 @@ import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal actual fun PendingProductPhoto(photoPath: String, modifier: Modifier) {
+internal actual fun PendingProductPhoto(
+    photoPath: String,
+    modifier: Modifier,
+    rotationDegrees: Float,
+) {
     Text(photoPath, modifier = modifier)
 }
 

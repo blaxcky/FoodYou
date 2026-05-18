@@ -33,22 +33,27 @@ class CreatePendingProductUseCase(
     private val transactionProvider: TransactionProvider,
     private val dateProvider: DateProvider,
 ) {
-    suspend fun create(barcode: String, photoPath: String): CreatePendingProductResult {
-        val normalizedBarcode = barcode.trim()
+    suspend fun create(barcode: String?, photoPath: String): CreatePendingProductResult {
+        val normalizedBarcode = barcode?.trim()?.takeIf { it.isNotEmpty() }
         return transactionProvider.withTransaction {
-            val existingProduct = productRepository.observeProductByBarcode(normalizedBarcode).first()
-            if (existingProduct != null) {
-                photoStorage.delete(photoPath)
-                return@withTransaction CreatePendingProductResult.ExistingProduct(existingProduct.id)
-            }
+            if (normalizedBarcode != null) {
+                val existingProduct =
+                    productRepository.observeProductByBarcode(normalizedBarcode).first()
+                if (existingProduct != null) {
+                    photoStorage.delete(photoPath)
+                    return@withTransaction CreatePendingProductResult.ExistingProduct(
+                        existingProduct.id
+                    )
+                }
 
-            val existingPending =
-                pendingProductRepository.observePendingProductByBarcode(normalizedBarcode).first()
-            if (existingPending != null) {
-                photoStorage.delete(photoPath)
-                return@withTransaction CreatePendingProductResult.ExistingPendingProduct(
-                    existingPending.id
-                )
+                val existingPending =
+                    pendingProductRepository.observePendingProductByBarcode(normalizedBarcode).first()
+                if (existingPending != null) {
+                    photoStorage.delete(photoPath)
+                    return@withTransaction CreatePendingProductResult.ExistingPendingProduct(
+                        existingPending.id
+                    )
+                }
             }
 
             val id =

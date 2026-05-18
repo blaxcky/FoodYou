@@ -20,7 +20,7 @@ internal class RoomPendingProductRepository(private val dao: PendingProductDao) 
         dao.observePendingProductByBarcode(barcode).map { it?.toModel() }
 
     override suspend fun insertPendingProduct(
-        barcode: String,
+        barcode: String?,
         photoPath: String,
         createdAt: Instant,
     ): Long =

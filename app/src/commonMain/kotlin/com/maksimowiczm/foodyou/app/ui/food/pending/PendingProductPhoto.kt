@@ -4,7 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-internal expect fun PendingProductPhoto(photoPath: String, modifier: Modifier = Modifier)
+internal expect fun PendingProductPhoto(
+    photoPath: String,
+    modifier: Modifier = Modifier,
+    rotationDegrees: Float = 0f,
+)
 
 @Composable
 internal expect fun TakeNutritionPhotoButton(
