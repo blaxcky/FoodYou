@@ -35,6 +35,7 @@ fun Module.home() {
             observeDiaryMealsUseCase = get(),
             goalsRepository = get(),
             activityRepository = get(),
+            dateProvider = get(),
         )
     }
     viewModel { HomePersonalizationViewModel(settingsRepository = userPreferencesRepository()) }

@@ -49,6 +49,7 @@
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Source</string>
     <string name="headline_features">Features</string>
     <string name="headline_activities">Activities</string>
+    <string name="headline_your_week">Your week</string>
 
     <string name="x_times_y" translatable="false">%1$s x %2$s</string>
     <string name="weight">Weight</string>
@@ -99,6 +100,12 @@
     <string name="goal_carbs_short">Carbs</string>
     <string name="goal_protein">Protein</string>
     <string name="goal_reached_percentage">%1$d %% reached</string>
+    <string name="weekly_so_far">So far</string>
+    <string name="weekly_difference">Difference</string>
+    <string name="weekly_percent">Percent</string>
+    <string name="weekly_per_day">per day</string>
+    <string name="weekly_reached">reached</string>
+    <string name="neutral_today_short">Today</string>
     <string name="nutriment_saturated_fats">Saturated fats</string>
     <string name="nutriment_polyunsaturated_fats">Polyunsaturated fats</string>
     <string name="nutriment_monounsaturated_fats">Monounsaturated fats</string>
@@ -190,6 +197,7 @@
     <string name="action_copy_and_open_bug_report">Copy and open bug report</string>
     <string name="action_copy_and_report" description="Copy bug report and report a bug">Copy &amp; report</string>
     <string name="action_show_details">Show details</string>
+    <string name="action_details">Details</string>
     <string name="action_browse_usda">Browse FoodData Central (USDA)</string>
     <string name="action_set_key">Set key</string>
     <string name="action_obtain_key">Obtain key</string>

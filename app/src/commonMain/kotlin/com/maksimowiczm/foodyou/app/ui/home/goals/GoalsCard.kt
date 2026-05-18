@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -17,11 +19,20 @@ import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -40,11 +51,13 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
+import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 import foodyou.app.generated.resources.Res
+import foodyou.app.generated.resources.action_details
 import foodyou.app.generated.resources.goal_burned
 import foodyou.app.generated.resources.goal_carbs_short
 import foodyou.app.generated.resources.goal_eaten
@@ -54,8 +67,18 @@ import foodyou.app.generated.resources.goal_left
 import foodyou.app.generated.resources.goal_protein
 import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
+import foodyou.app.generated.resources.headline_your_week
 import foodyou.app.generated.resources.inter
+import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
+import foodyou.app.generated.resources.unit_kcal
+import foodyou.app.generated.resources.weekly_difference
+import foodyou.app.generated.resources.weekly_per_day
+import foodyou.app.generated.resources.weekly_percent
+import foodyou.app.generated.resources.weekly_reached
+import foodyou.app.generated.resources.weekly_so_far
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
@@ -89,29 +112,42 @@ internal fun GoalsCard(
     LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
 
     val model = viewModel.model.collectAsStateWithLifecycle().value
+    val weekModel = viewModel.weekModel.collectAsStateWithLifecycle().value
+    val expandWeekDetails = viewModel.expandGoalsCard.collectAsStateWithLifecycle().value
 
-    if (model == null) {
-        GoalsCardSkeleton(
-            onClick = { onClick(homeState.selectedDate.toEpochDays()) },
-            onLongClick = onLongClick,
-            modifier = modifier,
-        )
-    } else {
-        GoalsCard(
-            energy = model.energy,
-            burnedEnergy = model.burnedEnergy,
-            netEnergy = model.netEnergy,
-            energyGoal = model.energyGoal,
-            proteins = model.proteins,
-            proteinsGoal = model.proteinsGoal,
-            carbohydrates = model.carbohydrates,
-            carbohydratesGoal = model.carbohydratesGoal,
-            fats = model.fats,
-            fatsGoal = model.fatsGoal,
-            onClick = { onClick(homeState.selectedDate.toEpochDays()) },
-            onLongClick = onLongClick,
-            modifier = modifier,
-        )
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (model == null) {
+            GoalsCardSkeleton(
+                onClick = { onClick(homeState.selectedDate.toEpochDays()) },
+                onLongClick = onLongClick,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            GoalsCard(
+                energy = model.energy,
+                burnedEnergy = model.burnedEnergy,
+                netEnergy = model.netEnergy,
+                energyGoal = model.energyGoal,
+                proteins = model.proteins,
+                proteinsGoal = model.proteinsGoal,
+                carbohydrates = model.carbohydrates,
+                carbohydratesGoal = model.carbohydratesGoal,
+                fats = model.fats,
+                fatsGoal = model.fatsGoal,
+                onClick = { onClick(homeState.selectedDate.toEpochDays()) },
+                onLongClick = onLongClick,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        if (weekModel != null) {
+            WeeklyGoalsCard(
+                model = weekModel,
+                expanded = expandWeekDetails,
+                onExpandedChange = viewModel::setExpandGoalsCard,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
@@ -212,6 +248,297 @@ private fun goalProgress(value: Int, goal: Int): Float =
     } else {
         (value.toFloat() / goal).coerceIn(0f, 1f)
     }
+
+@Composable
+private fun WeeklyGoalsCard(
+    model: WeekSummaryModel,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.headline_your_week),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                color = GoalsTextColor,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(Res.string.action_details),
+                modifier = Modifier.clickable { onExpandedChange(!expanded) },
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        FoodYouHomeCard(color = GoalsCardColor, shape = GoalsCardShape) {
+            Column(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                WeeklyGoalsHeader(model)
+                WeeklyGoalsChart(days = model.days, today = model.today)
+                WeeklyDetailsToggle(expanded = expanded, onClick = { onExpandedChange(!expanded) })
+                if (expanded) {
+                    WeeklyDetailsTable(model.days)
+                    HorizontalDivider(color = GoalsTrackColor)
+                    WeeklySummaryFooter(model)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Modifier) {
+    val energyFormatter = LocalEnergyFormatter.current
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = Icons.Filled.LocalFireDepartment,
+            contentDescription = null,
+            tint = FatColor,
+            modifier = Modifier.size(32.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text =
+                energyFormatter.formatEnergy(model.totalEnergy, withSuffix = false).groupDigits() +
+                    "/" +
+                    energyFormatter.formatEnergy(model.totalGoal, withSuffix = false).groupDigits() +
+                    " " +
+                    stringResource(Res.string.unit_kcal),
+            color = GoalsTextColor,
+            style =
+                MaterialTheme.typography.headlineMedium.copy(
+                    fontFamily = interNumberFontFamily(),
+                    fontSize = 32.sp,
+                    lineHeight = 36.sp,
+                ),
+        )
+    }
+}
+
+@Composable
+private fun WeeklyGoalsChart(
+    days: List<WeekDaySummaryModel>,
+    today: LocalDate,
+    modifier: Modifier = Modifier,
+) {
+    val max = days.maxOfOrNull { maxOf(it.energy, it.goal) }?.coerceAtLeast(1) ?: 1
+    val dateFormatter = LocalDateFormatter.current
+    val todayLabel = stringResource(Res.string.neutral_today_short)
+
+    Row(
+        modifier = modifier.fillMaxWidth().height(184.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        days.forEach { day ->
+            WeeklyBar(
+                day = day,
+                label =
+                    day.chartLabel(
+                        today = today,
+                        todayLabel = todayLabel,
+                        weekDayNamesShort = dateFormatter.weekDayNamesShort,
+                    ),
+                max = max,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeeklyBar(
+    day: WeekDaySummaryModel,
+    label: String,
+    max: Int,
+    modifier: Modifier = Modifier,
+) {
+    val valueHeight = (day.energy.toFloat() / max).coerceIn(0.03f, 1f)
+    val goalHeight = (day.goal.toFloat() / max).coerceIn(0f, 1f)
+    val overflow = day.energy > day.goal && day.goal > 0
+
+    Column(
+        modifier = modifier.fillMaxHeight(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Bottom,
+    ) {
+        Text(
+            text = day.energy.toString().groupDigits(),
+            color = GoalsTextColor,
+            style = MaterialTheme.typography.labelLarge.copy(fontFamily = interNumberFontFamily()),
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .height(126.dp)
+                    .padding(horizontal = 2.dp),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Box(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .fillMaxHeight(valueHeight)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(FatColor)
+            )
+            if (overflow) {
+                Box(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .fillMaxHeight((valueHeight - goalHeight).coerceAtLeast(0.02f))
+                            .align(Alignment.TopCenter)
+                            .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                            .background(Color(0xFFC57484))
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = label,
+            color = GoalsTextColor,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun WeeklyDetailsToggle(expanded: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(Res.string.action_details),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
+    val dateFormatter = LocalDateFormatter.current
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        WeeklyDetailsRow(
+            day = "",
+            goal = stringResource(Res.string.goal_goal).replaceFirstChar { it.uppercase() },
+            soFar = stringResource(Res.string.weekly_so_far),
+            difference = stringResource(Res.string.weekly_difference),
+            percent = stringResource(Res.string.weekly_percent),
+            header = true,
+        )
+        days.forEach { day ->
+            WeeklyDetailsRow(
+                day = day.tableLabel(dateFormatter.weekDayNamesShort),
+                goal = day.goal.toString().groupDigits(),
+                soFar = day.energy.toString().groupDigits(),
+                difference = day.difference.toString().groupDigits(),
+                percent = day.percent.toString(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeeklyDetailsRow(
+    day: String,
+    goal: String,
+    soFar: String,
+    difference: String,
+    percent: String,
+    modifier: Modifier = Modifier,
+    header: Boolean = false,
+) {
+    val style =
+        if (header) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge
+    val weight = if (header) FontWeight.SemiBold else FontWeight.Normal
+
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(day, modifier = Modifier.weight(0.65f), style = style, fontWeight = FontWeight.SemiBold)
+        Text(goal, modifier = Modifier.weight(1f), style = style, fontWeight = weight)
+        Text(soFar, modifier = Modifier.weight(1f), style = style, fontWeight = weight)
+        Text(difference, modifier = Modifier.weight(1f), style = style, fontWeight = weight)
+        Text(percent, modifier = Modifier.weight(0.9f), style = style, fontWeight = weight)
+    }
+}
+
+@Composable
+private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Modifier) {
+    val remaining = model.totalGoal - model.totalEnergy
+    val absoluteRemaining = kotlin.math.abs(remaining)
+    val average = if (model.days.isEmpty()) 0 else model.totalEnergy / model.days.size
+    val percent =
+        if (model.totalGoal <= 0) 0 else (model.totalEnergy.toFloat() / model.totalGoal * 100).roundToInt()
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        WeeklyFooterMetric(
+            icon = Icons.Filled.Speed,
+            value = "${absoluteRemaining.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
+            label = stringResource(if (remaining >= 0) Res.string.goal_left else Res.string.goal_too_much),
+            modifier = Modifier.weight(1f),
+        )
+        WeeklyFooterMetric(
+            icon = Icons.Filled.LocalFireDepartment,
+            value = "${average.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
+            label = stringResource(Res.string.weekly_per_day),
+            modifier = Modifier.weight(1f),
+        )
+        WeeklyFooterMetric(
+            icon = Icons.Filled.CheckCircleOutline,
+            value = "$percent %",
+            label = stringResource(Res.string.weekly_reached),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun WeeklyFooterMetric(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = GoalsTextColor,
+            modifier = Modifier.size(30.dp).alpha(0.95f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(text = value, style = MaterialTheme.typography.titleMedium, color = GoalsTextColor)
+            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = GoalsTextColor)
+        }
+    }
+}
 
 @Composable
 private fun CaloriesOverview(
@@ -536,6 +863,22 @@ private fun String.groupDigits(): String {
             .chunked(3)
             .joinToString(" ")
             .reversed()
+}
+
+private fun WeekDaySummaryModel.chartLabel(
+    today: LocalDate,
+    todayLabel: String,
+    weekDayNamesShort: List<String>,
+): String =
+    if (date == today) {
+        todayLabel
+    } else {
+        tableLabel(weekDayNamesShort)
+    }
+
+private fun WeekDaySummaryModel.tableLabel(weekDayNamesShort: List<String>): String {
+    val index = (date.dayOfWeek.isoDayNumber - 1).coerceIn(0, weekDayNamesShort.lastIndex)
+    return weekDayNamesShort[index].trimEnd('.').plus(".")
 }
 
 @Composable

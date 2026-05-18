@@ -45,6 +45,7 @@
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Quelle</string>
     <string name="headline_features">Funktionen</string>
     <string name="headline_activities">Aktivitäten</string>
+    <string name="headline_your_week">Deine Woche</string>
     <string name="headline_recent">Zuletzt verwendet</string>
     <string name="headline_today" description="Today, date">Heute, %1$s</string>
     <string name="headline_yesterday" description="Yesterday, date">Gestern, %1$s</string>
@@ -176,6 +177,12 @@
     <string name="goal_carbs_short">KH</string>
     <string name="goal_protein">Protein</string>
     <string name="goal_reached_percentage">%1$d %% erreicht</string>
+    <string name="weekly_so_far">Bisher</string>
+    <string name="weekly_difference">Differenz</string>
+    <string name="weekly_percent">Prozent</string>
+    <string name="weekly_per_day">pro Tag</string>
+    <string name="weekly_reached">erreicht</string>
+    <string name="neutral_today_short">Heute</string>
     <string name="nutriment_saturated_fats">Gesättigte Fettsäuren</string>
     <string name="nutriment_polyunsaturated_fats">Mehrfach ungesättigte Fettsäuren</string>
     <string name="nutriment_monounsaturated_fats">Einfach ungesättigte Fettsäuren</string>
@@ -264,6 +271,7 @@
     <string name="action_copy_and_open_bug_report">Kopiere und erstelle Bug-Report</string>
     <string name="action_copy_and_report" description="Copy bug report and report a bug">Kopieren &amp; melden</string>
     <string name="action_show_details">Details anzeigen</string>
+    <string name="action_details">Details</string>
     <string name="action_browse_usda">Durchsuche FoodData Central (USDA)</string>
     <string name="action_set_key">Schlüssel setzen</string>
     <string name="action_obtain_key">Schlüssel erhalten</string>
