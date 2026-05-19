@@ -32,6 +32,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsMealPicker
@@ -40,6 +41,7 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.component.Source
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberFoodMeasurementFormState
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.extension.add
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
@@ -80,6 +82,19 @@ fun UpdateEntryScreen(
         // TODO loading state
     } else {
 
+        val selectedMeasurement =
+            remember(entry.measurement, suggestions, possibleTypes) {
+                if (entry.measurement.type in possibleTypes) {
+                    entry.measurement
+                } else {
+                    suggestions.firstOrNull { it.type in possibleTypes }
+                }
+            }
+
+        if (selectedMeasurement == null) {
+            return
+        }
+
         val state =
             rememberFoodMeasurementFormState(
                 today = today,
@@ -93,7 +108,7 @@ fun UpdateEntryScreen(
                     remember(meals, entry) { meals.firstOrNull { it.id == entry.mealId }?.name },
                 suggestions = suggestions,
                 possibleTypes = possibleTypes,
-                selectedMeasurement = entry.measurement,
+                selectedMeasurement = selectedMeasurement,
             )
 
         UpdateEntryScreen(
@@ -222,7 +237,13 @@ private fun UpdateEntryScreen(
                 HorizontalDivider(Modifier.padding(horizontal = 8.dp))
                 ChipsMealPicker(state = state.mealsState, modifier = Modifier.padding(8.dp))
                 HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                MeasurementPicker(state = state.measurementState, modifier = Modifier.padding(8.dp))
+                MeasurementPicker(
+                    state = state.measurementState,
+                    modifier = Modifier.padding(8.dp),
+                    servingUnit =
+                        if (entry.food is DiaryFoodRecipe) ServingUnit.Serving
+                        else ServingUnit.Piece,
+                )
             }
 
             val food = entry.food

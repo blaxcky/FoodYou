@@ -3,11 +3,14 @@ package com.maksimowiczm.foodyou.food.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import kotlinx.coroutines.flow.first
 
@@ -19,6 +22,7 @@ sealed interface UpdateProductError {
 
 class UpdateProductUseCase(
     private val productRepository: ProductRepository,
+    private val measurementSuggestionRepository: FoodMeasurementSuggestionRepository,
     private val transactionProvider: TransactionProvider,
     private val logger: Logger,
 ) {
@@ -68,6 +72,30 @@ class UpdateProductUseCase(
                 )
 
             productRepository.updateProduct(updatedProduct)
+
+            if (
+                product.servingWeight != null &&
+                    servingWeight == null &&
+                    product.isLiquid == isLiquid
+            ) {
+                val latestServing =
+                    measurementSuggestionRepository.findLatestByProductIdAndType(
+                        productId = id,
+                        type = MeasurementType.Serving,
+                    )
+
+                if (latestServing is Measurement.Serving) {
+                    val fallbackWeight = latestServing.quantity * product.servingWeight
+                    val fallbackMeasurement =
+                        if (isLiquid) {
+                            Measurement.Milliliter(fallbackWeight)
+                        } else {
+                            Measurement.Gram(fallbackWeight)
+                        }
+
+                    measurementSuggestionRepository.insert(id, fallbackMeasurement)
+                }
+            }
 
             Ok(Unit)
         }

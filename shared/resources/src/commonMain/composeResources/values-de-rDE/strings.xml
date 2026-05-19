@@ -155,6 +155,8 @@
     <string name="product_package">Packung</string>
     <string name="product_serving_weight">Portionsgewicht</string>
     <string name="product_serving">Portion</string>
+    <string name="product_piece_weight">Stückgewicht</string>
+    <string name="product_piece">Stück</string>
     <string name="product_name">Name</string>
     <string name="product_brand">Marke</string>
     <string name="product_barcode">Barcode</string>
@@ -284,6 +286,7 @@
     <string name="neutral_no_pending_products">Keine vorgemerkten Produkte</string>
     <string name="neutral_no_barcode">Kein Barcode</string>
     <string name="neutral_take_nutrition_photo">Nährwertfoto aufnehmen</string>
+    <string name="neutral_camera_request">Erlaube Kamerazugriff, um Produktfotos aufzunehmen</string>
     <string name="neutral_pending_product_saved">Produkt vorgemerkt</string>
     <string name="neutral_pending_product_photo_count">%1$d Fotos</string>
     <string name="neutral_loading_activity">Aktivitäten werden geladen</string>

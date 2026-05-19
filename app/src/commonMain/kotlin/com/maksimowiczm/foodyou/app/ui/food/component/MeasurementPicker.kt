@@ -42,6 +42,7 @@ import com.maksimowiczm.foodyou.app.ui.common.form.nullableFloatParser
 import com.maksimowiczm.foodyou.app.ui.common.form.positiveFloatValidator
 import com.maksimowiczm.foodyou.app.ui.common.form.rememberFormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.Saver
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
@@ -53,7 +54,11 @@ import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun MeasurementPicker(state: MeasurementPickerState, modifier: Modifier = Modifier) {
+fun MeasurementPicker(
+    state: MeasurementPickerState,
+    modifier: Modifier = Modifier,
+    servingUnit: ServingUnit = ServingUnit.Serving,
+) {
     val latestState by rememberUpdatedState(state)
     LaunchedEffect(state.inputField.value, state.type) {
         val value = state.inputField.value ?: return@LaunchedEffect
@@ -73,6 +78,7 @@ fun MeasurementPicker(state: MeasurementPickerState, modifier: Modifier = Modifi
                 formField = state.inputField,
                 type = state.type,
                 types = state.possibleTypes,
+                servingUnit = servingUnit,
                 onSelect = { state.type = it },
                 modifier = Modifier.weight(1f).padding(end = 8.dp),
             )
@@ -92,7 +98,7 @@ fun MeasurementPicker(state: MeasurementPickerState, modifier: Modifier = Modifi
                         )
                         state.type = measurement.type
                     },
-                    label = { Text(measurement.stringResource()) },
+                    label = { Text(measurement.stringResource(servingUnit)) },
                 )
             }
         }
@@ -104,6 +110,7 @@ private fun Input(
     formField: FormField<Float?, String>,
     type: MeasurementType,
     types: List<MeasurementType>,
+    servingUnit: ServingUnit,
     onSelect: (MeasurementType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -167,7 +174,7 @@ private fun Input(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = type.stringResource(),
+                    text = type.stringResource(servingUnit),
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                 )
@@ -177,7 +184,7 @@ private fun Input(
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         types.forEach {
                             DropdownMenuItem(
-                                text = { Text(it.stringResource()) },
+                                text = { Text(it.stringResource(servingUnit)) },
                                 onClick = {
                                     onSelect(it)
                                     expanded = false
@@ -214,6 +221,14 @@ fun rememberMeasurementPickerState(
         rememberSaveable(selectedMeasurement, stateSaver = Measurement.Saver) {
             mutableStateOf(selectedMeasurement)
         }
+
+    LaunchedEffect(selectedMeasurement) {
+        inputField.textFieldState.setTextAndPlaceCursorAtEnd(
+            selectedMeasurement.rawValue.formatClipZeros()
+        )
+        typeState.value = selectedMeasurement.type
+        measurementState.value = selectedMeasurement
+    }
 
     return remember(suggestions, possibleTypes, inputField, typeState, measurementState) {
         MeasurementPickerState(

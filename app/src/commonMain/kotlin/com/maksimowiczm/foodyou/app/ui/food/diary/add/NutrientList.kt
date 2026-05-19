@@ -19,12 +19,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.component.IncompleteFoodsList
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.app.ui.food.component.EnergyProgressIndicator
 import com.maksimowiczm.foodyou.app.ui.food.shared.component.NutrientList
 import com.maksimowiczm.foodyou.common.domain.food.isComplete
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import foodyou.app.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun NutrientList(
@@ -33,11 +36,8 @@ internal fun NutrientList(
     onEditFood: (FoodId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val facts =
-        remember(food, measurement) {
-            val weight = food.weight(measurement)
-            food.nutritionFacts * (weight / 100)
-        }
+    val weight = remember(food, measurement) { food.weight(measurement) }
+    val facts = remember(food, weight) { weight?.let { food.nutritionFacts * (it / 100) } }
 
     Column(modifier) {
         Row(
@@ -49,9 +49,9 @@ internal fun NutrientList(
                 Icon(imageVector = Icons.AutoMirrored.Outlined.ViewList, contentDescription = null)
             }
 
-            val proteins = facts.proteins.value
-            val carbohydrates = facts.carbohydrates.value
-            val fats = facts.fats.value
+            val proteins = facts?.proteins?.value
+            val carbohydrates = facts?.carbohydrates?.value
+            val fats = facts?.fats?.value
 
             if (proteins != null && carbohydrates != null && fats != null) {
                 EnergyProgressIndicator(
@@ -68,15 +68,26 @@ internal fun NutrientList(
                 totalWeight = food.totalWeight,
                 servingWeight = food.servingWeight,
                 isLiquid = food.isLiquid,
-            ) ?: error("Invalid measurement: $measurement for ${food.foodId}")
+                servingUnit =
+                    if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
+            )
 
-        Text(
-            text = measurementString,
-            modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
-        )
+        if (measurementString == null || facts == null) {
+            Text(
+                text = stringResource(Res.string.error_measurement_error),
+                modifier = Modifier.padding(8.dp),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        } else {
+            Text(
+                text = measurementString,
+                modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                style = MaterialTheme.typography.labelLarge,
+            )
 
-        NutrientList(facts)
+            NutrientList(facts)
+        }
 
         if (food is RecipeModel && !food.nutritionFacts.isComplete) {
             val foods =

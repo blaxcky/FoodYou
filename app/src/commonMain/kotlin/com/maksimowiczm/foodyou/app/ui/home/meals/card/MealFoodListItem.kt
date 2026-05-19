@@ -26,6 +26,7 @@ import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
@@ -89,6 +90,7 @@ internal fun MealFoodListItem(
             totalWeight = entry.totalWeight,
             servingWeight = entry.servingWeight,
             isLiquid = entry.isLiquid,
+            servingUnit = if (entry.isRecipe) ServingUnit.Serving else ServingUnit.Piece,
         )
 
     if (measurementString == null) {

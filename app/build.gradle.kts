@@ -105,6 +105,11 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.appcompat)
+            implementation(libs.androidx.camera.camera2)
+            implementation(libs.androidx.camera.core)
+            implementation(libs.androidx.camera.lifecycle)
+            implementation(libs.androidx.camera.view)
+            implementation("com.google.guava:guava:33.5.0-android")
             implementation(libs.androidx.health.connect.client)
             implementation(libs.androidx.work.runtime.ktx)
             implementation(libs.koin.android)

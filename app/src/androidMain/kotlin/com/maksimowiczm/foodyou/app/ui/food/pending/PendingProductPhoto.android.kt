@@ -1,16 +1,25 @@
 package com.maksimowiczm.foodyou.app.ui.food.pending
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +33,7 @@ import androidx.compose.material.icons.automirrored.outlined.RotateLeft
 import androidx.compose.material.icons.automirrored.outlined.RotateRight
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +51,10 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.maksimowiczm.foodyou.food.infrastructure.PENDING_PRODUCT_PHOTO_DIRECTORY
 import foodyou.app.generated.resources.*
@@ -263,4 +276,142 @@ private fun rememberPendingPhotoLauncher(onPhotoTaken: (String) -> Unit): () -> 
         val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         launcher.launch(uri)
     }
+}
+
+@Composable
+internal actual fun PendingProductPhotoCapture(
+    photoCount: Int,
+    onPhotoTaken: (String) -> Unit,
+    modifier: Modifier,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            hasCameraPermission = granted
+        }
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    if (!hasCameraPermission) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(stringResource(Res.string.neutral_camera_request))
+                FilledTonalButton(
+                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    modifier = Modifier.padding(top = 16.dp),
+                ) {
+                    Text(stringResource(Res.string.neutral_take_nutrition_photo))
+                }
+            }
+        }
+        return
+    }
+
+    var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+    var cameraBound by remember { mutableStateOf(false) }
+    val latestOnPhotoTaken by rememberUpdatedState(onPhotoTaken)
+
+    Box(modifier = modifier) {
+        AndroidView(
+            factory = { viewContext ->
+                PreviewView(viewContext).apply {
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+            update = { previewView ->
+                if (cameraBound) return@AndroidView
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+                cameraProviderFuture.addListener(
+                    {
+                        val cameraProvider = cameraProviderFuture.get()
+                        val preview =
+                            Preview.Builder().build().also {
+                                it.surfaceProvider = previewView.surfaceProvider
+                            }
+                        val capture =
+                            ImageCapture.Builder()
+                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                .build()
+
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            CameraSelector.DEFAULT_BACK_CAMERA,
+                            preview,
+                            capture,
+                        )
+                        imageCapture = capture
+                        cameraBound = true
+                    },
+                    ContextCompat.getMainExecutor(context),
+                )
+            },
+        )
+
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f),
+            shape = CircleShape,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        Res.string.neutral_pending_product_photo_count,
+                        photoCount,
+                    ),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
+
+        LargeFloatingActionButton(
+            onClick = {
+                imageCapture?.takePendingProductPhoto(context) {
+                    latestOnPhotoTaken(it)
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.PhotoCamera,
+                contentDescription = stringResource(Res.string.neutral_take_nutrition_photo),
+            )
+        }
+    }
+}
+
+private fun ImageCapture.takePendingProductPhoto(
+    context: android.content.Context,
+    onSaved: (String) -> Unit,
+) {
+    val directory = context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY)
+    directory.mkdirs()
+    val file = directory.resolve("${UUID.randomUUID()}.jpg")
+    val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()
+
+    takePicture(
+        outputOptions,
+        ContextCompat.getMainExecutor(context),
+        object : ImageCapture.OnImageSavedCallback {
+            override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                onSaved(file.name)
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                file.delete()
+            }
+        },
+    )
 }

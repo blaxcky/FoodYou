@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.food.infrastructure.repository
 
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
@@ -19,6 +20,12 @@ internal class RoomFoodMeasurementSuggestionRepository(
     override suspend fun insert(foodId: FoodId, measurement: Measurement) {
         measurementSuggestionDao.insert(measurement.toEntity(foodId))
     }
+
+    override suspend fun findLatestByProductIdAndType(
+        productId: FoodId.Product,
+        type: MeasurementType,
+    ): Measurement? =
+        measurementSuggestionDao.findLatestByProductIdAndType(productId.id, type)?.toMeasurement()
 
     override fun observeByFoodId(foodId: FoodId, limit: Int): Flow<List<Measurement>> =
         measurementSuggestionDao.observeByFoodId(foodId, limit).map { list ->

@@ -24,3 +24,10 @@ internal expect fun TakeNutritionPhotoButton(
 
 @Composable
 internal expect fun TakeNutritionPhotoIconButton(onPhotoTaken: (String) -> Unit)
+
+@Composable
+internal expect fun PendingProductPhotoCapture(
+    photoCount: Int,
+    onPhotoTaken: (String) -> Unit,
+    modifier: Modifier = Modifier,
+)

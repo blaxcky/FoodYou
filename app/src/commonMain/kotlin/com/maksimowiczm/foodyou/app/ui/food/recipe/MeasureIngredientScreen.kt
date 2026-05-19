@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.component.IncompleteFoodsList
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.app.ui.food.component.EnergyProgressIndicator
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
@@ -108,6 +109,7 @@ internal fun MeasureIngredientScreen(
                 MeasurementPicker(
                     state = measurementPickerState,
                     modifier = Modifier.padding(vertical = 8.dp),
+                    servingUnit = if (food is Recipe) ServingUnit.Serving else ServingUnit.Piece,
                 )
             }
 
@@ -156,6 +158,8 @@ internal fun MeasureIngredientScreen(
                         totalWeight = food.totalWeight,
                         servingWeight = food.servingWeight,
                         isLiquid = food.isLiquid,
+                        servingUnit =
+                            if (food is Recipe) ServingUnit.Serving else ServingUnit.Piece,
                     ) ?: error("Invalid measurement: $measurement for food ${food.id}")
 
                 Text(

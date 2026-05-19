@@ -9,11 +9,17 @@ import com.maksimowiczm.foodyou.common.domain.measurement.type
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
+enum class ServingUnit {
+    Serving,
+    Piece,
+}
+
 @Composable
 fun Measurement.stringResourceWithWeight(
     totalWeight: Double?,
     servingWeight: Double?,
     isLiquid: Boolean,
+    servingUnit: ServingUnit = ServingUnit.Serving,
 ): String? {
     val weight =
         when (this) {
@@ -34,7 +40,7 @@ fun Measurement.stringResourceWithWeight(
                 }
         }
 
-    val measurementString = this.stringResource()
+    val measurementString = this.stringResource(servingUnit)
     val suffix =
         if (isLiquid) {
             stringResource(Res.string.unit_milliliter_short)
@@ -53,7 +59,7 @@ fun Measurement.stringResourceWithWeight(
 }
 
 @Composable
-fun Measurement.stringResource() =
+fun Measurement.stringResource(servingUnit: ServingUnit = ServingUnit.Serving) =
     when (this) {
         is Measurement.Package ->
             stringResource(
@@ -66,22 +72,29 @@ fun Measurement.stringResource() =
             stringResource(
                 Res.string.x_times_y,
                 quantity.formatClipZeros(),
-                stringResource(Res.string.product_serving),
+                servingUnit.stringResource(),
             )
 
         is Measurement.ImmutableMeasurement ->
-            value.formatClipZeros() + " " + this.type.stringResource()
+            value.formatClipZeros() + " " + this.type.stringResource(servingUnit)
     }
 
 @Composable
-fun MeasurementType.stringResource(): String =
+fun MeasurementType.stringResource(servingUnit: ServingUnit = ServingUnit.Serving): String =
     when (this) {
         MeasurementType.Gram -> stringResource(Res.string.unit_gram_short)
         MeasurementType.Milliliter -> stringResource(Res.string.unit_milliliter_short)
         MeasurementType.Package -> stringResource(Res.string.product_package)
-        MeasurementType.Serving -> stringResource(Res.string.product_serving)
+        MeasurementType.Serving -> servingUnit.stringResource()
         MeasurementType.Ounce -> stringResource(Res.string.unit_ounce_short)
         MeasurementType.FluidOunce -> stringResource(Res.string.unit_fluid_ounce_short)
+    }
+
+@Composable
+private fun ServingUnit.stringResource(): String =
+    when (this) {
+        ServingUnit.Serving -> stringResource(Res.string.product_serving)
+        ServingUnit.Piece -> stringResource(Res.string.product_piece)
     }
 
 val Measurement.Companion.Saver: Saver<Measurement, ArrayList<Any>>

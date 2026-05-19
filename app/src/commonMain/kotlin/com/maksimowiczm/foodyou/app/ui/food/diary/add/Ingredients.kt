@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodErrorListItem
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItem
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.extension.horizontal
@@ -52,6 +53,8 @@ internal fun Ingredients(
                     totalWeight = ingredient.totalWeight,
                     servingWeight = ingredient.servingWeight,
                     isLiquid = ingredient.isLiquid,
+                    servingUnit =
+                        if (ingredient.isRecipe) ServingUnit.Serving else ServingUnit.Piece,
                 )
 
             if (measurementString == null) {

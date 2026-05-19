@@ -46,6 +46,7 @@ import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraBarcodeS
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
 import com.maksimowiczm.foodyou.app.ui.food.component.Icon
 import com.maksimowiczm.foodyou.app.ui.food.component.stringResource
@@ -236,7 +237,7 @@ private fun General(state: ProductFormState, horizontalPadding: PaddingValues) {
     )
 
     state.servingWeight.TextField(
-        label = stringResource(Res.string.product_serving_weight),
+        label = stringResource(Res.string.product_piece_weight),
         modifier = Modifier.padding(horizontalPadding).fillMaxWidth(),
         required = state.measurement is Measurement.Serving,
         suffix =
@@ -638,7 +639,7 @@ private fun MeasurementPicker(
         SplitButtonLayout(
             leadingButton = {
                 SplitButtonDefaults.LeadingButton(onClick = { expanded = !expanded }) {
-                    Text(text = selected.stringResource())
+                    Text(text = selected.stringResource(ServingUnit.Piece))
                 }
             },
             trailingButton = {
@@ -662,7 +663,7 @@ private fun MeasurementPicker(
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     possibleValues.forEach {
                         DropdownMenuItem(
-                            text = { Text(it.stringResource()) },
+                            text = { Text(it.stringResource(ServingUnit.Piece)) },
                             onClick = {
                                 expanded = false
                                 onSelect(it)

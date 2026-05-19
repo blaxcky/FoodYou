@@ -14,7 +14,7 @@ fun ProductField.stringResource(): String =
         ProductField.Note -> stringResource(Res.string.headline_note)
         ProductField.IsLiquid -> stringResource(Res.string.action_treat_as_liquid)
         ProductField.PackageWeight -> stringResource(Res.string.product_package_weight)
-        ProductField.ServingWeight -> stringResource(Res.string.product_serving_weight)
+        ProductField.ServingWeight -> stringResource(Res.string.product_piece_weight)
         ProductField.SourceUrl -> stringResource(Res.string.headline_source)
         ProductField.Proteins -> stringResource(Res.string.nutriment_proteins)
         ProductField.Carbohydrates -> stringResource(Res.string.nutriment_carbohydrates)

@@ -76,6 +76,8 @@
     <string name="product_package">Package</string>
     <string name="product_serving_weight">Serving weight</string>
     <string name="product_serving">Serving</string>
+    <string name="product_piece_weight">Piece weight</string>
+    <string name="product_piece">Piece</string>
     <string name="product_name">Name</string>
     <string name="product_brand">Brand</string>
     <string name="product_barcode">Barcode</string>
@@ -211,6 +213,7 @@
     <string name="neutral_no_pending_products">No pending products</string>
     <string name="neutral_no_barcode">No barcode</string>
     <string name="neutral_take_nutrition_photo">Take nutrition photo</string>
+    <string name="neutral_camera_request">Allow camera access to take product photos</string>
     <string name="neutral_pending_product_saved">Pending product saved</string>
     <string name="neutral_pending_product_photo_count">%1$d photos</string>
     <string name="neutral_loading_activity">Loading activity</string>

@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.app.ui.common.component.FoodErrorListItem
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItem
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItemSkeleton
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
@@ -50,6 +51,7 @@ internal fun FoodSearchListItem(
             totalWeight = food.totalWeight,
             servingWeight = food.servingWeight,
             isLiquid = food.isLiquid,
+            servingUnit = ServingUnit.Piece,
         )
 
     if (
@@ -114,6 +116,7 @@ internal fun FoodSearchListItem(
             totalWeight = recipe.totalWeight,
             servingWeight = recipe.servingWeight,
             isLiquid = recipe.isLiquid,
+            servingUnit = ServingUnit.Serving,
         )
 
     if (

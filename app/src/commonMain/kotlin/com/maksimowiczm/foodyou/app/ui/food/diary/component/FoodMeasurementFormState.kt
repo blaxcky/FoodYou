@@ -5,6 +5,7 @@ import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerState
 import com.maksimowiczm.foodyou.app.ui.food.component.rememberMeasurementPickerState
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import kotlinx.datetime.LocalDate
 
 @Composable
@@ -45,6 +46,8 @@ class FoodMeasurementFormState(
     val measurementState: MeasurementPickerState,
 ) {
     val isValid by derivedStateOf {
-        measurementState.inputField.error == null && mealsState.selectedMeal != null
+        measurementState.inputField.error == null &&
+            measurementState.measurement.type in measurementState.possibleTypes &&
+            mealsState.selectedMeal != null
     }
 }

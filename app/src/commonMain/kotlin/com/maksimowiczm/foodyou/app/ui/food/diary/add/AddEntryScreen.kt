@@ -41,6 +41,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsMealPicker
@@ -50,6 +51,7 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberFoodMeasurem
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
@@ -94,15 +96,17 @@ fun AddEntryScreen(
 
     // This is stupid that it is here but it's going to be deleted in 4.0.0
     val selectedMeasurement =
-        remember(measurement, measurementSuggestion) {
+        remember(measurement, measurementSuggestion, possibleTypes) {
             val realMeasurement = measurement ?: measurementSuggestion
             if (realMeasurement == null) return@remember null
             if (food == null) return@remember realMeasurement
+            if (possibleTypes != null && realMeasurement.type !in possibleTypes) {
+                return@remember measurementSuggestion?.takeIf { it.type in possibleTypes }
+            }
 
-            try {
-                food.weight(realMeasurement)
+            if (food.weight(realMeasurement) != null) {
                 realMeasurement
-            } catch (_: IllegalStateException) {
+            } else {
                 if (food.isLiquid) Measurement.Milliliter(100.0) else Measurement.Gram(100.0)
             }
         }
@@ -275,7 +279,12 @@ private fun AddEntryScreen(
                 HorizontalDivider(Modifier.padding(horizontal = 8.dp))
                 ChipsMealPicker(state = state.mealsState, modifier = Modifier.padding(8.dp))
                 HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                MeasurementPicker(state = state.measurementState, modifier = Modifier.padding(8.dp))
+                MeasurementPicker(
+                    state = state.measurementState,
+                    modifier = Modifier.padding(8.dp),
+                    servingUnit =
+                        if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
+                )
             }
 
             if (food is RecipeModel) {

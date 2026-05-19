@@ -42,6 +42,7 @@ import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItem
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItemSkeleton
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
@@ -239,6 +240,7 @@ private fun IngredientListItem(
             totalWeight = food.totalWeight,
             servingWeight = food.servingWeight,
             isLiquid = food.isLiquid,
+            servingUnit = if (food.id is FoodId.Recipe) ServingUnit.Serving else ServingUnit.Piece,
         )
 
     if (

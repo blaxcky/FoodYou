@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.food.infrastructure.room
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,4 +27,18 @@ interface MeasurementSuggestionDao {
         recipeId: Long?,
         limit: Int,
     ): Flow<List<MeasurementSuggestionEntity>>
+
+    @Query(
+        """
+        SELECT *
+        FROM MeasurementSuggestion
+        WHERE productId = :productId AND type = :type
+        ORDER BY epochSeconds DESC
+        LIMIT 1
+        """
+    )
+    suspend fun findLatestByProductIdAndType(
+        productId: Long,
+        type: MeasurementType,
+    ): MeasurementSuggestionEntity?
 }

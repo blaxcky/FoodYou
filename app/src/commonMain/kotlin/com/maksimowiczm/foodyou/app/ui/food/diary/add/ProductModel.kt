@@ -32,10 +32,10 @@ internal data class ProductModel(
         servingWeight = product.servingWeight,
     )
 
-    override fun weight(measurement: Measurement): Double =
+    override fun weight(measurement: Measurement): Double? =
         WeightCalculator.calculateWeight(
             measurement = measurement,
             servingWeight = servingWeight,
             totalWeight = totalWeight,
-        ) ?: error("Weight cannot be calculated")
+        )
 }

@@ -18,5 +18,5 @@ internal sealed interface FoodModel {
     val canUnpack: Boolean
         get() = foodId is FoodId.Recipe
 
-    fun weight(measurement: Measurement): Double
+    fun weight(measurement: Measurement): Double?
 }

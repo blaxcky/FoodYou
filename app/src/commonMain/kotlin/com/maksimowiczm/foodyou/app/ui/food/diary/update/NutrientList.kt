@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.component.IncompleteFoodsList
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.app.ui.food.component.EnergyProgressIndicator
 import com.maksimowiczm.foodyou.app.ui.food.shared.component.NutrientList
@@ -65,6 +66,8 @@ internal fun NutrientList(
                 totalWeight = food.totalWeight,
                 servingWeight = food.servingWeight,
                 isLiquid = food.isLiquid,
+                servingUnit =
+                    if (food is DiaryFoodRecipe) ServingUnit.Serving else ServingUnit.Piece,
             ) ?: error("Invalid measurement: $measurement for ${food.name}")
 
         Text(

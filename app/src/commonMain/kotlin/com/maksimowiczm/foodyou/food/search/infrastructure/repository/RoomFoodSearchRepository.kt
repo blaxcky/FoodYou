@@ -229,11 +229,12 @@ private val RoomFoodSearch.foodId: FoodId
 private val RoomFoodSearch.suggestedMeasurement
     get() =
         when {
+            recipeId == null && totalWeight != null -> Measurement.Package(1.0)
+
             measurementType != null && measurementValue != null ->
                 Measurement.from(measurementType, measurementValue)
 
             recipeId != null || servingWeight != null -> Measurement.Serving(1.0)
-            totalWeight != null -> Measurement.Package(1.0)
             isLiquid -> Measurement.Milliliter(100.0)
             else -> Measurement.Gram(100.0)
         }
