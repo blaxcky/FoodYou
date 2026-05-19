@@ -86,7 +86,7 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
-    fun optimizedGoalNeverGoesNegative() {
+    fun optimizedGoalCanGoNegative() {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 24),
@@ -102,7 +102,7 @@ class GoalEnergyOptimizationTest {
                     ),
             )
 
-        assertEquals(0.0, goal)
+        assertEquals(-2000.0, goal)
     }
 
     @Test

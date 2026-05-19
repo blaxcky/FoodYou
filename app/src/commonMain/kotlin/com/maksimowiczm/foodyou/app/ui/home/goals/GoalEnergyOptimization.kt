@@ -27,7 +27,7 @@ internal fun optimizedEnergyGoalKcal(
     val remainingDays = (8 - selectedDate.dayOfWeek.isoDayNumber).coerceAtLeast(1)
     val dailyAdjustment = surplus / remainingDays
 
-    return (baseEnergyGoalKcal - dailyAdjustment).coerceAtLeast(0.0)
+    return baseEnergyGoalKcal - dailyAdjustment
 }
 
 internal fun LocalDate.startOfWeek(): LocalDate =
