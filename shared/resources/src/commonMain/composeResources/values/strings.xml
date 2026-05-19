@@ -457,6 +457,13 @@
     <string name="error_quick_add_csv_header">CSV header must be: name,energy,proteins,carbohydrates,fats</string>
     <string name="error_quick_add_csv_data_row_count">CSV must contain exactly one header row and one data row</string>
     <string name="error_quick_add_csv_empty_name">Name must not be empty</string>
+    <string name="action_analyze_with_chatgpt">Analyze with ChatGPT</string>
+    <string name="headline_pending_product_csv">Product CSV</string>
+    <string name="description_pending_product_csv">Paste header and one data row from ChatGPT</string>
+    <string name="error_pending_product_csv_empty">CSV is empty</string>
+    <string name="error_pending_product_csv_header">CSV header must be: name,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal,proteins,carbohydrates,fats</string>
+    <string name="error_pending_product_csv_data_row_count">CSV must contain exactly one header row and one data row</string>
+    <string name="error_pending_product_csv_invalid_number">CSV contains an invalid number</string>
 
     <string name="action_open_poll">Open poll</string>
 

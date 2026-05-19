@@ -26,6 +26,12 @@ internal expect fun TakeNutritionPhotoButton(
 internal expect fun TakeNutritionPhotoIconButton(onPhotoTaken: (String) -> Unit)
 
 @Composable
+internal expect fun rememberSharePendingProductPhotosAction(
+    photoPaths: List<String>,
+    prompt: String,
+): () -> Unit
+
+@Composable
 internal expect fun PendingProductPhotoCapture(
     photoCount: Int,
     onPhotoTaken: (String) -> Unit,

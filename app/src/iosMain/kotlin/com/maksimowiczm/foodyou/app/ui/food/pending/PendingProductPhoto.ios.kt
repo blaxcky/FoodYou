@@ -32,6 +32,12 @@ internal actual fun TakeNutritionPhotoButton(
 internal actual fun TakeNutritionPhotoIconButton(onPhotoTaken: (String) -> Unit) = Unit
 
 @Composable
+internal actual fun rememberSharePendingProductPhotosAction(
+    photoPaths: List<String>,
+    prompt: String,
+): () -> Unit = {}
+
+@Composable
 internal actual fun PendingProductPhotoCapture(
     photoCount: Int,
     onPhotoTaken: (String) -> Unit,

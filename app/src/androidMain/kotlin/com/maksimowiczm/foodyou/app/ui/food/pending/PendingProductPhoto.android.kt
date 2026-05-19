@@ -1,6 +1,8 @@
 package com.maksimowiczm.foodyou.app.ui.food.pending
 
 import android.Manifest
+import android.content.ClipData
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -13,6 +15,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -45,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -60,6 +64,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.PENDING_PRODUCT_PHOTO_DIRECT
 import foodyou.app.generated.resources.*
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -254,6 +259,57 @@ internal actual fun TakeNutritionPhotoIconButton(onPhotoTaken: (String) -> Unit)
 }
 
 @Composable
+internal actual fun rememberSharePendingProductPhotosAction(
+    photoPaths: List<String>,
+    prompt: String,
+): () -> Unit {
+    val context = LocalContext.current
+    val currentPhotoPaths by rememberUpdatedState(photoPaths)
+    val currentPrompt by rememberUpdatedState(prompt)
+
+    return remember(context) {
+        {
+            val uris =
+                currentPhotoPaths
+                    .map { context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY).resolve(it) }
+                    .filter { it.exists() }
+                    .map {
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            it,
+                        )
+                    }
+
+            if (uris.isNotEmpty()) {
+                val sendIntent =
+                    Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "image/jpeg"
+                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                        putExtra(Intent.EXTRA_TEXT, currentPrompt)
+                        clipData =
+                            ClipData.newUri(context.contentResolver, "Product photo", uris.first())
+                                .apply {
+                                    uris.drop(1).forEach {
+                                        addItem(ClipData.Item(it))
+                                    }
+                                }
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                context.startActivity(Intent.createChooser(sendIntent, null))
+            } else {
+                val sendIntent =
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, currentPrompt)
+                    }
+                context.startActivity(Intent.createChooser(sendIntent, null))
+            }
+        }
+    }
+}
+
+@Composable
 private fun rememberPendingPhotoLauncher(onPhotoTaken: (String) -> Unit): () -> Unit {
     val context = LocalContext.current
     var pendingFile by remember { mutableStateOf<File?>(null) }
@@ -320,7 +376,15 @@ internal actual fun PendingProductPhotoCapture(
 
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var cameraBound by remember { mutableStateOf(false) }
+    var shutterVisible by remember { mutableStateOf(false) }
     val latestOnPhotoTaken by rememberUpdatedState(onPhotoTaken)
+
+    LaunchedEffect(shutterVisible) {
+        if (shutterVisible) {
+            delay(90)
+            shutterVisible = false
+        }
+    }
 
     Box(modifier = modifier) {
         AndroidView(
@@ -380,6 +444,7 @@ internal actual fun PendingProductPhotoCapture(
             onClick = {
                 imageCapture?.takePendingProductPhoto(context) {
                     latestOnPhotoTaken(it)
+                    shutterVisible = true
                 }
             },
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
@@ -388,6 +453,10 @@ internal actual fun PendingProductPhotoCapture(
                 imageVector = Icons.Outlined.PhotoCamera,
                 contentDescription = stringResource(Res.string.neutral_take_nutrition_photo),
             )
+        }
+
+        if (shutterVisible) {
+            Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.42f)))
         }
     }
 }
