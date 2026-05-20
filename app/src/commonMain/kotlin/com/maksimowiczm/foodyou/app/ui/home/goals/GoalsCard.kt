@@ -814,11 +814,11 @@ private fun SideMetric(
                 } else {
                     MaterialTheme.typography.titleLarge.copy(
                         fontFamily = numberFontFamily,
-                        fontSize = 22.sp,
-                        lineHeight = 26.sp,
+                        fontSize = 18.sp,
+                        lineHeight = 22.sp,
                     )
                 },
-            fontWeight = FontWeight.Normal,
+            fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
@@ -904,10 +904,10 @@ private fun GaugeMetric(
                 style =
                     MaterialTheme.typography.headlineLarge.copy(
                         fontFamily = numberFontFamily,
-                        fontSize = 30.sp,
-                        lineHeight = 34.sp,
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
                     ),
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
             )
