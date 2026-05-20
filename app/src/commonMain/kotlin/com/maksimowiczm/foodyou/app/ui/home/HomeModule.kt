@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.home
 
 import com.maksimowiczm.foodyou.app.ui.home.activity.ActivitiesCardViewModel
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardSettingsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.master.HomeViewModel
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.MealsCardsViewModel
@@ -37,6 +38,9 @@ fun Module.home() {
             activityRepository = get(),
             dateProvider = get(),
         )
+    }
+    viewModel {
+        GoalsCardSettingsViewModel(settingsRepository = userPreferencesRepository())
     }
     viewModel { HomePersonalizationViewModel(settingsRepository = userPreferencesRepository()) }
     viewModel {

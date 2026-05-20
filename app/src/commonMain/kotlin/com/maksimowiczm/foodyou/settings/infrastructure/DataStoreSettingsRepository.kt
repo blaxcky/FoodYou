@@ -12,6 +12,7 @@ import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStor
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.set
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
@@ -28,8 +29,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             secureScreen = this[SettingsPreferencesKeys.secureScreen] ?: false,
             homeCardOrder = this.getHomeCardOrder(SettingsPreferencesKeys.homeCardOrder),
             expandGoalCard = this[SettingsPreferencesKeys.expandGoalCard] ?: true,
-            optimizedGoalDisplayEnabled =
-                this[SettingsPreferencesKeys.optimizedGoalDisplayEnabled] ?: false,
+            goalDisplayMode = this.getGoalDisplayMode(),
+            dietEnergyDeficitKcal = this[SettingsPreferencesKeys.dietEnergyDeficitKcal],
             onboardingFinished = this[SettingsPreferencesKeys.onboardingFinished] ?: false,
             energyFormat = this.getEnergyFormat(SettingsPreferencesKeys.energyFormat),
             appLaunchInfo = this.getAppLaunchInfo(),
@@ -48,8 +49,11 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.secureScreen] = updated.secureScreen
         setHomeCardOrder(SettingsPreferencesKeys.homeCardOrder, updated.homeCardOrder)
         this[SettingsPreferencesKeys.expandGoalCard] = updated.expandGoalCard
-        this[SettingsPreferencesKeys.optimizedGoalDisplayEnabled] =
-            updated.optimizedGoalDisplayEnabled
+        setGoalDisplayMode(updated.goalDisplayMode)
+        setWithNull(
+            SettingsPreferencesKeys.dietEnergyDeficitKcal,
+            updated.dietEnergyDeficitKcal?.takeIf { it > 0.0 },
+        )
         this[SettingsPreferencesKeys.onboardingFinished] = updated.onboardingFinished
         setEnergyFormat(SettingsPreferencesKeys.energyFormat, updated.energyFormat)
         setAppLaunchInfo(updated.appLaunchInfo)
@@ -103,6 +107,20 @@ private fun MutablePreferences.setEnergyFormat(key: Preferences.Key<Int>, value:
 private fun Preferences.getEnergyFormat(key: Preferences.Key<Int>): EnergyFormat =
     runCatching { EnergyFormat.entries[this[key] ?: EnergyFormat.DEFAULT.ordinal] }
         .getOrElse { EnergyFormat.DEFAULT }
+
+private fun MutablePreferences.setGoalDisplayMode(value: GoalDisplayMode) =
+    setWithNull(SettingsPreferencesKeys.goalDisplayMode, value.name)
+
+private fun Preferences.getGoalDisplayMode(): GoalDisplayMode =
+    runCatching {
+            this[SettingsPreferencesKeys.goalDisplayMode]?.let(GoalDisplayMode::valueOf)
+                ?: if (this[SettingsPreferencesKeys.optimizedGoalDisplayEnabled] == true) {
+                    GoalDisplayMode.Optimized
+                } else {
+                    GoalDisplayMode.Normal
+                }
+        }
+        .getOrElse { GoalDisplayMode.Normal }
 
 private fun Preferences.getAppLaunchInfo(): AppLaunchInfo =
     AppLaunchInfo(
@@ -158,6 +176,8 @@ private object SettingsPreferencesKeys {
     val expandGoalCard = booleanPreferencesKey("settings:expandGoalCard")
     val optimizedGoalDisplayEnabled =
         booleanPreferencesKey("settings:optimizedGoalDisplayEnabled")
+    val goalDisplayMode = stringPreferencesKey("settings:goalDisplayMode")
+    val dietEnergyDeficitKcal = doublePreferencesKey("settings:dietEnergyDeficitKcal")
     val onboardingFinished = booleanPreferencesKey("settings:onboardingFinished")
     val energyFormat = intPreferencesKey("settings:energyFormat")
     val stepsCaloriesPerStepKcal = doublePreferencesKey("settings:stepsCaloriesPerStepKcal")

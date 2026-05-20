@@ -9,6 +9,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,10 +56,21 @@ internal class GoalsViewModel(
         viewModelScope.launch { settingsRepository.update { copy(expandGoalCard = expand) } }
     }
 
-    fun toggleOptimizedGoalDisplay() {
+    fun showNextGoalDisplayMode() {
         viewModelScope.launch {
             settingsRepository.update {
-                copy(optimizedGoalDisplayEnabled = !optimizedGoalDisplayEnabled)
+                val modes =
+                    if ((dietEnergyDeficitKcal ?: 0.0) > 0.0) {
+                        listOf(
+                            SettingsGoalDisplayMode.Normal,
+                            SettingsGoalDisplayMode.Optimized,
+                            SettingsGoalDisplayMode.Diet,
+                        )
+                    } else {
+                        listOf(SettingsGoalDisplayMode.Normal, SettingsGoalDisplayMode.Optimized)
+                    }
+                val currentIndex = modes.indexOf(goalDisplayMode).takeIf { it >= 0 } ?: 0
+                copy(goalDisplayMode = modes[(currentIndex + 1) % modes.size])
             }
         }
     }
@@ -72,7 +84,16 @@ internal class GoalsViewModel(
             }
             .flatMapLatest { (date, today, settings) ->
                 val currentWeek = date.startOfWeek() == today.startOfWeek()
-                val optimizedDisplay = settings.optimizedGoalDisplayEnabled && currentWeek
+                val dietEnergyDeficitKcal = settings.dietEnergyDeficitKcal?.takeIf { it > 0.0 }
+                val goalDisplayMode =
+                    when {
+                        !currentWeek -> GoalDisplayMode.Normal
+                        settings.goalDisplayMode == SettingsGoalDisplayMode.Optimized ->
+                            GoalDisplayMode.Optimized
+                        settings.goalDisplayMode == SettingsGoalDisplayMode.Diet &&
+                            dietEnergyDeficitKcal != null -> GoalDisplayMode.Diet
+                        else -> GoalDisplayMode.Normal
+                    }
                 val selectedDay =
                     combine(
                         observeDiaryMealsUseCase.observeNutritionFacts(date),
@@ -100,7 +121,7 @@ internal class GoalsViewModel(
                         )
                     }
                 val previousDays =
-                    if (optimizedDisplay) {
+                    if (goalDisplayMode != GoalDisplayMode.Normal) {
                         val weekStart = date.startOfWeek()
                         List(date.dayOfWeek.isoDayNumber - 1) { weekStart.plus(it, DateTimeUnit.DAY) }
                     } else {
@@ -134,11 +155,17 @@ internal class GoalsViewModel(
 
                 combine(selectedDay, previousDaySummaries) { day, previous ->
                     val energyGoal =
-                        if (optimizedDisplay) {
-                            optimizedEnergyGoalKcal(
+                        if (goalDisplayMode != GoalDisplayMode.Normal) {
+                            adjustedEnergyGoalKcal(
                                 selectedDate = date,
                                 today = today,
                                 baseEnergyGoalKcal = day.baseEnergyGoal,
+                                dailyEnergyDeficitKcal =
+                                    if (goalDisplayMode == GoalDisplayMode.Diet) {
+                                        dietEnergyDeficitKcal ?: 0.0
+                                    } else {
+                                        0.0
+                                    },
                                 previousDays = previous,
                             )
                         } else {
@@ -152,7 +179,7 @@ internal class GoalsViewModel(
                             calculateNetEnergyKcal(day.consumedEnergy, day.burnedEnergy)
                                 .roundToInt(),
                         energyGoal = energyGoal.roundToInt(),
-                        optimizedGoalDisplayEnabled = optimizedDisplay,
+                        goalDisplayMode = goalDisplayMode,
                         proteins = day.proteins,
                         proteinsGoal = day.proteinsGoal,
                         carbohydrates = day.carbohydrates,

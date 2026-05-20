@@ -16,17 +16,34 @@ internal fun optimizedEnergyGoalKcal(
     today: LocalDate,
     baseEnergyGoalKcal: Double,
     previousDays: List<GoalEnergyOptimizationDay>,
+): Double =
+    adjustedEnergyGoalKcal(
+        selectedDate = selectedDate,
+        today = today,
+        baseEnergyGoalKcal = baseEnergyGoalKcal,
+        dailyEnergyDeficitKcal = 0.0,
+        previousDays = previousDays,
+    )
+
+internal fun adjustedEnergyGoalKcal(
+    selectedDate: LocalDate,
+    today: LocalDate,
+    baseEnergyGoalKcal: Double,
+    dailyEnergyDeficitKcal: Double,
+    previousDays: List<GoalEnergyOptimizationDay>,
 ): Double {
     if (selectedDate.startOfWeek() != today.startOfWeek()) return baseEnergyGoalKcal
 
+    val dailyTarget = baseEnergyGoalKcal - dailyEnergyDeficitKcal
     val surplus =
         previousDays.sumOf { day ->
-            day.consumedEnergyKcal - (day.baseEnergyGoalKcal + day.burnedEnergyKcal)
+            day.consumedEnergyKcal -
+                (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal)
         }.coerceAtLeast(0.0)
     val remainingDays = (8 - selectedDate.dayOfWeek.isoDayNumber).coerceAtLeast(1)
     val dailyAdjustment = surplus / remainingDays
 
-    return baseEnergyGoalKcal - dailyAdjustment
+    return dailyTarget - dailyAdjustment
 }
 
 internal fun LocalDate.startOfWeek(): LocalDate =

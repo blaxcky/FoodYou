@@ -72,6 +72,7 @@ import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
 import foodyou.app.generated.resources.headline_your_week
 import foodyou.app.generated.resources.inter
+import foodyou.app.generated.resources.label_diet
 import foodyou.app.generated.resources.label_optimized
 import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
@@ -130,7 +131,7 @@ internal fun GoalsCard(
             burnedEnergy = model.burnedEnergy,
             netEnergy = model.netEnergy,
             energyGoal = model.energyGoal,
-            optimizedGoalDisplayEnabled = model.optimizedGoalDisplayEnabled,
+            goalDisplayMode = model.goalDisplayMode,
             proteins = model.proteins,
             proteinsGoal = model.proteinsGoal,
             carbohydrates = model.carbohydrates,
@@ -139,7 +140,7 @@ internal fun GoalsCard(
             fatsGoal = model.fatsGoal,
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
-            onToggleOptimizedGoalDisplay = viewModel::toggleOptimizedGoalDisplay,
+            onShowNextGoalDisplayMode = viewModel::showNextGoalDisplayMode,
             modifier = modifier,
         )
     }
@@ -172,7 +173,7 @@ internal fun GoalsCard(
     burnedEnergy: Int,
     netEnergy: Int,
     energyGoal: Int,
-    optimizedGoalDisplayEnabled: Boolean = false,
+    goalDisplayMode: GoalDisplayMode = GoalDisplayMode.Normal,
     proteins: Int,
     proteinsGoal: Int,
     carbohydrates: Int,
@@ -181,7 +182,7 @@ internal fun GoalsCard(
     fatsGoal: Int,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onToggleOptimizedGoalDisplay: () -> Unit = {},
+    onShowNextGoalDisplayMode: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val goal = energyGoal.coerceAtLeast(1)
@@ -216,8 +217,8 @@ internal fun GoalsCard(
                     burnedEnergy = burnedEnergy,
                     netEnergy = netEnergy,
                     energyGoal = energyGoal,
-                    optimizedGoalDisplayEnabled = optimizedGoalDisplayEnabled,
-                    onToggleOptimizedGoalDisplay = onToggleOptimizedGoalDisplay,
+                    goalDisplayMode = goalDisplayMode,
+                    onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
                     progress = energyProgress,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -570,8 +571,8 @@ private fun CaloriesOverview(
     burnedEnergy: Int,
     netEnergy: Int,
     energyGoal: Int,
-    optimizedGoalDisplayEnabled: Boolean,
-    onToggleOptimizedGoalDisplay: () -> Unit,
+    goalDisplayMode: GoalDisplayMode,
+    onShowNextGoalDisplayMode: () -> Unit,
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -580,6 +581,7 @@ private fun CaloriesOverview(
     val goal = energyGoal.coerceAtLeast(1)
     val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
     val overflow = left < 0
+    val highlighted = goalDisplayMode != GoalDisplayMode.Normal
     val remainingValue = if (overflow) -left else left
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
     val remainingLabel =
@@ -588,13 +590,13 @@ private fun CaloriesOverview(
     BoxWithConstraints(
         modifier =
             modifier
-                .detectOptimizedGoalSwipe(onToggleOptimizedGoalDisplay)
+                .detectGoalDisplayModeSwipe(onShowNextGoalDisplayMode)
                 .clip(RoundedCornerShape(20.dp))
                 .background(
-                    if (optimizedGoalDisplayEnabled) Color(0xFFEAF6FE) else Color.Transparent
+                    if (highlighted) Color(0xFFEAF6FE) else Color.Transparent
                 )
                 .then(
-                    if (optimizedGoalDisplayEnabled) {
+                    if (highlighted) {
                         Modifier.border(
                             width = 1.dp,
                             color = GoalsProgressColor.copy(alpha = 0.55f),
@@ -718,9 +720,16 @@ private fun CaloriesOverview(
             }
         }
 
-        if (optimizedGoalDisplayEnabled) {
+        if (highlighted) {
             Text(
-                text = stringResource(Res.string.label_optimized),
+                text =
+                    stringResource(
+                        when (goalDisplayMode) {
+                            GoalDisplayMode.Optimized -> Res.string.label_optimized
+                            GoalDisplayMode.Diet -> Res.string.label_diet
+                            GoalDisplayMode.Normal -> Res.string.label_optimized
+                        }
+                    ),
                 modifier =
                     Modifier.align(Alignment.TopEnd)
                         .clip(RoundedCornerShape(50))
@@ -734,7 +743,7 @@ private fun CaloriesOverview(
     }
 }
 
-private fun Modifier.detectOptimizedGoalSwipe(onSwipeDown: () -> Unit): Modifier =
+private fun Modifier.detectGoalDisplayModeSwipe(onSwipeDown: () -> Unit): Modifier =
     pointerInput(onSwipeDown) {
         val threshold = 48.dp.toPx()
         var totalX = 0f

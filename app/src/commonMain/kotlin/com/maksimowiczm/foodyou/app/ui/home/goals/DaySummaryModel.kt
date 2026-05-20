@@ -8,7 +8,7 @@ internal data class DaySummaryModel(
     val burnedEnergy: Int,
     val netEnergy: Int,
     val energyGoal: Int,
-    val optimizedGoalDisplayEnabled: Boolean,
+    val goalDisplayMode: GoalDisplayMode,
     val proteins: Int,
     val proteinsGoal: Int,
     val carbohydrates: Int,
@@ -16,6 +16,12 @@ internal data class DaySummaryModel(
     val fats: Int,
     val fatsGoal: Int,
 )
+
+internal enum class GoalDisplayMode {
+    Normal,
+    Optimized,
+    Diet,
+}
 
 @Immutable
 internal data class WeekSummaryModel(

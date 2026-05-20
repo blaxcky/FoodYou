@@ -10,7 +10,8 @@ data class Settings(
     val secureScreen: Boolean,
     val homeCardOrder: List<HomeCard>,
     val expandGoalCard: Boolean,
-    val optimizedGoalDisplayEnabled: Boolean,
+    val goalDisplayMode: GoalDisplayMode,
+    val dietEnergyDeficitKcal: Double?,
     val onboardingFinished: Boolean,
     val energyFormat: EnergyFormat,
     val appLaunchInfo: AppLaunchInfo,
@@ -18,3 +19,9 @@ data class Settings(
     val healthConnectStepsEnabled: Boolean,
     val healthConnectStepsLastSyncedEpochSeconds: Long?,
 ) : UserPreferences
+
+enum class GoalDisplayMode {
+    Normal,
+    Optimized,
+    Diet,
+}
