@@ -931,7 +931,7 @@ private fun GaugeMetric(
 @Composable
 private fun SemiCircleGauge(progress: Float, diameter: Dp, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
-        val strokeWidth = 13.dp.toPx()
+        val strokeWidth = 10.dp.toPx()
         val arcDiameter = diameter.toPx()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
