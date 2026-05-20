@@ -818,7 +818,7 @@ private fun SideMetric(
                         lineHeight = 22.sp,
                     )
                 },
-            fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
@@ -913,12 +913,12 @@ private fun GaugeMetric(
             )
             Text(
                 text = label,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 8.dp),
                 color = GoalsMutedTextColor,
                 style =
                     MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 16.sp,
-                        lineHeight = 20.sp,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
                     ),
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
