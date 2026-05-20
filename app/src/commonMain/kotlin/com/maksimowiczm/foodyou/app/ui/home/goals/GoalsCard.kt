@@ -2,7 +2,6 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -604,17 +603,6 @@ private fun CaloriesOverview(
                 .detectGoalDisplayModeSwipe(onShowNextGoalDisplayMode)
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color.Transparent)
-                .then(
-                    if (highlighted) {
-                        Modifier.border(
-                            width = 1.dp,
-                            color = accentColor.copy(alpha = 0.55f),
-                            shape = RoundedCornerShape(20.dp),
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
                 .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         val gaugeDiameter = (maxWidth * 0.48f).coerceIn(156.dp, 254.dp)
