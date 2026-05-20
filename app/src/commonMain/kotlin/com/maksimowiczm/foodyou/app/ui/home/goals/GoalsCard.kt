@@ -194,10 +194,16 @@ internal fun GoalsCard(
     val proteinsProgress = goalProgress(proteins, proteinsGoal)
     val carbsProgress = goalProgress(carbohydrates, carbohydratesGoal)
     val fatsProgress = goalProgress(fats, fatsGoal)
+    val cardColor =
+        if (goalDisplayMode == GoalDisplayMode.Normal) {
+            GoalsCardColor
+        } else {
+            goalDisplayMode.highlightColor()
+        }
 
     FoodYouHomeCard(
         modifier = modifier,
-        color = GoalsCardColor,
+        color = cardColor,
         shape = GoalsCardShape,
         onClick = onClick,
         onLongClick = onLongClick,
@@ -586,7 +592,6 @@ private fun CaloriesOverview(
     val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
     val overflow = left < 0
     val highlighted = goalDisplayMode != GoalDisplayMode.Normal
-    val highlightColor = goalDisplayMode.highlightColor()
     val accentColor = goalDisplayMode.accentColor()
     val remainingValue = if (overflow) -left else left
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
@@ -598,7 +603,7 @@ private fun CaloriesOverview(
             modifier
                 .detectGoalDisplayModeSwipe(onShowNextGoalDisplayMode)
                 .clip(RoundedCornerShape(20.dp))
-                .background(if (highlighted) highlightColor else Color.Transparent)
+                .background(Color.Transparent)
                 .then(
                     if (highlighted) {
                         Modifier.border(
