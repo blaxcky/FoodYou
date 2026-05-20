@@ -131,6 +131,14 @@ internal fun rememberQuickAddFormState(
                 val carbohydratesValue = carbohydratesForm.value ?: 0.0
                 val fatsValue = fatsForm.value ?: 0.0
 
+                if (
+                    proteinsForm.value == null &&
+                        carbohydratesForm.value == null &&
+                        fatsForm.value == null
+                ) {
+                    return@snapshotFlow ""
+                }
+
                 val kcal =
                     NutrientsHelper.calculateEnergy(
                         proteins = proteinsValue,

@@ -732,6 +732,7 @@ private fun EnergyTextField(
             keyboardOptions =
                 KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             suffix = { Text(energyFormatter.suffix()) },
+            placeholder = { Text("0") },
         )
         Text(
             text = stringResource(Res.string.description_calories_are_calculated),

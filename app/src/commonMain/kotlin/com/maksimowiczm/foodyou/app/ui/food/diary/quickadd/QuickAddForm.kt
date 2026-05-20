@@ -103,6 +103,7 @@ internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifie
                 }
             },
             suffix = { Text(energyFormatter.suffix()) },
+            placeholder = { Text("0") },
             trailingIcon = {
                 TooltipBox(
                     positionProvider =
