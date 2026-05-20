@@ -97,6 +97,10 @@ private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE4EEF5)
 private val GoalsProgressColor = Color(0xFF45AEE6)
 private val GoalsErrorColor = Color(0xFFE25555)
+private val OptimizedGoalHighlightColor = Color(0xFFEAF6FE)
+private val OptimizedGoalAccentColor = GoalsProgressColor
+private val DietGoalHighlightColor = Color(0xFFFFF6D8)
+private val DietGoalAccentColor = Color(0xFFC98A00)
 private val FatTrackColor = Color(0xFFFFE5E5)
 private val FatColor = Color(0xFFF4D5DC)
 private val CarbsTrackColor = Color(0xFFFFF3DC)
@@ -582,6 +586,8 @@ private fun CaloriesOverview(
     val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
     val overflow = left < 0
     val highlighted = goalDisplayMode != GoalDisplayMode.Normal
+    val highlightColor = goalDisplayMode.highlightColor()
+    val accentColor = goalDisplayMode.accentColor()
     val remainingValue = if (overflow) -left else left
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
     val remainingLabel =
@@ -592,14 +598,12 @@ private fun CaloriesOverview(
             modifier
                 .detectGoalDisplayModeSwipe(onShowNextGoalDisplayMode)
                 .clip(RoundedCornerShape(20.dp))
-                .background(
-                    if (highlighted) Color(0xFFEAF6FE) else Color.Transparent
-                )
+                .background(if (highlighted) highlightColor else Color.Transparent)
                 .then(
                     if (highlighted) {
                         Modifier.border(
                             width = 1.dp,
-                            color = GoalsProgressColor.copy(alpha = 0.55f),
+                            color = accentColor.copy(alpha = 0.55f),
                             shape = RoundedCornerShape(20.dp),
                         )
                     } else {
@@ -733,15 +737,29 @@ private fun CaloriesOverview(
                 modifier =
                     Modifier.align(Alignment.TopEnd)
                         .clip(RoundedCornerShape(50))
-                        .background(GoalsProgressColor.copy(alpha = 0.16f))
+                        .background(accentColor.copy(alpha = 0.16f))
                         .padding(horizontal = 8.dp, vertical = 3.dp),
-                color = GoalsProgressColor,
+                color = accentColor,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
             )
         }
     }
 }
+
+private fun GoalDisplayMode.highlightColor(): Color =
+    when (this) {
+        GoalDisplayMode.Normal -> Color.Transparent
+        GoalDisplayMode.Optimized -> OptimizedGoalHighlightColor
+        GoalDisplayMode.Diet -> DietGoalHighlightColor
+    }
+
+private fun GoalDisplayMode.accentColor(): Color =
+    when (this) {
+        GoalDisplayMode.Normal -> GoalsProgressColor
+        GoalDisplayMode.Optimized -> OptimizedGoalAccentColor
+        GoalDisplayMode.Diet -> DietGoalAccentColor
+    }
 
 private fun Modifier.detectGoalDisplayModeSwipe(onSwipeDown: () -> Unit): Modifier =
     pointerInput(onSwipeDown) {
