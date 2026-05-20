@@ -141,7 +141,7 @@ private val DiaryFood.suggestions: Flow<List<Measurement>>
             list.map {
                 when (it) {
                     MeasurementType.Gram -> Measurement.Gram(Measurement.Gram.DEFAULT)
-                    MeasurementType.Ounce -> Measurement.Ounce(Measurement.Ounce.DEFAULT)
+                    MeasurementType.Ounce -> null
                     MeasurementType.Package -> Measurement.Package(Measurement.Package.DEFAULT)
                     MeasurementType.Serving -> Measurement.Serving(Measurement.Serving.DEFAULT)
                     MeasurementType.Milliliter ->
@@ -149,5 +149,5 @@ private val DiaryFood.suggestions: Flow<List<Measurement>>
                     MeasurementType.FluidOunce ->
                         Measurement.FluidOunce(Measurement.FluidOunce.DEFAULT)
                 }
-            }
+            }.filterNotNull()
         }

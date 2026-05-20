@@ -43,7 +43,6 @@ private fun List<Measurement>.fillMissingMeasurements(food: Food): List<Measurem
         mutable.add(Measurement.FluidOunce(Measurement.FluidOunce.DEFAULT))
     } else {
         mutable.add(Measurement.Gram(Measurement.Gram.DEFAULT))
-        mutable.add(Measurement.Ounce(Measurement.Ounce.DEFAULT))
     }
 
     return mutable.distinct().filter { it.type in food.possibleMeasurementTypes }
