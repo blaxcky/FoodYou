@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,7 +66,7 @@ private fun ActivitiesCard(
             ) {
                 Text(
                     text = stringResource(Res.string.headline_activities),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.weight(1f))
@@ -73,7 +74,7 @@ private fun ActivitiesCard(
                 if (cardModel != null) {
                     Text(
                         text = energyFormatter.formatEnergy(-cardModel.totalEnergyKcal),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -104,6 +105,8 @@ private fun ActivitiesCard(
                             cardModel.steps.toString().groupDigits(),
                         ),
                     energy = energyFormatter.formatEnergy(-cardModel.stepEnergyKcal),
+                    labelStyle = MaterialTheme.typography.labelLarge,
+                    energyStyle = MaterialTheme.typography.labelLarge,
                 )
 
                 cardModel.manualEntries.forEach { entry ->
@@ -142,6 +145,8 @@ private fun ActivityRow(
     label: String,
     energy: String,
     modifier: Modifier = Modifier,
+    labelStyle: TextStyle = MaterialTheme.typography.titleMedium,
+    energyStyle: TextStyle = MaterialTheme.typography.titleMedium,
     leadingIcon: @Composable (() -> Unit)? = null,
 ) {
     Row(
@@ -154,8 +159,8 @@ private fun ActivityRow(
         } else {
             Spacer(Modifier.padding(start = 24.dp))
         }
-        Text(text = label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        Text(text = energy, style = MaterialTheme.typography.titleMedium)
+        Text(text = label, modifier = Modifier.weight(1f), style = labelStyle)
+        Text(text = energy, style = energyStyle)
     }
 }
 
