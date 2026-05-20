@@ -41,11 +41,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
-import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
-import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -60,7 +58,6 @@ internal fun MealCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val nutrientsOrder = LocalNutrientsOrder.current
     val dateFormatter = LocalDateFormatter.current
     val enDash = stringResource(Res.string.en_dash)
     val allDayString = stringResource(Res.string.headline_all_day)
@@ -104,7 +101,6 @@ internal fun MealCard(
 
                 MealNutritionSummary(
                     meal = meal,
-                    nutrientsOrder = nutrientsOrder,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -159,7 +155,6 @@ internal fun MealCard(
 @Composable
 private fun MealNutritionSummary(
     meal: MealModel,
-    nutrientsOrder: List<NutrientsOrder>,
     modifier: Modifier = Modifier,
 ) {
     val nutrientsPalette = LocalNutrientsPalette.current
@@ -175,39 +170,39 @@ private fun MealNutritionSummary(
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.End,
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            nutrientsOrder.forEach { field ->
-                when (field) {
-                    NutrientsOrder.Proteins ->
-                        MacroSummaryText(
-                            label = stringResource(Res.string.nutriment_proteins_short),
-                            value = meal.proteins,
-                            suffix = gram,
-                            color = nutrientsPalette.proteinsOnSurfaceContainer,
-                        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val macros =
+                listOf(
+                    MacroSummary(
+                        label = stringResource(Res.string.nutriment_fats_short),
+                        value = meal.fats,
+                        suffix = gram,
+                        color = nutrientsPalette.fatsOnSurfaceContainer,
+                    ),
+                    MacroSummary(
+                        label = stringResource(Res.string.nutriment_carbohydrates_short),
+                        value = meal.carbohydrates,
+                        suffix = gram,
+                        color = nutrientsPalette.carbohydratesOnSurfaceContainer,
+                    ),
+                    MacroSummary(
+                        label = stringResource(Res.string.nutriment_proteins_short),
+                        value = meal.proteins,
+                        suffix = gram,
+                        color = nutrientsPalette.proteinsOnSurfaceContainer,
+                    ),
+                )
 
-                    NutrientsOrder.Carbohydrates ->
-                        MacroSummaryText(
-                            label = stringResource(Res.string.nutriment_carbohydrates_short),
-                            value = meal.carbohydrates,
-                            suffix = gram,
-                            color = nutrientsPalette.carbohydratesOnSurfaceContainer,
-                        )
-
-                    NutrientsOrder.Fats ->
-                        MacroSummaryText(
-                            label = stringResource(Res.string.nutriment_fats_short),
-                            value = meal.fats,
-                            suffix = gram,
-                            color = nutrientsPalette.fatsOnSurfaceContainer,
-                        )
-
-                    NutrientsOrder.Other,
-                    NutrientsOrder.Vitamins,
-                    NutrientsOrder.Minerals -> Unit
+            macros.forEachIndexed { index, macro ->
+                MacroSummaryText(macro)
+                if (index != macros.lastIndex) {
+                    Text(
+                        text = ", ",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
                 }
             }
         }
@@ -215,15 +210,22 @@ private fun MealNutritionSummary(
 }
 
 @Composable
-private fun MacroSummaryText(label: String, value: Double, suffix: String, color: Color) {
+private fun MacroSummaryText(macro: MacroSummary) {
     Text(
-        text = "$label ${value.formatClipZeros("%.1f")} $suffix",
-        color = color,
+        text = "${macro.value.formatClipZeros("%.1f")}${macro.suffix} ${macro.label}",
+        color = macro.color,
         style = MaterialTheme.typography.labelMedium,
         maxLines = 1,
         overflow = TextOverflow.Clip,
     )
 }
+
+private data class MacroSummary(
+    val label: String,
+    val value: Double,
+    val suffix: String,
+    val color: Color,
+)
 
 @Composable
 private fun FoodContainer(
