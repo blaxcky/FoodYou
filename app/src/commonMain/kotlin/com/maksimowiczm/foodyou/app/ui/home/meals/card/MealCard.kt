@@ -23,8 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -38,6 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
@@ -60,10 +60,8 @@ internal fun MealCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val nutrientsPalette = LocalNutrientsPalette.current
     val nutrientsOrder = LocalNutrientsOrder.current
     val dateFormatter = LocalDateFormatter.current
-    val energyFormatter = LocalEnergyFormatter.current
     val enDash = stringResource(Res.string.en_dash)
     val allDayString = stringResource(Res.string.headline_all_day)
 
@@ -82,16 +80,34 @@ internal fun MealCard(
 
     FoodYouHomeCard(modifier = modifier, onClick = onAddFood, onLongClick = onLongClick) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                text = meal.name,
-                style = MaterialTheme.typography.headlineMediumEmphasized,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = timeString,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = meal.name,
+                        style = MaterialTheme.typography.headlineMediumEmphasized,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = timeString,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                MealNutritionSummary(
+                    meal = meal,
+                    nutrientsOrder = nutrientsOrder,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -110,53 +126,8 @@ internal fun MealCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    ValueColumn(
-                        label = energyFormatter.suffix(),
-                        value = energyFormatter.formatEnergy(meal.energy, withSuffix = false),
-                        suffix = null,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-
-                    nutrientsOrder.forEach { field ->
-                        when (field) {
-                            NutrientsOrder.Proteins ->
-                                ValueColumn(
-                                    label = stringResource(Res.string.nutriment_proteins_short),
-                                    value = meal.proteins.formatClipZeros("%.1f"),
-                                    suffix = stringResource(Res.string.unit_gram_short),
-                                    color = nutrientsPalette.proteinsOnSurfaceContainer,
-                                )
-
-                            NutrientsOrder.Carbohydrates ->
-                                ValueColumn(
-                                    label =
-                                        stringResource(Res.string.nutriment_carbohydrates_short),
-                                    value = meal.carbohydrates.formatClipZeros("%.1f"),
-                                    suffix = stringResource(Res.string.unit_gram_short),
-                                    color = nutrientsPalette.carbohydratesOnSurfaceContainer,
-                                )
-
-                            NutrientsOrder.Fats ->
-                                ValueColumn(
-                                    label = stringResource(Res.string.nutriment_fats_short),
-                                    value = meal.fats.formatClipZeros("%.1f"),
-                                    suffix = stringResource(Res.string.unit_gram_short),
-                                    color = nutrientsPalette.fatsOnSurfaceContainer,
-                                )
-
-                            NutrientsOrder.Other,
-                            NutrientsOrder.Vitamins,
-                            NutrientsOrder.Minerals -> Unit
-                        }
-                    }
-                }
-
-                Spacer(Modifier.weight(1f))
                 FilledTonalIconButton(
                     onClick = onQuickAdd,
                     shapes =
@@ -183,6 +154,75 @@ internal fun MealCard(
             }
         }
     }
+}
+
+@Composable
+private fun MealNutritionSummary(
+    meal: MealModel,
+    nutrientsOrder: List<NutrientsOrder>,
+    modifier: Modifier = Modifier,
+) {
+    val nutrientsPalette = LocalNutrientsPalette.current
+    val energyFormatter = LocalEnergyFormatter.current
+    val gram = stringResource(Res.string.unit_gram_short)
+
+    Column(modifier = modifier, horizontalAlignment = Alignment.End) {
+        Text(
+            text = energyFormatter.formatEnergy(meal.energy, withSuffix = true),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            textAlign = TextAlign.End,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            nutrientsOrder.forEach { field ->
+                when (field) {
+                    NutrientsOrder.Proteins ->
+                        MacroSummaryText(
+                            label = stringResource(Res.string.nutriment_proteins_short),
+                            value = meal.proteins,
+                            suffix = gram,
+                            color = nutrientsPalette.proteinsOnSurfaceContainer,
+                        )
+
+                    NutrientsOrder.Carbohydrates ->
+                        MacroSummaryText(
+                            label = stringResource(Res.string.nutriment_carbohydrates_short),
+                            value = meal.carbohydrates,
+                            suffix = gram,
+                            color = nutrientsPalette.carbohydratesOnSurfaceContainer,
+                        )
+
+                    NutrientsOrder.Fats ->
+                        MacroSummaryText(
+                            label = stringResource(Res.string.nutriment_fats_short),
+                            value = meal.fats,
+                            suffix = gram,
+                            color = nutrientsPalette.fatsOnSurfaceContainer,
+                        )
+
+                    NutrientsOrder.Other,
+                    NutrientsOrder.Vitamins,
+                    NutrientsOrder.Minerals -> Unit
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MacroSummaryText(label: String, value: Double, suffix: String, color: Color) {
+    Text(
+        text = "$label ${value.formatClipZeros("%.1f")} $suffix",
+        color = color,
+        style = MaterialTheme.typography.labelMedium,
+        maxLines = 1,
+        overflow = TextOverflow.Clip,
+    )
 }
 
 @Composable
@@ -262,37 +302,6 @@ private fun FoodContainerItem(
         shape = shape,
         modifier = modifier.clickable { showBottomSheet = true },
     )
-}
-
-@Composable
-private fun ValueColumn(
-    label: String,
-    value: String,
-    suffix: String?,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        CompositionLocalProvider(
-            LocalContentColor provides color,
-            LocalTextStyle provides MaterialTheme.typography.labelMedium,
-        ) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium)
-
-            Text(
-                text =
-                    if (value == "0") {
-                        stringResource(Res.string.em_dash)
-                    } else {
-                        value + (suffix?.let { " $suffix" } ?: "")
-                    }
-            )
-        }
-    }
 }
 
 @Composable
