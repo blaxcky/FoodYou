@@ -832,7 +832,7 @@ private fun SideMetric(
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
                 ),
-            fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
