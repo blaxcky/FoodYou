@@ -1012,10 +1012,10 @@ private fun MacroGoal(
             color = GoalsTextColor,
             style =
                 MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 14.sp,
-                    lineHeight = 17.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
                 ),
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
@@ -1033,8 +1033,8 @@ private fun MacroGoal(
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontFamily = numberFontFamily,
-                    fontSize = 14.sp,
-                    lineHeight = 17.sp,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp,
                 ),
             fontWeight = FontWeight.Normal,
             maxLines = 1,
