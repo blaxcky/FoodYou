@@ -66,6 +66,64 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
+    fun previousDeficitOffsetsPreviousSurplus() {
+        val goal =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 20),
+                today = LocalDate(2026, 5, 20),
+                baseEnergyGoalKcal = 2000.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 3812.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        ),
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = -355.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        ),
+                    ),
+            )
+
+        assertEquals(2000.0, goal)
+    }
+
+    @Test
+    fun previousWeekDeficitDoesNotIncreaseOptimizedGoal() {
+        val previousDays =
+            buildList {
+                repeat(5) {
+                    add(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 1000.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    )
+                }
+                add(
+                    GoalEnergyOptimizationDay(
+                        consumedEnergyKcal = 4000.0,
+                        baseEnergyGoalKcal = 2000.0,
+                        burnedEnergyKcal = 0.0,
+                    )
+                )
+            }
+
+        val goal =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 24),
+                today = LocalDate(2026, 5, 24),
+                baseEnergyGoalKcal = 2000.0,
+                previousDays = previousDays,
+            )
+
+        assertEquals(2000.0, goal)
+    }
+
+    @Test
     fun sundayUsesFullPreviousWeekSurplus() {
         val goal =
             optimizedEnergyGoalKcal(

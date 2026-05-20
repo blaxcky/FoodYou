@@ -21,9 +21,8 @@ internal fun optimizedEnergyGoalKcal(
 
     val surplus =
         previousDays.sumOf { day ->
-            (day.consumedEnergyKcal - (day.baseEnergyGoalKcal + day.burnedEnergyKcal))
-                .coerceAtLeast(0.0)
-        }
+            day.consumedEnergyKcal - (day.baseEnergyGoalKcal + day.burnedEnergyKcal)
+        }.coerceAtLeast(0.0)
     val remainingDays = (8 - selectedDate.dayOfWeek.isoDayNumber).coerceAtLeast(1)
     val dailyAdjustment = surplus / remainingDays
 
