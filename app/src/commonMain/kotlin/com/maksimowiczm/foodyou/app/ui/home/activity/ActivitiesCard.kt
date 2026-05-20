@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,7 +59,12 @@ private fun ActivitiesCard(
     modifier: Modifier = Modifier,
 ) {
     val energyFormatter = LocalEnergyFormatter.current
-    FoodYouHomeCard(modifier = modifier, onClick = onAdd, onLongClick = onLongClick) {
+    FoodYouHomeCard(
+        modifier = modifier,
+        color = Color.White,
+        onClick = onAdd,
+        onLongClick = onLongClick,
+    ) {
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),

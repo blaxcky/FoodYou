@@ -75,7 +75,12 @@ internal fun MealCard(
             }
         }
 
-    FoodYouHomeCard(modifier = modifier, onClick = onAddFood, onLongClick = onLongClick) {
+    FoodYouHomeCard(
+        modifier = modifier,
+        color = Color.White,
+        onClick = onAddFood,
+        onLongClick = onLongClick,
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
