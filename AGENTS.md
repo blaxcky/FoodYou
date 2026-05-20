@@ -1,5 +1,10 @@
 # Agent Notes
 
+## Git Workflow
+
+After each larger cohesive change, run the relevant verification and create a commit for that
+change before moving on to the next larger task.
+
 ## Local JDK 21
 
 Android Studio is installed via Flatpak. Its JBR 21 is visible inside Android Studio as
