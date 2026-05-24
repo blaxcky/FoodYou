@@ -17,6 +17,7 @@ fun Module.home() {
         HomeViewModel(
             settingsRepository = userPreferencesRepository(),
             healthConnectActivitySync = get(),
+            activityRepository = get(),
         )
     }
     viewModel {

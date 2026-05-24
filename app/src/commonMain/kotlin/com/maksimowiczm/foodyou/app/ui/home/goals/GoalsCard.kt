@@ -113,6 +113,7 @@ private fun interNumberFontFamily(): FontFamily = FontFamily(Font(Res.font.inter
 @Composable
 internal fun GoalsCard(
     homeState: HomeState,
+    burnedEnergyDelta: Int? = null,
     onClick: (epochDay: Long) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -132,6 +133,7 @@ internal fun GoalsCard(
         GoalsCard(
             energy = model.energy,
             burnedEnergy = model.burnedEnergy,
+            burnedEnergyDelta = burnedEnergyDelta,
             netEnergy = model.netEnergy,
             energyGoal = model.energyGoal,
             goalDisplayMode = model.goalDisplayMode,
@@ -174,6 +176,7 @@ internal fun WeeklyGoalsCard(
 internal fun GoalsCard(
     energy: Int,
     burnedEnergy: Int,
+    burnedEnergyDelta: Int? = null,
     netEnergy: Int,
     energyGoal: Int,
     goalDisplayMode: GoalDisplayMode = GoalDisplayMode.Normal,
@@ -224,6 +227,7 @@ internal fun GoalsCard(
                 CaloriesOverview(
                     energy = energy,
                     burnedEnergy = burnedEnergy,
+                    burnedEnergyDelta = burnedEnergyDelta,
                     netEnergy = netEnergy,
                     energyGoal = energyGoal,
                     goalDisplayMode = goalDisplayMode,
@@ -578,6 +582,7 @@ private fun WeeklyFooterMetric(
 private fun CaloriesOverview(
     energy: Int,
     burnedEnergy: Int,
+    burnedEnergyDelta: Int?,
     netEnergy: Int,
     energyGoal: Int,
     goalDisplayMode: GoalDisplayMode,
@@ -650,6 +655,7 @@ private fun CaloriesOverview(
                         value =
                             energyFormatter.formatEnergy(burnedEnergy, withSuffix = false)
                                 .groupDigits(),
+                        deltaValue = burnedEnergyDelta,
                         label = stringResource(Res.string.goal_burned),
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -700,6 +706,7 @@ private fun CaloriesOverview(
                         value =
                             energyFormatter.formatEnergy(burnedEnergy, withSuffix = false)
                                 .groupDigits(),
+                        deltaValue = burnedEnergyDelta,
                         label = stringResource(Res.string.goal_burned),
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -787,6 +794,7 @@ private fun SideMetric(
     value: String,
     label: String,
     modifier: Modifier = Modifier,
+    deltaValue: Int? = null,
     supportingValue: String? = null,
     supportingLabel: String? = null,
     supportingTopPadding: Dp = 0.dp,
@@ -794,34 +802,21 @@ private fun SideMetric(
     muted: Boolean = false,
 ) {
     val numberFontFamily = interNumberFontFamily()
+    val energyFormatter = LocalEnergyFormatter.current
 
     Column(
         modifier = modifier,
         horizontalAlignment = horizontalAlignment,
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(
-            text = value,
-            modifier = Modifier.fillMaxWidth(),
-            color = if (muted) GoalsMutedTextColor else GoalsTextColor,
-            style =
-                if (muted) {
-                    MaterialTheme.typography.labelMedium.copy(
-                        fontFamily = numberFontFamily,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
-                    )
-                } else {
-                    MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = numberFontFamily,
-                        fontSize = 18.sp,
-                        lineHeight = 22.sp,
-                    )
+        MetricValue(
+            value = value,
+            delta =
+                deltaValue?.let {
+                    "+${energyFormatter.formatEnergy(it, withSuffix = false).groupDigits()}"
                 },
-            fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Clip,
-            textAlign = TextAlign.Center,
+            muted = muted,
+            numberFontFamily = numberFontFamily,
         )
         Text(
             text = label,
@@ -868,6 +863,74 @@ private fun SideMetric(
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
                 textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetricValue(
+    value: String,
+    delta: String?,
+    muted: Boolean,
+    numberFontFamily: FontFamily,
+) {
+    val valueStyle =
+        if (muted) {
+            MaterialTheme.typography.labelMedium.copy(
+                fontFamily = numberFontFamily,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+            )
+        } else {
+            MaterialTheme.typography.titleLarge.copy(
+                fontFamily = numberFontFamily,
+                fontSize = 18.sp,
+                lineHeight = 22.sp,
+            )
+        }
+
+    if (delta == null) {
+        Text(
+            text = value,
+            modifier = Modifier.fillMaxWidth(),
+            color = if (muted) GoalsMutedTextColor else GoalsTextColor,
+            style = valueStyle,
+            fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            textAlign = TextAlign.Center,
+        )
+        return
+    }
+
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(
+                text = value,
+                color = if (muted) GoalsMutedTextColor else GoalsTextColor,
+                style = valueStyle,
+                fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = delta,
+                modifier = Modifier.padding(start = 3.dp).offset(y = (-5).dp),
+                color = Color(0xFF1B7F3A),
+                style =
+                    MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = numberFontFamily,
+                        fontSize = 11.sp,
+                        lineHeight = 13.sp,
+                    ),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
             )
         }
     }

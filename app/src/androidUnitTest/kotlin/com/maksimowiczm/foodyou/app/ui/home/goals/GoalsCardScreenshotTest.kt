@@ -123,6 +123,27 @@ class GoalsCardScreenshotTest {
         )
     }
 
+    @Test
+    fun burnedEnergyDelta() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.burned-energy-delta.png",
+            fixture =
+                GoalsCardFixture(
+                    energy = 1280,
+                    burnedEnergy = 145,
+                    burnedEnergyDelta = 5,
+                    netEnergy = 1135,
+                    energyGoal = 2100,
+                    proteins = 82,
+                    proteinsGoal = 130,
+                    carbohydrates = 146,
+                    carbohydratesGoal = 230,
+                    fats = 48,
+                    fatsGoal = 70,
+                ),
+        )
+    }
+
     private fun captureGoalsCard(
         filePath: String,
         fixture: GoalsCardFixture,
@@ -149,6 +170,7 @@ class GoalsCardScreenshotTest {
                     GoalsCard(
                         energy = fixture.energy,
                         burnedEnergy = fixture.burnedEnergy,
+                        burnedEnergyDelta = fixture.burnedEnergyDelta,
                         netEnergy = fixture.netEnergy,
                         energyGoal = fixture.energyGoal,
                         proteins = fixture.proteins,
@@ -169,6 +191,7 @@ class GoalsCardScreenshotTest {
     private data class GoalsCardFixture(
         val energy: Int,
         val burnedEnergy: Int,
+        val burnedEnergyDelta: Int? = null,
         val netEnergy: Int,
         val energyGoal: Int,
         val proteins: Int,

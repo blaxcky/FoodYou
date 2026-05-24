@@ -72,6 +72,10 @@ fun HomeScreen(
     val order by viewModel.homeOrder.collectAsStateWithLifecycle()
     val activitySyncState by viewModel.activitySyncState.collectAsStateWithLifecycle()
     val homeState = rememberHomeState()
+    val burnedEnergyDelta =
+        activitySyncState.burnedEnergySyncDelta
+            ?.takeIf { it.date == homeState.selectedDate }
+            ?.kcal
     val mealsCardsState =
         rememberMealsCardsState(
             homeState = homeState,
@@ -156,6 +160,7 @@ fun HomeScreen(
                         item(key = HomeCard.Goals, contentType = HomeCard.Goals) {
                             GoalsCard(
                                 homeState = homeState,
+                                burnedEnergyDelta = burnedEnergyDelta,
                                 onClick = onGoalsCardClick,
                                 onLongClick = onGoalsCardLongClick,
                                 modifier =
