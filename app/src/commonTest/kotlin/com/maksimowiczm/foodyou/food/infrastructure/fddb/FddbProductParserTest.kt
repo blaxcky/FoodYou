@@ -28,6 +28,21 @@ class FddbProductParserTest {
         assertEquals(NutrientValue.Incomplete(null), product.nutritionFacts.vitaminC)
     }
 
+    @Test
+    fun parsesPackageAndServingPortions() {
+        val product = parser.parse(MiniSalamiSticksFixture)
+
+        assertEquals("Clever Mini Salami Sticks", product.name)
+        assertEquals("Clever", product.brand)
+        assertEquals(200.0, product.packageWeight)
+        assertEquals(12.0, product.servingWeight)
+        assertEquals(526.0, product.nutritionFacts.energy.value)
+        assertEquals(30.0, product.nutritionFacts.proteins.value)
+        assertEquals(0.5, product.nutritionFacts.carbohydrates.value)
+        assertEquals(45.0, product.nutritionFacts.fats.value)
+        assertEquals(4.6, product.nutritionFacts.salt.value)
+    }
+
     private companion object {
         const val Fixture =
             """
@@ -51,6 +66,31 @@ class FddbProductParserTest {
                     <table><tr><td>Salz</td><td>4,5 g</td></tr></table>
                     <h3>Portionen</h3>
                     <p>100 g (100 g)</p>
+                </body>
+            </html>
+            """
+
+        const val MiniSalamiSticksFixture =
+            """
+            <html>
+                <body>
+                    <h1 id="fddb-headline1">Clever Mini Salami Sticks</h1>
+                    <h2 id="fddb-headline2">Clever</h2>
+                    <p>Datenquelle: Extern. Produkt eingetragen von einem Fddb Nutzer.</p>
+                    <h3>Nährwerte für 100 g</h3>
+                    <table>
+                        <tr><td>Brennwert</td><td>2202 kJ</td></tr>
+                        <tr><td>Kalorien</td><td>526 kcal</td></tr>
+                        <tr><td>Protein</td><td>30 g</td></tr>
+                        <tr><td>Kohlenhydrate</td><td>0,5 g</td></tr>
+                        <tr><td>Fett</td><td>45 g</td></tr>
+                    </table>
+                    <h3>Mineralstoffe</h3>
+                    <table><tr><td>Salz</td><td>4,6 g</td></tr></table>
+                    <h3>Portionen</h3>
+                    <p>100 g (100 g)</p>
+                    <p>Stück (12 g)</p>
+                    <p>Packung (200 g)</p>
                 </body>
             </html>
             """

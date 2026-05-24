@@ -8,14 +8,15 @@ class FddbProductParser {
     fun parse(html: String): FddbProduct {
         val lines = html.toTextLines()
         val servingUnit = lines.findServingUnit()
+        val portions = lines.findPortions()
 
         return FddbProduct(
             name = html.tagText("h1", "fddb-headline1") ?: error("FDDB product name not found"),
             brand = html.tagText("h2", "fddb-headline2")?.takeIf { it.isNotBlank() },
             barcode = lines.findBarcode(),
             isLiquid = servingUnit == "ml",
-            packageWeight = null,
-            servingWeight = null,
+            packageWeight = portions.findPackageWeight(),
+            servingWeight = portions.findServingWeight(),
             nutritionFacts =
                 NutritionFacts(
                     proteins = lines.nutrient("Protein", "Eiweiß"),
@@ -118,6 +119,29 @@ private fun List<String>.findBarcode(): String? =
             ?.get(1)
     }
 
+private fun List<String>.findPortions(): List<FddbPortion> =
+    mapNotNull { line ->
+            val match = PortionRegex.matchEntire(line) ?: return@mapNotNull null
+            val label = match.groupValues[1].trim()
+            val normalizedLabel = label.lowercase()
+            if (BasePortionRegex.matches(normalizedLabel)) {
+                return@mapNotNull null
+            }
+
+            FddbPortion(
+                label = normalizedLabel,
+                weight = match.groupValues[2].replace(',', '.').toDoubleOrNull()
+                    ?: return@mapNotNull null,
+            )
+        }
+        .filter { it.weight > 0.0 }
+
+private fun List<FddbPortion>.findPackageWeight(): Double? =
+    firstOrNull { portion -> PackageLabels.any { portion.label.contains(it) } }?.weight
+
+private fun List<FddbPortion>.findServingWeight(): Double? =
+    firstOrNull { portion -> ServingLabels.any { portion.label.contains(it) } }?.weight
+
 private fun List<String>.nutrient(vararg labels: String): NutrientValue {
     val value =
         labels.firstNotNullOfOrNull { label ->
@@ -161,3 +185,43 @@ private fun String.parseFddbNumber(): Double? {
         ?.replace(',', '.')
         ?.toDoubleOrNull()
 }
+
+private data class FddbPortion(val label: String, val weight: Double)
+
+private val PortionRegex =
+    Regex("""^(.+?)\s*\(\s*([-+]?\d+(?:[,.]\d+)?)\s*(?:g|ml)\s*\)$""", RegexOption.IGNORE_CASE)
+
+private val BasePortionRegex = Regex("""^100\s*(?:g|ml)$""", RegexOption.IGNORE_CASE)
+
+private val PackageLabels =
+    listOf(
+        "packung",
+        "becher",
+        "flasche",
+        "dose",
+        "glas",
+        "tube",
+        "schale",
+        "beutel",
+        "sack",
+        "karton",
+    )
+
+private val ServingLabels =
+    listOf(
+        "stück",
+        "stueck",
+        "portion",
+        "scheibe",
+        "riegel",
+        "stick",
+        "sticks",
+        "kugel",
+        "tasse",
+        "löffel",
+        "loeffel",
+        "teelöffel",
+        "teeloeffel",
+        "esslöffel",
+        "essloeffel",
+    )
