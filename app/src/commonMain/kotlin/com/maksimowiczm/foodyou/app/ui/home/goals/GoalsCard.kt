@@ -41,10 +41,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,6 +87,7 @@ import foodyou.app.generated.resources.weekly_so_far
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
@@ -890,23 +894,40 @@ private fun MetricValue(
             )
         }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.Top,
-    ) {
+    val density = LocalDensity.current
+    val deltaSpacingPx = with(density) { 3.dp.roundToPx() }
+    val deltaYOffsetPx = with(density) { (-5).dp.roundToPx() }
+    var containerWidthPx by remember { mutableIntStateOf(0) }
+    var valueTextWidthPx by remember(value) { mutableIntStateOf(0) }
+    var deltaTextWidthPx by remember(delta) { mutableIntStateOf(0) }
+
+    Box(modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx = it.width }) {
         Text(
             text = value,
+            modifier = Modifier.align(Alignment.TopCenter),
             color = if (muted) GoalsMutedTextColor else GoalsTextColor,
             style = valueStyle,
             fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Clip,
+            onTextLayout = { layout ->
+                valueTextWidthPx =
+                    ceil(layout.getLineRight(0) - layout.getLineLeft(0)).toInt()
+            },
         )
         if (delta != null) {
             Text(
                 text = delta,
-                modifier = Modifier.padding(start = 3.dp).offset(y = (-5).dp),
+                modifier =
+                    Modifier.offset {
+                        val preferredX =
+                            containerWidthPx / 2 + valueTextWidthPx / 2 + deltaSpacingPx
+                        val maxX = containerWidthPx - deltaTextWidthPx
+                        IntOffset(
+                            x = preferredX.coerceAtMost(maxX).coerceAtLeast(0),
+                            y = deltaYOffsetPx,
+                        )
+                    },
                 color = Color(0xFF1B7F3A),
                 style =
                     MaterialTheme.typography.labelMedium.copy(
@@ -917,6 +938,10 @@ private fun MetricValue(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
+                onTextLayout = { layout ->
+                    deltaTextWidthPx =
+                        ceil(layout.getLineRight(0) - layout.getLineLeft(0)).toInt()
+                },
             )
         }
     }
