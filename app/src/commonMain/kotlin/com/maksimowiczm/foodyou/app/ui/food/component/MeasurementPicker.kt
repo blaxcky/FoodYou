@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -34,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -151,7 +153,14 @@ private fun Input(
         ) {
             BasicTextField(
                 state = formField.textFieldState,
-                modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
+                modifier =
+                    Modifier.height(48.dp)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                formField.textFieldState.edit { selectAll() }
+                            }
+                        }
+                        .padding(horizontal = 16.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 textStyle = LocalTextStyle.current.merge(LocalContentColor.current),
                 lineLimits = TextFieldLineLimits.SingleLine,
