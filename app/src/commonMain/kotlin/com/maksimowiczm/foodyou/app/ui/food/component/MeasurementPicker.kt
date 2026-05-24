@@ -34,8 +34,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -118,6 +118,14 @@ private fun Input(
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var inputFocused by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(inputFocused) {
+        if (inputFocused) {
+            withFrameNanos {}
+            formField.textFieldState.edit { selectAll() }
+        }
+    }
 
     val inputColor by
         animateColorAsState(
@@ -156,9 +164,7 @@ private fun Input(
                 modifier =
                     Modifier.height(48.dp)
                         .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                formField.textFieldState.edit { selectAll() }
-                            }
+                            inputFocused = focusState.isFocused
                         }
                         .padding(horizontal = 16.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
