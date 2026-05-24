@@ -23,6 +23,7 @@ internal fun optimizedEnergyGoalKcal(
         baseEnergyGoalKcal = baseEnergyGoalKcal,
         dailyEnergyDeficitKcal = 0.0,
         previousDays = previousDays,
+        includeExtraSavings = false,
     )
 
 internal fun adjustedEnergyGoalKcal(
@@ -31,19 +32,42 @@ internal fun adjustedEnergyGoalKcal(
     baseEnergyGoalKcal: Double,
     dailyEnergyDeficitKcal: Double,
     previousDays: List<GoalEnergyOptimizationDay>,
+): Double =
+    adjustedEnergyGoalKcal(
+        selectedDate = selectedDate,
+        today = today,
+        baseEnergyGoalKcal = baseEnergyGoalKcal,
+        dailyEnergyDeficitKcal = dailyEnergyDeficitKcal,
+        previousDays = previousDays,
+        includeExtraSavings = true,
+    )
+
+private fun adjustedEnergyGoalKcal(
+    selectedDate: LocalDate,
+    today: LocalDate,
+    baseEnergyGoalKcal: Double,
+    dailyEnergyDeficitKcal: Double,
+    previousDays: List<GoalEnergyOptimizationDay>,
+    includeExtraSavings: Boolean,
 ): Double {
     if (selectedDate.startOfWeek() != today.startOfWeek()) return baseEnergyGoalKcal
 
     val dailyTarget = baseEnergyGoalKcal - dailyEnergyDeficitKcal
-    val surplus =
+    val balance =
         previousDays.sumOf { day ->
             day.consumedEnergyKcal -
                 (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal)
-        }.coerceAtLeast(0.0)
+        }
+    val adjustmentBalance =
+        if (includeExtraSavings) {
+            balance
+        } else {
+            balance.coerceAtLeast(0.0)
+        }
     val remainingDays = (8 - selectedDate.dayOfWeek.isoDayNumber).coerceAtLeast(1)
-    val dailyAdjustment = surplus / remainingDays
+    val dailyAdjustment = adjustmentBalance / remainingDays
 
-    return dailyTarget - dailyAdjustment
+    return (dailyTarget - dailyAdjustment).coerceAtMost(baseEnergyGoalKcal)
 }
 
 internal fun LocalDate.startOfWeek(): LocalDate =

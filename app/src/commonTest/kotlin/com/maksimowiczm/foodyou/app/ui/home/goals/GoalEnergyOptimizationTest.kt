@@ -219,7 +219,28 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
-    fun dietExtraSavingsOffsetLaterMissesWithoutIncreasingTarget() {
+    fun dietExtraSavingsIncreaseRemainingDays() {
+        val goal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 19),
+                today = LocalDate(2026, 5, 19),
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 1400.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1516.666666, goal, 0.000001)
+    }
+
+    @Test
+    fun dietExtraSavingsCarryForwardAfterNextPlannedDeficit() {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
@@ -229,7 +250,33 @@ class GoalEnergyOptimizationTest {
                 previousDays =
                     listOf(
                         GoalEnergyOptimizationDay(
-                            consumedEnergyKcal = 1000.0,
+                            consumedEnergyKcal = 1400.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        ),
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 1500.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        ),
+                    ),
+            )
+
+        assertEquals(1520.0, goal)
+    }
+
+    @Test
+    fun dietExtraSavingsAndLaterMissesUseWeeklyBalance() {
+        val goal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 20),
+                today = LocalDate(2026, 5, 20),
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 1400.0,
                             baseEnergyGoalKcal = 2000.0,
                             burnedEnergyKcal = 0.0,
                         ),
@@ -241,7 +288,28 @@ class GoalEnergyOptimizationTest {
                     ),
             )
 
-        assertEquals(1500.0, goal)
+        assertEquals(1460.0, goal)
+    }
+
+    @Test
+    fun dietExtraSavingsDoNotIncreaseGoalAboveBaseGoal() {
+        val goal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 19),
+                today = LocalDate(2026, 5, 19),
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 0.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 3000.0,
+                        )
+                    ),
+            )
+
+        assertEquals(2000.0, goal)
     }
 
     @Test
