@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -904,11 +905,9 @@ private fun MetricValue(
         return
     }
 
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.Top,
-        ) {
+    Layout(
+        modifier = Modifier.fillMaxWidth(),
+        content = {
             Text(
                 text = value,
                 color = if (muted) GoalsMutedTextColor else GoalsTextColor,
@@ -920,7 +919,6 @@ private fun MetricValue(
             )
             Text(
                 text = delta,
-                modifier = Modifier.padding(start = 3.dp).offset(y = (-5).dp),
                 color = Color(0xFF1B7F3A),
                 style =
                     MaterialTheme.typography.labelMedium.copy(
@@ -932,6 +930,23 @@ private fun MetricValue(
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
             )
+        },
+    ) { measurables, constraints ->
+        val valuePlaceable = measurables[0].measure(constraints.copy(minWidth = 0))
+        val deltaPlaceable = measurables[1].measure(constraints.copy(minWidth = 0))
+        val width =
+            if (constraints.hasBoundedWidth) {
+                constraints.maxWidth
+            } else {
+                valuePlaceable.width + 3.dp.roundToPx() + deltaPlaceable.width
+            }
+        val height = valuePlaceable.height
+        val valueX = (width - valuePlaceable.width) / 2
+        val deltaX = valueX + valuePlaceable.width + 3.dp.roundToPx()
+
+        layout(width = width, height = height) {
+            valuePlaceable.placeRelative(x = valueX, y = 0)
+            deltaPlaceable.placeRelative(x = deltaX, y = (-5).dp.roundToPx())
         }
     }
 }
