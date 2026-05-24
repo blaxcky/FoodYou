@@ -29,7 +29,15 @@ fun Module.foodDomainModule() {
     factoryOf(::DeletePendingProductUseCase)
     factoryOf(::DeleteFoodUseCase)
     factoryOf(::DownloadProductUseCase)
-    factoryOf(::ImportFddbProductsUseCase)
+    factory {
+        ImportFddbProductsUseCase(
+            fddbProductGateway = get(),
+            productRepository = get(),
+            historyRepository = get(),
+            transactionProvider = get(),
+            dateProvider = get(),
+        )
+    }
     factoryOf(::ObserveFoodUseCase)
     factoryOf(::ObserveMeasurementSuggestionsUseCase)
     factoryOf(::ObservePendingProductUseCase)
