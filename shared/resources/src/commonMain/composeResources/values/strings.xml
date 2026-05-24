@@ -314,6 +314,7 @@
     <string name="notification_importing_products_success">Finished importing products</string>
 
     <string name="headline_food_data_central_usda" translatable="false">FoodData Central (USDA)</string>
+    <string name="headline_fddb" translatable="false">FDDB</string>
     <string name="description_food_data_central_usda">FoodData Central is USDA's comprehensive source of food composition data with multiple distinct data types</string>
     <string name="link_usda" translatable="false">https://fdc.nal.usda.gov</string>
     <string name="link_usda_obtain_key" translatable="false">https://fdc.nal.usda.gov/api-key-signup</string>
@@ -429,6 +430,16 @@
     <string name="description_import_csv_food_products">Import food products from CSV file</string>
     <string name="description_import_csv_food_products_hint">We just need to know what's what. Tell us which column in your file is the product name, brand, etc.</string>
     <string name="description_import_csv_food_products_hint_2">All nutrient values must be given in grams or kcal per 100 g</string>
+
+    <string name="action_import_fddb_products">Import FDDB products</string>
+    <string name="description_import_fddb_products_short">Import products from pasted FDDB links</string>
+    <string name="description_import_fddb_products">Paste one or more FDDB product links. FoodYou imports them one by one and skips products that already exist.</string>
+    <string name="label_fddb_links">FDDB links</string>
+    <string name="neutral_fddb_links_found">%1$d FDDB links found</string>
+    <string name="neutral_fddb_import_summary">Imported: %1$d · skipped: %2$d · failed: %3$d</string>
+    <string name="headline_import_failed">Import failed</string>
+    <string name="description_fddb_skip_barcode">Skipped because a product with this barcode already exists</string>
+    <string name="description_fddb_skip_product">Skipped because this FDDB product already exists</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>
     <string name="description_export_csv_food_products">Export food products to CSV file</string>

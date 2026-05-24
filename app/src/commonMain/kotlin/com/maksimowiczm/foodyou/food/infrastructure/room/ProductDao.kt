@@ -34,6 +34,16 @@ abstract class ProductDao {
         """
         SELECT *
         FROM Product
+        WHERE barcode = :barcode
+        LIMIT 1
+        """
+    )
+    abstract suspend fun getProductByBarcode(barcode: String): ProductEntity?
+
+    @Query(
+        """
+        SELECT *
+        FROM Product
         LIMIT :limit OFFSET :offset
         """
     )

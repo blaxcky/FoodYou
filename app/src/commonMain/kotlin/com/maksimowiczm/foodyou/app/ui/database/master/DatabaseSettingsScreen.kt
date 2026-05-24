@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
@@ -24,6 +25,7 @@ import org.jetbrains.compose.resources.stringResource
 fun DatabaseSettingsScreen(
     onBack: () -> Unit,
     onExternalDatabases: () -> Unit,
+    onImportFddbProducts: () -> Unit,
     onImportCsvProducts: () -> Unit,
     onExportCsvProducts: () -> Unit,
     onDatabaseBackup: () -> Unit,
@@ -46,11 +48,23 @@ fun DatabaseSettingsScreen(
             contentPadding = paddingValues,
         ) {
             item { ExternalDatabasesSettingsListItem(onExternalDatabases) }
+            item { ImportFddbProductsSettingsListItem(onImportFddbProducts) }
             item { ImportCsvProductsSettingsListItem(onImportCsvProducts) }
             item { ExportCsvProductsSettingsListItem(onExportCsvProducts) }
             item { DatabaseBackup(onDatabaseBackup) }
         }
     }
+}
+
+@Composable
+private fun ImportFddbProductsSettingsListItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    SettingsListItem(
+        icon = { Icon(Icons.Outlined.Link, null) },
+        label = { Text(stringResource(Res.string.action_import_fddb_products)) },
+        supportingContent = { Text(stringResource(Res.string.description_import_fddb_products_short)) },
+        onClick = onClick,
+        modifier = modifier,
+    )
 }
 
 @Composable

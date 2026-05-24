@@ -24,6 +24,9 @@ internal class RoomProductRepository(private val productDao: ProductDao) : Produ
     override fun observeProductByBarcode(barcode: String): Flow<Product?> =
         productDao.observeProductByBarcode(barcode).map { it?.toModel() }
 
+    override suspend fun getProductByBarcode(barcode: String): Product? =
+        productDao.getProductByBarcode(barcode)?.toModel()
+
     override suspend fun deleteProduct(product: Product) {
         val entity = product.toEntity()
         productDao.deleteProduct(entity)

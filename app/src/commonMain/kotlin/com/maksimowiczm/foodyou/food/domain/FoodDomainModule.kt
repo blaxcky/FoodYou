@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.CreateRecipeUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeletePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DownloadProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ImportFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductUseCase
@@ -28,6 +29,7 @@ fun Module.foodDomainModule() {
     factoryOf(::DeletePendingProductUseCase)
     factoryOf(::DeleteFoodUseCase)
     factoryOf(::DownloadProductUseCase)
+    factoryOf(::ImportFddbProductsUseCase)
     factoryOf(::ObserveFoodUseCase)
     factoryOf(::ObserveMeasurementSuggestionsUseCase)
     factoryOf(::ObservePendingProductUseCase)

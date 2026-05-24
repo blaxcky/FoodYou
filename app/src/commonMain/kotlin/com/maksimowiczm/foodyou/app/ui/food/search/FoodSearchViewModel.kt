@@ -130,6 +130,16 @@ internal class FoodSearchViewModel(
             )
         }
 
+    private val fddbPages = observeFoodPages(FoodSource.Type.FDDB).cachedIn(viewModelScope)
+    private val fddbState =
+        observeFoodCount(FoodSource.Type.FDDB).map { count ->
+            FoodSourceUiState(
+                remoteEnabled = RemoteStatus.LocalOnly,
+                pages = fddbPages,
+                count = count,
+            )
+        }
+
     private fun observeFoodCount(source: FoodSource.Type) =
         searchQuery.flatMapLatest { query ->
             foodSearchRepository.searchFoodCount(
@@ -161,6 +171,7 @@ internal class FoodSearchViewModel(
                 openFoodFactsState,
                 usdaState,
                 swissState,
+                fddbState,
                 filter,
                 searchHistory,
             ) {
@@ -169,6 +180,7 @@ internal class FoodSearchViewModel(
                 openFoodFactsState,
                 usdaState,
                 swissState,
+                fddbState,
                 filter,
                 searchHistory ->
                 FoodSearchUiState(
@@ -179,6 +191,7 @@ internal class FoodSearchViewModel(
                             FoodFilter.Source.OpenFoodFacts to openFoodFactsState,
                             FoodFilter.Source.USDA to usdaState,
                             FoodFilter.Source.SwissFoodCompositionDatabase to swissState,
+                            FoodFilter.Source.FDDB to fddbState,
                         ),
                     filter = filter,
                     recentSearches = searchHistory.map { it.query },

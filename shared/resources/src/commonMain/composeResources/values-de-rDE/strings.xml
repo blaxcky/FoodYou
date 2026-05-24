@@ -78,6 +78,7 @@
     <string name="headline_external_databases">Externe Datenbanken</string>
     <string name="description_external_databases">Probiere unterstützte Datenbanken aus</string>
     <string name="headline_food_database">Lebensmitteldatenbank</string>
+    <string name="headline_fddb" translatable="false">FDDB</string>
     <string name="description_food_database">Wähle, ob du eine der folgenden externen Dienste nutzen möchtest, welche ihre eigenen Nutzungsbedingungen und Datenschutzbestimmungen haben können</string>
     <string name="headline_terms_of_use">Nutzungsbedingungen</string>
     <string name="headline_privacy_policy">Datenschutzbestimmungen</string>
@@ -87,6 +88,15 @@
     <string name="description_import_csv_food_products">Lebensmittel aus CSV-Datei importieren</string>
     <string name="description_import_csv_food_products_hint">Wir müssen nur wissen, was was ist. Zeige uns, welche Spalte in deiner Datei der Produktname, die Marke usw. ist.</string>
     <string name="description_import_csv_food_products_hint_2">Alle Nährwerte müssen in Gramm oder Kcal pro 100 g angegeben werden</string>
+    <string name="action_import_fddb_products">FDDB importieren</string>
+    <string name="description_import_fddb_products_short">Produkte aus eingefügten FDDB-Links importieren</string>
+    <string name="description_import_fddb_products">Füge einen oder mehrere FDDB-Produktlinks ein. FoodYou importiert sie nacheinander und überspringt bereits vorhandene Produkte.</string>
+    <string name="label_fddb_links">FDDB-Links</string>
+    <string name="neutral_fddb_links_found">%1$d FDDB-Links gefunden</string>
+    <string name="neutral_fddb_import_summary">Importiert: %1$d · übersprungen: %2$d · fehlgeschlagen: %3$d</string>
+    <string name="headline_import_failed">Import fehlgeschlagen</string>
+    <string name="description_fddb_skip_barcode">Übersprungen, weil ein Produkt mit diesem Barcode bereits existiert</string>
+    <string name="description_fddb_skip_product">Übersprungen, weil dieses FDDB-Produkt bereits existiert</string>
     <string name="action_export_csv_food_products">Export in CSV-Datei</string>
     <string name="description_export_csv_food_products">Lebensmittel in CSV-Datei exportieren</string>
     <string name="headline_database_backup">Sicherung der Datenbank</string>

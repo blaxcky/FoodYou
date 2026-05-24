@@ -9,6 +9,7 @@ import com.maksimowiczm.foodyou.food.domain.repository.RemoteProductRequestFacto
 import com.maksimowiczm.foodyou.food.infrastructure.network.RemoteProductMapper
 import com.maksimowiczm.foodyou.food.infrastructure.network.RemoteProductRequestFactoryImpl
 import com.maksimowiczm.foodyou.food.infrastructure.openfoodfacts.openFoodFactsModule
+import com.maksimowiczm.foodyou.food.infrastructure.fddb.fddbModule
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFoodHistoryRepository
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFoodMeasurementSuggestionRepository
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomPendingProductRepository
@@ -40,6 +41,7 @@ fun Module.foodInfrastructureModule() {
     pendingProductPhotoStorageModule()
     USDAModule()
     openFoodFactsModule()
+    fddbModule()
 }
 
 private val Scope.database: FoodDatabase

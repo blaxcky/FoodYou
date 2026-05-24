@@ -13,6 +13,7 @@ import com.maksimowiczm.foodyou.app.ui.database.exportcsvproducts.ExportCsvProdu
 import com.maksimowiczm.foodyou.app.ui.database.externaldatabases.ExternalDatabasesScreen
 import com.maksimowiczm.foodyou.app.ui.database.externaldatabases.OpenFoodFactsLoginDialog
 import com.maksimowiczm.foodyou.app.ui.database.externaldatabases.UpdateUsdaApiKeyDialog
+import com.maksimowiczm.foodyou.app.ui.database.importfddbproducts.ImportFddbProductsScreen
 import com.maksimowiczm.foodyou.app.ui.database.importcsvproducts.ImportCsvProductsScreen
 import com.maksimowiczm.foodyou.app.ui.database.master.DatabaseSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.database.swissfoodcompositiondatabase.SwissFoodCompositionDatabaseScreen
@@ -186,6 +187,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             DatabaseSettingsScreen(
                 onBack = { navController.popBackStackInclusive<DatabaseSettings>() },
                 onExternalDatabases = { navController.navigateSingleTop(ExternalDatabases) },
+                onImportFddbProducts = { navController.navigateSingleTop(ImportFddbProducts) },
                 onImportCsvProducts = { navController.navigateSingleTop(ImportCsvProducts) },
                 onExportCsvProducts = { navController.navigateSingleTop(ExportCsvProducts) },
                 onDatabaseBackup = onDatabaseBackup,
@@ -208,6 +210,11 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             ImportCsvProductsScreen(
                 onBack = { navController.popBackStackInclusive<ImportCsvProducts>() },
                 onFinish = { navController.popBackStackInclusive<ImportCsvProducts>() },
+            )
+        }
+        forwardBackwardComposable<ImportFddbProducts> {
+            ImportFddbProductsScreen(
+                onBack = { navController.popBackStackInclusive<ImportFddbProducts>() }
             )
         }
         forwardBackwardComposable<ExportCsvProducts> {
@@ -484,6 +491,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object OpenFoodFactsLogin
 
 @Serializable private object ImportCsvProducts
+
+@Serializable private object ImportFddbProducts
 
 @Serializable private object ExportCsvProducts
 

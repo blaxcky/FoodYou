@@ -11,6 +11,8 @@ interface ProductRepository {
 
     fun observeProductByBarcode(barcode: String): Flow<Product?>
 
+    suspend fun getProductByBarcode(barcode: String): Product?
+
     fun observeProducts(limit: Int, offset: Int): Flow<List<Product>>
 
     /**
