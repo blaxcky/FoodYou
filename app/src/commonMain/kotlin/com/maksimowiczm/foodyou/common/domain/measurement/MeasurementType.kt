@@ -8,3 +8,14 @@ enum class MeasurementType {
     Ounce,
     FluidOunce,
 }
+
+internal val MeasurementType.isUserSelectable: Boolean
+    get() =
+        when (this) {
+            MeasurementType.Gram,
+            MeasurementType.Package,
+            MeasurementType.Serving,
+            MeasurementType.Milliliter -> true
+            MeasurementType.Ounce,
+            MeasurementType.FluidOunce -> false
+        }

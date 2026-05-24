@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -40,7 +41,6 @@ private fun List<Measurement>.fillMissingMeasurements(food: Food): List<Measurem
 
     if (food.isLiquid) {
         mutable.add(Measurement.Milliliter(Measurement.Milliliter.DEFAULT))
-        mutable.add(Measurement.FluidOunce(Measurement.FluidOunce.DEFAULT))
     } else {
         mutable.add(Measurement.Gram(Measurement.Gram.DEFAULT))
     }
@@ -51,12 +51,13 @@ private fun List<Measurement>.fillMissingMeasurements(food: Food): List<Measurem
 private val Food.possibleMeasurementTypes: List<MeasurementType>
     get() =
         MeasurementType.entries.filter { type ->
-            when (type) {
-                MeasurementType.Gram -> !isLiquid
-                MeasurementType.Ounce -> !isLiquid
-                MeasurementType.Milliliter -> isLiquid
-                MeasurementType.FluidOunce -> isLiquid
-                MeasurementType.Package -> totalWeight != null
-                MeasurementType.Serving -> servingWeight != null
-            }
+            type.isUserSelectable &&
+                when (type) {
+                    MeasurementType.Gram -> !isLiquid
+                    MeasurementType.Ounce -> !isLiquid
+                    MeasurementType.Milliliter -> isLiquid
+                    MeasurementType.FluidOunce -> isLiquid
+                    MeasurementType.Package -> totalWeight != null
+                    MeasurementType.Serving -> servingWeight != null
+                }
         }

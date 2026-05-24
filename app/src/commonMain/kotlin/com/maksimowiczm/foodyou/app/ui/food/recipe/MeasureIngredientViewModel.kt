@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
@@ -57,14 +58,15 @@ private val Food.possibleMeasurementTypes: Flow<List<MeasurementType>>
     get() =
         flowOf(
             MeasurementType.entries.filter { type ->
-                when (type) {
-                    MeasurementType.Gram -> !isLiquid
-                    MeasurementType.Ounce -> !isLiquid
-                    MeasurementType.Milliliter -> isLiquid
-                    MeasurementType.FluidOunce -> isLiquid
-                    MeasurementType.Package -> totalWeight != null
-                    MeasurementType.Serving -> servingWeight != null
-                }
+                type.isUserSelectable &&
+                    when (type) {
+                        MeasurementType.Gram -> !isLiquid
+                        MeasurementType.Ounce -> !isLiquid
+                        MeasurementType.Milliliter -> isLiquid
+                        MeasurementType.FluidOunce -> isLiquid
+                        MeasurementType.Package -> totalWeight != null
+                        MeasurementType.Serving -> servingWeight != null
+                    }
             }
         )
 

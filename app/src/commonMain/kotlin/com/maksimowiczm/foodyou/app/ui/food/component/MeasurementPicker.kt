@@ -48,6 +48,7 @@ import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import foodyou.app.generated.resources.*
@@ -90,7 +91,7 @@ fun MeasurementPicker(
             modifier = Modifier.padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            state.suggestions.forEach { measurement ->
+            state.suggestions.filter { it.type.isUserSelectable }.forEach { measurement ->
                 SuggestionChip(
                     onClick = {
                         state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
@@ -182,7 +183,7 @@ private fun Input(
                     Icon(imageVector = Icons.Outlined.KeyboardArrowDown, contentDescription = null)
 
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        types.forEach {
+                        types.filter { it.isUserSelectable }.forEach {
                             DropdownMenuItem(
                                 text = { Text(it.stringResource(servingUnit)) },
                                 onClick = {
