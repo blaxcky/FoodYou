@@ -41,12 +41,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -891,7 +894,11 @@ private fun MetricValue(
             )
         }
 
-    if (delta == null) {
+    var containerWidthPx by remember { mutableIntStateOf(0) }
+    var valueTextWidthPx by remember(value) { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+
+    Box(modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx = it.width }) {
         Text(
             text = value,
             modifier = Modifier.fillMaxWidth(),
@@ -901,24 +908,19 @@ private fun MetricValue(
             maxLines = 1,
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,
+            onTextLayout = { valueTextWidthPx = it.visibleTextWidthPx(value) },
         )
-        return
-    }
-
-    Layout(
-        modifier = Modifier.fillMaxWidth(),
-        content = {
-            Text(
-                text = value,
-                color = if (muted) GoalsMutedTextColor else GoalsTextColor,
-                style = valueStyle,
-                fontWeight = if (muted) FontWeight.Normal else FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-                textAlign = TextAlign.Center,
-            )
+        if (delta != null) {
+            val deltaOffset =
+                with(density) {
+                    IntOffset(
+                        x = containerWidthPx / 2 + valueTextWidthPx / 2 + 3.dp.roundToPx(),
+                        y = (-5).dp.roundToPx(),
+                    )
+                }
             Text(
                 text = delta,
+                modifier = Modifier.offset { deltaOffset },
                 color = Color(0xFF1B7F3A),
                 style =
                     MaterialTheme.typography.labelMedium.copy(
@@ -930,24 +932,25 @@ private fun MetricValue(
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
             )
-        },
-    ) { measurables, constraints ->
-        val valuePlaceable = measurables[0].measure(constraints.copy(minWidth = 0))
-        val deltaPlaceable = measurables[1].measure(constraints.copy(minWidth = 0))
-        val width =
-            if (constraints.hasBoundedWidth) {
-                constraints.maxWidth
-            } else {
-                valuePlaceable.width + 3.dp.roundToPx() + deltaPlaceable.width
-            }
-        val height = valuePlaceable.height
-        val valueX = (width - valuePlaceable.width) / 2
-        val deltaX = valueX + valuePlaceable.width + 3.dp.roundToPx()
-
-        layout(width = width, height = height) {
-            valuePlaceable.placeRelative(x = valueX, y = 0)
-            deltaPlaceable.placeRelative(x = deltaX, y = (-5).dp.roundToPx())
         }
+    }
+}
+
+private fun TextLayoutResult.visibleTextWidthPx(text: String): Int {
+    if (text.isEmpty()) return 0
+
+    var left = Float.POSITIVE_INFINITY
+    var right = Float.NEGATIVE_INFINITY
+    text.indices.forEach { index ->
+        val bounds = getBoundingBox(index)
+        left = minOf(left, bounds.left)
+        right = maxOf(right, bounds.right)
+    }
+
+    return if (left.isFinite() && right.isFinite()) {
+        (right - left).roundToInt()
+    } else {
+        0
     }
 }
 
