@@ -33,6 +33,16 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun burnedEnergySyncDeltaKcalReturnsFullIncreaseFromZero() {
+        assertEquals(333, burnedEnergySyncDeltaKcal(before = 0.0, after = 333.0))
+    }
+
+    @Test
+    fun burnedEnergySyncDeltaKcalReturnsOnlySyncIncrease() {
+        assertEquals(33, burnedEnergySyncDeltaKcal(before = 267.0, after = 300.0))
+    }
+
+    @Test
     fun burnedEnergySyncDeltaKcalReturnsZeroWhenUnchanged() {
         assertEquals(0, burnedEnergySyncDeltaKcal(before = 960.0, after = 960.0))
     }

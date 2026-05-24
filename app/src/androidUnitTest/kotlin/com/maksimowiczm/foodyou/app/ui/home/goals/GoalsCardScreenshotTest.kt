@@ -144,6 +144,29 @@ class GoalsCardScreenshotTest {
         )
     }
 
+    @Test
+    fun phoneBurnedEnergyDelta() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.phone-burned-energy-delta.png",
+            fixture =
+                GoalsCardFixture(
+                    energy = 1280,
+                    burnedEnergy = 333,
+                    burnedEnergyDelta = 333,
+                    netEnergy = 947,
+                    energyGoal = 2100,
+                    proteins = 82,
+                    proteinsGoal = 130,
+                    carbohydrates = 146,
+                    carbohydratesGoal = 230,
+                    fats = 48,
+                    fatsGoal = 70,
+                ),
+            width = 414,
+            height = 280,
+        )
+    }
+
     private fun captureGoalsCard(
         filePath: String,
         fixture: GoalsCardFixture,
