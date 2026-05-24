@@ -87,7 +87,7 @@ private fun ActivitiesCard(
                 }
             }
 
-            HorizontalDivider()
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp))
 
             val cardModel = model
             if (cardModel == null) {
@@ -116,7 +116,7 @@ private fun ActivitiesCard(
                 )
 
                 cardModel.manualEntries.forEach { entry ->
-                    HorizontalDivider()
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                     ActivityRow(
                         label = entry.name,
                         energy = energyFormatter.formatEnergy(-entry.energyKcal.toInt()),
@@ -125,7 +125,7 @@ private fun ActivitiesCard(
                 }
             }
 
-            HorizontalDivider()
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp))
             Row(
                 modifier =
                     Modifier.fillMaxWidth().clickable(onClick = onAdd).padding(horizontal = 16.dp, vertical = 14.dp),
