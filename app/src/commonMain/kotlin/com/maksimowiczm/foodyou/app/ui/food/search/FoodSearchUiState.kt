@@ -34,8 +34,8 @@ internal enum class RemoteStatus {
  * @param pages Flow of paginated food search results.
  * @param count The number of total items available in the database.
  * @param alwaysShowFilter If true, the filter button will always be shown regardless of the count
- *   or remote status. If false, the filter button will only be shown if there are items to filter
- *   or if remote search is enabled.
+ *   or remote status. If false, local-only sources are shown when they have items, and remote sources
+ *   are shown only while remote search is enabled.
  */
 @Immutable
 internal data class FoodSourceUiState(
@@ -45,7 +45,10 @@ internal data class FoodSourceUiState(
     private val alwaysShowFilter: Boolean = false,
 ) {
     val shouldShowFilter: Boolean
-        @Composable get() = alwaysShowFilter || count > 0 || remoteEnabled == RemoteStatus.Enabled
+        get() =
+            alwaysShowFilter ||
+                remoteEnabled == RemoteStatus.Enabled ||
+                (remoteEnabled == RemoteStatus.LocalOnly && count > 0)
 
     @Composable fun collectAsLazyPagingItems() = pages.collectAsLazyPagingItems()
 }

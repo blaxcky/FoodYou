@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.update
@@ -195,6 +196,22 @@ internal class FoodSearchViewModel(
             )
 
     init {
+        uiState
+            .map { uiState ->
+                val currentSourceIsAvailable = uiState.currentSourceState?.shouldShowFilter != false
+                if (currentSourceIsAvailable) {
+                    return@map null
+                }
+
+                FoodFilter.DefaultFilter
+            }
+            .onEach { source ->
+                if (source != null) {
+                    changeSource(source)
+                }
+            }
+            .launchIn(viewModelScope)
+
         searchQuery
             .flatMapLatest { query ->
                 if (query == null) {
@@ -211,26 +228,26 @@ internal class FoodSearchViewModel(
                             return@combine
                         }
 
-                        val recentCount = uiState.sources[FoodFilter.Source.Recent]?.count
+                        val recentCount = uiState.visibleCount(FoodFilter.Source.Recent)
                         if (recentCount.positive()) {
                             changeSource(FoodFilter.Source.Recent)
                             return@combine
                         }
 
-                        val yourFoodCount = uiState.sources[FoodFilter.Source.YourFood]?.count
+                        val yourFoodCount = uiState.visibleCount(FoodFilter.Source.YourFood)
                         if (yourFoodCount.positive()) {
                             changeSource(FoodFilter.Source.YourFood)
                             return@combine
                         }
 
                         val openFoodFactsCount =
-                            uiState.sources[FoodFilter.Source.OpenFoodFacts]?.count
+                            uiState.visibleCount(FoodFilter.Source.OpenFoodFacts)
                         if (openFoodFactsCount.positive()) {
                             changeSource(FoodFilter.Source.OpenFoodFacts)
                             return@combine
                         }
 
-                        val usdaCount = uiState.sources[FoodFilter.Source.USDA]?.count
+                        val usdaCount = uiState.visibleCount(FoodFilter.Source.USDA)
                         if (usdaCount.positive()) {
                             changeSource(FoodFilter.Source.USDA)
                             return@combine
@@ -244,6 +261,9 @@ internal class FoodSearchViewModel(
             .launchIn(viewModelScope)
     }
 }
+
+private fun FoodSearchUiState.visibleCount(source: FoodFilter.Source): Int? =
+    sources[source]?.takeIf { it.shouldShowFilter }?.count
 
 @OptIn(ExperimentalContracts::class)
 private fun Int?.positive(): Boolean {
