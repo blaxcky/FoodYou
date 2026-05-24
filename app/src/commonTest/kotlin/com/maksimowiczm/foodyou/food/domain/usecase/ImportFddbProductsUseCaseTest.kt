@@ -43,7 +43,8 @@ class ImportFddbProductsUseCaseTest {
     @Test
     fun skipsExistingBarcode() = runBlocking {
         val gateway = FakeFddbProductGateway()
-        val repository = FakeProductRepository(existingBarcode = "1234567890123")
+        val repository =
+            FakeProductRepository(existingProduct = product(id = 1, barcode = "1234567890123"))
         val useCase = useCase(gateway, repository)
 
         val result = useCase.import(Url(1)).toList().last().results.single()
@@ -51,6 +52,42 @@ class ImportFddbProductsUseCaseTest {
         val skipped = assertIs<FddbImportResult.Skipped>(result)
         assertEquals(FddbSkipReason.BarcodeExists, skipped.reason)
         assertEquals(1, repository.products.size)
+    }
+
+    @Test
+    fun fillsMissingWeightsForExistingBarcode() = runBlocking {
+        val gateway = FakeFddbProductGateway(packageWeight = 200.0, servingWeight = 12.0)
+        val existing = product(id = 1, barcode = "1234567890123")
+        val repository = FakeProductRepository(existingProduct = existing)
+        val useCase = useCase(gateway, repository)
+
+        val result = useCase.import(Url(1)).toList().last().results.single()
+
+        val skipped = assertIs<FddbImportResult.Skipped>(result)
+        assertEquals(FddbSkipReason.UpdatedWeights, skipped.reason)
+        assertEquals(200.0, repository.products.single().packageWeight)
+        assertEquals(12.0, repository.products.single().servingWeight)
+    }
+
+    @Test
+    fun doesNotOverwriteExistingWeightsForExistingBarcode() = runBlocking {
+        val gateway = FakeFddbProductGateway(packageWeight = 200.0, servingWeight = 12.0)
+        val existing =
+            product(
+                id = 1,
+                barcode = "1234567890123",
+                packageWeight = 150.0,
+                servingWeight = 10.0,
+            )
+        val repository = FakeProductRepository(existingProduct = existing)
+        val useCase = useCase(gateway, repository)
+
+        val result = useCase.import(Url(1)).toList().last().results.single()
+
+        val skipped = assertIs<FddbImportResult.Skipped>(result)
+        assertEquals(FddbSkipReason.BarcodeExists, skipped.reason)
+        assertEquals(150.0, repository.products.single().packageWeight)
+        assertEquals(10.0, repository.products.single().servingWeight)
     }
 
     @Test
@@ -79,7 +116,11 @@ class ImportFddbProductsUseCaseTest {
             requestDelayMillis = 0,
         )
 
-    private class FakeFddbProductGateway(private val failingUrl: String? = null) : FddbProductGateway {
+    private class FakeFddbProductGateway(
+        private val failingUrl: String? = null,
+        private val packageWeight: Double? = null,
+        private val servingWeight: Double? = null,
+    ) : FddbProductGateway {
         val requests = mutableListOf<String>()
 
         override suspend fun getProduct(url: String): FddbProduct {
@@ -93,8 +134,8 @@ class ImportFddbProductsUseCaseTest {
                 brand = "Brand",
                 barcode = if (url.contains("product_1")) "1234567890123" else "1234567890124",
                 isLiquid = false,
-                packageWeight = null,
-                servingWeight = null,
+                packageWeight = packageWeight,
+                servingWeight = servingWeight,
                 nutritionFacts =
                     NutritionFacts(
                         energy = NutrientValue.Complete(100.0),
@@ -106,13 +147,14 @@ class ImportFddbProductsUseCaseTest {
         }
     }
 
-    private class FakeProductRepository(existingBarcode: String? = null) : ProductRepository {
+    private class FakeProductRepository(existingProduct: Product? = null) : ProductRepository {
         val products = mutableListOf<Product>()
         private var nextId = 1L
 
         init {
-            if (existingBarcode != null) {
-                products += product(id = nextId++, barcode = existingBarcode)
+            if (existingProduct != null) {
+                products += existingProduct
+                nextId = existingProduct.id.id + 1
             }
         }
 
@@ -146,6 +188,8 @@ class ImportFddbProductsUseCaseTest {
                     name = name,
                     brand = brand,
                     barcode = barcode,
+                    packageWeight = packageWeight,
+                    servingWeight = servingWeight,
                     source = source,
                     nutritionFacts = nutritionFacts,
                 )
@@ -184,7 +228,9 @@ class ImportFddbProductsUseCaseTest {
             )
         }
 
-        override suspend fun updateProduct(product: Product) = Unit
+        override suspend fun updateProduct(product: Product) {
+            products.replaceAll { if (it.id == product.id) product else it }
+        }
 
         override suspend fun deleteProduct(product: Product) = Unit
     }
@@ -221,6 +267,8 @@ class ImportFddbProductsUseCaseTest {
             name: String = "Product",
             brand: String? = "Brand",
             barcode: String? = null,
+            packageWeight: Double? = null,
+            servingWeight: Double? = null,
             source: FoodSource = FoodSource(FoodSource.Type.FDDB),
             nutritionFacts: NutritionFacts = NutritionFacts.Empty,
         ) =
@@ -231,8 +279,8 @@ class ImportFddbProductsUseCaseTest {
                 barcode = barcode,
                 note = null,
                 isLiquid = false,
-                packageWeight = null,
-                servingWeight = null,
+                packageWeight = packageWeight,
+                servingWeight = servingWeight,
                 source = source,
                 nutritionFacts = nutritionFacts,
             )

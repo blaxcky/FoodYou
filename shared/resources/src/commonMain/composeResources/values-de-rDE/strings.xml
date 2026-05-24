@@ -97,6 +97,7 @@
     <string name="headline_import_failed">Import fehlgeschlagen</string>
     <string name="description_fddb_skip_barcode">Übersprungen, weil ein Produkt mit diesem Barcode bereits existiert</string>
     <string name="description_fddb_skip_product">Übersprungen, weil dieses FDDB-Produkt bereits existiert</string>
+    <string name="description_fddb_updated_weights">Vorhandenes Produkt mit Packungs- oder Portionsgewicht ergänzt</string>
     <string name="action_export_csv_food_products">Export in CSV-Datei</string>
     <string name="description_export_csv_food_products">Lebensmittel in CSV-Datei exportieren</string>
     <string name="headline_database_backup">Sicherung der Datenbank</string>

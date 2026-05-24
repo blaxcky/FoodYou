@@ -43,6 +43,13 @@ class FddbProductParserTest {
         assertEquals(4.6, product.nutritionFacts.salt.value)
     }
 
+    @Test
+    fun parsesOnlyManufacturerAsBrand() {
+        val product = parser.parse(ProductGroupFixture)
+
+        assertEquals("Hofer", product.brand)
+    }
+
     private companion object {
         const val Fixture =
             """
@@ -91,6 +98,23 @@ class FddbProductParserTest {
                     <p>100 g (100 g)</p>
                     <p>Stück (12 g)</p>
                     <p>Packung (200 g)</p>
+                </body>
+            </html>
+            """
+
+        const val ProductGroupFixture =
+            """
+            <html>
+                <body>
+                    <h1 id="fddb-headline1">Kornspitz</h1>
+                    <h2 id="fddb-headline2">Hofer
+                        ,
+                        Backwaren
+                    </h2>
+                    <h3>Nährwerte für 100 g</h3>
+                    <table>
+                        <tr><td>Kalorien</td><td>250 kcal</td></tr>
+                    </table>
                 </body>
             </html>
             """

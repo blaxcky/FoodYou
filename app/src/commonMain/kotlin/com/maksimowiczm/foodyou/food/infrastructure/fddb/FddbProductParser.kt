@@ -12,7 +12,7 @@ class FddbProductParser {
 
         return FddbProduct(
             name = html.tagText("h1", "fddb-headline1") ?: error("FDDB product name not found"),
-            brand = html.tagText("h2", "fddb-headline2")?.takeIf { it.isNotBlank() },
+            brand = html.tagText("h2", "fddb-headline2")?.toBrand(),
             barcode = lines.findBarcode(),
             isLiquid = servingUnit == "ml",
             packageWeight = portions.findPackageWeight(),
@@ -59,7 +59,7 @@ class FddbProductParser {
 private fun String.tagText(tag: String, id: String): String? =
     Regex(
             """<\s*$tag\b[^>]*\bid\s*=\s*["']$id["'][^>]*>(.*?)</\s*$tag\s*>""",
-            RegexOption.IGNORE_CASE,
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
         )
         .find(this)
         ?.groupValues
@@ -67,6 +67,13 @@ private fun String.tagText(tag: String, id: String): String? =
         ?.stripTags()
         ?.decodeHtml()
         ?.trim()
+
+private fun String.toBrand(): String? =
+    replace(Regex("""\s+"""), " ")
+        .split(',')
+        .firstOrNull()
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
 
 private fun String.toTextLines(): List<String> =
     replace(Regex("""<\s*br\s*/?\s*>""", RegexOption.IGNORE_CASE), "\n")

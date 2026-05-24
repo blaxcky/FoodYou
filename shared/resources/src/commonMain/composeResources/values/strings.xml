@@ -440,6 +440,7 @@
     <string name="headline_import_failed">Import failed</string>
     <string name="description_fddb_skip_barcode">Skipped because a product with this barcode already exists</string>
     <string name="description_fddb_skip_product">Skipped because this FDDB product already exists</string>
+    <string name="description_fddb_updated_weights">Existing product updated with package or serving weight</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>
     <string name="description_export_csv_food_products">Export food products to CSV file</string>

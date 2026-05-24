@@ -201,6 +201,8 @@ private fun ImportResultItem(result: FddbImportResult) {
                                     stringResource(Res.string.description_fddb_skip_barcode)
                                 FddbSkipReason.ProductExists ->
                                     stringResource(Res.string.description_fddb_skip_product)
+                                FddbSkipReason.UpdatedWeights ->
+                                    stringResource(Res.string.description_fddb_updated_weights)
                             }
                         is FddbImportResult.Failed ->
                             result.message ?: stringResource(Res.string.error_unknown_error)
