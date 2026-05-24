@@ -111,8 +111,6 @@ private fun ActivitiesCard(
                             cardModel.steps.toString().groupDigits(),
                         ),
                     energy = energyFormatter.formatEnergy(-cardModel.stepEnergyKcal),
-                    labelStyle = MaterialTheme.typography.labelLarge,
-                    energyStyle = MaterialTheme.typography.labelLarge,
                 )
 
                 cardModel.manualEntries.forEach { entry ->
@@ -151,8 +149,8 @@ private fun ActivityRow(
     label: String,
     energy: String,
     modifier: Modifier = Modifier,
-    labelStyle: TextStyle = MaterialTheme.typography.titleMedium,
-    energyStyle: TextStyle = MaterialTheme.typography.titleMedium,
+    labelStyle: TextStyle = MaterialTheme.typography.labelLarge,
+    energyStyle: TextStyle = MaterialTheme.typography.labelLarge,
     leadingIcon: @Composable (() -> Unit)? = null,
 ) {
     Row(
