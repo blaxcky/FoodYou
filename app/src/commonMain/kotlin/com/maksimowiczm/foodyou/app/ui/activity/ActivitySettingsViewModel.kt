@@ -37,11 +37,20 @@ internal class ActivitySettingsViewModel(
     private val healthConnectActivitySync: HealthConnectActivitySync,
 ) : ViewModel() {
     private val healthConnectStatus = MutableStateFlow(ActivityHealthConnectStatus.Checking)
+    private val kcalPerStepInput = MutableStateFlow<String?>(null)
 
     val model: StateFlow<ActivitySettingsModel?> =
-        combine(settingsRepository.observe(), healthConnectStatus) { settings, status ->
+        combine(
+                settingsRepository.observe(),
+                healthConnectStatus,
+                kcalPerStepInput,
+            ) { settings, status, kcalPerStepInput ->
                 ActivitySettingsModel(
-                    kcalPerStep = settings.stepsCaloriesPerStepKcal?.toString() ?: "",
+                    kcalPerStep =
+                        kcalPerStepText(
+                            input = kcalPerStepInput,
+                            persisted = settings.stepsCaloriesPerStepKcal,
+                        ),
                     healthConnectEnabled =
                         settings.healthConnectStepsEnabled &&
                             status != ActivityHealthConnectStatus.PermissionMissing &&
@@ -58,7 +67,10 @@ internal class ActivitySettingsViewModel(
     }
 
     fun setKcalPerStep(value: String) {
-        val parsed = value.replace(',', '.').toDoubleOrNull()
+        kcalPerStepInput.value = value
+        val parsed = value.toCompleteKcalPerStepOrNull()
+        if (value.isNotBlank() && parsed == null) return
+
         viewModelScope.launch {
             settingsRepository.update { copy(stepsCaloriesPerStepKcal = parsed) }
         }
@@ -152,4 +164,13 @@ internal class ActivitySettingsViewModel(
             settingsRepository.update { copy(healthConnectStepsEnabled = false) }
         }
     }
+}
+
+internal fun kcalPerStepText(input: String?, persisted: Double?): String =
+    input ?: persisted?.toString() ?: ""
+
+internal fun String.toCompleteKcalPerStepOrNull(): Double? {
+    val normalized = trim().replace(',', '.')
+    if (normalized.endsWith(".")) return null
+    return normalized.toDoubleOrNull()?.takeIf { it >= 0.0 }
 }
