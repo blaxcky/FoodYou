@@ -1,9 +1,7 @@
 package com.maksimowiczm.foodyou.app.widget
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 import com.maksimowiczm.foodyou.R
@@ -44,11 +42,6 @@ internal class CalorieWidgetUpdater(
                 createRemoteViews(context, manager, appWidgetId, model),
             )
         }
-    }
-
-    fun showRefreshInProgress(context: Context, appWidgetIds: IntArray) {
-        // Keep the refresh state intentionally static. Some launchers reject reflected
-        // RemoteViews actions such as setRotation and replace the widget with an error view.
     }
 
     private suspend fun loadModel(): CalorieWidgetModel {
@@ -125,7 +118,6 @@ internal class CalorieWidgetUpdater(
                 R.id.widget_calories_diet_unit,
                 if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
             )
-            setOnClickPendingIntent(R.id.widget_calories_refresh, refreshPendingIntent(context))
         }
     }
 
@@ -141,21 +133,6 @@ internal class CalorieWidgetUpdater(
         return options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) >= 160
     }
 
-    private fun refreshPendingIntent(context: Context): PendingIntent {
-        val flags =
-            PendingIntent.FLAG_UPDATE_CURRENT or
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    PendingIntent.FLAG_IMMUTABLE
-                } else {
-                    0
-                }
-        return PendingIntent.getBroadcast(
-            context,
-            0,
-            CalorieWidgetProvider.refreshIntent(context),
-            flags,
-        )
-    }
 }
 
 private fun previousWeekDates(today: LocalDate): List<LocalDate> {

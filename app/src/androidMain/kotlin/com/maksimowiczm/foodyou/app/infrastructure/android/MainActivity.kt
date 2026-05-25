@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.infrastructure.android
 import android.content.Intent
 import android.os.Bundle
 import com.maksimowiczm.foodyou.app.ui.FoodYouApp
+import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProvider
 
 class MainActivity : FoodYouAbstractActivity() {
 
@@ -21,5 +22,10 @@ class MainActivity : FoodYouAbstractActivity() {
                 }
             )
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        CalorieWidgetProvider.updateAll(this)
     }
 }

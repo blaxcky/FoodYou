@@ -32,14 +32,6 @@
             android:textColor="@color/widget_calories_text"
             android:textSize="20sp" />
 
-        <ImageButton
-            android:id="@+id/widget_calories_refresh"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="@drawable/widget_calories_button"
-            android:contentDescription="@string/widget_calories_refresh"
-            android:padding="6dp"
-            android:src="@drawable/ic_widget_refresh" />
     </LinearLayout>
 
     <LinearLayout
