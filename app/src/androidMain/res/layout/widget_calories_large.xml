@@ -55,12 +55,13 @@
 
         <include layout="@layout/widget_calories_eaten_item" />
 
-        <View
+        <TextView
             android:layout_width="1dp"
             android:layout_height="70dp"
             android:layout_marginStart="26dp"
             android:layout_marginEnd="26dp"
-            android:background="@drawable/widget_calories_vertical_divider" />
+            android:background="@drawable/widget_calories_vertical_divider"
+            android:includeFontPadding="false" />
 
         <include layout="@layout/widget_calories_burned_item" />
     </LinearLayout>
@@ -72,11 +73,12 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <View
+        <TextView
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1"
-            android:background="@drawable/widget_calories_horizontal_divider" />
+            android:background="@drawable/widget_calories_horizontal_divider"
+            android:includeFontPadding="false" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -89,11 +91,12 @@
             android:textColor="@color/widget_calories_text"
             android:textSize="17sp" />
 
-        <View
+        <TextView
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1"
-            android:background="@drawable/widget_calories_horizontal_divider" />
+            android:background="@drawable/widget_calories_horizontal_divider"
+            android:includeFontPadding="false" />
     </LinearLayout>
 
     <LinearLayout
