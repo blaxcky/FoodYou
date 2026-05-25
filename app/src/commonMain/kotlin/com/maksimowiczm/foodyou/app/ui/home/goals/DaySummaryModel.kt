@@ -9,6 +9,7 @@ internal data class DaySummaryModel(
     val netEnergy: Int,
     val energyGoal: Int,
     val goalDisplayMode: GoalDisplayMode,
+    val dietGoalDisplayModeEnabled: Boolean,
     val proteins: Int,
     val proteinsGoal: Int,
     val carbohydrates: Int,

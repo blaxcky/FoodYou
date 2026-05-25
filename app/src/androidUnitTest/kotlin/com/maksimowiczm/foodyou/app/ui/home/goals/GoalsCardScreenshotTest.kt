@@ -145,6 +145,46 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun normalModeActive() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.mode-normal.png",
+            fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Normal),
+            width = 414,
+            height = 280,
+        )
+    }
+
+    @Test
+    fun optimizedModeActive() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.mode-optimized.png",
+            fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Optimized),
+            width = 414,
+            height = 280,
+        )
+    }
+
+    @Test
+    fun dietModeActive() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.mode-diet.png",
+            fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Diet),
+            width = 414,
+            height = 280,
+        )
+    }
+
+    @Test
+    fun dietModeDisabled() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.mode-diet-disabled.png",
+            fixture = ReferenceFixture.copy(dietGoalDisplayModeEnabled = false),
+            width = 414,
+            height = 280,
+        )
+    }
+
+    @Test
     fun phoneBurnedEnergyDelta() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.phone-burned-energy-delta.png",
@@ -196,6 +236,8 @@ class GoalsCardScreenshotTest {
                         burnedEnergyDelta = fixture.burnedEnergyDelta,
                         netEnergy = fixture.netEnergy,
                         energyGoal = fixture.energyGoal,
+                        goalDisplayMode = fixture.goalDisplayMode,
+                        dietGoalDisplayModeEnabled = fixture.dietGoalDisplayModeEnabled,
                         proteins = fixture.proteins,
                         proteinsGoal = fixture.proteinsGoal,
                         carbohydrates = fixture.carbohydrates,
@@ -217,6 +259,8 @@ class GoalsCardScreenshotTest {
         val burnedEnergyDelta: Int? = null,
         val netEnergy: Int,
         val energyGoal: Int,
+        val goalDisplayMode: GoalDisplayMode = GoalDisplayMode.Normal,
+        val dietGoalDisplayModeEnabled: Boolean = true,
         val proteins: Int,
         val proteinsGoal: Int,
         val carbohydrates: Int,

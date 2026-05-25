@@ -102,6 +102,9 @@
     <string name="goal_carbs_short">Carbs</string>
     <string name="goal_protein">Protein</string>
     <string name="goal_reached_percentage">%1$d %% reached</string>
+    <string name="goal_display_mode_normal">Show normal calorie goal</string>
+    <string name="goal_display_mode_optimized">Show optimized calorie goal</string>
+    <string name="goal_display_mode_diet">Show diet calorie goal</string>
     <string name="label_optimized">Optimized</string>
     <string name="label_diet">Diet</string>
     <string name="label_daily_calorie_deficit">Daily calorie deficit</string>

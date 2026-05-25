@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -25,9 +26,11 @@ import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -57,6 +60,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
@@ -66,6 +70,9 @@ import foodyou.app.generated.resources.action_details
 import foodyou.app.generated.resources.goal_burned
 import foodyou.app.generated.resources.goal_carbs_short
 import foodyou.app.generated.resources.goal_eaten
+import foodyou.app.generated.resources.goal_display_mode_diet
+import foodyou.app.generated.resources.goal_display_mode_normal
+import foodyou.app.generated.resources.goal_display_mode_optimized
 import foodyou.app.generated.resources.goal_fat
 import foodyou.app.generated.resources.goal_goal
 import foodyou.app.generated.resources.goal_left
@@ -74,8 +81,6 @@ import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
 import foodyou.app.generated.resources.headline_your_week
 import foodyou.app.generated.resources.inter
-import foodyou.app.generated.resources.label_diet
-import foodyou.app.generated.resources.label_optimized
 import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
@@ -141,6 +146,7 @@ internal fun GoalsCard(
             netEnergy = model.netEnergy,
             energyGoal = model.energyGoal,
             goalDisplayMode = model.goalDisplayMode,
+            dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
             proteins = model.proteins,
             proteinsGoal = model.proteinsGoal,
             carbohydrates = model.carbohydrates,
@@ -150,6 +156,7 @@ internal fun GoalsCard(
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
             onShowNextGoalDisplayMode = viewModel::showNextGoalDisplayMode,
+            onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             modifier = modifier,
         )
     }
@@ -184,6 +191,7 @@ internal fun GoalsCard(
     netEnergy: Int,
     energyGoal: Int,
     goalDisplayMode: GoalDisplayMode = GoalDisplayMode.Normal,
+    dietGoalDisplayModeEnabled: Boolean = true,
     proteins: Int,
     proteinsGoal: Int,
     carbohydrates: Int,
@@ -193,6 +201,7 @@ internal fun GoalsCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onShowNextGoalDisplayMode: () -> Unit = {},
+    onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val goal = energyGoal.coerceAtLeast(1)
@@ -235,7 +244,9 @@ internal fun GoalsCard(
                     netEnergy = netEnergy,
                     energyGoal = energyGoal,
                     goalDisplayMode = goalDisplayMode,
+                    dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
                     onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
+                    onSelectGoalDisplayMode = onSelectGoalDisplayMode,
                     progress = energyProgress,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -592,7 +603,9 @@ private fun CaloriesOverview(
     netEnergy: Int,
     energyGoal: Int,
     goalDisplayMode: GoalDisplayMode,
+    dietGoalDisplayModeEnabled: Boolean,
     onShowNextGoalDisplayMode: () -> Unit,
+    onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit,
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -601,8 +614,6 @@ private fun CaloriesOverview(
     val goal = energyGoal.coerceAtLeast(1)
     val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
     val overflow = left < 0
-    val highlighted = goalDisplayMode != GoalDisplayMode.Normal
-    val accentColor = goalDisplayMode.accentColor()
     val remainingValue = if (overflow) -left else left
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
     val remainingLabel =
@@ -730,28 +741,99 @@ private fun CaloriesOverview(
             }
         }
 
-        if (highlighted) {
-            Text(
-                text =
-                    stringResource(
-                        when (goalDisplayMode) {
-                            GoalDisplayMode.Optimized -> Res.string.label_optimized
-                            GoalDisplayMode.Diet -> Res.string.label_diet
-                            GoalDisplayMode.Normal -> Res.string.label_optimized
-                        }
-                    ),
-                modifier =
-                    Modifier.align(Alignment.TopEnd)
-                        .clip(RoundedCornerShape(50))
-                        .background(accentColor.copy(alpha = 0.16f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                color = accentColor,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        GoalDisplayModeButtons(
+            goalDisplayMode = goalDisplayMode,
+            dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
+            onSelectGoalDisplayMode = onSelectGoalDisplayMode,
+            modifier = Modifier.align(Alignment.TopEnd),
+        )
     }
 }
+
+@Composable
+private fun GoalDisplayModeButtons(
+    goalDisplayMode: GoalDisplayMode,
+    dietGoalDisplayModeEnabled: Boolean,
+    onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        GoalDisplayModeButton(
+            mode = GoalDisplayMode.Normal,
+            selected = goalDisplayMode == GoalDisplayMode.Normal,
+            contentDescription = stringResource(Res.string.goal_display_mode_normal),
+            onClick = onSelectGoalDisplayMode,
+        )
+        GoalDisplayModeButton(
+            mode = GoalDisplayMode.Optimized,
+            selected = goalDisplayMode == GoalDisplayMode.Optimized,
+            contentDescription = stringResource(Res.string.goal_display_mode_optimized),
+            onClick = onSelectGoalDisplayMode,
+        )
+        GoalDisplayModeButton(
+            mode = GoalDisplayMode.Diet,
+            selected = goalDisplayMode == GoalDisplayMode.Diet,
+            enabled = dietGoalDisplayModeEnabled,
+            contentDescription = stringResource(Res.string.goal_display_mode_diet),
+            onClick = onSelectGoalDisplayMode,
+        )
+    }
+}
+
+@Composable
+private fun GoalDisplayModeButton(
+    mode: GoalDisplayMode,
+    selected: Boolean,
+    contentDescription: String,
+    onClick: (GoalDisplayMode) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val accentColor = mode.accentColor()
+    val shape = RoundedCornerShape(50)
+    IconButton(
+        onClick = { onClick(mode) },
+        modifier =
+            modifier
+                .size(32.dp)
+                .clip(shape)
+                .background(if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent)
+                .then(
+                    if (selected) {
+                        Modifier.border(1.dp, accentColor.copy(alpha = 0.7f), shape)
+                    } else {
+                        Modifier
+                    }
+                ),
+        enabled = enabled,
+    ) {
+        Icon(
+            imageVector =
+                when (mode) {
+                    GoalDisplayMode.Normal -> Icons.Filled.LocalFireDepartment
+                    GoalDisplayMode.Optimized -> Icons.Filled.Speed
+                    GoalDisplayMode.Diet -> Icons.Filled.MonitorWeight
+                },
+            contentDescription = contentDescription,
+            tint =
+                when {
+                    !enabled -> GoalsMutedTextColor.copy(alpha = 0.34f)
+                    selected -> accentColor
+                    else -> GoalsMutedTextColor.copy(alpha = 0.62f)
+                },
+                modifier =
+                    Modifier.size(18.dp)
+                        .alpha(if (enabled) 1f else 0.54f),
+        )
+    }
+}
+
+private fun GoalDisplayMode.toSettingsGoalDisplayMode(): SettingsGoalDisplayMode =
+    when (this) {
+        GoalDisplayMode.Normal -> SettingsGoalDisplayMode.Normal
+        GoalDisplayMode.Optimized -> SettingsGoalDisplayMode.Optimized
+        GoalDisplayMode.Diet -> SettingsGoalDisplayMode.Diet
+    }
 
 private fun GoalDisplayMode.highlightColor(): Color =
     when (this) {

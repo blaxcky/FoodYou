@@ -75,6 +75,12 @@ internal class GoalsViewModel(
         }
     }
 
+    fun setGoalDisplayMode(goalDisplayMode: SettingsGoalDisplayMode) {
+        viewModelScope.launch {
+            settingsRepository.update { copy(goalDisplayMode = goalDisplayMode) }
+        }
+    }
+
     val model: StateFlow<DaySummaryModel?> =
         combine(dateState.filterNotNull(), dateProvider.observeDate(), settingsRepository.observe()) {
                 selectedDate,
@@ -180,6 +186,7 @@ internal class GoalsViewModel(
                                 .roundToInt(),
                         energyGoal = energyGoal.roundToInt(),
                         goalDisplayMode = goalDisplayMode,
+                        dietGoalDisplayModeEnabled = dietEnergyDeficitKcal != null,
                         proteins = day.proteins,
                         proteinsGoal = day.proteinsGoal,
                         carbohydrates = day.carbohydrates,
