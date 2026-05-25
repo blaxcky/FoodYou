@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -216,74 +215,85 @@ internal fun GoalsCard(
             goalDisplayMode.highlightColor()
         }
 
-    FoodYouHomeCard(
-        modifier = modifier,
-        color = cardColor,
-        shape = GoalsCardShape,
-        onClick = onClick,
-        onLongClick = onLongClick,
-    ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
+    Column(modifier = modifier) {
+        GoalDisplayModeButtons(
+            goalDisplayMode = goalDisplayMode,
+            dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
+            onSelectGoalDisplayMode = onSelectGoalDisplayMode,
+            modifier =
+                Modifier.fillMaxWidth()
+                    .height(38.dp)
+                    .padding(end = 14.dp),
+        )
 
-            Column(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .defaultMinSize(minHeight = 259.dp)
-                        .padding(
-                            start = horizontalPadding,
-                            top = 21.dp,
-                            end = horizontalPadding,
-                            bottom = 14.dp,
-                        ),
-            ) {
-                CaloriesOverview(
-                    energy = energy,
-                    burnedEnergy = burnedEnergy,
-                    burnedEnergyDelta = burnedEnergyDelta,
-                    netEnergy = netEnergy,
-                    energyGoal = energyGoal,
-                    goalDisplayMode = goalDisplayMode,
-                    dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
-                    onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
-                    onSelectGoalDisplayMode = onSelectGoalDisplayMode,
-                    progress = energyProgress,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        Spacer(Modifier.height(4.dp))
 
-                Spacer(Modifier.height(10.dp))
+        FoodYouHomeCard(
+            modifier = Modifier.fillMaxWidth(),
+            color = cardColor,
+            shape = GoalsCardShape,
+            onClick = onClick,
+            onLongClick = onLongClick,
+        ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                Column(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .defaultMinSize(minHeight = 259.dp)
+                            .padding(
+                                start = horizontalPadding,
+                                top = 21.dp,
+                                end = horizontalPadding,
+                                bottom = 14.dp,
+                            ),
                 ) {
-                    MacroGoal(
-                        label = stringResource(Res.string.goal_fat),
-                        value = fats,
-                        goal = fatsGoal,
-                        progress = fatsProgress,
-                        trackColor = FatTrackColor,
-                        color = FatColor,
-                        modifier = Modifier.weight(1f),
+                    CaloriesOverview(
+                        energy = energy,
+                        burnedEnergy = burnedEnergy,
+                        burnedEnergyDelta = burnedEnergyDelta,
+                        netEnergy = netEnergy,
+                        energyGoal = energyGoal,
+                        onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
+                        progress = energyProgress,
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    MacroGoal(
-                        label = stringResource(Res.string.goal_carbs_short),
-                        value = carbohydrates,
-                        goal = carbohydratesGoal,
-                        progress = carbsProgress,
-                        trackColor = CarbsTrackColor,
-                        color = CarbsColor,
-                        modifier = Modifier.weight(1f),
-                    )
-                    MacroGoal(
-                        label = stringResource(Res.string.goal_protein),
-                        value = proteins,
-                        goal = proteinsGoal,
-                        progress = proteinsProgress,
-                        trackColor = ProteinTrackColor,
-                        color = ProteinColor,
-                        modifier = Modifier.weight(1f),
-                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        MacroGoal(
+                            label = stringResource(Res.string.goal_fat),
+                            value = fats,
+                            goal = fatsGoal,
+                            progress = fatsProgress,
+                            trackColor = FatTrackColor,
+                            color = FatColor,
+                            modifier = Modifier.weight(1f),
+                        )
+                        MacroGoal(
+                            label = stringResource(Res.string.goal_carbs_short),
+                            value = carbohydrates,
+                            goal = carbohydratesGoal,
+                            progress = carbsProgress,
+                            trackColor = CarbsTrackColor,
+                            color = CarbsColor,
+                            modifier = Modifier.weight(1f),
+                        )
+                        MacroGoal(
+                            label = stringResource(Res.string.goal_protein),
+                            value = proteins,
+                            goal = proteinsGoal,
+                            progress = proteinsProgress,
+                            trackColor = ProteinTrackColor,
+                            color = ProteinColor,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
@@ -602,10 +612,7 @@ private fun CaloriesOverview(
     burnedEnergyDelta: Int?,
     netEnergy: Int,
     energyGoal: Int,
-    goalDisplayMode: GoalDisplayMode,
-    dietGoalDisplayModeEnabled: Boolean,
     onShowNextGoalDisplayMode: () -> Unit,
-    onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit,
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -741,12 +748,6 @@ private fun CaloriesOverview(
             }
         }
 
-        GoalDisplayModeButtons(
-            goalDisplayMode = goalDisplayMode,
-            dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
-            onSelectGoalDisplayMode = onSelectGoalDisplayMode,
-            modifier = Modifier.align(Alignment.TopEnd),
-        )
     }
 }
 
@@ -757,7 +758,11 @@ private fun GoalDisplayModeButtons(
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         GoalDisplayModeButton(
             mode = GoalDisplayMode.Normal,
             selected = goalDisplayMode == GoalDisplayMode.Normal,
@@ -791,11 +796,11 @@ private fun GoalDisplayModeButton(
 ) {
     val accentColor = mode.accentColor()
     val shape = RoundedCornerShape(50)
-    IconButton(
-        onClick = { onClick(mode) },
+    Box(
+        contentAlignment = Alignment.Center,
         modifier =
             modifier
-                .size(32.dp)
+                .size(34.dp)
                 .clip(shape)
                 .background(if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent)
                 .then(
@@ -804,8 +809,8 @@ private fun GoalDisplayModeButton(
                     } else {
                         Modifier
                     }
-                ),
-        enabled = enabled,
+                )
+                .clickable(enabled = enabled) { onClick(mode) },
     ) {
         Icon(
             imageVector =

@@ -119,7 +119,7 @@ class GoalsCardScreenshotTest {
                     fatsGoal = 70,
                 ),
             width = 414,
-            height = 280,
+            height = 322,
         )
     }
 
@@ -150,7 +150,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.mode-normal.png",
             fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Normal),
             width = 414,
-            height = 280,
+            height = 322,
         )
     }
 
@@ -160,7 +160,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.mode-optimized.png",
             fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Optimized),
             width = 414,
-            height = 280,
+            height = 322,
         )
     }
 
@@ -170,7 +170,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.mode-diet.png",
             fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Diet),
             width = 414,
-            height = 280,
+            height = 322,
         )
     }
 
@@ -180,7 +180,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.mode-diet-disabled.png",
             fixture = ReferenceFixture.copy(dietGoalDisplayModeEnabled = false),
             width = 414,
-            height = 280,
+            height = 322,
         )
     }
 
@@ -203,7 +203,7 @@ class GoalsCardScreenshotTest {
                     fatsGoal = 70,
                 ),
             width = 414,
-            height = 280,
+            height = 322,
         )
     }
 
@@ -211,7 +211,7 @@ class GoalsCardScreenshotTest {
         filePath: String,
         fixture: GoalsCardFixture,
         width: Int = 620,
-        height: Int = 388,
+        height: Int = 430,
     ) {
         captureRoboImage(
             filePath = filePath,
