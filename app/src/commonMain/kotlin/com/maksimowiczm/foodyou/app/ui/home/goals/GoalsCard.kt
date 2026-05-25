@@ -321,16 +321,8 @@ private fun WeeklyGoalsContent(
         ) {
             Text(
                 text = stringResource(Res.string.headline_your_week),
-                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleMedium,
                 color = GoalsTextColor,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = stringResource(Res.string.action_details),
-                modifier = Modifier.clickable { onExpandedChange(!expanded) },
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
             )
         }
