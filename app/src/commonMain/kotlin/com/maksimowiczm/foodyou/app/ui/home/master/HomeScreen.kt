@@ -104,6 +104,7 @@ fun HomeScreen(
     }
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
                 title = {
