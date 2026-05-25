@@ -117,17 +117,37 @@ internal class CalorieWidgetUpdater(
             R.id.widget_calories_left_diet,
             model.dietLeftKcal?.let { context.number(it) } ?: "--",
         )
-        setInt(
-            R.id.widget_calories_left_diet,
-            "setTextColor",
-            context.getColor(
-                if (model.dietLeftKcal == null) {
-                    R.color.widget_calories_muted_text
-                } else {
-                    R.color.widget_calories_text
-                }
-            ),
+        setLeftColors(
+            context = context,
+            cardId = R.id.widget_calories_left_normal_card,
+            valueId = R.id.widget_calories_left_normal,
+            value = model.normalLeftKcal,
         )
+        setLeftColors(
+            context = context,
+            cardId = R.id.widget_calories_left_optimized_card,
+            valueId = R.id.widget_calories_left_optimized,
+            value = model.optimizedLeftKcal,
+        )
+        if (model.dietLeftKcal == null) {
+            setInt(
+                R.id.widget_calories_left_diet,
+                "setTextColor",
+                context.getColor(R.color.widget_calories_muted_text),
+            )
+            setInt(
+                R.id.widget_calories_left_diet_card,
+                "setBackgroundResource",
+                R.drawable.widget_calories_left_diet,
+            )
+        } else {
+            setLeftColors(
+                context = context,
+                cardId = R.id.widget_calories_left_diet_card,
+                valueId = R.id.widget_calories_left_diet,
+                value = model.dietLeftKcal,
+            )
+        }
         setViewVisibility(
             R.id.widget_calories_diet_disabled,
             if (model.dietLeftKcal == null) View.VISIBLE else View.GONE,
@@ -135,6 +155,31 @@ internal class CalorieWidgetUpdater(
         setViewVisibility(
             R.id.widget_calories_diet_unit,
             if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
+        )
+    }
+
+    private fun RemoteViews.setLeftColors(
+        context: Context,
+        cardId: Int,
+        valueId: Int,
+        value: Int,
+    ) {
+        val isOpen = value >= 0
+        setInt(
+            valueId,
+            "setTextColor",
+            context.getColor(
+                if (isOpen) R.color.widget_calories_green else R.color.widget_calories_red
+            ),
+        )
+        setInt(
+            cardId,
+            "setBackgroundResource",
+            if (isOpen) {
+                R.drawable.widget_calories_left_normal
+            } else {
+                R.drawable.widget_calories_left_negative
+            },
         )
     }
 
