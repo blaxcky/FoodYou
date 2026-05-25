@@ -8,9 +8,12 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -91,6 +95,13 @@ fun HomeScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showFddbLoginDialog by remember { mutableStateOf(false) }
+    val onFddbSyncClick = {
+        if (fddbSyncState is HomeFddbSyncState.MissingCredentials) {
+            showFddbLoginDialog = true
+        } else {
+            viewModel.syncFddbDiary(homeState.selectedDate)
+        }
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -107,16 +118,6 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    FddbSyncButton(
-                        state = fddbSyncState,
-                        onClick = {
-                            if (fddbSyncState is HomeFddbSyncState.MissingCredentials) {
-                                showFddbLoginDialog = true
-                            } else {
-                                viewModel.syncFddbDiary(homeState.selectedDate)
-                            }
-                        },
-                    )
                     HealthConnectSyncButton(
                         state = activitySyncState,
                         onClick = { viewModel.syncActivities(homeState.selectedDate) },
@@ -158,13 +159,6 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = paddingValues,
         ) {
-            item(key = "fddb-sync-status", contentType = "fddb-sync-status") {
-                FddbSyncStatus(
-                    state = fddbSyncState,
-                    modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                )
-            }
-
             item(key = "polls", contentType = "polls") {
                 PollsCard(modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp))
             }
@@ -192,12 +186,21 @@ fun HomeScreen(
                             )
                         }
 
-                    HomeCard.Meals ->
+                    HomeCard.Meals -> {
                         mealsCards(
                             state = mealsCardsState,
                             contentPadding = PaddingValues(horizontal = 8.dp),
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
+                        item(key = "fddb-sync", contentType = "fddb-sync") {
+                            FddbSyncSection(
+                                state = fddbSyncState,
+                                onClick = onFddbSyncClick,
+                                modifier =
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                            )
+                        }
+                    }
 
                     HomeCard.Activities ->
                         item(key = HomeCard.Activities, contentType = HomeCard.Activities) {
@@ -224,7 +227,25 @@ fun HomeScreen(
 }
 
 @Composable
-private fun FddbSyncStatus(state: HomeFddbSyncState, modifier: Modifier = Modifier) {
+private fun FddbSyncSection(state: HomeFddbSyncState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FddbSyncButton(state = state, onClick = onClick)
+            FddbSyncStatusText(state = state, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun FddbSyncStatusText(state: HomeFddbSyncState, modifier: Modifier = Modifier) {
     val text =
         when (state) {
             is HomeFddbSyncState.MissingCredentials ->
@@ -239,24 +260,14 @@ private fun FddbSyncStatus(state: HomeFddbSyncState, modifier: Modifier = Modifi
                         it.skipped,
                         it.failed,
                     )
-                }
-        } ?: return
+                } ?: stringResource(Res.string.action_sync_fddb_diary)
+        }
 
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.small,
-        modifier = modifier,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        )
-    }
+    Text(text = text, style = MaterialTheme.typography.bodySmall, modifier = modifier)
 }
 
 @Composable
-private fun FddbSyncButton(state: HomeFddbSyncState, onClick: () -> Unit) {
+private fun FddbSyncButton(state: HomeFddbSyncState, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val isSyncing = state is HomeFddbSyncState.Syncing
     val isError = state is HomeFddbSyncState.Failed || state is HomeFddbSyncState.MissingCredentials
@@ -273,7 +284,7 @@ private fun FddbSyncButton(state: HomeFddbSyncState, onClick: () -> Unit) {
             label = "fddb-sync-rotation",
         )
 
-    IconButton(onClick = onClick, enabled = !isSyncing) {
+    FilledTonalButton(onClick = onClick, enabled = !isSyncing, modifier = modifier) {
         Icon(
             imageVector = Icons.Filled.CloudSync,
             contentDescription = stringResource(Res.string.action_sync_fddb_diary),
