@@ -47,15 +47,8 @@ internal class CalorieWidgetUpdater(
     }
 
     fun showRefreshInProgress(context: Context, appWidgetIds: IntArray) {
-        if (appWidgetIds.isEmpty()) return
-
-        val manager = AppWidgetManager.getInstance(context)
-        appWidgetIds.forEach { appWidgetId ->
-            val views = RemoteViews(context.packageName, layout(manager, appWidgetId)).apply {
-                setFloat(R.id.widget_calories_refresh, "setRotation", 180f)
-            }
-            manager.partiallyUpdateAppWidget(appWidgetId, views)
-        }
+        // Keep the refresh state intentionally static. Some launchers reject reflected
+        // RemoteViews actions such as setRotation and replace the widget with an error view.
     }
 
     private suspend fun loadModel(): CalorieWidgetModel {
@@ -132,7 +125,6 @@ internal class CalorieWidgetUpdater(
                 R.id.widget_calories_diet_unit,
                 if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
             )
-            setFloat(R.id.widget_calories_refresh, "setRotation", 0f)
             setOnClickPendingIntent(R.id.widget_calories_refresh, refreshPendingIntent(context))
         }
     }
