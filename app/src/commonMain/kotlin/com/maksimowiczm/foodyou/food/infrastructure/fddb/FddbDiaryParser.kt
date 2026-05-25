@@ -13,8 +13,7 @@ class FddbDiaryParser {
         for (match in TokenRegex.findAll(html)) {
             val token = match.value
             when {
-                token.contains("class=\"notepaddate\"", ignoreCase = true) ||
-                    token.contains("class='notepaddate'", ignoreCase = true) -> {
+                NotepadDateClassRegex.containsMatchIn(token) -> {
                     currentDate =
                         H3Regex.find(token)
                             ?.groupValues
@@ -110,8 +109,13 @@ private fun String.decodeFddbHtml(): String =
 
 private val TokenRegex =
     Regex(
-        """<td\b[^>]*class\s*=\s*["'][^"']*\bnotepaddate\b[^"']*["'][^>]*>.*?</td>|<h4\b[^>]*>.*?</h4>|<tr\b[^>]*\bid\s*=\s*["']np[^"']*["'][^>]*>.*?</tr>""",
+        """<td\b(?=[^>]*\bclass\s*=\s*(?:"[^"]*\bnotepaddate\b[^"]*"|'[^']*\bnotepaddate\b[^']*'|[^\s>]*\bnotepaddate\b[^\s>]*))[^>]*>.*?</td>|<h4\b[^>]*>.*?</h4>|<tr\b[^>]*\bid\s*=\s*["']np[^"']*["'][^>]*>.*?</tr>""",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+private val NotepadDateClassRegex =
+    Regex(
+        """\bclass\s*=\s*(?:"[^"]*\bnotepaddate\b[^"]*"|'[^']*\bnotepaddate\b[^']*'|[^\s>]*\bnotepaddate\b[^\s>]*)""",
+        RegexOption.IGNORE_CASE,
     )
 private val H3Regex = Regex("""<h3\b[^>]*>(.*?)</h3>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
 private val ProductLinkRegex =
