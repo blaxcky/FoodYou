@@ -260,7 +260,7 @@ private fun FoodContainer(
                 )
             }
             if (i != foods.lastIndex) {
-                HorizontalDivider()
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
             }
         }
     }
