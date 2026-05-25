@@ -8,6 +8,8 @@ import com.maksimowiczm.foodyou.app.di.initKoin
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetUpdater
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.event.EventBus
+import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.event.AppLaunchEvent
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
-import org.koin.core.module.dsl.factoryOf
 import org.koin.dsl.module
 
 class FoodYouApplication : Application() {
@@ -29,7 +30,19 @@ class FoodYouApplication : Application() {
 
         initKoin(coroutineScope) {
             androidContext(this@FoodYouApplication)
-            modules(module { factoryOf(::CalorieWidgetUpdater) })
+            modules(
+                module {
+                    factory {
+                        CalorieWidgetUpdater(
+                            observeDiaryMealsUseCase = get(),
+                            goalsRepository = get(),
+                            activityRepository = get(),
+                            settingsRepository = userPreferencesRepository<Settings>(),
+                            dateProvider = get(),
+                        )
+                    }
+                }
+            )
         }
         publishLaunchEvent()
 
