@@ -15,10 +15,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.Icon
@@ -273,7 +273,7 @@ private fun RowScope.GoalsCardContent(onMore: () -> Unit) {
 context(_: ReorderableCollectionItemScope)
 private fun RowScope.ActivitiesCardContent(onMore: () -> Unit) {
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-        Icon(imageVector = Icons.Outlined.DirectionsWalk, contentDescription = null)
+        Icon(imageVector = Icons.AutoMirrored.Outlined.DirectionsWalk, contentDescription = null)
     }
     Spacer(Modifier.width(16.dp))
     Text("Activities")

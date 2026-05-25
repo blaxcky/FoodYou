@@ -3,7 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.settings
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DirectionsWalk
+import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -86,7 +86,7 @@ fun SettingsScreen(
 
             item {
                 SettingsListItem(
-                    icon = { Icon(Icons.Outlined.DirectionsWalk, null) },
+                    icon = { Icon(Icons.AutoMirrored.Outlined.DirectionsWalk, null) },
                     label = { Text("Activities") },
                     supportingContent = { Text("Steps, manual burned calories, and Health Connect") },
                     onClick = onActivities,
