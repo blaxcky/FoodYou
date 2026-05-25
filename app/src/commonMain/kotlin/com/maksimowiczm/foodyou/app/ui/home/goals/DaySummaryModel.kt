@@ -39,5 +39,6 @@ internal data class WeekDaySummaryModel(
     val goal: Int,
 ) {
     val difference: Int = energy - goal
-    val percent: Int = if (goal <= 0) 0 else (energy.toFloat() / goal * 100).toInt()
+    val percent: Int =
+        if (goal <= 0) 0 else (energy.toFloat() / goal * 100).toInt().coerceAtLeast(0)
 }

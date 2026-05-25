@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlin.math.roundToInt
 
 internal data class ActivitiesCardModel(
     val steps: Long,
@@ -45,9 +46,9 @@ internal class ActivitiesCardViewModel(
                     ) { summary, entries ->
                         ActivitiesCardModel(
                             steps = summary.steps,
-                            stepEnergyKcal = summary.stepEnergyKcal.toInt(),
-                            manualEnergyKcal = summary.manualEnergyKcal.toInt(),
-                            totalEnergyKcal = summary.totalEnergyKcal.toInt(),
+                            stepEnergyKcal = roundedActivityEnergyKcal(summary.stepEnergyKcal),
+                            manualEnergyKcal = roundedActivityEnergyKcal(summary.manualEnergyKcal),
+                            totalEnergyKcal = roundedActivityEnergyKcal(summary.totalEnergyKcal),
                             manualEntries = entries,
                         )
                     }
@@ -60,3 +61,5 @@ internal class ActivitiesCardViewModel(
         dateState.value = date
     }
 }
+
+internal fun roundedActivityEnergyKcal(energyKcal: Double): Int = energyKcal.roundToInt()

@@ -181,9 +181,7 @@ internal class GoalsViewModel(
                     DaySummaryModel(
                         energy = day.consumedEnergy.roundToInt(),
                         burnedEnergy = day.burnedEnergy.roundToInt(),
-                        netEnergy =
-                            calculateNetEnergyKcal(day.consumedEnergy, day.burnedEnergy)
-                                .roundToInt(),
+                        netEnergy = roundedNetEnergyKcal(day.consumedEnergy, day.burnedEnergy),
                         energyGoal = energyGoal.roundToInt(),
                         goalDisplayMode = goalDisplayMode,
                         dietGoalDisplayModeEnabled = dietEnergyDeficitKcal != null,
@@ -221,11 +219,14 @@ internal class GoalsViewModel(
                         ) { facts, goal, activity ->
                             val consumedEnergy = facts.energy.value ?: 0.0
                             val baseGoal = goal[NutritionFactsField.Energy]
-                            val adjustedGoal = baseGoal + activity.totalEnergyKcal
                             WeekDaySummaryModel(
                                 date = date,
-                                energy = consumedEnergy.roundToInt(),
-                                goal = adjustedGoal.roundToInt(),
+                                energy =
+                                    roundedNetEnergyKcal(
+                                        consumedEnergy = consumedEnergy,
+                                        burnedEnergy = activity.totalEnergyKcal,
+                                    ),
+                                goal = baseGoal.roundToInt(),
                             )
                         }
                     }
@@ -272,3 +273,6 @@ private data class SelectedGoalDay(
     val fats: Int,
     val fatsGoal: Int,
 )
+
+internal fun roundedNetEnergyKcal(consumedEnergy: Double, burnedEnergy: Double): Int =
+    calculateNetEnergyKcal(consumedEnergy, burnedEnergy).roundToInt()
