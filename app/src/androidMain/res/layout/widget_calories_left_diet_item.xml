@@ -2,35 +2,52 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="0dp"
     android:layout_height="match_parent"
-    android:layout_marginStart="4dp"
+    android:layout_marginStart="8dp"
     android:layout_weight="1"
     android:background="@drawable/widget_calories_left_diet"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="8dp">
 
+    <ImageView
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_widget_leaf" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
         android:gravity="center"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="@string/widget_calories_diet"
-        android:textColor="@color/widget_calories_yellow"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        android:textColor="@color/widget_calories_text"
+        android:textSize="17sp" />
 
     <TextView
         android:id="@+id/widget_calories_left_diet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="7dp"
         android:gravity="center"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:textColor="@color/widget_calories_text"
-        android:textSize="14sp"
+        android:textColor="@color/widget_calories_green"
+        android:textSize="33sp"
         android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_calories_diet_unit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="@string/widget_calories_unit_kcal"
+        android:textColor="@color/widget_calories_text"
+        android:textSize="17sp" />
 
     <TextView
         android:id="@+id/widget_calories_diet_disabled"

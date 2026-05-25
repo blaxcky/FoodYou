@@ -5,10 +5,12 @@
     <string name="widget_calories_eaten">Gegessen</string>
     <string name="widget_calories_burned">Verbrannt</string>
     <string name="widget_calories_left">Übrig</string>
+    <string name="widget_calories_today_format">Heute, %1$s</string>
     <string name="widget_calories_normal">Normal</string>
     <string name="widget_calories_optimized">Optimiert</string>
     <string name="widget_calories_diet">Diät</string>
     <string name="widget_calories_diet_disabled">Kein Defizit gesetzt</string>
+    <string name="widget_calories_unit_kcal">kcal</string>
     <string name="widget_calories_kcal">%1$d kcal</string>
     <string name="widget_calories_no_value">-- kcal</string>
 </resources>

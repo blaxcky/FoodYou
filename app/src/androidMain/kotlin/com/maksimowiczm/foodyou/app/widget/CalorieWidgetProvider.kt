@@ -18,6 +18,7 @@ class CalorieWidgetProvider : AppWidgetProvider() {
             val pendingResult = goAsync()
             scope.launch {
                 try {
+                    showRefreshInProgress(context)
                     updateAll(context)
                 } finally {
                     pendingResult.finish()
@@ -52,6 +53,12 @@ class CalorieWidgetProvider : AppWidgetProvider() {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val component = ComponentName(context, CalorieWidgetProvider::class.java)
             updater().update(context, appWidgetManager.getAppWidgetIds(component))
+        }
+
+        private fun showRefreshInProgress(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val component = ComponentName(context, CalorieWidgetProvider::class.java)
+            updater().showRefreshInProgress(context, appWidgetManager.getAppWidgetIds(component))
         }
     }
 }

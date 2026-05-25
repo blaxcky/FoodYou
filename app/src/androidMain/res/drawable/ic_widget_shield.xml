@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+    <path
+        android:fillColor="@color/widget_calories_green"
+        android:pathData="M14,2L25,6v7.5C25,20 20.2,25 14,27 7.8,25 3,20 3,13.5V6z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12.1,17.8L7.8,13.6l2,-2 2.3,2.3 5.9,-5.9 2,2z" />
+</vector>

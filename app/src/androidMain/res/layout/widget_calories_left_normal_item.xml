@@ -2,33 +2,49 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="0dp"
     android:layout_height="match_parent"
-    android:layout_marginEnd="4dp"
+    android:layout_marginEnd="8dp"
     android:layout_weight="1"
     android:background="@drawable/widget_calories_left_normal"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="8dp">
 
+    <ImageView
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_widget_shield" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="9dp"
         android:gravity="center"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="@string/widget_calories_normal"
-        android:textColor="@color/widget_calories_green"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        android:textColor="@color/widget_calories_text"
+        android:textSize="17sp" />
 
     <TextView
         android:id="@+id/widget_calories_left_normal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="7dp"
         android:gravity="center"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:textColor="@color/widget_calories_text"
-        android:textSize="14sp"
+        android:textColor="@color/widget_calories_green"
+        android:textSize="33sp"
         android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="@string/widget_calories_unit_kcal"
+        android:textColor="@color/widget_calories_text"
+        android:textSize="17sp" />
 </LinearLayout>

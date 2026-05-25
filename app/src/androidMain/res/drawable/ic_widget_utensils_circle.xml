@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="58dp"
+    android:height="58dp"
+    android:viewportWidth="58"
+    android:viewportHeight="58">
+    <path
+        android:fillColor="@color/widget_calories_blue"
+        android:pathData="M29,0a29,29 0,1 0,0.1,0z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M17,15h2v13h2V15h2v13h2V15h2v14c0,3.1 -2,5.6 -5,6.4V45h-5v-9.6c-3,-0.8 -5,-3.3 -5,-6.4V15h2v13h3zM36,15c4.8,2.4 7,6 7,11.8V45h-5V32h-5V21c0,-2.7 1.2,-4.8 3,-6z" />
+</vector>

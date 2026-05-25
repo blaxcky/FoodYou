@@ -17,7 +17,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCas
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import java.text.NumberFormat
 import java.util.Locale
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.DateTimeUnit
@@ -43,6 +43,18 @@ internal class CalorieWidgetUpdater(
                 appWidgetId,
                 createRemoteViews(context, manager, appWidgetId, model),
             )
+        }
+    }
+
+    fun showRefreshInProgress(context: Context, appWidgetIds: IntArray) {
+        if (appWidgetIds.isEmpty()) return
+
+        val manager = AppWidgetManager.getInstance(context)
+        appWidgetIds.forEach { appWidgetId ->
+            val views = RemoteViews(context.packageName, layout(manager, appWidgetId)).apply {
+                setFloat(R.id.widget_calories_refresh, "setRotation", 180f)
+            }
+            manager.partiallyUpdateAppWidget(appWidgetId, views)
         }
     }
 
@@ -87,25 +99,19 @@ internal class CalorieWidgetUpdater(
         appWidgetId: Int,
         model: CalorieWidgetModel,
     ): RemoteViews {
-        val layout =
-            if (isLargeWidget(manager, appWidgetId)) {
-                R.layout.widget_calories_large
-            } else {
-                R.layout.widget_calories_medium
-            }
+        val layout = layout(manager, appWidgetId)
         return RemoteViews(context.packageName, layout).apply {
-            setTextViewText(R.id.widget_calories_date, formatDate(model.date))
-            setTextViewText(R.id.widget_calories_eaten, context.kcal(model.eatenKcal))
-            setTextViewText(R.id.widget_calories_burned, context.kcal(model.burnedKcal))
-            setTextViewText(R.id.widget_calories_left_normal, context.kcal(model.normalLeftKcal))
+            setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
+            setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
+            setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
+            setTextViewText(R.id.widget_calories_left_normal, context.number(model.normalLeftKcal))
             setTextViewText(
                 R.id.widget_calories_left_optimized,
-                context.kcal(model.optimizedLeftKcal),
+                context.number(model.optimizedLeftKcal),
             )
             setTextViewText(
                 R.id.widget_calories_left_diet,
-                model.dietLeftKcal?.let { context.kcal(it) }
-                    ?: context.getString(R.string.widget_calories_no_value),
+                model.dietLeftKcal?.let { context.number(it) } ?: "--",
             )
             setInt(
                 R.id.widget_calories_left_diet,
@@ -122,9 +128,21 @@ internal class CalorieWidgetUpdater(
                 R.id.widget_calories_diet_disabled,
                 if (model.dietLeftKcal == null) View.VISIBLE else View.GONE,
             )
+            setViewVisibility(
+                R.id.widget_calories_diet_unit,
+                if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
+            )
+            setFloat(R.id.widget_calories_refresh, "setRotation", 0f)
             setOnClickPendingIntent(R.id.widget_calories_refresh, refreshPendingIntent(context))
         }
     }
+
+    private fun layout(manager: AppWidgetManager, appWidgetId: Int): Int =
+        if (isLargeWidget(manager, appWidgetId)) {
+            R.layout.widget_calories_large
+        } else {
+            R.layout.widget_calories_medium
+        }
 
     private fun isLargeWidget(manager: AppWidgetManager, appWidgetId: Int): Boolean {
         val options = manager.getAppWidgetOptions(appWidgetId)
@@ -153,10 +171,19 @@ private fun previousWeekDates(today: LocalDate): List<LocalDate> {
     return List(today.dayOfWeek.ordinal) { weekStart.plus(it, DateTimeUnit.DAY) }
 }
 
-private fun Context.kcal(value: Int): String = getString(R.string.widget_calories_kcal, value)
+private fun Context.number(value: Int): String = NumberFormat.getIntegerInstance().format(value)
 
-private fun formatDate(date: LocalDate): String {
-    return DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-        .withLocale(Locale.getDefault())
-        .format(date.toJavaLocalDate())
+private fun Context.formatDate(date: LocalDate): String {
+    val locale = Locale.getDefault()
+    val formattedDate =
+        DateTimeFormatter.ofPattern(
+                if (locale.language == Locale.GERMAN.language) {
+                    "d. MMM"
+                } else {
+                    "MMM d"
+                },
+                locale,
+            )
+            .format(date.toJavaLocalDate())
+    return getString(R.string.widget_calories_today_format, formattedDate)
 }
