@@ -44,6 +44,16 @@ abstract class ProductDao {
         """
         SELECT *
         FROM Product
+        WHERE sourceType = :sourceType AND sourceUrl = :sourceUrl
+        LIMIT 1
+        """
+    )
+    abstract suspend fun getProductBySource(sourceType: FoodSourceType, sourceUrl: String): ProductEntity?
+
+    @Query(
+        """
+        SELECT *
+        FROM Product
         LIMIT :limit OFFSET :offset
         """
     )

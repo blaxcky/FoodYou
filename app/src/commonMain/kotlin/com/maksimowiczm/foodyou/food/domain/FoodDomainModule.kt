@@ -12,6 +12,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFddbImportQueueItemUse
 import com.maksimowiczm.foodyou.food.domain.usecase.DeletePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DownloadProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ImportFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFddbImportQueueUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
@@ -34,6 +35,7 @@ fun Module.foodDomainModule() {
     factoryOf(::DeleteFoodUseCase)
     factoryOf(::DeleteFddbImportQueueItemUseCase)
     factoryOf(::DownloadProductUseCase)
+    factoryOf(::FddbDiarySyncUseCase)
     factory {
         ImportFddbProductsUseCase(
             fddbProductGateway = get(),

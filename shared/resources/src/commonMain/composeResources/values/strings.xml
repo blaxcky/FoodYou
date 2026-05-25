@@ -442,6 +442,11 @@
     <string name="description_fddb_skip_barcode">Skipped because a product with this barcode already exists</string>
     <string name="description_fddb_skip_product">Skipped because this FDDB product already exists</string>
     <string name="description_fddb_updated_weights">Existing product updated with package or serving weight</string>
+    <string name="action_sync_fddb_diary">Sync FDDB diary</string>
+    <string name="error_fddb_failed_to_authenticate">Could not sign in to FDDB</string>
+    <string name="neutral_fddb_sync_not_configured">FDDB diary sync is not configured</string>
+    <string name="neutral_fddb_sync_running">FDDB diary sync is running</string>
+    <string name="neutral_fddb_sync_failed">FDDB diary sync failed</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>
     <string name="description_export_csv_food_products">Export food products to CSV file</string>

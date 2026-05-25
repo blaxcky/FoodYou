@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.food.infrastructure.room
 
 interface FoodDatabase {
+    val fddbDiarySyncEntryDao: FddbDiarySyncEntryDao
     val fddbImportQueueDao: FddbImportQueueDao
     val productDao: ProductDao
     val pendingProductDao: PendingProductDao

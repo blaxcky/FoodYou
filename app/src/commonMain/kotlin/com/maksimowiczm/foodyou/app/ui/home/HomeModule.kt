@@ -4,6 +4,7 @@ import com.maksimowiczm.foodyou.app.ui.home.activity.ActivitiesCardViewModel
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardSettingsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.master.HomeViewModel
+import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.MealsCardsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.meals.settings.MealsCardsSettingsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.personalization.HomePersonalizationViewModel
@@ -18,6 +19,8 @@ fun Module.home() {
             settingsRepository = userPreferencesRepository(),
             healthConnectActivitySync = get(),
             activityRepository = get(),
+            fddbDiarySyncUseCase = get(),
+            fddbCredentialsRepository = get<FddbCredentialsRepository>(),
         )
     }
     viewModel {

@@ -13,6 +13,8 @@ interface ProductRepository {
 
     suspend fun getProductByBarcode(barcode: String): Product?
 
+    suspend fun getProductBySource(type: FoodSource.Type, url: String): Product?
+
     fun observeProducts(limit: Int, offset: Int): Flow<List<Product>>
 
     /**

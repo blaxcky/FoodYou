@@ -6,6 +6,9 @@ import com.maksimowiczm.foodyou.activity.HealthConnectActivitySync
 import com.maksimowiczm.foodyou.activity.HealthConnectSyncResult
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncResult
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.time.Clock
 import kotlinx.coroutines.delay
@@ -35,6 +38,17 @@ internal data class HomeActivitySyncState(
     val burnedEnergySyncDelta: BurnedEnergySyncDelta?,
 )
 
+internal sealed interface HomeFddbSyncState {
+    data class Idle(val hasCredentials: Boolean, val lastResult: FddbDiarySyncResult? = null) :
+        HomeFddbSyncState
+
+    data object Syncing : HomeFddbSyncState
+
+    data object MissingCredentials : HomeFddbSyncState
+
+    data class Failed(val message: String?) : HomeFddbSyncState
+}
+
 private const val HEALTH_CONNECT_STEPS_SYNC_LOOKBACK_DAYS = 30
 private const val BURNED_ENERGY_SYNC_DELTA_VISIBLE_MILLIS = 120_000L
 
@@ -42,6 +56,8 @@ internal class HomeViewModel(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val healthConnectActivitySync: HealthConnectActivitySync,
     private val activityRepository: ActivityRepository,
+    private val fddbDiarySyncUseCase: FddbDiarySyncUseCase,
+    private val fddbCredentialsRepository: FddbCredentialsRepository,
 ) : ViewModel() {
 
     private val _homeOrder = settingsRepository.observe().map { it.homeCardOrder }
@@ -55,6 +71,9 @@ internal class HomeViewModel(
     private val nowEpochSeconds = MutableStateFlow(Clock.System.now().epochSeconds)
     private val isSyncing = MutableStateFlow(false)
     private val burnedEnergySyncDelta = MutableStateFlow<BurnedEnergySyncDelta?>(null)
+    private val fddbSyncInProgress = MutableStateFlow(false)
+    private val fddbLastResult = MutableStateFlow<FddbDiarySyncResult?>(null)
+    private val fddbFailure = MutableStateFlow<String?>(null)
     private var burnedEnergySyncDeltaClearJob: Job? = null
 
     val activitySyncState: StateFlow<HomeActivitySyncState> =
@@ -88,6 +107,26 @@ internal class HomeViewModel(
                     },
             )
 
+    val fddbSyncState: StateFlow<HomeFddbSyncState> =
+        combine(
+                fddbCredentialsRepository.hasCredentials(),
+                fddbSyncInProgress,
+                fddbLastResult,
+                fddbFailure,
+            ) { hasCredentials, syncing, lastResult, failure ->
+                when {
+                    syncing -> HomeFddbSyncState.Syncing
+                    failure != null -> HomeFddbSyncState.Failed(failure)
+                    !hasCredentials -> HomeFddbSyncState.MissingCredentials
+                    else -> HomeFddbSyncState.Idle(hasCredentials = true, lastResult = lastResult)
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(2_000),
+                initialValue = HomeFddbSyncState.Idle(hasCredentials = false),
+            )
+
     init {
         viewModelScope.launch {
             while (true) {
@@ -116,6 +155,30 @@ internal class HomeViewModel(
                 isSyncing.value = false
             }
         }
+    }
+
+    fun syncFddbDiary(date: LocalDate) {
+        if (fddbSyncInProgress.value) return
+
+        viewModelScope.launch {
+            if (!fddbDiarySyncUseCase.hasCredentials()) {
+                fddbFailure.value = null
+                return@launch
+            }
+            fddbSyncInProgress.value = true
+            fddbFailure.value = null
+            try {
+                fddbLastResult.value = fddbDiarySyncUseCase.sync(date)
+            } catch (throwable: Throwable) {
+                fddbFailure.value = throwable.message
+            } finally {
+                fddbSyncInProgress.value = false
+            }
+        }
+    }
+
+    fun clearFddbFailure() {
+        fddbFailure.value = null
     }
 
     private fun showBurnedEnergySyncDelta(delta: BurnedEnergySyncDelta) {

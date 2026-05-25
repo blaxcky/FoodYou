@@ -27,6 +27,9 @@ internal class RoomProductRepository(private val productDao: ProductDao) : Produ
     override suspend fun getProductByBarcode(barcode: String): Product? =
         productDao.getProductByBarcode(barcode)?.toModel()
 
+    override suspend fun getProductBySource(type: FoodSource.Type, url: String): Product? =
+        productDao.getProductBySource(type.toEntity(), url)?.toModel()
+
     override suspend fun deleteProduct(product: Product) {
         val entity = product.toEntity()
         productDao.deleteProduct(entity)

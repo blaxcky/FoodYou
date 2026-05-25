@@ -270,6 +270,9 @@ class ImportFddbProductsUseCaseTest {
         override suspend fun getProductByBarcode(barcode: String): Product? =
             products.firstOrNull { it.barcode == barcode }
 
+        override suspend fun getProductBySource(type: FoodSource.Type, url: String): Product? =
+            products.firstOrNull { it.source.type == type && it.source.url == url }
+
         override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
             flowOf(products.drop(offset).take(limit))
 

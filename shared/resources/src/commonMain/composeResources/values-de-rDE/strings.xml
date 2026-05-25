@@ -99,6 +99,11 @@
     <string name="description_fddb_skip_barcode">Übersprungen, weil ein Produkt mit diesem Barcode bereits existiert</string>
     <string name="description_fddb_skip_product">Übersprungen, weil dieses FDDB-Produkt bereits existiert</string>
     <string name="description_fddb_updated_weights">Vorhandenes Produkt mit Packungs- oder Portionsgewicht ergänzt</string>
+    <string name="action_sync_fddb_diary">FDDB-Tagebuch synchronisieren</string>
+    <string name="error_fddb_failed_to_authenticate">Anmeldung bei FDDB fehlgeschlagen</string>
+    <string name="neutral_fddb_sync_not_configured">FDDB-Tagebuch-Sync ist nicht eingerichtet</string>
+    <string name="neutral_fddb_sync_running">FDDB-Tagebuch-Sync läuft</string>
+    <string name="neutral_fddb_sync_failed">FDDB-Tagebuch-Sync fehlgeschlagen</string>
     <string name="action_export_csv_food_products">Export in CSV-Datei</string>
     <string name="description_export_csv_food_products">Lebensmittel in CSV-Datei exportieren</string>
     <string name="headline_database_backup">Sicherung der Datenbank</string>

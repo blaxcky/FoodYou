@@ -27,6 +27,7 @@ import com.maksimowiczm.foodyou.common.infrastructure.room.MeasurementTypeConver
 import com.maksimowiczm.foodyou.common.infrastructure.room.RoomTransactionScope
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodDatabase
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.FddbDiarySyncEntryEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbImportQueueItemEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventTypeConverter
 import com.maksimowiczm.foodyou.food.infrastructure.room.LatestMeasurementSuggestion
@@ -77,6 +78,7 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntit
             ProductFts::class,
             RecipeFts::class,
             FddbImportQueueItemEntity::class,
+            FddbDiarySyncEntryEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
     version = FoodYouDatabase.VERSION,
@@ -152,7 +154,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 37
+        const val VERSION = 38
 
         private val migrations: List<Migration> =
             listOf(
@@ -175,6 +177,7 @@ abstract class FoodYouDatabase :
                 PendingProductNullableBarcodeMigration,
                 PendingProductMultiplePhotosMigration,
                 FddbImportQueueMigration,
+                FddbDiarySyncEntryMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -184,6 +187,24 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object FddbDiarySyncEntryMigration : Migration(37, 38) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `FddbDiarySyncEntry` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `fddbEntryId` TEXT NOT NULL,
+                `syncedAt` INTEGER NOT NULL
+            )
+            """
+                .trimIndent()
+        )
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_FddbDiarySyncEntry_fddbEntryId` ON `FddbDiarySyncEntry` (`fddbEntryId`)"
+        )
     }
 }
 
