@@ -4,20 +4,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -135,39 +132,15 @@ internal fun MealCard(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-
             FoodContainer(
                 foods = meal.foods,
                 onEditEntry = onEditEntry,
                 onDeleteEntry = onDeleteEntry,
                 modifier =
-                    Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium),
+                    Modifier.fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .clip(MaterialTheme.shapes.medium),
             )
-
-            if (meal.foods.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End,
-            ) {
-                FilledIconButton(
-                    onClick = onAddFood,
-                    shapes =
-                        IconButtonDefaults.shapes(
-                            MaterialTheme.shapes.medium,
-                            MaterialTheme.shapes.extraSmall,
-                        ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = stringResource(Res.string.action_add),
-                    )
-                }
-            }
         }
     }
 }
