@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_calories_card">#FFFFFFFF</color>
+    <color name="widget_calories_text">#FF202124</color>
+    <color name="widget_calories_muted_text">#FF6B7280</color>
+    <color name="widget_calories_blue">#FF45AEE6</color>
+    <color name="widget_calories_blue_soft">#FFEAF6FE</color>
+    <color name="widget_calories_yellow">#FFC98A00</color>
+    <color name="widget_calories_yellow_soft">#FFFFF6D8</color>
+    <color name="widget_calories_green">#FF2E9D63</color>
+    <color name="widget_calories_green_soft">#FFE3F7E9</color>
+    <color name="widget_calories_outline">#FFE4EEF5</color>
+</resources>

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import com.maksimowiczm.foodyou.app.BuildConfig
 import com.maksimowiczm.foodyou.app.di.initKoin
+import com.maksimowiczm.foodyou.app.widget.CalorieWidgetUpdater
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.event.EventBus
 import com.maksimowiczm.foodyou.settings.domain.event.AppLaunchEvent
@@ -14,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.module.dsl.factoryOf
+import org.koin.dsl.module
 
 class FoodYouApplication : Application() {
 
@@ -24,7 +27,10 @@ class FoodYouApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        initKoin(coroutineScope) { androidContext(this@FoodYouApplication) }
+        initKoin(coroutineScope) {
+            androidContext(this@FoodYouApplication)
+            modules(module { factoryOf(::CalorieWidgetUpdater) })
+        }
         publishLaunchEvent()
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
