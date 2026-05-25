@@ -301,14 +301,14 @@ private fun WeeklyGoalsContent(
             Text(
                 text = stringResource(Res.string.headline_your_week),
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = GoalsTextColor,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = stringResource(Res.string.action_details),
                 modifier = Modifier.clickable { onExpandedChange(!expanded) },
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -354,10 +354,10 @@ private fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Modi
                     stringResource(Res.string.unit_kcal),
             color = GoalsTextColor,
             style =
-                MaterialTheme.typography.headlineMedium.copy(
+                MaterialTheme.typography.titleLarge.copy(
                     fontFamily = interNumberFontFamily(),
-                    fontSize = 32.sp,
-                    lineHeight = 36.sp,
+                    fontSize = 20.sp,
+                    lineHeight = 24.sp,
                 ),
         )
     }
@@ -418,7 +418,7 @@ private fun WeeklyBar(
         Text(
             text = day.energy.toString().groupDigits(),
             color = GoalsTextColor,
-            style = MaterialTheme.typography.labelLarge.copy(fontFamily = interNumberFontFamily()),
+            style = MaterialTheme.typography.labelMedium.copy(fontFamily = interNumberFontFamily()),
             maxLines = 1,
         )
         Spacer(Modifier.height(4.dp))
@@ -451,7 +451,7 @@ private fun WeeklyBar(
         Text(
             text = label,
             color = GoalsTextColor,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
         )
     }
@@ -466,7 +466,7 @@ private fun WeeklyDetailsToggle(expanded: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             text = stringResource(Res.string.action_details),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold,
         )
@@ -513,16 +513,18 @@ private fun WeeklyDetailsRow(
     modifier: Modifier = Modifier,
     header: Boolean = false,
 ) {
+    val numberFontFamily = interNumberFontFamily()
     val style =
-        if (header) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyLarge
+        if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
+    val valueStyle = if (header) style else style.copy(fontFamily = numberFontFamily)
     val weight = if (header) FontWeight.SemiBold else FontWeight.Normal
 
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(day, modifier = Modifier.weight(0.65f), style = style, fontWeight = FontWeight.SemiBold)
-        Text(goal, modifier = Modifier.weight(1f), style = style, fontWeight = weight)
-        Text(soFar, modifier = Modifier.weight(1f), style = style, fontWeight = weight)
-        Text(difference, modifier = Modifier.weight(1f), style = style, fontWeight = weight)
-        Text(percent, modifier = Modifier.weight(0.9f), style = style, fontWeight = weight)
+        Text(goal, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
+        Text(soFar, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
+        Text(difference, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
+        Text(percent, modifier = Modifier.weight(0.9f), style = valueStyle, fontWeight = weight)
     }
 }
 
