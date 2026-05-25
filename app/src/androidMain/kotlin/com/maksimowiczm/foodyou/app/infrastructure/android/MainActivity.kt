@@ -26,6 +26,6 @@ class MainActivity : FoodYouAbstractActivity() {
 
     override fun onStart() {
         super.onStart()
-        CalorieWidgetProvider.updateAll(this)
+        CalorieWidgetProvider.updateAllValues(this)
     }
 }

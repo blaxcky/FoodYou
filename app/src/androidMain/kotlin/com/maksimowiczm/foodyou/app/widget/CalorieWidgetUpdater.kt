@@ -44,6 +44,17 @@ internal class CalorieWidgetUpdater(
         }
     }
 
+    suspend fun updateValues(context: Context, appWidgetIds: IntArray) {
+        if (appWidgetIds.isEmpty()) return
+
+        val manager = AppWidgetManager.getInstance(context)
+        val model = loadModel()
+        val views = createValueRemoteViews(context, model)
+        appWidgetIds.forEach { appWidgetId ->
+            manager.partiallyUpdateAppWidget(appWidgetId, views)
+        }
+    }
+
     private suspend fun loadModel(): CalorieWidgetModel {
         val settings = settingsRepository.observe().first()
         val today = dateProvider.now().date
@@ -87,38 +98,44 @@ internal class CalorieWidgetUpdater(
     ): RemoteViews {
         val layout = layout(manager, appWidgetId)
         return RemoteViews(context.packageName, layout).apply {
-            setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
-            setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
-            setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
-            setTextViewText(R.id.widget_calories_left_normal, context.number(model.normalLeftKcal))
-            setTextViewText(
-                R.id.widget_calories_left_optimized,
-                context.number(model.optimizedLeftKcal),
-            )
-            setTextViewText(
-                R.id.widget_calories_left_diet,
-                model.dietLeftKcal?.let { context.number(it) } ?: "--",
-            )
-            setInt(
-                R.id.widget_calories_left_diet,
-                "setTextColor",
-                context.getColor(
-                    if (model.dietLeftKcal == null) {
-                        R.color.widget_calories_muted_text
-                    } else {
-                        R.color.widget_calories_text
-                    }
-                ),
-            )
-            setViewVisibility(
-                R.id.widget_calories_diet_disabled,
-                if (model.dietLeftKcal == null) View.VISIBLE else View.GONE,
-            )
-            setViewVisibility(
-                R.id.widget_calories_diet_unit,
-                if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
-            )
+            setValues(context, model)
         }
+    }
+
+    private fun createValueRemoteViews(context: Context, model: CalorieWidgetModel): RemoteViews =
+        RemoteViews(context.packageName, R.layout.widget_calories_medium).apply {
+            setValues(context, model)
+        }
+
+    private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
+        setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
+        setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
+        setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
+        setTextViewText(R.id.widget_calories_left_normal, context.number(model.normalLeftKcal))
+        setTextViewText(R.id.widget_calories_left_optimized, context.number(model.optimizedLeftKcal))
+        setTextViewText(
+            R.id.widget_calories_left_diet,
+            model.dietLeftKcal?.let { context.number(it) } ?: "--",
+        )
+        setInt(
+            R.id.widget_calories_left_diet,
+            "setTextColor",
+            context.getColor(
+                if (model.dietLeftKcal == null) {
+                    R.color.widget_calories_muted_text
+                } else {
+                    R.color.widget_calories_text
+                }
+            ),
+        )
+        setViewVisibility(
+            R.id.widget_calories_diet_disabled,
+            if (model.dietLeftKcal == null) View.VISIBLE else View.GONE,
+        )
+        setViewVisibility(
+            R.id.widget_calories_diet_unit,
+            if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
+        )
     }
 
     private fun layout(manager: AppWidgetManager, appWidgetId: Int): Int =

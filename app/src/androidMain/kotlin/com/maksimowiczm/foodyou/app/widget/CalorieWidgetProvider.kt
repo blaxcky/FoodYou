@@ -26,12 +26,22 @@ class CalorieWidgetProvider : AppWidgetProvider() {
             scope.launch { updateAllSuspending(context) }
         }
 
+        fun updateAllValues(context: Context) {
+            scope.launch { updateAllValuesSuspending(context) }
+        }
+
         private fun updater(): CalorieWidgetUpdater = GlobalContext.get().get()
 
         private suspend fun updateAllSuspending(context: Context) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val component = ComponentName(context, CalorieWidgetProvider::class.java)
             updater().update(context, appWidgetManager.getAppWidgetIds(component))
+        }
+
+        private suspend fun updateAllValuesSuspending(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val component = ComponentName(context, CalorieWidgetProvider::class.java)
+            updater().updateValues(context, appWidgetManager.getAppWidgetIds(component))
         }
     }
 }
