@@ -39,6 +39,17 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 this[SettingsPreferencesKeys.healthConnectStepsEnabled] ?: false,
             healthConnectStepsLastSyncedEpochSeconds =
                 this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds],
+            homeSyncHealthConnectEnabled =
+                this[SettingsPreferencesKeys.homeSyncHealthConnectEnabled] ?: true,
+            homeSyncFddbDiaryEnabled =
+                this[SettingsPreferencesKeys.homeSyncFddbDiaryEnabled] ?: false,
+            fddbDiarySyncLastImported = this[SettingsPreferencesKeys.fddbDiarySyncLastImported],
+            fddbDiarySyncLastSkipped = this[SettingsPreferencesKeys.fddbDiarySyncLastSkipped],
+            fddbDiarySyncLastFailed = this[SettingsPreferencesKeys.fddbDiarySyncLastFailed],
+            fddbDiarySyncLastErrorMessage =
+                this[SettingsPreferencesKeys.fddbDiarySyncLastErrorMessage],
+            fddbDiarySyncLastAttemptEpochSeconds =
+                this[SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds],
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: Settings) {
@@ -61,6 +72,29 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.healthConnectStepsEnabled] = updated.healthConnectStepsEnabled
         this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds] =
             updated.healthConnectStepsLastSyncedEpochSeconds
+        this[SettingsPreferencesKeys.homeSyncHealthConnectEnabled] =
+            updated.homeSyncHealthConnectEnabled
+        this[SettingsPreferencesKeys.homeSyncFddbDiaryEnabled] = updated.homeSyncFddbDiaryEnabled
+        setWithNull(
+            SettingsPreferencesKeys.fddbDiarySyncLastImported,
+            updated.fddbDiarySyncLastImported,
+        )
+        setWithNull(
+            SettingsPreferencesKeys.fddbDiarySyncLastSkipped,
+            updated.fddbDiarySyncLastSkipped,
+        )
+        setWithNull(
+            SettingsPreferencesKeys.fddbDiarySyncLastFailed,
+            updated.fddbDiarySyncLastFailed,
+        )
+        setWithNull(
+            SettingsPreferencesKeys.fddbDiarySyncLastErrorMessage,
+            updated.fddbDiarySyncLastErrorMessage,
+        )
+        setWithNull(
+            SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds,
+            updated.fddbDiarySyncLastAttemptEpochSeconds,
+        )
     }
 }
 
@@ -184,6 +218,16 @@ private object SettingsPreferencesKeys {
     val healthConnectStepsEnabled = booleanPreferencesKey("settings:healthConnectStepsEnabled")
     val healthConnectStepsLastSyncedEpochSeconds =
         longPreferencesKey("settings:healthConnectStepsLastSyncedEpochSeconds")
+    val homeSyncHealthConnectEnabled =
+        booleanPreferencesKey("settings:homeSyncHealthConnectEnabled")
+    val homeSyncFddbDiaryEnabled = booleanPreferencesKey("settings:homeSyncFddbDiaryEnabled")
+    val fddbDiarySyncLastImported = intPreferencesKey("settings:fddbDiarySyncLastImported")
+    val fddbDiarySyncLastSkipped = intPreferencesKey("settings:fddbDiarySyncLastSkipped")
+    val fddbDiarySyncLastFailed = intPreferencesKey("settings:fddbDiarySyncLastFailed")
+    val fddbDiarySyncLastErrorMessage =
+        stringPreferencesKey("settings:fddbDiarySyncLastErrorMessage")
+    val fddbDiarySyncLastAttemptEpochSeconds =
+        longPreferencesKey("settings:fddbDiarySyncLastAttemptEpochSeconds")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
     val firstLaunchCurrentVersionEpoch = longPreferencesKey("first_launch_current_version_epoch")

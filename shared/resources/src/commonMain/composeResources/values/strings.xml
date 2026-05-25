@@ -45,6 +45,8 @@
     <string name="headline_supported_URLs" description="URLs that can be used to add products">Supported URLs</string>
     <string name="headline_something_went_wrong">Oops! Something went wrong</string>
     <string name="headline_daily_goals_settings">Daily goals settings</string>
+    <string name="headline_home_sync">Home sync</string>
+    <string name="headline_fddb_sync_status">FDDB sync status</string>
     <string name="headline_api_key">API key</string>
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Source</string>
     <string name="headline_features">Features</string>
@@ -446,10 +448,15 @@
     <string name="description_fddb_skip_product">Skipped because this FDDB product already exists</string>
     <string name="description_fddb_updated_weights">Existing product updated with package or serving weight</string>
     <string name="action_sync_fddb_diary">Sync FDDB diary</string>
+    <string name="action_sync_health_connect">Sync Health Connect</string>
+    <string name="action_sync_home">Sync home</string>
     <string name="error_fddb_failed_to_authenticate">Could not sign in to FDDB</string>
     <string name="neutral_fddb_sync_not_configured">FDDB diary sync is not configured</string>
     <string name="neutral_fddb_sync_running">FDDB diary sync is running</string>
     <string name="neutral_fddb_sync_failed">FDDB diary sync failed</string>
+    <string name="neutral_fddb_sync_failed_with_message">FDDB diary sync failed: %1$s</string>
+    <string name="neutral_fddb_sync_never_run">FDDB diary sync has not run yet</string>
+    <string name="neutral_home_sync_settings">Choose what the sync button on the home screen runs.</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>
     <string name="description_export_csv_food_products">Export food products to CSV file</string>

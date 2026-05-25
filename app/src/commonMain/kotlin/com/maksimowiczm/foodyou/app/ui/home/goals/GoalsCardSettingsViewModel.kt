@@ -2,9 +2,12 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbDiarySyncStatus
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
+import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,14 +30,26 @@ internal class GoalsCardSettingsViewModel(
         MutableStateFlow(runBlocking { savedDietEnergyDeficitKcal.first().toInput() })
 
     val model: StateFlow<GoalsCardSettingsModel> =
-        dietEnergyDeficitInput
-            .map { input -> GoalsCardSettingsModel(dietEnergyDeficitKcal = input) }
+        combine(dietEnergyDeficitInput, settingsRepository.observe()) { input, settings ->
+                GoalsCardSettingsModel(
+                    dietEnergyDeficitKcal = input,
+                    homeSyncHealthConnectEnabled = settings.homeSyncHealthConnectEnabled,
+                    homeSyncFddbDiaryEnabled = settings.homeSyncFddbDiaryEnabled,
+                    fddbDiarySyncStatus = settings.fddbDiarySyncStatus(),
+                )
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue =
                     runBlocking {
-                        GoalsCardSettingsModel(dietEnergyDeficitKcal = dietEnergyDeficitInput.value)
+                        val settings = settingsRepository.observe().first()
+                        GoalsCardSettingsModel(
+                            dietEnergyDeficitKcal = dietEnergyDeficitInput.value,
+                            homeSyncHealthConnectEnabled = settings.homeSyncHealthConnectEnabled,
+                            homeSyncFddbDiaryEnabled = settings.homeSyncFddbDiaryEnabled,
+                            fddbDiarySyncStatus = settings.fddbDiarySyncStatus(),
+                        )
                     },
             )
 
@@ -61,10 +76,25 @@ internal class GoalsCardSettingsViewModel(
             }
         }
     }
+
+    fun setHomeSyncHealthConnectEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.update { copy(homeSyncHealthConnectEnabled = enabled) }
+        }
+    }
+
+    fun setHomeSyncFddbDiaryEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.update { copy(homeSyncFddbDiaryEnabled = enabled) }
+        }
+    }
 }
 
 internal data class GoalsCardSettingsModel(
-    val dietEnergyDeficitKcal: String
+    val dietEnergyDeficitKcal: String,
+    val homeSyncHealthConnectEnabled: Boolean,
+    val homeSyncFddbDiaryEnabled: Boolean,
+    val fddbDiarySyncStatus: FddbDiarySyncStatus?,
 )
 
 private fun Double?.toInput(): String =

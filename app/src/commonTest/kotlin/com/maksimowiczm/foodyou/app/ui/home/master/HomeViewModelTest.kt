@@ -9,6 +9,7 @@ import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntryId
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncResult
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
@@ -151,6 +152,146 @@ class HomeViewModelTest {
             ),
             dates,
         )
+    }
+
+    @Test
+    fun configuredHomeSyncDefaultsToHealthConnectOnly() = runBlocking {
+        val settingsRepository = FakeSettingsRepository()
+        var healthSyncs = 0
+        var fddbSyncs = 0
+
+        val result =
+            syncConfiguredHomeSync(
+                date = LocalDate(2026, 5, 17),
+                settings = settingsRepository.value,
+                settingsRepository = settingsRepository,
+                syncHealthConnect = { healthSyncs += 1 },
+                hasFddbCredentials = { true },
+                syncFddbDiary = {
+                    fddbSyncs += 1
+                    FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0)
+                },
+            )
+
+        assertEquals(HomeConfiguredSyncResult(healthConnectSynced = true, fddbDiarySynced = false, fddbMissingCredentials = false), result)
+        assertEquals(1, healthSyncs)
+        assertEquals(0, fddbSyncs)
+    }
+
+    @Test
+    fun configuredHomeSyncRunsHealthConnectAndFddbWhenBothEnabled() = runBlocking {
+        val settingsRepository =
+            FakeSettingsRepository(defaultSettings().copy(homeSyncFddbDiaryEnabled = true))
+        var healthSyncs = 0
+        var fddbSyncs = 0
+
+        val result =
+            syncConfiguredHomeSync(
+                date = LocalDate(2026, 5, 17),
+                settings = settingsRepository.value,
+                settingsRepository = settingsRepository,
+                syncHealthConnect = { healthSyncs += 1 },
+                hasFddbCredentials = { true },
+                syncFddbDiary = {
+                    fddbSyncs += 1
+                    FddbDiarySyncResult(imported = 2, skipped = 1, failed = 0)
+                },
+            )
+
+        assertEquals(HomeConfiguredSyncResult(healthConnectSynced = true, fddbDiarySynced = true, fddbMissingCredentials = false), result)
+        assertEquals(1, healthSyncs)
+        assertEquals(1, fddbSyncs)
+        assertEquals(2, settingsRepository.value.fddbDiarySyncLastImported)
+        assertEquals(1, settingsRepository.value.fddbDiarySyncLastSkipped)
+        assertEquals(0, settingsRepository.value.fddbDiarySyncLastFailed)
+        assertNull(settingsRepository.value.fddbDiarySyncLastErrorMessage)
+    }
+
+    @Test
+    fun configuredHomeSyncStoresFddbFailedCountAsFailure() = runBlocking {
+        val settingsRepository =
+            FakeSettingsRepository(defaultSettings().copy(homeSyncFddbDiaryEnabled = true))
+
+        syncConfiguredHomeSync(
+            date = LocalDate(2026, 5, 17),
+            settings = settingsRepository.value,
+            settingsRepository = settingsRepository,
+            syncHealthConnect = {},
+            hasFddbCredentials = { true },
+            syncFddbDiary = { FddbDiarySyncResult(imported = 0, skipped = 0, failed = 1) },
+        )
+
+        assertEquals(1, settingsRepository.value.fddbDiarySyncLastFailed)
+    }
+
+    @Test
+    fun configuredHomeSyncClearsFddbFailureAfterSuccessfulFddbSync() = runBlocking {
+        val settingsRepository =
+            FakeSettingsRepository(
+                defaultSettings()
+                    .copy(
+                        homeSyncFddbDiaryEnabled = true,
+                        fddbDiarySyncLastImported = 0,
+                        fddbDiarySyncLastSkipped = 0,
+                        fddbDiarySyncLastFailed = 2,
+                        fddbDiarySyncLastErrorMessage = "Failed",
+                    )
+            )
+
+        syncConfiguredHomeSync(
+            date = LocalDate(2026, 5, 17),
+            settings = settingsRepository.value,
+            settingsRepository = settingsRepository,
+            syncHealthConnect = {},
+            hasFddbCredentials = { true },
+            syncFddbDiary = { FddbDiarySyncResult(imported = 1, skipped = 0, failed = 0) },
+        )
+
+        assertEquals(0, settingsRepository.value.fddbDiarySyncLastFailed)
+        assertNull(settingsRepository.value.fddbDiarySyncLastErrorMessage)
+    }
+
+    @Test
+    fun configuredHomeSyncStoresFddbExceptionAsFailure() = runBlocking {
+        val settingsRepository =
+            FakeSettingsRepository(defaultSettings().copy(homeSyncFddbDiaryEnabled = true))
+
+        syncConfiguredHomeSync(
+            date = LocalDate(2026, 5, 17),
+            settings = settingsRepository.value,
+            settingsRepository = settingsRepository,
+            syncHealthConnect = {},
+            hasFddbCredentials = { true },
+            syncFddbDiary = { error("Network down") },
+        )
+
+        assertEquals(1, settingsRepository.value.fddbDiarySyncLastFailed)
+        assertEquals("Network down", settingsRepository.value.fddbDiarySyncLastErrorMessage)
+    }
+
+    @Test
+    fun configuredHomeSyncMissingFddbCredentialsSkipsOnlyFddb() = runBlocking {
+        val settingsRepository =
+            FakeSettingsRepository(defaultSettings().copy(homeSyncFddbDiaryEnabled = true))
+        var healthSyncs = 0
+        var fddbSyncs = 0
+
+        val result =
+            syncConfiguredHomeSync(
+                date = LocalDate(2026, 5, 17),
+                settings = settingsRepository.value,
+                settingsRepository = settingsRepository,
+                syncHealthConnect = { healthSyncs += 1 },
+                hasFddbCredentials = { false },
+                syncFddbDiary = {
+                    fddbSyncs += 1
+                    FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0)
+                },
+            )
+
+        assertEquals(HomeConfiguredSyncResult(healthConnectSynced = true, fddbDiarySynced = false, fddbMissingCredentials = true), result)
+        assertEquals(1, healthSyncs)
+        assertEquals(0, fddbSyncs)
     }
 
     private class FakeSettingsRepository(

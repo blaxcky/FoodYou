@@ -78,6 +78,7 @@ fun HomeScreen(
     val order by viewModel.homeOrder.collectAsStateWithLifecycle()
     val activitySyncState by viewModel.activitySyncState.collectAsStateWithLifecycle()
     val fddbSyncState by viewModel.fddbSyncState.collectAsStateWithLifecycle()
+    val homeSyncState by viewModel.homeSyncState.collectAsStateWithLifecycle()
     val homeState = rememberHomeState()
     val burnedEnergyDelta =
         activitySyncState.burnedEnergySyncDelta
@@ -102,6 +103,15 @@ fun HomeScreen(
             viewModel.syncFddbDiary(homeState.selectedDate)
         }
     }
+    val onHomeSyncClick = {
+        if (
+            homeSyncState.fddbDiaryEnabled &&
+                homeSyncState.fddbSyncState is HomeFddbSyncState.MissingCredentials
+        ) {
+            showFddbLoginDialog = true
+        }
+        viewModel.syncConfigured(homeState.selectedDate)
+    }
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -119,10 +129,7 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    HealthConnectSyncButton(
-                        state = activitySyncState,
-                        onClick = { viewModel.syncActivities(homeState.selectedDate) },
-                    )
+                    HomeSyncButton(state = homeSyncState, onClick = onHomeSyncClick)
                     IconButton(onClick = { showSettingsMenu = true }) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
@@ -254,7 +261,7 @@ private fun FddbSyncStatusText(state: HomeFddbSyncState, modifier: Modifier = Mo
             is HomeFddbSyncState.Syncing -> stringResource(Res.string.neutral_fddb_sync_running)
             is HomeFddbSyncState.Failed -> stringResource(Res.string.neutral_fddb_sync_failed)
             is HomeFddbSyncState.Idle ->
-                state.lastResult?.let {
+                state.lastStatus?.let {
                     stringResource(
                         Res.string.neutral_fddb_import_summary,
                         it.imported,
@@ -296,22 +303,32 @@ private fun FddbSyncButton(state: HomeFddbSyncState, onClick: () -> Unit, modifi
 }
 
 @Composable
-private fun HealthConnectSyncButton(state: HomeActivitySyncState, onClick: () -> Unit) {
+private fun HomeSyncButton(state: HomeSyncState, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val activityState = state.activitySyncState
+    val hasFddbFailure = state.hasFddbFailure
     val iconColor =
         when {
             state.isSyncing -> colors.primary
-            state.isStale -> colors.error
+            hasFddbFailure || (state.healthConnectEnabled && activityState.isStale) -> colors.error
+            !state.healthConnectEnabled && !state.fddbDiaryEnabled -> colors.onSurfaceVariant
             else -> Color(0xFF1B7F3A)
         }
     val backgroundColor =
         when {
             state.isSyncing -> colors.primaryContainer.copy(alpha = 0.55f)
-            state.isStale -> colors.errorContainer.copy(alpha = 0.95f)
+            hasFddbFailure || (state.healthConnectEnabled && activityState.isStale) ->
+                colors.errorContainer.copy(alpha = 0.95f)
+            !state.healthConnectEnabled && !state.fddbDiaryEnabled -> colors.surfaceContainerHighest
             else -> Color(0xFFDDEFE3)
         }
-    val badgeColor = if (state.isStale) colors.error else Color(0xFF1B7F3A)
-    val transition = rememberInfiniteTransition(label = "health-connect-sync")
+    val badgeColor =
+        if (hasFddbFailure || (state.healthConnectEnabled && activityState.isStale)) {
+            colors.error
+        } else {
+            Color(0xFF1B7F3A)
+        }
+    val transition = rememberInfiniteTransition(label = "home-sync")
     val rotation by
         transition.animateFloat(
             initialValue = 0f,
@@ -332,7 +349,7 @@ private fun HealthConnectSyncButton(state: HomeActivitySyncState, onClick: () ->
         ) {
             Icon(
                 imageVector = Icons.Filled.Sync,
-                contentDescription = "Health Connect synchronisieren",
+                contentDescription = stringResource(Res.string.action_sync_home),
                 tint = iconColor,
                 modifier = Modifier.graphicsLayer { rotationZ = rotation },
             )
@@ -349,7 +366,12 @@ private fun HealthConnectSyncButton(state: HomeActivitySyncState, onClick: () ->
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = if (state.isStale) Icons.Outlined.Warning else Icons.Outlined.Check,
+                    imageVector =
+                        if (hasFddbFailure || (state.healthConnectEnabled && activityState.isStale)) {
+                            Icons.Outlined.Warning
+                        } else {
+                            Icons.Outlined.Check
+                        },
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(11.dp),

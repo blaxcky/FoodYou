@@ -18,7 +18,45 @@ data class Settings(
     val stepsCaloriesPerStepKcal: Double?,
     val healthConnectStepsEnabled: Boolean,
     val healthConnectStepsLastSyncedEpochSeconds: Long?,
+    val homeSyncHealthConnectEnabled: Boolean = true,
+    val homeSyncFddbDiaryEnabled: Boolean = false,
+    val fddbDiarySyncLastImported: Int? = null,
+    val fddbDiarySyncLastSkipped: Int? = null,
+    val fddbDiarySyncLastFailed: Int? = null,
+    val fddbDiarySyncLastErrorMessage: String? = null,
+    val fddbDiarySyncLastAttemptEpochSeconds: Long? = null,
 ) : UserPreferences
+
+data class FddbDiarySyncStatus(
+    val imported: Int,
+    val skipped: Int,
+    val failed: Int,
+    val errorMessage: String?,
+    val attemptEpochSeconds: Long?,
+) {
+    val hasFailure: Boolean
+        get() = failed > 0 || errorMessage != null
+}
+
+fun Settings.fddbDiarySyncStatus(): FddbDiarySyncStatus? {
+    if (
+        fddbDiarySyncLastImported == null &&
+            fddbDiarySyncLastSkipped == null &&
+            fddbDiarySyncLastFailed == null &&
+            fddbDiarySyncLastErrorMessage == null &&
+            fddbDiarySyncLastAttemptEpochSeconds == null
+    ) {
+        return null
+    }
+
+    return FddbDiarySyncStatus(
+        imported = fddbDiarySyncLastImported ?: 0,
+        skipped = fddbDiarySyncLastSkipped ?: 0,
+        failed = fddbDiarySyncLastFailed ?: 0,
+        errorMessage = fddbDiarySyncLastErrorMessage,
+        attemptEpochSeconds = fddbDiarySyncLastAttemptEpochSeconds,
+    )
+}
 
 enum class GoalDisplayMode {
     Normal,

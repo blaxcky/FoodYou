@@ -41,6 +41,8 @@
     <string name="headline_supported_URLs" description="URLs that can be used to add products">Unterstützte URLs</string>
     <string name="headline_something_went_wrong">Ups! Etwas ist schiefgelaufen</string>
     <string name="headline_daily_goals_settings">Einstellung der Tagesziele</string>
+    <string name="headline_home_sync">Startseiten-Sync</string>
+    <string name="headline_fddb_sync_status">FDDB-Sync-Status</string>
     <string name="headline_api_key">API Schlüssel</string>
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Quelle</string>
     <string name="headline_features">Funktionen</string>
@@ -100,10 +102,15 @@
     <string name="description_fddb_skip_product">Übersprungen, weil dieses FDDB-Produkt bereits existiert</string>
     <string name="description_fddb_updated_weights">Vorhandenes Produkt mit Packungs- oder Portionsgewicht ergänzt</string>
     <string name="action_sync_fddb_diary">FDDB-Tagebuch synchronisieren</string>
+    <string name="action_sync_health_connect">Health Connect synchronisieren</string>
+    <string name="action_sync_home">Startseite synchronisieren</string>
     <string name="error_fddb_failed_to_authenticate">Anmeldung bei FDDB fehlgeschlagen</string>
     <string name="neutral_fddb_sync_not_configured">FDDB-Tagebuch-Sync ist nicht eingerichtet</string>
     <string name="neutral_fddb_sync_running">FDDB-Tagebuch-Sync läuft</string>
     <string name="neutral_fddb_sync_failed">FDDB-Tagebuch-Sync fehlgeschlagen</string>
+    <string name="neutral_fddb_sync_failed_with_message">FDDB-Tagebuch-Sync fehlgeschlagen: %1$s</string>
+    <string name="neutral_fddb_sync_never_run">FDDB-Tagebuch-Sync wurde noch nicht ausgeführt</string>
+    <string name="neutral_home_sync_settings">Wähle aus, was der Sync-Button auf der Startseite ausführt.</string>
     <string name="action_export_csv_food_products">Export in CSV-Datei</string>
     <string name="description_export_csv_food_products">Lebensmittel in CSV-Datei exportieren</string>
     <string name="headline_database_backup">Sicherung der Datenbank</string>

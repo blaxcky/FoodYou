@@ -11,6 +11,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
@@ -38,6 +39,8 @@ internal fun GoalsCardSettings(
         onBack = onBack,
         onGoalsSettings = onGoalsSettings,
         onDietEnergyDeficitKcalChange = viewModel::setDietEnergyDeficitKcal,
+        onHomeSyncHealthConnectEnabledChange = viewModel::setHomeSyncHealthConnectEnabled,
+        onHomeSyncFddbDiaryEnabledChange = viewModel::setHomeSyncFddbDiaryEnabled,
         modifier = modifier,
     )
 }
@@ -48,6 +51,8 @@ private fun GoalsCardSettingsContent(
     onBack: () -> Unit,
     onGoalsSettings: () -> Unit,
     onDietEnergyDeficitKcalChange: (String) -> Unit,
+    onHomeSyncHealthConnectEnabledChange: (Boolean) -> Unit,
+    onHomeSyncFddbDiaryEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -108,6 +113,79 @@ private fun GoalsCardSettingsContent(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                 )
             }
+
+            item { HorizontalDivider() }
+
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(Res.string.headline_home_sync)) },
+                    supportingContent = {
+                        Text(stringResource(Res.string.neutral_home_sync_settings))
+                    },
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(Res.string.action_sync_health_connect))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = model.homeSyncHealthConnectEnabled,
+                            onCheckedChange = onHomeSyncHealthConnectEnabledChange,
+                        )
+                    },
+                    modifier =
+                        Modifier.clickable {
+                            onHomeSyncHealthConnectEnabledChange(
+                                !model.homeSyncHealthConnectEnabled
+                            )
+                        },
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(Res.string.action_sync_fddb_diary)) },
+                    trailingContent = {
+                        Switch(
+                            checked = model.homeSyncFddbDiaryEnabled,
+                            onCheckedChange = onHomeSyncFddbDiaryEnabledChange,
+                        )
+                    },
+                    modifier =
+                        Modifier.clickable {
+                            onHomeSyncFddbDiaryEnabledChange(!model.homeSyncFddbDiaryEnabled)
+                        },
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(Res.string.headline_fddb_sync_status))
+                    },
+                    supportingContent = { Text(model.fddbSyncStatusText()) },
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun GoalsCardSettingsModel.fddbSyncStatusText(): String {
+    val status = fddbDiarySyncStatus
+        ?: return stringResource(Res.string.neutral_fddb_sync_never_run)
+
+    status.errorMessage?.let { message ->
+        return stringResource(Res.string.neutral_fddb_sync_failed_with_message, message)
+    }
+
+    return stringResource(
+        Res.string.neutral_fddb_import_summary,
+        status.imported,
+        status.skipped,
+        status.failed,
+    )
 }
