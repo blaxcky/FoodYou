@@ -104,7 +104,7 @@ internal fun MealCard(
                         )
                         FilledTonalIconButton(
                             onClick = onQuickAdd,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(16.dp),
                             shapes =
                                 IconButtonDefaults.shapes(
                                     MaterialTheme.shapes.small,
@@ -115,7 +115,7 @@ internal fun MealCard(
                                 imageVector = Icons.Outlined.Bolt,
                                 contentDescription =
                                     stringResource(Res.string.headline_quick_add),
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(12.dp),
                             )
                         }
                     }
