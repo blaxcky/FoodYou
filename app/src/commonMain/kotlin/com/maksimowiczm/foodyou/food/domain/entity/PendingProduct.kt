@@ -1,6 +1,6 @@
 package com.maksimowiczm.foodyou.food.domain.entity
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class PendingProduct(
     val id: Long,

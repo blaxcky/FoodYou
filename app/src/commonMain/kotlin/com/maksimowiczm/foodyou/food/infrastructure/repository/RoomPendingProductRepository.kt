@@ -6,7 +6,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.PendingProductDao
 import com.maksimowiczm.foodyou.food.infrastructure.room.PendingProductEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 internal class RoomPendingProductRepository(private val dao: PendingProductDao) :
     PendingProductRepository {

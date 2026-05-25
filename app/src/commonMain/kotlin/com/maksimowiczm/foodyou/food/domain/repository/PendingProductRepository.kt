@@ -2,7 +2,7 @@ package com.maksimowiczm.foodyou.food.domain.repository
 
 import com.maksimowiczm.foodyou.food.domain.entity.PendingProduct
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface PendingProductRepository {
     fun observePendingProducts(): Flow<List<PendingProduct>>
