@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -89,13 +90,35 @@ internal fun MealCard(
                 verticalAlignment = Alignment.Top,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = meal.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = meal.name,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        FilledTonalIconButton(
+                            onClick = onQuickAdd,
+                            modifier = Modifier.size(32.dp),
+                            shapes =
+                                IconButtonDefaults.shapes(
+                                    MaterialTheme.shapes.small,
+                                    MaterialTheme.shapes.extraSmall,
+                                ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Bolt,
+                                contentDescription =
+                                    stringResource(Res.string.headline_quick_add),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                     Text(
                         text = timeString,
                         style = MaterialTheme.typography.labelMedium,
@@ -131,16 +154,6 @@ internal fun MealCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,
             ) {
-                FilledTonalIconButton(
-                    onClick = onQuickAdd,
-                    shapes =
-                        IconButtonDefaults.shapes(
-                            MaterialTheme.shapes.medium,
-                            MaterialTheme.shapes.extraSmall,
-                        ),
-                ) {
-                    Icon(imageVector = Icons.Outlined.Bolt, contentDescription = null)
-                }
                 FilledIconButton(
                     onClick = onAddFood,
                     shapes =
