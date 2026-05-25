@@ -1,15 +1,12 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Icon
@@ -124,7 +121,7 @@ internal fun MealFoodListItem(
             containerColor = color,
             contentColor = contentColor,
             shape = shape,
-            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         )
     }
 }
@@ -175,7 +172,7 @@ internal fun MealFoodListItem(
             containerColor = color,
             contentColor = contentColor,
             shape = shape,
-            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         )
     }
 }
@@ -225,12 +222,6 @@ private fun LightweightMealFoodListItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FoodThumbnail(
-                isRecipe = isRecipe,
-                isManual = isManual,
-                modifier = Modifier.padding(start = 12.dp),
-            )
-
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -247,10 +238,10 @@ private fun LightweightMealFoodListItem(
                     ) {
                         Text(
                             text = headline,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            maxLines = 2,
+                            overflow = TextOverflow.Clip,
                         )
                         if (isRecipe) {
                             Icon(
@@ -308,35 +299,6 @@ private fun LightweightMealFoodListItem(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun FoodThumbnail(isRecipe: Boolean, isManual: Boolean, modifier: Modifier = Modifier) {
-    Box(
-        modifier =
-            modifier
-                .size(44.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        when {
-            isRecipe ->
-                Icon(
-                    painter = painterResource(Res.drawable.ic_skillet_filled),
-                    contentDescription = stringResource(Res.string.headline_recipe),
-                    modifier = Modifier.size(22.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-            isManual ->
-                Icon(
-                    imageVector = Icons.Outlined.Bolt,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
         }
     }
 }
