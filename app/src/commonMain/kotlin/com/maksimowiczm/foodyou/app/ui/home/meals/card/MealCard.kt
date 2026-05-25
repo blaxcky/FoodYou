@@ -242,7 +242,7 @@ private fun FoodContainer(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(Modifier.padding(horizontal = 8.dp))
         foods.forEachIndexed { i, entry ->
             val key =
                 remember(entry) {
@@ -261,10 +261,10 @@ private fun FoodContainer(
                 )
             }
             if (i != foods.lastIndex) {
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                HorizontalDivider(Modifier.padding(horizontal = 8.dp))
             }
         }
-        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(Modifier.padding(horizontal = 8.dp))
     }
 }
 
