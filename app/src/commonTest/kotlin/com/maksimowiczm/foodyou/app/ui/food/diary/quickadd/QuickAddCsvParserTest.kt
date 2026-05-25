@@ -58,6 +58,26 @@ class QuickAddCsvParserTest {
     }
 
     @Test
+    fun parsesHeaderAndDataRowSeparatedBySpaces() = runBlocking {
+        val result =
+            parser.parse(
+                "name,energy,proteins,carbohydrates,fats " +
+                    "\"Reis mit Huhn und Gemuese\",650,45,72,18"
+            )
+
+        assertEquals(
+            QuickAddCsvData(
+                name = "Reis mit Huhn und Gemuese",
+                energyKcal = 650.0,
+                proteins = 45.0,
+                carbohydrates = 72.0,
+                fats = 18.0,
+            ),
+            result.dataOrFail(),
+        )
+    }
+
+    @Test
     fun rejectsInvalidHeader() = runBlocking {
         val result =
             parser.parse(

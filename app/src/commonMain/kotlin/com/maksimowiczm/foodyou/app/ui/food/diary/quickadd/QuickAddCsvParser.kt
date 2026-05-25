@@ -39,9 +39,10 @@ internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAd
             return QuickAddCsvParseResult.Failure(QuickAddCsvError.Empty)
         }
 
+        val normalizedCsv = csv.normalizeMissingHeaderLineBreak()
         val records =
             try {
-                csvParser.parse(csv.encodeToByteArray().toList().asFlow()).toList()
+                csvParser.parse(normalizedCsv.encodeToByteArray().toList().asFlow()).toList()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -89,6 +90,14 @@ internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAd
 
     private companion object {
         val Header = listOf("name", "energy", "proteins", "carbohydrates", "fats")
+        val MissingHeaderLineBreakRegex =
+            Regex(
+                "^\\s*\\uFEFF?\\s*name\\s*,\\s*energy\\s*,\\s*proteins\\s*,\\s*" +
+                    "carbohydrates\\s*,\\s*fats[ \\t]+(?=\\S)"
+            )
+
+        fun String.normalizeMissingHeaderLineBreak(): String =
+            replaceFirst(MissingHeaderLineBreakRegex, Header.joinToString(",") + "\n")
 
         fun List<String?>.normalizedHeader(): List<String?> =
             mapIndexed { index, value ->
