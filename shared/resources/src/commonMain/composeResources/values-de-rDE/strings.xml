@@ -93,6 +93,7 @@
     <string name="description_import_fddb_products">Füge einen oder mehrere FDDB-Produktlinks ein. FoodYou importiert sie nacheinander und überspringt bereits vorhandene Produkte.</string>
     <string name="label_fddb_links">FDDB-Links</string>
     <string name="neutral_fddb_links_found">%1$d FDDB-Links gefunden</string>
+    <string name="neutral_fddb_queue_count">%1$d Links in der Warteschlange</string>
     <string name="neutral_fddb_import_summary">Importiert: %1$d · übersprungen: %2$d · fehlgeschlagen: %3$d</string>
     <string name="headline_import_failed">Import fehlgeschlagen</string>
     <string name="description_fddb_skip_barcode">Übersprungen, weil ein Produkt mit diesem Barcode bereits existiert</string>

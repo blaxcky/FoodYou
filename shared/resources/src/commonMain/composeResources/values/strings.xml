@@ -436,6 +436,7 @@
     <string name="description_import_fddb_products">Paste one or more FDDB product links. FoodYou imports them one by one and skips products that already exist.</string>
     <string name="label_fddb_links">FDDB links</string>
     <string name="neutral_fddb_links_found">%1$d FDDB links found</string>
+    <string name="neutral_fddb_queue_count">%1$d links queued</string>
     <string name="neutral_fddb_import_summary">Imported: %1$d · skipped: %2$d · failed: %3$d</string>
     <string name="headline_import_failed">Import failed</string>
     <string name="description_fddb_skip_barcode">Skipped because a product with this barcode already exists</string>

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Info
@@ -36,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalClipboardManager
+import com.maksimowiczm.foodyou.food.domain.entity.FddbImportQueueItem
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbImportResult
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbSkipReason
 import foodyou.app.generated.resources.*
@@ -50,7 +52,9 @@ fun ImportFddbProductsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) 
     ImportFddbProductsScreen(
         uiState = uiState,
         linkCount = viewModel::countLinks,
-        onImport = viewModel::import,
+        onAddLinks = viewModel::addLinks,
+        onImport = viewModel::importQueue,
+        onDeleteQueueItem = viewModel::deleteQueueItem,
         onBack = onBack,
         modifier = modifier,
     )
@@ -60,7 +64,9 @@ fun ImportFddbProductsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) 
 private fun ImportFddbProductsScreen(
     uiState: ImportFddbProductsUiState,
     linkCount: (String) -> Int,
-    onImport: (String) -> Unit,
+    onAddLinks: (String) -> Unit,
+    onImport: () -> Unit,
+    onDeleteQueueItem: (Long) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -126,13 +132,47 @@ private fun ImportFddbProductsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Button(
-                        onClick = { onImport(text) },
+                        onClick = {
+                            onAddLinks(text)
+                            text = ""
+                        },
                         enabled = count > 0 && !uiState.isImporting,
+                    ) {
+                        Text(stringResource(Res.string.action_add))
+                    }
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text =
+                            stringResource(
+                                Res.string.neutral_fddb_queue_count,
+                                uiState.queue.size,
+                            ),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Button(
+                        onClick = onImport,
+                        enabled = uiState.queue.isNotEmpty() && !uiState.isImporting,
                     ) {
                         Icon(Icons.Outlined.FileDownload, null)
                         Text(stringResource(Res.string.action_import))
                     }
                 }
+            }
+
+            items(uiState.queue, key = { it.id }) { item ->
+                FddbQueueItem(
+                    item = item,
+                    enabled = !uiState.isImporting,
+                    onDelete = { onDeleteQueueItem(item.id) },
+                )
             }
 
             if (uiState.isImporting || uiState.progress.results.isNotEmpty()) {
@@ -142,6 +182,36 @@ private fun ImportFddbProductsScreen(
             items(uiState.progress.results) { result -> ImportResultItem(result) }
         }
     }
+}
+
+@Composable
+private fun FddbQueueItem(item: FddbImportQueueItem, enabled: Boolean, onDelete: () -> Unit) {
+    val supportingContent: (@Composable () -> Unit)? =
+        item.lastError?.let { error ->
+            {
+                Text(
+                    text = error,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+    ListItem(
+        headlineContent = {
+            Text(
+                text = item.url.toFddbQueueLabel(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        supportingContent = supportingContent,
+        trailingContent = {
+            IconButton(onClick = onDelete, enabled = enabled) {
+                Icon(Icons.Outlined.Delete, null)
+            }
+        },
+    )
 }
 
 @Composable
@@ -166,6 +236,12 @@ private fun ImportProgress(uiState: ImportFddbProductsUiState) {
         )
     }
 }
+
+private fun String.toFddbQueueLabel(): String =
+    substringAfter("/lebensmittel/", missingDelimiterValue = this)
+        .substringAfter("/food/", missingDelimiterValue = this)
+        .removeSuffix("/index.html")
+        .replace('_', ' ')
 
 @Composable
 private fun ImportResultItem(result: FddbImportResult) {

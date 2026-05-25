@@ -20,6 +20,7 @@ internal fun Module.fddbModule() {
             FddbRemoteDataSource(
                 client = get(named(FddbRemoteDataSource::class.qualifiedName!!)),
                 parser = get(),
+                networkConfig = get(),
             )
         }
         .bind<FddbProductGateway>()

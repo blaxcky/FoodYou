@@ -6,10 +6,13 @@ import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.food.domain.entity.FddbImportQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbImportQueueRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
@@ -19,6 +22,7 @@ import kotlin.test.assertIs
 import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -27,10 +31,34 @@ import kotlinx.datetime.LocalDate
 
 class ImportFddbProductsUseCaseTest {
     @Test
+    fun addsDeduplicatedLinksToQueue() = runBlocking {
+        val queue = FakeFddbImportQueueRepository()
+        val useCase = AddFddbLinksToQueueUseCase(queue, FixedDateProvider)
+        val text = "${Url(1)} ${Url(1)}, ${Url(2)}"
+
+        val count = useCase(text)
+
+        assertEquals(2, count)
+        assertEquals(listOf(Url(1), Url(2)), queue.items.map { it.url })
+    }
+
+    @Test
+    fun doesNotAddExistingQueueUrlsAgain() = runBlocking {
+        val queue = FakeFddbImportQueueRepository()
+        val useCase = AddFddbLinksToQueueUseCase(queue, FixedDateProvider)
+
+        useCase("${Url(1)} ${Url(2)}")
+        useCase("${Url(1)} ${Url(2)}")
+
+        assertEquals(listOf(Url(1), Url(2)), queue.items.map { it.url })
+    }
+
+    @Test
     fun importsMultipleLinksSequentially() = runBlocking {
         val gateway = FakeFddbProductGateway()
         val repository = FakeProductRepository()
-        val useCase = useCase(gateway, repository)
+        val queue = FakeFddbImportQueueRepository()
+        val useCase = useCase(gateway, repository, queue)
         val links = "${Url(1)}\ntext ${Url(2)}"
 
         val progress = useCase.import(links).toList().last()
@@ -38,6 +66,7 @@ class ImportFddbProductsUseCaseTest {
         assertEquals(listOf(Url(1), Url(2)), gateway.requests)
         assertEquals(2, progress.imported)
         assertEquals(2, repository.products.size)
+        assertEquals(emptyList(), queue.items)
     }
 
     @Test
@@ -45,13 +74,15 @@ class ImportFddbProductsUseCaseTest {
         val gateway = FakeFddbProductGateway()
         val repository =
             FakeProductRepository(existingProduct = product(id = 1, barcode = "1234567890123"))
-        val useCase = useCase(gateway, repository)
+        val queue = FakeFddbImportQueueRepository()
+        val useCase = useCase(gateway, repository, queue)
 
         val result = useCase.import(Url(1)).toList().last().results.single()
 
         val skipped = assertIs<FddbImportResult.Skipped>(result)
         assertEquals(FddbSkipReason.BarcodeExists, skipped.reason)
         assertEquals(1, repository.products.size)
+        assertEquals(emptyList(), queue.items)
     }
 
     @Test
@@ -59,7 +90,8 @@ class ImportFddbProductsUseCaseTest {
         val gateway = FakeFddbProductGateway(packageWeight = 200.0, servingWeight = 12.0)
         val existing = product(id = 1, barcode = "1234567890123")
         val repository = FakeProductRepository(existingProduct = existing)
-        val useCase = useCase(gateway, repository)
+        val queue = FakeFddbImportQueueRepository()
+        val useCase = useCase(gateway, repository, queue)
 
         val result = useCase.import(Url(1)).toList().last().results.single()
 
@@ -67,6 +99,7 @@ class ImportFddbProductsUseCaseTest {
         assertEquals(FddbSkipReason.UpdatedWeights, skipped.reason)
         assertEquals(200.0, repository.products.single().packageWeight)
         assertEquals(12.0, repository.products.single().servingWeight)
+        assertEquals(emptyList(), queue.items)
     }
 
     @Test
@@ -78,9 +111,9 @@ class ImportFddbProductsUseCaseTest {
                 barcode = "1234567890123",
                 packageWeight = 150.0,
                 servingWeight = 10.0,
-            )
+        )
         val repository = FakeProductRepository(existingProduct = existing)
-        val useCase = useCase(gateway, repository)
+        val useCase = useCase(gateway, repository, FakeFddbImportQueueRepository())
 
         val result = useCase.import(Url(1)).toList().last().results.single()
 
@@ -94,30 +127,55 @@ class ImportFddbProductsUseCaseTest {
     fun failedLinksDoNotBlockFollowingLinks() = runBlocking {
         val gateway = FakeFddbProductGateway(failingUrl = Url(1))
         val repository = FakeProductRepository()
-        val useCase = useCase(gateway, repository)
+        val queue = FakeFddbImportQueueRepository()
+        val useCase = useCase(gateway, repository, queue)
 
         val progress = useCase.import("${Url(1)} ${Url(2)}").toList().last()
 
         assertEquals(1, progress.failed)
         assertEquals(1, progress.imported)
         assertEquals(1, repository.products.size)
+        assertEquals(listOf(Url(1)), queue.items.map { it.url })
+        assertEquals("Failed", queue.items.single().lastError)
+    }
+
+    @Test
+    fun repeatedRateLimitStopsImportAndKeepsRemainingQueue() = runBlocking {
+        val gateway = FakeFddbProductGateway(blockedUrl = Url(1))
+        val repository = FakeProductRepository()
+        val queue = FakeFddbImportQueueRepository()
+        queue.add(Url(1), FixedDateProvider.nowInstant())
+        queue.add(Url(2), FixedDateProvider.nowInstant())
+        val useCase = useCase(gateway, repository, queue)
+
+        val progress = useCase.importQueue().toList().last()
+
+        assertEquals(listOf(Url(1), Url(1)), gateway.requests)
+        assertEquals(1, progress.failed)
+        assertEquals(true, progress.isFinished)
+        assertEquals(listOf(Url(1), Url(2)), queue.items.map { it.url })
+        assertEquals("Blocked", queue.items.first().lastError)
     }
 
     private fun useCase(
         gateway: FddbProductGateway,
         repository: ProductRepository,
+        queue: FddbImportQueueRepository,
     ) =
         ImportFddbProductsUseCase(
             fddbProductGateway = gateway,
+            queueRepository = queue,
             productRepository = repository,
             historyRepository = FakeFoodHistoryRepository(),
             transactionProvider = ImmediateTransactionProvider,
             dateProvider = FixedDateProvider,
             requestDelayMillis = 0,
+            defaultBlockedCooldownMillis = 0,
         )
 
     private class FakeFddbProductGateway(
         private val failingUrl: String? = null,
+        private val blockedUrl: String? = null,
         private val packageWeight: Double? = null,
         private val servingWeight: Double? = null,
     ) : FddbProductGateway {
@@ -127,6 +185,9 @@ class ImportFddbProductsUseCaseTest {
             requests += url
             if (url == failingUrl) {
                 error("Failed")
+            }
+            if (url == blockedUrl) {
+                throw FddbAccessBlockedException("Blocked", retryAfterMillis = 0)
             }
 
             return FddbProduct(
@@ -144,6 +205,48 @@ class ImportFddbProductsUseCaseTest {
                         fats = NutrientValue.Complete(5.0),
                     ),
             )
+        }
+    }
+
+    private class FakeFddbImportQueueRepository : FddbImportQueueRepository {
+        private val flow = MutableStateFlow<List<FddbImportQueueItem>>(emptyList())
+        private var nextId = 1L
+        val items: List<FddbImportQueueItem>
+            get() = flow.value
+
+        override fun observeQueue(): Flow<List<FddbImportQueueItem>> = flow
+
+        override suspend fun getQueue(): List<FddbImportQueueItem> = flow.value
+
+        override suspend fun add(url: String, createdAt: Instant) {
+            if (flow.value.any { it.url == url }) {
+                return
+            }
+
+            flow.value =
+                flow.value +
+                    FddbImportQueueItem(
+                        id = nextId++,
+                        url = url,
+                        createdAt = createdAt,
+                        lastAttemptedAt = null,
+                        lastError = null,
+                    )
+        }
+
+        override suspend fun delete(id: Long) {
+            flow.value = flow.value.filterNot { it.id == id }
+        }
+
+        override suspend fun markAttempt(id: Long, attemptedAt: Instant, error: String?) {
+            flow.value =
+                flow.value.map {
+                    if (it.id == id) {
+                        it.copy(lastAttemptedAt = attemptedAt, lastError = error)
+                    } else {
+                        it
+                    }
+                }
         }
     }
 
