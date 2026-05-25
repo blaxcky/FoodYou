@@ -1,17 +1,18 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,16 +21,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodErrorListItem
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
-import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
-import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
@@ -123,7 +124,7 @@ internal fun MealFoodListItem(
             containerColor = color,
             contentColor = contentColor,
             shape = shape,
-            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
+            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
         )
     }
 }
@@ -174,7 +175,7 @@ internal fun MealFoodListItem(
             containerColor = color,
             contentColor = contentColor,
             shape = shape,
-            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
+            contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
         )
     }
 }
@@ -203,7 +204,15 @@ private fun LightweightMealFoodListItem(
     contentPadding: PaddingValues,
 ) {
     val nutrientsPalette = LocalNutrientsPalette.current
-    val order = LocalNutrientsOrder.current
+    val fatsShort = stringResource(Res.string.nutriment_fats_short)
+    val carbohydratesShort = stringResource(Res.string.nutriment_carbohydrates_short)
+    val proteinsShort = stringResource(Res.string.nutriment_proteins_short)
+    val measurementParts = remember(measurement) { measurement?.splitMeasurementAndWeight() }
+    val headline =
+        remember(name, measurementParts) {
+            measurementParts?.measurement?.let { "$it $name" } ?: name
+        }
+    val supportingMeasurement = measurementParts?.weight ?: measurement
 
     Surface(
         modifier = modifier,
@@ -213,88 +222,157 @@ private fun LightweightMealFoodListItem(
     ) {
         Row(
             modifier = Modifier.padding(contentPadding),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            FoodThumbnail(
+                isRecipe = isRecipe,
+                isManual = isManual,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                CompositionLocalProvider(
-                    LocalTextStyle provides MaterialTheme.typography.titleMediumEmphasized
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(
+                        modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(name)
+                        Text(
+                            text = headline,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         if (isRecipe) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_skillet_filled),
                                 contentDescription = stringResource(Res.string.headline_recipe),
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                         if (isManual) {
                             Icon(
                                 imageVector = Icons.Outlined.Bolt,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }
+
+                    Text(
+                        text = calories,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                    )
                 }
 
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        Text(text = calories, style = MaterialTheme.typography.bodySmall)
-
-                        order.forEach { field ->
-                            when (field) {
-                                NutrientsOrder.Proteins ->
-                                    CompositionLocalProvider(
-                                        LocalContentColor provides
-                                            nutrientsPalette.proteinsOnSurfaceContainer
-                                    ) {
-                                        Text(
-                                            text = proteins,
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
-                                    }
-
-                                NutrientsOrder.Fats ->
-                                    CompositionLocalProvider(
-                                        LocalContentColor provides
-                                            nutrientsPalette.fatsOnSurfaceContainer
-                                    ) {
-                                        Text(text = fats, style = MaterialTheme.typography.bodySmall)
-                                    }
-
-                                NutrientsOrder.Carbohydrates ->
-                                    CompositionLocalProvider(
-                                        LocalContentColor provides
-                                            nutrientsPalette.carbohydratesOnSurfaceContainer
-                                    ) {
-                                        Text(
-                                            text = carbohydrates,
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
-                                    }
-
-                                NutrientsOrder.Other,
-                                NutrientsOrder.Vitamins,
-                                NutrientsOrder.Minerals -> Unit
-                            }
-                        }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (supportingMeasurement != null) {
+                        Text(
+                            text = supportingMeasurement,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = " - ",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
                     }
-                }
-
-                if (measurement != null) {
-                    Text(text = measurement, style = MaterialTheme.typography.bodySmall)
+                    MacroText(
+                        text = "$fats $fatsShort",
+                        color = nutrientsPalette.fatsOnSurfaceContainer,
+                    )
+                    SeparatorText()
+                    MacroText(
+                        text = "$carbohydrates $carbohydratesShort",
+                        color = nutrientsPalette.carbohydratesOnSurfaceContainer,
+                    )
+                    SeparatorText()
+                    MacroText(
+                        text = "$proteins $proteinsShort",
+                        color = nutrientsPalette.proteinsOnSurfaceContainer,
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun FoodThumbnail(isRecipe: Boolean, isManual: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier =
+            modifier
+                .size(44.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            isRecipe ->
+                Icon(
+                    painter = painterResource(Res.drawable.ic_skillet_filled),
+                    contentDescription = stringResource(Res.string.headline_recipe),
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+            isManual ->
+                Icon(
+                    imageVector = Icons.Outlined.Bolt,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+        }
+    }
+}
+
+@Composable
+private fun MacroText(text: String, color: Color) {
+    Text(
+        text = text,
+        color = color,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+        overflow = TextOverflow.Clip,
+    )
+}
+
+@Composable
+private fun SeparatorText() {
+    Text(
+        text = ", ",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+    )
+}
+
+private data class MeasurementParts(val measurement: String?, val weight: String?)
+
+private fun String.splitMeasurementAndWeight(): MeasurementParts {
+    val start = lastIndexOf(" (")
+    val end = lastIndexOf(')')
+    if (start <= 0 || end != lastIndex) {
+        return MeasurementParts(measurement = null, weight = this)
+    }
+
+    return MeasurementParts(
+        measurement = substring(startIndex = 0, endIndex = start),
+        weight = substring(startIndex = start + 2, endIndex = end),
+    )
 }

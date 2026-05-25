@@ -241,7 +241,7 @@ private fun FoodContainer(
     onDeleteEntry: (MealEntryModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(modifier = modifier) {
         foods.forEachIndexed { i, entry ->
             val key =
                 remember(entry) {
@@ -258,6 +258,9 @@ private fun FoodContainer(
                     onDeleteEntry = onDeleteEntry,
                     shape = foodItemShape(index = i, lastIndex = foods.lastIndex),
                 )
+            }
+            if (i != foods.lastIndex) {
+                HorizontalDivider()
             }
         }
     }
@@ -306,7 +309,7 @@ private fun FoodContainerItem(
 
     MealFoodListItem(
         entry = entry,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         shape = shape,
         modifier = modifier.clickable { showBottomSheet = true },
