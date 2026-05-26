@@ -548,6 +548,11 @@ private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Mo
     val remaining = model.totalGoal - model.totalEnergy
     val absoluteRemaining = abs(remaining)
     val estimatedWeightKg = (absoluteRemaining / 7700.0).formatKgEstimate()
+    val weightChangeLabel =
+        stringResource(
+            if (remaining >= 0) Res.string.weekly_weight_lost
+            else Res.string.weekly_weight_gained
+        )
     val average = if (model.days.isEmpty()) 0 else model.totalEnergy / model.days.size
     val percent =
         if (model.totalGoal <= 0) 0 else (model.totalEnergy.toFloat() / model.totalGoal * 100).roundToInt()
@@ -583,14 +588,10 @@ private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Mo
 
         HorizontalDivider(color = GoalsTrackColor)
 
-        WeeklyFooterMetric(
+        WeeklyFooterWeightEstimate(
             icon = Icons.Filled.MonitorWeight,
-            value = "$estimatedWeightKg kg",
-            label =
-                stringResource(
-                    if (remaining >= 0) Res.string.weekly_weight_lost
-                    else Res.string.weekly_weight_gained
-                ),
+            text = "$estimatedWeightKg kg $weightChangeLabel",
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -614,6 +615,30 @@ private fun WeeklyFooterMetric(
             Text(text = value, style = MaterialTheme.typography.bodyMedium, color = GoalsTextColor)
             Text(text = label, style = MaterialTheme.typography.labelMedium, color = GoalsTextColor)
         }
+    }
+}
+
+@Composable
+private fun WeeklyFooterWeightEstimate(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = GoalsTextColor,
+            modifier = Modifier.size(22.dp).alpha(0.95f),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = GoalsTextColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
