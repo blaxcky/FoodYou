@@ -45,10 +45,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -590,7 +593,8 @@ private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Mo
 
         WeeklyFooterWeightEstimate(
             icon = Icons.Filled.MonitorWeight,
-            text = "$estimatedWeightKg kg $weightChangeLabel",
+            value = "$estimatedWeightKg kg",
+            label = weightChangeLabel,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -612,8 +616,18 @@ private fun WeeklyFooterMetric(
         )
         Spacer(Modifier.width(6.dp))
         Column {
-            Text(text = value, style = MaterialTheme.typography.bodyMedium, color = GoalsTextColor)
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = GoalsTextColor)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = GoalsTextColor,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Normal,
+                color = GoalsTextColor,
+            )
         }
     }
 }
@@ -621,9 +635,17 @@ private fun WeeklyFooterMetric(
 @Composable
 private fun WeeklyFooterWeightEstimate(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    text: String,
+    value: String,
+    label: String,
     modifier: Modifier = Modifier,
 ) {
+    val text =
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(value) }
+            append(" ")
+            append(label)
+        }
+
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = icon,
