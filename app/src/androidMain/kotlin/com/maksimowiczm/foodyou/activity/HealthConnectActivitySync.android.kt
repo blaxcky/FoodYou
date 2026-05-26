@@ -9,7 +9,6 @@ import androidx.health.connect.client.request.AggregateRequest
 import androidx.work.CoroutineWorker
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProvider
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
@@ -110,7 +109,6 @@ private class AndroidHealthConnectActivitySync(
             settingsRepository.update {
                 copy(healthConnectStepsLastSyncedEpochSeconds = Clock.System.now().epochSeconds)
             }
-            CalorieWidgetProvider.updateAllValues(context)
             HealthConnectSyncResult.Synced
         } catch (_: SecurityException) {
             HealthConnectSyncResult.MissingPermission

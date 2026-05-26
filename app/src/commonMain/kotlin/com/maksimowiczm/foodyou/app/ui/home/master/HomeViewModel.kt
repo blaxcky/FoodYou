@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.HealthConnectActivitySync
 import com.maksimowiczm.foodyou.activity.HealthConnectSyncResult
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncResult
@@ -199,13 +200,17 @@ internal class HomeViewModel(
             isSyncing.value = true
             clearBurnedEnergySyncDelta()
             try {
-                syncActivitiesForBurnedEnergyDelta(
+                val syncDelta =
+                    syncActivitiesForBurnedEnergyDelta(
                         date = date,
                         settingsRepository = settingsRepository,
                         healthConnectActivitySync = healthConnectActivitySync,
                         activityRepository = activityRepository,
                     )
-                    ?.let(::showBurnedEnergySyncDelta)
+                syncDelta?.let(::showBurnedEnergySyncDelta)
+                if (syncDelta != null) {
+                    updateCalorieWidgetValues()
+                }
             } finally {
                 nowEpochSeconds.value = Clock.System.now().epochSeconds
                 isSyncing.value = false
@@ -218,42 +223,46 @@ internal class HomeViewModel(
 
         viewModelScope.launch {
             val settings = settingsRepository.observe().first()
-            syncConfiguredHomeSync(
-                date = date,
-                settings = settings,
-                settingsRepository = settingsRepository,
-                syncHealthConnect = {
-                    if (!isSyncing.value) {
-                        isSyncing.value = true
-                        clearBurnedEnergySyncDelta()
-                        try {
-                            syncActivitiesForBurnedEnergyDelta(
-                                    date = date,
-                                    settingsRepository = settingsRepository,
-                                    healthConnectActivitySync = healthConnectActivitySync,
-                                    activityRepository = activityRepository,
-                                )
-                                ?.let(::showBurnedEnergySyncDelta)
-                        } finally {
-                            nowEpochSeconds.value = Clock.System.now().epochSeconds
-                            isSyncing.value = false
+            val result =
+                syncConfiguredHomeSync(
+                    date = date,
+                    settings = settings,
+                    settingsRepository = settingsRepository,
+                    syncHealthConnect = {
+                        if (!isSyncing.value) {
+                            isSyncing.value = true
+                            clearBurnedEnergySyncDelta()
+                            try {
+                                syncActivitiesForBurnedEnergyDelta(
+                                        date = date,
+                                        settingsRepository = settingsRepository,
+                                        healthConnectActivitySync = healthConnectActivitySync,
+                                        activityRepository = activityRepository,
+                                    )
+                                    ?.let(::showBurnedEnergySyncDelta)
+                            } finally {
+                                nowEpochSeconds.value = Clock.System.now().epochSeconds
+                                isSyncing.value = false
+                            }
                         }
-                    }
-                },
-                hasFddbCredentials = fddbDiarySyncUseCase::hasCredentials,
-                syncFddbDiary = { selectedDate ->
-                    if (fddbSyncInProgress.value) {
-                        FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0)
-                    } else {
-                        fddbSyncInProgress.value = true
-                        try {
-                            fddbDiarySyncUseCase.sync(selectedDate)
-                        } finally {
-                            fddbSyncInProgress.value = false
+                    },
+                    hasFddbCredentials = fddbDiarySyncUseCase::hasCredentials,
+                    syncFddbDiary = { selectedDate ->
+                        if (fddbSyncInProgress.value) {
+                            FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0)
+                        } else {
+                            fddbSyncInProgress.value = true
+                            try {
+                                fddbDiarySyncUseCase.sync(selectedDate)
+                            } finally {
+                                fddbSyncInProgress.value = false
+                            }
                         }
-                    }
-                },
-            )
+                    },
+                )
+            if (result.healthConnectSynced || result.fddbDiarySynced) {
+                updateCalorieWidgetValues()
+            }
         }
     }
 
@@ -266,7 +275,9 @@ internal class HomeViewModel(
             }
             fddbSyncInProgress.value = true
             try {
-                settingsRepository.recordFddbDiarySyncResult(fddbDiarySyncUseCase.sync(date))
+                val result = fddbDiarySyncUseCase.sync(date)
+                settingsRepository.recordFddbDiarySyncResult(result)
+                updateCalorieWidgetValues()
             } catch (throwable: Throwable) {
                 settingsRepository.recordFddbDiarySyncFailure(throwable)
             } finally {
