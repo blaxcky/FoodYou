@@ -178,6 +178,7 @@
     <string name="action_edit">Edit</string>
     <string name="action_insert_suggested_search">Insert suggested search</string>
     <string name="action_edit_entry">Edit entry</string>
+    <string name="action_add_to_entry">Add more</string>
     <string name="action_delete_entry">Delete entry</string>
     <string name="action_close">Close</string>
     <string name="action_discard">Discard</string>

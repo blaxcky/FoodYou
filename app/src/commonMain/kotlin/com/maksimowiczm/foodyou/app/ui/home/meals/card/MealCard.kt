@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Bolt
@@ -53,6 +54,7 @@ internal fun MealCard(
     onAddFood: () -> Unit,
     onQuickAdd: () -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
+    onAddToEntry: (MealEntryModel) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -135,6 +137,7 @@ internal fun MealCard(
             FoodContainer(
                 foods = meal.foods,
                 onEditEntry = onEditEntry,
+                onAddToEntry = onAddToEntry,
                 onDeleteEntry = onDeleteEntry,
                 modifier =
                     Modifier.fillMaxWidth()
@@ -224,6 +227,7 @@ private data class MacroSummary(
 private fun FoodContainer(
     foods: List<MealEntryModel>,
     onEditEntry: (MealEntryModel) -> Unit,
+    onAddToEntry: (MealEntryModel) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -242,6 +246,7 @@ private fun FoodContainer(
                 FoodContainerItem(
                     entry = entry,
                     onEditEntry = onEditEntry,
+                    onAddToEntry = onAddToEntry,
                     onDeleteEntry = onDeleteEntry,
                     shape = foodItemShape(index = i, lastIndex = foods.lastIndex),
                 )
@@ -264,6 +269,7 @@ private fun foodItemShape(index: Int, lastIndex: Int): Shape {
 private fun FoodContainerItem(
     entry: MealEntryModel,
     onEditEntry: (MealEntryModel) -> Unit,
+    onAddToEntry: (MealEntryModel) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     shape: Shape,
     modifier: Modifier = Modifier,
@@ -280,6 +286,13 @@ private fun FoodContainerItem(
                 onEdit = {
                     coroutineScope.launch {
                         onEditEntry(entry)
+                        sheetState.hide()
+                        showBottomSheet = false
+                    }
+                },
+                onAddToEntry = {
+                    coroutineScope.launch {
+                        onAddToEntry(entry)
                         sheetState.hide()
                         showBottomSheet = false
                     }
@@ -308,6 +321,7 @@ private fun FoodContainerItem(
 private fun BottomSheetContent(
     entry: MealEntryModel,
     onEdit: () -> Unit,
+    onAddToEntry: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -335,6 +349,12 @@ private fun BottomSheetContent(
             headlineContent = { Text(stringResource(Res.string.action_edit_entry)) },
             modifier = Modifier.clickable { onEdit() },
             leadingContent = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+        ListItem(
+            headlineContent = { Text(stringResource(Res.string.action_add_to_entry)) },
+            modifier = Modifier.clickable { onAddToEntry() },
+            leadingContent = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
         ListItem(

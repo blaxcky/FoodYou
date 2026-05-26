@@ -274,6 +274,7 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_insert_suggested_search">Vorgeschlagene Suche einfügen</string>
     <string name="action_edit_entry">Eintrag bearbeiten</string>
+    <string name="action_add_to_entry">Ergänzen</string>
     <string name="action_delete_entry">Eintrag löschen</string>
     <string name="action_close">Schließen</string>
     <string name="action_discard">Verwerfen</string>

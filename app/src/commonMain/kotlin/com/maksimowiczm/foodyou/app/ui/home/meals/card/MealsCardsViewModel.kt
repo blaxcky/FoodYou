@@ -2,7 +2,9 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryMeal
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -30,6 +33,7 @@ internal class MealsCardsViewModel(
     private val observeDiaryMealsUseCase: ObserveDiaryMealsUseCase,
     private val foodEntryRepository: FoodDiaryEntryRepository,
     private val manualEntryRepository: ManualDiaryEntryRepository,
+    private val dateProvider: DateProvider,
     mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
@@ -63,6 +67,31 @@ internal class MealsCardsViewModel(
             when (model) {
                 is FoodMealEntryModel -> foodEntryRepository.delete(model.id)
                 is ManualMealEntryModel -> manualEntryRepository.delete(model.id)
+            }
+        }
+    }
+
+    fun onAddToEntry(model: MealEntryModel) {
+        viewModelScope.launch {
+            val now = dateProvider.now()
+            when (model) {
+                is FoodMealEntryModel -> {
+                    val entry = foodEntryRepository.observe(model.id).firstOrNull() ?: return@launch
+                    foodEntryRepository.update(
+                        entry.copy(measurement = entry.measurement * 2.0, updatedAt = now)
+                    )
+                }
+
+                is ManualMealEntryModel -> {
+                    val entry =
+                        manualEntryRepository.observe(model.id).firstOrNull() ?: return@launch
+                    manualEntryRepository.update(
+                        entry.copy(
+                            nutritionFacts = entry.nutritionFacts * 2.0,
+                            updatedAt = now,
+                        )
+                    )
+                }
             }
         }
     }
