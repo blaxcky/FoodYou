@@ -3,6 +3,10 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.card
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryEntry
@@ -71,14 +75,21 @@ internal class MealsCardsViewModel(
         }
     }
 
-    fun onAddToEntry(model: MealEntryModel) {
+    fun onAddToEntry(model: MealEntryModel, amount: Double) {
+        if (amount <= 0.0) return
+
         viewModelScope.launch {
             val now = dateProvider.now()
             when (model) {
                 is FoodMealEntryModel -> {
                     val entry = foodEntryRepository.observe(model.id).firstOrNull() ?: return@launch
+                    val updatedMeasurement =
+                        Measurement.from(
+                            type = entry.measurement.type,
+                            rawValue = entry.measurement.rawValue + amount,
+                        )
                     foodEntryRepository.update(
-                        entry.copy(measurement = entry.measurement * 2.0, updatedAt = now)
+                        entry.copy(measurement = updatedMeasurement, updatedAt = now)
                     )
                 }
 
@@ -87,7 +98,7 @@ internal class MealsCardsViewModel(
                         manualEntryRepository.observe(model.id).firstOrNull() ?: return@launch
                     manualEntryRepository.update(
                         entry.copy(
-                            nutritionFacts = entry.nutritionFacts * 2.0,
+                            nutritionFacts = entry.nutritionFacts * (1.0 + amount),
                             updatedAt = now,
                         )
                     )

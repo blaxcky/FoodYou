@@ -47,7 +47,7 @@ internal class MealsCardsState(
     val onAdd: (mealId: Long) -> Unit,
     val onQuickAdd: (mealId: Long) -> Unit,
     val onEditEntry: (MealEntryModel) -> Unit,
-    val onAddToEntry: (MealEntryModel) -> Unit,
+    val onAddToEntry: (MealEntryModel, Double) -> Unit,
     val onDeleteEntry: (MealEntryModel) -> Unit,
     val onLongClick: (mealId: Long) -> Unit,
 )

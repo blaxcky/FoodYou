@@ -18,7 +18,7 @@ internal fun HorizontalMealsCards(
     onAdd: (mealId: Long) -> Unit,
     onQuickAdd: (mealId: Long) -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
-    onAddToEntry: (MealEntryModel) -> Unit,
+    onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     onLongClick: (mealId: Long) -> Unit,
     contentPadding: PaddingValues,

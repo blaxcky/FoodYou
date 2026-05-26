@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -24,6 +25,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -36,14 +38,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
+import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
+import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -54,7 +61,7 @@ internal fun MealCard(
     onAddFood: () -> Unit,
     onQuickAdd: () -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
-    onAddToEntry: (MealEntryModel) -> Unit,
+    onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -227,7 +234,7 @@ private data class MacroSummary(
 private fun FoodContainer(
     foods: List<MealEntryModel>,
     onEditEntry: (MealEntryModel) -> Unit,
-    onAddToEntry: (MealEntryModel) -> Unit,
+    onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -269,7 +276,7 @@ private fun foodItemShape(index: Int, lastIndex: Int): Shape {
 private fun FoodContainerItem(
     entry: MealEntryModel,
     onEditEntry: (MealEntryModel) -> Unit,
-    onAddToEntry: (MealEntryModel) -> Unit,
+    onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     shape: Shape,
     modifier: Modifier = Modifier,
@@ -290,9 +297,9 @@ private fun FoodContainerItem(
                         showBottomSheet = false
                     }
                 },
-                onAddToEntry = {
+                onAddToEntry = { amount ->
                     coroutineScope.launch {
-                        onAddToEntry(entry)
+                        onAddToEntry(entry, amount)
                         sheetState.hide()
                         showBottomSheet = false
                     }
@@ -321,11 +328,12 @@ private fun FoodContainerItem(
 private fun BottomSheetContent(
     entry: MealEntryModel,
     onEdit: () -> Unit,
-    onAddToEntry: () -> Unit,
+    onAddToEntry: (Double) -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var showAddToEntryDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showDeleteDialog) {
         DeleteDialog(
@@ -333,6 +341,17 @@ private fun BottomSheetContent(
             onDeleteEntry = {
                 onDelete()
                 showDeleteDialog = false
+            },
+        )
+    }
+
+    if (showAddToEntryDialog) {
+        AddToEntryDialog(
+            entry = entry,
+            onDismissRequest = { showAddToEntryDialog = false },
+            onAddToEntry = { amount ->
+                onAddToEntry(amount)
+                showAddToEntryDialog = false
             },
         )
     }
@@ -353,7 +372,7 @@ private fun BottomSheetContent(
         )
         ListItem(
             headlineContent = { Text(stringResource(Res.string.action_add_to_entry)) },
-            modifier = Modifier.clickable { onAddToEntry() },
+            modifier = Modifier.clickable { showAddToEntryDialog = true },
             leadingContent = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
@@ -393,5 +412,66 @@ private fun DeleteDialog(onDismissRequest: () -> Unit, onDeleteEntry: () -> Unit
         },
         title = { Text(stringResource(Res.string.action_delete_entry)) },
         text = { Text(stringResource(Res.string.description_delete_product_entry)) },
+    )
+}
+
+@Composable
+private fun AddToEntryDialog(
+    entry: MealEntryModel,
+    onDismissRequest: () -> Unit,
+    onAddToEntry: (Double) -> Unit,
+) {
+    val initialAmount =
+        remember(entry) {
+            when (entry) {
+                is FoodMealEntryModel -> entry.measurement.rawValue.formatClipZeros()
+                is ManualMealEntryModel -> "1"
+            }
+        }
+    var amountText by rememberSaveable(initialAmount) { mutableStateOf(initialAmount) }
+    val amount = remember(amountText) { amountText.replace(',', '.').toDoubleOrNull() }
+    val isError = amountText.isNotBlank() && (amount == null || amount <= 0.0)
+
+    val suffix =
+        when (entry) {
+            is FoodMealEntryModel ->
+                entry.measurement.type.stringResource(
+                    servingUnit = if (entry.isRecipe) ServingUnit.Serving else ServingUnit.Piece
+                )
+            is ManualMealEntryModel -> null
+        }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                enabled = amount != null && amount > 0.0,
+                onClick = { onAddToEntry(amount ?: return@TextButton) },
+            ) {
+                Text(stringResource(Res.string.action_add))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(Res.string.action_cancel))
+            }
+        },
+        title = { Text(stringResource(Res.string.action_add_to_entry)) },
+        text = {
+            OutlinedTextField(
+                value = amountText,
+                onValueChange = { amountText = it },
+                label = { Text(stringResource(Res.string.label_additional_amount)) },
+                suffix = suffix?.let { { Text(it) } },
+                isError = isError,
+                supportingText = {
+                    if (isError) {
+                        Text(stringResource(Res.string.error_invalid_number))
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+            )
+        },
     )
 }

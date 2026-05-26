@@ -164,6 +164,7 @@
     <string name="unit_energy" description="Energy as calories">Brennwert in Kalorien</string>
     <string name="unit_kcal">kcal</string>
     <string name="label_burned_kcal">Verbrannte kcal</string>
+    <string name="label_additional_amount">Zusätzliche Menge</string>
     <string name="unit_kilojoules">kJ</string>
     <plurals name="unit_gram">
         <item quantity="one">Gramm</item>
