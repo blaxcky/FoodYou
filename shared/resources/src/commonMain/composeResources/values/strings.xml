@@ -116,6 +116,8 @@
     <string name="weekly_percent">Percent</string>
     <string name="weekly_per_day">per day</string>
     <string name="weekly_reached">reached</string>
+    <string name="weekly_weight_lost">lost</string>
+    <string name="weekly_weight_gained">gained</string>
     <string name="neutral_today_short">Today</string>
     <string name="nutriment_saturated_fats">Saturated fats</string>
     <string name="nutriment_polyunsaturated_fats">Polyunsaturated fats</string>

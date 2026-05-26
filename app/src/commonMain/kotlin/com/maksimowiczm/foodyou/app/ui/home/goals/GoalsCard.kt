@@ -87,6 +87,8 @@ import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_per_day
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.weekly_reached
+import foodyou.app.generated.resources.weekly_weight_gained
+import foodyou.app.generated.resources.weekly_weight_lost
 import foodyou.app.generated.resources.weekly_so_far
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
@@ -544,33 +546,51 @@ private fun WeeklyDetailsRow(
 @Composable
 private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Modifier) {
     val remaining = model.totalGoal - model.totalEnergy
-    val absoluteRemaining = kotlin.math.abs(remaining)
+    val absoluteRemaining = abs(remaining)
+    val estimatedWeightKg = (absoluteRemaining / 7700.0).formatKgEstimate()
     val average = if (model.days.isEmpty()) 0 else model.totalEnergy / model.days.size
     val percent =
         if (model.totalGoal <= 0) 0 else (model.totalEnergy.toFloat() / model.totalGoal * 100).roundToInt()
 
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Top,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            WeeklyFooterMetric(
+                icon = Icons.Filled.Speed,
+                value = "${absoluteRemaining.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
+                label = stringResource(if (remaining >= 0) Res.string.goal_left else Res.string.goal_too_much),
+                modifier = Modifier.weight(1f),
+            )
+            WeeklyFooterMetric(
+                icon = Icons.Filled.LocalFireDepartment,
+                value = "${average.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
+                label = stringResource(Res.string.weekly_per_day),
+                modifier = Modifier.weight(1f),
+            )
+            WeeklyFooterMetric(
+                icon = Icons.Filled.CheckCircleOutline,
+                value = "$percent %",
+                label = stringResource(Res.string.weekly_reached),
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        HorizontalDivider(color = GoalsTrackColor)
+
         WeeklyFooterMetric(
-            icon = Icons.Filled.Speed,
-            value = "${absoluteRemaining.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
-            label = stringResource(if (remaining >= 0) Res.string.goal_left else Res.string.goal_too_much),
-            modifier = Modifier.weight(1f),
-        )
-        WeeklyFooterMetric(
-            icon = Icons.Filled.LocalFireDepartment,
-            value = "${average.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
-            label = stringResource(Res.string.weekly_per_day),
-            modifier = Modifier.weight(1f),
-        )
-        WeeklyFooterMetric(
-            icon = Icons.Filled.CheckCircleOutline,
-            value = "$percent %",
-            label = stringResource(Res.string.weekly_reached),
-            modifier = Modifier.weight(1f),
+            icon = Icons.Filled.MonitorWeight,
+            value = "$estimatedWeightKg kg",
+            label =
+                stringResource(
+                    if (remaining >= 0) Res.string.weekly_weight_lost
+                    else Res.string.weekly_weight_gained
+                ),
         )
     }
 }
@@ -1124,6 +1144,11 @@ private fun String.groupDigits(): String {
             .chunked(3)
             .joinToString(" ")
             .reversed()
+}
+
+private fun Double.formatKgEstimate(): String {
+    val centiKg = (this * 100).roundToInt()
+    return "${centiKg / 100}.${(centiKg % 100).toString().padStart(2, '0')}"
 }
 
 private fun WeekDaySummaryModel.chartLabel(

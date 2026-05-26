@@ -215,6 +215,8 @@
     <string name="weekly_percent">Prozent</string>
     <string name="weekly_per_day">pro Tag</string>
     <string name="weekly_reached">erreicht</string>
+    <string name="weekly_weight_lost">abgenommen</string>
+    <string name="weekly_weight_gained">zugenommen</string>
     <string name="neutral_today_short">Heute</string>
     <string name="nutriment_saturated_fats">Gesättigte Fettsäuren</string>
     <string name="nutriment_polyunsaturated_fats">Mehrfach ungesättigte Fettsäuren</string>
