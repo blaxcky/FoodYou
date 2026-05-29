@@ -54,23 +54,77 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun syncActivitiesForBurnedEnergyDeltaReadsBeforeAndAfterSuccessfulSync() = runBlocking {
-        val date = LocalDate(2026, 5, 17)
+    fun syncActivitiesForBurnedEnergyDeltaReadsSelectedTodayAndYesterday() = runBlocking {
+        val selectedDate = LocalDate(2026, 5, 16)
+        val today = LocalDate(2026, 5, 18)
+        val yesterday = LocalDate(2026, 5, 17)
         val settingsRepository = FakeSettingsRepository()
-        val activityRepository = FakeActivityRepository(totalEnergyKcal = listOf(955.0, 960.0))
+        val activityRepository =
+            FakeActivityRepository(
+                totalEnergyKcal = listOf(955.0, 100.0, 450.0, 960.0, 110.0, 450.0)
+            )
         val activitySync = FakeHealthConnectActivitySync(HealthConnectSyncResult.Synced)
 
-        val delta =
+        val deltas =
             syncActivitiesForBurnedEnergyDelta(
-                date = date,
+                date = selectedDate,
                 settingsRepository = settingsRepository,
                 healthConnectActivitySync = activitySync,
                 activityRepository = activityRepository,
+                today = today,
             )
 
-        assertEquals(BurnedEnergySyncDelta(date = date, kcal = 5), delta)
-        assertEquals(listOf(date, date), activityRepository.observedDates)
-        assertTrue(activitySync.syncedDates.single().contains(date))
+        assertEquals(mapOf(selectedDate to 5, today to 10, yesterday to 0), deltas)
+        assertEquals(
+            listOf(selectedDate, today, yesterday, selectedDate, today, yesterday),
+            activityRepository.observedDates,
+        )
+        assertTrue(activitySync.syncedDates.single().contains(selectedDate))
+    }
+
+    @Test
+    fun syncActivitiesForBurnedEnergyDeltaIncludesOldSelectedDateWithTodayAndYesterday() =
+        runBlocking {
+            val selectedDate = LocalDate(2026, 4, 1)
+            val today = LocalDate(2026, 5, 18)
+            val yesterday = LocalDate(2026, 5, 17)
+            val activityRepository =
+                FakeActivityRepository(
+                    totalEnergyKcal = listOf(10.0, 100.0, 450.0, 20.0, 110.0, 455.0)
+                )
+
+            val deltas =
+                syncActivitiesForBurnedEnergyDelta(
+                    date = selectedDate,
+                    settingsRepository = FakeSettingsRepository(),
+                    healthConnectActivitySync =
+                        FakeHealthConnectActivitySync(HealthConnectSyncResult.Synced),
+                    activityRepository = activityRepository,
+                    today = today,
+                )
+
+            assertEquals(mapOf(selectedDate to 10, today to 10, yesterday to 5), deltas)
+        }
+
+    @Test
+    fun syncActivitiesForBurnedEnergyDeltaDoesNotDuplicateTodayWhenSelected() = runBlocking {
+        val today = LocalDate(2026, 5, 18)
+        val yesterday = LocalDate(2026, 5, 17)
+        val activityRepository =
+            FakeActivityRepository(totalEnergyKcal = listOf(100.0, 450.0, 110.0, 455.0))
+
+        val deltas =
+            syncActivitiesForBurnedEnergyDelta(
+                date = today,
+                settingsRepository = FakeSettingsRepository(),
+                healthConnectActivitySync =
+                    FakeHealthConnectActivitySync(HealthConnectSyncResult.Synced),
+                activityRepository = activityRepository,
+                today = today,
+            )
+
+        assertEquals(mapOf(today to 10, yesterday to 5), deltas)
+        assertEquals(listOf(today, yesterday, today, yesterday), activityRepository.observedDates)
     }
 
     @Test
@@ -82,7 +136,9 @@ class HomeViewModelTest {
                     date = date,
                     settingsRepository = FakeSettingsRepository(),
                     healthConnectActivitySync = FakeHealthConnectActivitySync(result),
-                    activityRepository = FakeActivityRepository(totalEnergyKcal = listOf(960.0)),
+                    activityRepository =
+                        FakeActivityRepository(totalEnergyKcal = listOf(960.0, 100.0)),
+                    today = date,
                 )
 
             assertNull(delta)
@@ -101,7 +157,9 @@ class HomeViewModelTest {
                     settingsRepository = settingsRepository,
                     healthConnectActivitySync =
                         FakeHealthConnectActivitySync(HealthConnectSyncResult.MissingPermission),
-                    activityRepository = FakeActivityRepository(totalEnergyKcal = listOf(960.0)),
+                    activityRepository =
+                        FakeActivityRepository(totalEnergyKcal = listOf(960.0, 100.0)),
+                    today = date,
                 )
 
             assertNull(delta)

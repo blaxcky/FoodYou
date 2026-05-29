@@ -33,12 +33,10 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 
-internal data class BurnedEnergySyncDelta(val date: LocalDate, val kcal: Int)
-
 internal data class HomeActivitySyncState(
     val isStale: Boolean,
     val isSyncing: Boolean,
-    val burnedEnergySyncDelta: BurnedEnergySyncDelta?,
+    val burnedEnergySyncDeltas: Map<LocalDate, Int>,
 )
 
 internal sealed interface HomeFddbSyncState {
@@ -101,22 +99,22 @@ internal class HomeViewModel(
 
     private val nowEpochSeconds = MutableStateFlow(Clock.System.now().epochSeconds)
     private val isSyncing = MutableStateFlow(false)
-    private val burnedEnergySyncDelta = MutableStateFlow<BurnedEnergySyncDelta?>(null)
+    private val burnedEnergySyncDeltas = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     private val fddbSyncInProgress = MutableStateFlow(false)
     private var burnedEnergySyncDeltaClearJob: Job? = null
 
     val activitySyncState: StateFlow<HomeActivitySyncState> =
-        combine(settingsRepository.observe(), nowEpochSeconds, isSyncing, burnedEnergySyncDelta) {
+        combine(settingsRepository.observe(), nowEpochSeconds, isSyncing, burnedEnergySyncDeltas) {
                 settings,
                 now,
                 syncing,
-                syncDelta,
+                syncDeltas,
             ->
                 val lastSynced = settings.healthConnectStepsLastSyncedEpochSeconds
                 HomeActivitySyncState(
                     isStale = lastSynced == null || now - lastSynced > 5 * 60,
                     isSyncing = syncing,
-                    burnedEnergySyncDelta = syncDelta,
+                    burnedEnergySyncDeltas = syncDeltas,
                 )
             }
             .stateIn(
@@ -131,7 +129,7 @@ internal class HomeViewModel(
                                 lastSynced == null ||
                                     Clock.System.now().epochSeconds - lastSynced > 5 * 60,
                             isSyncing = false,
-                            burnedEnergySyncDelta = null,
+                            burnedEnergySyncDeltas = emptyMap(),
                         )
                     },
             )
@@ -294,13 +292,13 @@ internal class HomeViewModel(
         }
     }
 
-    private fun showBurnedEnergySyncDelta(delta: BurnedEnergySyncDelta) {
-        burnedEnergySyncDelta.value = delta
+    private fun showBurnedEnergySyncDelta(deltas: Map<LocalDate, Int>) {
+        burnedEnergySyncDeltas.value = deltas
         burnedEnergySyncDeltaClearJob?.cancel()
         burnedEnergySyncDeltaClearJob =
             viewModelScope.launch {
                 delay(BURNED_ENERGY_SYNC_DELTA_VISIBLE_MILLIS)
-                burnedEnergySyncDelta.value = null
+                burnedEnergySyncDeltas.value = emptyMap()
                 burnedEnergySyncDeltaClearJob = null
             }
     }
@@ -308,7 +306,7 @@ internal class HomeViewModel(
     private fun clearBurnedEnergySyncDelta() {
         burnedEnergySyncDeltaClearJob?.cancel()
         burnedEnergySyncDeltaClearJob = null
-        burnedEnergySyncDelta.value = null
+        burnedEnergySyncDeltas.value = emptyMap()
     }
 }
 
@@ -385,9 +383,14 @@ internal suspend fun syncActivitiesForBurnedEnergyDelta(
     settingsRepository: UserPreferencesRepository<Settings>,
     healthConnectActivitySync: HealthConnectActivitySync,
     activityRepository: ActivityRepository,
-): BurnedEnergySyncDelta? {
-    val before = dailyBurnedEnergyKcal(date, settingsRepository, activityRepository)
-    return when (healthConnectActivitySync.syncSteps(healthConnectStepsSyncDates(date))) {
+    today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+): Map<LocalDate, Int>? {
+    val targetDates = burnedEnergySyncDeltaDates(selectedDate = date, today = today)
+    val before =
+        targetDates.associateWith { targetDate ->
+            dailyBurnedEnergyKcal(targetDate, settingsRepository, activityRepository)
+        }
+    return when (healthConnectActivitySync.syncSteps(healthConnectStepsSyncDates(date, today))) {
         HealthConnectSyncResult.MissingPermission,
         HealthConnectSyncResult.Unavailable,
         HealthConnectSyncResult.UpdateRequired,
@@ -398,11 +401,10 @@ internal suspend fun syncActivitiesForBurnedEnergyDelta(
 
         HealthConnectSyncResult.Synced,
         -> {
-            val after = dailyBurnedEnergyKcal(date, settingsRepository, activityRepository)
-            BurnedEnergySyncDelta(
-                date = date,
-                kcal = burnedEnergySyncDeltaKcal(before = before, after = after),
-            )
+            targetDates.associateWith { targetDate ->
+                val after = dailyBurnedEnergyKcal(targetDate, settingsRepository, activityRepository)
+                burnedEnergySyncDeltaKcal(before = before.getValue(targetDate), after = after)
+            }
         }
 
         HealthConnectSyncResult.Disabled,
@@ -425,6 +427,11 @@ private suspend fun dailyBurnedEnergyKcal(
 
 internal fun burnedEnergySyncDeltaKcal(before: Double, after: Double): Int =
     (after.roundToInt() - before.roundToInt()).coerceAtLeast(0)
+
+internal fun burnedEnergySyncDeltaDates(
+    selectedDate: LocalDate,
+    today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+): List<LocalDate> = listOf(selectedDate, today, today.minus(1, DateTimeUnit.DAY)).distinct()
 
 internal fun healthConnectStepsSyncDates(
     selectedDate: LocalDate,

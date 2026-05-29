@@ -80,10 +80,7 @@ fun HomeScreen(
     val fddbSyncState by viewModel.fddbSyncState.collectAsStateWithLifecycle()
     val homeSyncState by viewModel.homeSyncState.collectAsStateWithLifecycle()
     val homeState = rememberHomeState()
-    val burnedEnergyDelta =
-        activitySyncState.burnedEnergySyncDelta
-            ?.takeIf { it.date == homeState.selectedDate }
-            ?.kcal
+    val burnedEnergyDelta = activitySyncState.burnedEnergySyncDeltas[homeState.selectedDate]
     val mealsCardsState =
         rememberMealsCardsState(
             homeState = homeState,
