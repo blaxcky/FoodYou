@@ -38,6 +38,22 @@ class CalorieWidgetModelTest {
     }
 
     @Test
+    fun hidesOptimizedRemainingEnergyWhenItMatchesNormalRemainingEnergy() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 20),
+                eatenKcal = 1200.0,
+                burnedKcal = 100.0,
+                baseGoalKcal = 2000.0,
+                dietEnergyDeficitKcal = null,
+                previousDays = emptyList(),
+            )
+
+        assertEquals(900, model.normalLeftKcal)
+        assertNull(model.optimizedLeftKcal)
+    }
+
+    @Test
     fun roundsEatenAndBurnedOnceForDisplay() {
         val model =
             calorieWidgetModel(

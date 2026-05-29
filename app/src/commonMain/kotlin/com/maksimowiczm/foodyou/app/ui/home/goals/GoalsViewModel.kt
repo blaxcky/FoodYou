@@ -177,12 +177,20 @@ internal class GoalsViewModel(
                         } else {
                             day.baseEnergyGoal
                         }
+                    val roundedEnergyGoal = energyGoal.roundToInt()
+                    val showEnergyGoalValue =
+                        goalDisplayMode != GoalDisplayMode.Optimized ||
+                            optimizedEnergyGoalDiffersFromBase(
+                                baseEnergyGoalKcal = day.baseEnergyGoal,
+                                optimizedEnergyGoalKcal = energyGoal,
+                            )
 
                     DaySummaryModel(
                         energy = day.consumedEnergy.roundToInt(),
                         burnedEnergy = day.burnedEnergy.roundToInt(),
                         netEnergy = roundedNetEnergyKcal(day.consumedEnergy, day.burnedEnergy),
-                        energyGoal = energyGoal.roundToInt(),
+                        energyGoal = roundedEnergyGoal,
+                        showEnergyGoalValue = showEnergyGoalValue,
                         goalDisplayMode = goalDisplayMode,
                         dietGoalDisplayModeEnabled = dietEnergyDeficitKcal != null,
                         proteins = day.proteins,

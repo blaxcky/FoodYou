@@ -112,7 +112,10 @@ internal class CalorieWidgetUpdater(
         setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
         setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
         setTextViewText(R.id.widget_calories_left_normal, context.number(model.normalLeftKcal))
-        setTextViewText(R.id.widget_calories_left_optimized, context.number(model.optimizedLeftKcal))
+        setTextViewText(
+            R.id.widget_calories_left_optimized,
+            model.optimizedLeftKcal?.let { context.number(it) } ?: "-",
+        )
         setTextViewText(
             R.id.widget_calories_left_diet,
             model.dietLeftKcal?.let { context.number(it) } ?: "--",
@@ -123,12 +126,25 @@ internal class CalorieWidgetUpdater(
             valueId = R.id.widget_calories_left_normal,
             value = model.normalLeftKcal,
         )
-        setLeftColors(
-            context = context,
-            cardId = R.id.widget_calories_left_optimized_card,
-            valueId = R.id.widget_calories_left_optimized,
-            value = model.optimizedLeftKcal,
-        )
+        if (model.optimizedLeftKcal == null) {
+            setInt(
+                R.id.widget_calories_left_optimized,
+                "setTextColor",
+                context.getColor(R.color.widget_calories_muted_text),
+            )
+            setInt(
+                R.id.widget_calories_left_optimized_card,
+                "setBackgroundResource",
+                R.drawable.widget_calories_left_optimized,
+            )
+        } else {
+            setLeftColors(
+                context = context,
+                cardId = R.id.widget_calories_left_optimized_card,
+                valueId = R.id.widget_calories_left_optimized,
+                value = model.optimizedLeftKcal,
+            )
+        }
         if (model.dietLeftKcal == null) {
             setInt(
                 R.id.widget_calories_left_diet,

@@ -4,6 +4,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
+import kotlin.math.roundToInt
 
 internal data class GoalEnergyOptimizationDay(
     val consumedEnergyKcal: Double,
@@ -41,6 +42,11 @@ internal fun adjustedEnergyGoalKcal(
         previousDays = previousDays,
         includeExtraSavings = true,
     )
+
+internal fun optimizedEnergyGoalDiffersFromBase(
+    baseEnergyGoalKcal: Double,
+    optimizedEnergyGoalKcal: Double,
+): Boolean = baseEnergyGoalKcal.roundToInt() != optimizedEnergyGoalKcal.roundToInt()
 
 private fun adjustedEnergyGoalKcal(
     selectedDate: LocalDate,

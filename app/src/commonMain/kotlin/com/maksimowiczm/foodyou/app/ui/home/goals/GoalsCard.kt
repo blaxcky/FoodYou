@@ -149,6 +149,7 @@ internal fun GoalsCard(
             burnedEnergyDelta = burnedEnergyDelta,
             netEnergy = model.netEnergy,
             energyGoal = model.energyGoal,
+            showEnergyGoalValue = model.showEnergyGoalValue,
             goalDisplayMode = model.goalDisplayMode,
             dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
             proteins = model.proteins,
@@ -194,6 +195,7 @@ internal fun GoalsCard(
     burnedEnergyDelta: Int? = null,
     netEnergy: Int,
     energyGoal: Int,
+    showEnergyGoalValue: Boolean = true,
     goalDisplayMode: GoalDisplayMode = GoalDisplayMode.Normal,
     dietGoalDisplayModeEnabled: Boolean = true,
     proteins: Int,
@@ -260,6 +262,7 @@ internal fun GoalsCard(
                         burnedEnergyDelta = burnedEnergyDelta,
                         netEnergy = netEnergy,
                         energyGoal = energyGoal,
+                        showEnergyGoalValue = showEnergyGoalValue,
                         onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
                         progress = energyProgress,
                         modifier = Modifier.fillMaxWidth(),
@@ -671,6 +674,7 @@ private fun CaloriesOverview(
     burnedEnergyDelta: Int?,
     netEnergy: Int,
     energyGoal: Int,
+    showEnergyGoalValue: Boolean,
     onShowNextGoalDisplayMode: () -> Unit,
     progress: Float,
     modifier: Modifier = Modifier,
@@ -707,8 +711,12 @@ private fun CaloriesOverview(
             ) {
                 GaugeMetric(
                     value =
-                        energyFormatter.formatEnergy(remainingValue, withSuffix = false)
-                            .groupDigits(),
+                        if (showEnergyGoalValue) {
+                            energyFormatter.formatEnergy(remainingValue, withSuffix = false)
+                                .groupDigits()
+                        } else {
+                            "-"
+                        },
                     label = remainingLabel,
                     progress = progress,
                     valueColor = valueColor,
@@ -745,8 +753,12 @@ private fun CaloriesOverview(
                     )
                     SideMetric(
                         value =
-                            energyFormatter.formatEnergy(energyGoal, withSuffix = false)
-                                .groupDigits(),
+                            if (showEnergyGoalValue) {
+                                energyFormatter.formatEnergy(energyGoal, withSuffix = false)
+                                    .groupDigits()
+                            } else {
+                                "-"
+                            },
                         label = stringResource(Res.string.goal_goal),
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -773,8 +785,12 @@ private fun CaloriesOverview(
                 )
                 GaugeMetric(
                     value =
-                        energyFormatter.formatEnergy(remainingValue, withSuffix = false)
-                            .groupDigits(),
+                        if (showEnergyGoalValue) {
+                            energyFormatter.formatEnergy(remainingValue, withSuffix = false)
+                                .groupDigits()
+                        } else {
+                            "-"
+                        },
                     label = remainingLabel,
                     progress = progress,
                     valueColor = valueColor,
@@ -796,8 +812,12 @@ private fun CaloriesOverview(
                     )
                     SideMetric(
                         value =
-                            energyFormatter.formatEnergy(energyGoal, withSuffix = false)
-                                .groupDigits(),
+                            if (showEnergyGoalValue) {
+                                energyFormatter.formatEnergy(energyGoal, withSuffix = false)
+                                    .groupDigits()
+                            } else {
+                                "-"
+                            },
                         label = stringResource(Res.string.goal_goal),
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,

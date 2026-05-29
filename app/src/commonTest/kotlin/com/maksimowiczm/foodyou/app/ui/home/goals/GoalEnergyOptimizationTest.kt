@@ -61,6 +61,28 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
+    fun optimizedGoalDoesNotDifferWhenRoundedValueMatchesBaseGoal() {
+        assertEquals(
+            false,
+            optimizedEnergyGoalDiffersFromBase(
+                baseEnergyGoalKcal = 2000.0,
+                optimizedEnergyGoalKcal = 1999.6,
+            ),
+        )
+    }
+
+    @Test
+    fun optimizedGoalDiffersWhenRoundedValueChangesFromBaseGoal() {
+        assertEquals(
+            true,
+            optimizedEnergyGoalDiffersFromBase(
+                baseEnergyGoalKcal = 2000.0,
+                optimizedEnergyGoalKcal = 1999.4,
+            ),
+        )
+    }
+
+    @Test
     fun previousBurnedActivityIncreasesSurplusBasis() {
         val goal =
             optimizedEnergyGoalKcal(

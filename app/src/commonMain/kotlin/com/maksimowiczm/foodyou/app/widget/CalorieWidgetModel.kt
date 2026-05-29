@@ -11,7 +11,7 @@ internal data class CalorieWidgetModel(
     val eatenKcal: Int,
     val burnedKcal: Int,
     val normalLeftKcal: Int,
-    val optimizedLeftKcal: Int,
+    val optimizedLeftKcal: Int?,
     val dietLeftKcal: Int?,
 )
 
@@ -43,12 +43,15 @@ internal fun calorieWidgetModel(
             )
         }
 
+    val normalLeftKcal = (baseGoalKcal - netEnergy).roundToInt()
+    val optimizedLeftKcal = (optimizedGoal - netEnergy).roundToInt()
+
     return CalorieWidgetModel(
         date = today,
         eatenKcal = eatenKcal.roundToInt(),
         burnedKcal = burnedKcal.roundToInt(),
-        normalLeftKcal = (baseGoalKcal - netEnergy).roundToInt(),
-        optimizedLeftKcal = (optimizedGoal - netEnergy).roundToInt(),
+        normalLeftKcal = normalLeftKcal,
+        optimizedLeftKcal = optimizedLeftKcal.takeIf { it != normalLeftKcal },
         dietLeftKcal = dietGoal?.let { (it - netEnergy).roundToInt() },
     )
 }
