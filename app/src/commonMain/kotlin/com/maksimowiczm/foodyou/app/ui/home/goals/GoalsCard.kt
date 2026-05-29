@@ -837,7 +837,12 @@ private fun GoalDisplayModeButtons(
         Text(
             text = goalDisplayMode.label(),
             modifier = Modifier.weight(1f).padding(start = 16.dp, end = 8.dp),
-            color = GoalsTextColor,
+            color =
+                if (goalDisplayMode == GoalDisplayMode.Normal) {
+                    GoalsTextColor
+                } else {
+                    goalDisplayMode.accentColor()
+                },
             style =
                 MaterialTheme.typography.headlineSmall.copy(
                     fontSize = 22.sp,
