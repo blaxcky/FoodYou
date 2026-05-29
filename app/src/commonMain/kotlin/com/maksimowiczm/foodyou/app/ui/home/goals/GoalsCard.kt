@@ -837,18 +837,13 @@ private fun GoalDisplayModeButtons(
         Text(
             text = goalDisplayMode.label(),
             modifier = Modifier.weight(1f).padding(start = 16.dp, end = 8.dp),
-            color =
-                if (goalDisplayMode == GoalDisplayMode.Normal) {
-                    GoalsTextColor
-                } else {
-                    goalDisplayMode.accentColor()
-                },
+            color = GoalsTextColor,
             style =
-                MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 18.sp,
-                    lineHeight = 22.sp,
+                MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = 22.sp,
+                    lineHeight = 26.sp,
                 ),
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -929,15 +924,12 @@ private fun GoalDisplayMode.toSettingsGoalDisplayMode(): SettingsGoalDisplayMode
         GoalDisplayMode.Diet -> SettingsGoalDisplayMode.Diet
     }
 
-@Composable
 private fun GoalDisplayMode.label(): String =
-    stringResource(
-        when (this) {
-            GoalDisplayMode.Normal -> Res.string.goal_display_mode_normal
-            GoalDisplayMode.Optimized -> Res.string.goal_display_mode_optimized
-            GoalDisplayMode.Diet -> Res.string.goal_display_mode_diet
-        }
-    )
+    when (this) {
+        GoalDisplayMode.Normal -> "Normal"
+        GoalDisplayMode.Optimized -> "Optimiert"
+        GoalDisplayMode.Diet -> "Diät"
+    }
 
 private fun GoalDisplayMode.accentColor(): Color =
     when (this) {
