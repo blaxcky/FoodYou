@@ -109,9 +109,7 @@ private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE4EEF5)
 private val GoalsProgressColor = Color(0xFF45AEE6)
 private val GoalsErrorColor = Color(0xFFE25555)
-private val OptimizedGoalHighlightColor = Color(0xFFEAF6FE)
 private val OptimizedGoalAccentColor = GoalsProgressColor
-private val DietGoalHighlightColor = Color(0xFFFFF6D8)
 private val DietGoalAccentColor = Color(0xFFC98A00)
 private val FatTrackColor = Color(0xFFFFE5E5)
 private val FatColor = Color(0xFFF4D5DC)
@@ -215,12 +213,6 @@ internal fun GoalsCard(
     val proteinsProgress = goalProgress(proteins, proteinsGoal)
     val carbsProgress = goalProgress(carbohydrates, carbohydratesGoal)
     val fatsProgress = goalProgress(fats, fatsGoal)
-    val cardColor =
-        if (goalDisplayMode == GoalDisplayMode.Normal) {
-            GoalsCardColor
-        } else {
-            goalDisplayMode.highlightColor()
-        }
 
     Column(modifier = modifier) {
         GoalDisplayModeButtons(
@@ -237,7 +229,7 @@ internal fun GoalsCard(
 
         FoodYouHomeCard(
             modifier = Modifier.fillMaxWidth(),
-            color = cardColor,
+            color = GoalsCardColor,
             shape = GoalsCardShape,
             onClick = onClick,
             onLongClick = onLongClick,
@@ -839,9 +831,27 @@ private fun GoalDisplayModeButtons(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(
+            text = goalDisplayMode.label(),
+            modifier = Modifier.weight(1f).padding(start = 16.dp, end = 8.dp),
+            color =
+                if (goalDisplayMode == GoalDisplayMode.Normal) {
+                    GoalsTextColor
+                } else {
+                    goalDisplayMode.accentColor()
+                },
+            style =
+                MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                ),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         GoalDisplayModeButton(
             mode = GoalDisplayMode.Normal,
             selected = goalDisplayMode == GoalDisplayMode.Normal,
@@ -919,12 +929,15 @@ private fun GoalDisplayMode.toSettingsGoalDisplayMode(): SettingsGoalDisplayMode
         GoalDisplayMode.Diet -> SettingsGoalDisplayMode.Diet
     }
 
-private fun GoalDisplayMode.highlightColor(): Color =
-    when (this) {
-        GoalDisplayMode.Normal -> Color.Transparent
-        GoalDisplayMode.Optimized -> OptimizedGoalHighlightColor
-        GoalDisplayMode.Diet -> DietGoalHighlightColor
-    }
+@Composable
+private fun GoalDisplayMode.label(): String =
+    stringResource(
+        when (this) {
+            GoalDisplayMode.Normal -> Res.string.goal_display_mode_normal
+            GoalDisplayMode.Optimized -> Res.string.goal_display_mode_optimized
+            GoalDisplayMode.Diet -> Res.string.goal_display_mode_diet
+        }
+    )
 
 private fun GoalDisplayMode.accentColor(): Color =
     when (this) {
