@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.home.calendar
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -237,13 +238,14 @@ private fun DatePickerRowItem(
     val referenceDate = calendarState.referenceDate
     val selectedDate = calendarState.selectedDate
     val dayOfWeek = (date.dayOfWeek.isoDayNumber - 1) % 7
+    val isReferenceDate = date == referenceDate
+    val isSelectedDate = date == selectedDate
 
     val backgroundColor by
         animateColorAsState(
             targetValue =
-                when (date) {
-                    selectedDate -> colors.selectedDateContainerColor
-                    referenceDate -> colors.referenceDateContainerColor
+                when {
+                    isSelectedDate -> colors.selectedDateContainerColor
                     else -> colors.containerColor
                 },
             animationSpec = tween(500),
@@ -252,23 +254,47 @@ private fun DatePickerRowItem(
     val color by
         animateColorAsState(
             targetValue =
-                when (date) {
-                    selectedDate -> colors.selectedDateContentColor
-                    referenceDate -> colors.referenceDateContentColor
+                when {
+                    isSelectedDate -> colors.selectedDateContentColor
+                    isReferenceDate -> colors.referenceDateContentColor
                     else -> colors.contentColor
                 },
             animationSpec = tween(500),
             label = "Date text color",
         )
+    val referenceDateIndicatorColor by
+        animateColorAsState(
+            targetValue =
+                if (isReferenceDate) {
+                    if (isSelectedDate) {
+                        colors.selectedDateContentColor
+                    } else {
+                        colors.referenceDateIndicatorColor
+                    }
+                } else {
+                    Color.Transparent
+                },
+            animationSpec = tween(500),
+            label = "Reference date indicator color",
+        )
+    val shape = MaterialTheme.shapes.medium
 
     Box(
         modifier =
             modifier
                 .padding(4.dp)
                 .size(48.dp)
-                .clip(MaterialTheme.shapes.medium)
+                .border(1.dp, referenceDateIndicatorColor, shape)
+                .clip(shape)
                 .clickable { onClick() }
-                .drawBehind { drawRect(backgroundColor) }
+                .drawBehind {
+                    drawRect(backgroundColor)
+                    drawCircle(
+                        color = referenceDateIndicatorColor,
+                        radius = 2.dp.toPx(),
+                        center = center.copy(y = size.height - 4.dp.toPx()),
+                    )
+                }
                 .padding(4.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -297,8 +323,8 @@ private data class CalendarCardColors(
     val contentColor: Color,
     val selectedDateContainerColor: Color,
     val selectedDateContentColor: Color,
-    val referenceDateContainerColor: Color,
     val referenceDateContentColor: Color,
+    val referenceDateIndicatorColor: Color,
 )
 
 private object CalendarCardDefaults {
@@ -308,15 +334,15 @@ private object CalendarCardDefaults {
         contentColor: Color = CardDefaults.elevatedCardColors().contentColor,
         selectedDateContainerColor: Color = MaterialTheme.colorScheme.primary,
         selectedDateContentColor: Color = MaterialTheme.colorScheme.onPrimary,
-        referenceDateContainerColor: Color = MaterialTheme.colorScheme.secondary,
-        referenceDateContentColor: Color = MaterialTheme.colorScheme.onSecondary,
+        referenceDateContentColor: Color = MaterialTheme.colorScheme.primary,
+        referenceDateIndicatorColor: Color = MaterialTheme.colorScheme.primary,
     ) =
         CalendarCardColors(
             containerColor = containerColor,
             contentColor = contentColor,
             selectedDateContainerColor = selectedDateContainerColor,
             selectedDateContentColor = selectedDateContentColor,
-            referenceDateContainerColor = referenceDateContainerColor,
             referenceDateContentColor = referenceDateContentColor,
+            referenceDateIndicatorColor = referenceDateIndicatorColor,
         )
 }
