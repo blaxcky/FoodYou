@@ -42,9 +42,7 @@ kotlin {
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.view)
-
-            // Zxing
-            implementation(libs.zxing.android.embedded)
+            implementation(libs.mlkit.barcode.scanning)
         }
     }
 }
@@ -82,5 +80,4 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    buildFeatures { viewBinding = true }
 }

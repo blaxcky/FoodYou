@@ -97,7 +97,7 @@ actual fun CameraBarcodeScannerScreen(
         }
 
         if (permissionState.status.isGranted) {
-            ZxingCameraBarcodeScannerScreen(
+            MlKitCameraBarcodeScannerScreen(
                 onBarcodeScan = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
                     onBarcodeScan(it)
