@@ -1077,7 +1077,6 @@ private fun MetricValue(
     val deltaYOffsetPx = with(density) { (-5).dp.roundToPx() }
     var containerWidthPx by remember { mutableIntStateOf(0) }
     var valueTextWidthPx by remember(value) { mutableIntStateOf(0) }
-    var deltaTextWidthPx by remember(delta) { mutableIntStateOf(0) }
 
     Box(modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx = it.width }) {
         Text(
@@ -1100,9 +1099,8 @@ private fun MetricValue(
                     Modifier.offset {
                         val preferredX =
                             containerWidthPx / 2 + valueTextWidthPx / 2 + deltaSpacingPx
-                        val maxX = containerWidthPx - deltaTextWidthPx
                         IntOffset(
-                            x = preferredX.coerceAtMost(maxX).coerceAtLeast(0),
+                            x = preferredX,
                             y = deltaYOffsetPx,
                         )
                     },
@@ -1116,10 +1114,6 @@ private fun MetricValue(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
-                onTextLayout = { layout ->
-                    deltaTextWidthPx =
-                        ceil(layout.getLineRight(0) - layout.getLineLeft(0)).toInt()
-                },
             )
         }
     }
