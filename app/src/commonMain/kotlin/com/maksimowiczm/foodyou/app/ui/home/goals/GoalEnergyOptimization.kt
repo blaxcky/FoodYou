@@ -43,10 +43,10 @@ internal fun adjustedEnergyGoalKcal(
         includeExtraSavings = true,
     )
 
-internal fun optimizedEnergyGoalDiffersFromBase(
+internal fun energyGoalDiffersFromBase(
     baseEnergyGoalKcal: Double,
-    optimizedEnergyGoalKcal: Double,
-): Boolean = baseEnergyGoalKcal.roundToInt() != optimizedEnergyGoalKcal.roundToInt()
+    adjustedEnergyGoalKcal: Double,
+): Boolean = baseEnergyGoalKcal.roundToInt() != adjustedEnergyGoalKcal.roundToInt()
 
 private fun adjustedEnergyGoalKcal(
     selectedDate: LocalDate,

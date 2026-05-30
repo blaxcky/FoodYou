@@ -179,11 +179,15 @@ internal class GoalsViewModel(
                         }
                     val roundedEnergyGoal = energyGoal.roundToInt()
                     val showEnergyGoalValue =
-                        goalDisplayMode != GoalDisplayMode.Optimized ||
-                            optimizedEnergyGoalDiffersFromBase(
-                                baseEnergyGoalKcal = day.baseEnergyGoal,
-                                optimizedEnergyGoalKcal = energyGoal,
-                            )
+                        when (goalDisplayMode) {
+                            GoalDisplayMode.Normal -> true
+                            GoalDisplayMode.Optimized,
+                            GoalDisplayMode.Diet ->
+                                energyGoalDiffersFromBase(
+                                    baseEnergyGoalKcal = day.baseEnergyGoal,
+                                    adjustedEnergyGoalKcal = energyGoal,
+                                )
+                        }
 
                     DaySummaryModel(
                         energy = day.consumedEnergy.roundToInt(),

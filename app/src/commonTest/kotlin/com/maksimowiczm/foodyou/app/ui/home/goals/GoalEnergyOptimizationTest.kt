@@ -61,23 +61,23 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
-    fun optimizedGoalDoesNotDifferWhenRoundedValueMatchesBaseGoal() {
+    fun adjustedGoalDoesNotDifferWhenRoundedValueMatchesBaseGoal() {
         assertEquals(
             false,
-            optimizedEnergyGoalDiffersFromBase(
+            energyGoalDiffersFromBase(
                 baseEnergyGoalKcal = 2000.0,
-                optimizedEnergyGoalKcal = 1999.6,
+                adjustedEnergyGoalKcal = 1999.6,
             ),
         )
     }
 
     @Test
-    fun optimizedGoalDiffersWhenRoundedValueChangesFromBaseGoal() {
+    fun adjustedGoalDiffersWhenRoundedValueChangesFromBaseGoal() {
         assertEquals(
             true,
-            optimizedEnergyGoalDiffersFromBase(
+            energyGoalDiffersFromBase(
                 baseEnergyGoalKcal = 2000.0,
-                optimizedEnergyGoalKcal = 1999.4,
+                adjustedEnergyGoalKcal = 1999.4,
             ),
         )
     }
