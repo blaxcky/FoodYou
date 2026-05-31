@@ -274,41 +274,41 @@ internal fun GoalsCard(
                         onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
                         onShowPreviousGoalDisplayMode = onShowPreviousGoalDisplayMode,
                         modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        MacroGoal(
-                            label = stringResource(Res.string.goal_fat),
-                            value = fats,
-                            goal = fatsGoal,
-                            progress = fatsProgress,
-                            trackColor = FatTrackColor,
-                            color = FatColor,
-                            modifier = Modifier.weight(1f),
-                        )
-                        MacroGoal(
-                            label = stringResource(Res.string.goal_carbs_short),
-                            value = carbohydrates,
-                            goal = carbohydratesGoal,
-                            progress = carbsProgress,
-                            trackColor = CarbsTrackColor,
-                            color = CarbsColor,
-                            modifier = Modifier.weight(1f),
-                        )
-                        MacroGoal(
-                            label = stringResource(Res.string.goal_protein),
-                            value = proteins,
-                            goal = proteinsGoal,
-                            progress = proteinsProgress,
-                            trackColor = ProteinTrackColor,
-                            color = ProteinColor,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Spacer(Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            MacroGoal(
+                                label = stringResource(Res.string.goal_fat),
+                                value = fats,
+                                goal = fatsGoal,
+                                progress = fatsProgress,
+                                trackColor = FatTrackColor,
+                                color = FatColor,
+                                modifier = Modifier.weight(1f),
+                            )
+                            MacroGoal(
+                                label = stringResource(Res.string.goal_carbs_short),
+                                value = carbohydrates,
+                                goal = carbohydratesGoal,
+                                progress = carbsProgress,
+                                trackColor = CarbsTrackColor,
+                                color = CarbsColor,
+                                modifier = Modifier.weight(1f),
+                            )
+                            MacroGoal(
+                                label = stringResource(Res.string.goal_protein),
+                                value = proteins,
+                                goal = proteinsGoal,
+                                progress = proteinsProgress,
+                                trackColor = ProteinTrackColor,
+                                color = ProteinColor,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }
@@ -691,6 +691,7 @@ private fun CaloriesOverview(
     onShowNextGoalDisplayMode: () -> Unit,
     onShowPreviousGoalDisplayMode: () -> Unit,
     modifier: Modifier = Modifier,
+    footer: @Composable () -> Unit = {},
 ) {
     val summaries =
         remember(goalDisplayMode, energyGoal, showEnergyGoalValue, goalDisplaySummaries) {
@@ -748,6 +749,7 @@ private fun CaloriesOverview(
                             .fillMaxWidth()
                             .offset { IntOffset((offsetPx - widthPx).roundToInt(), 0) }
                             .padding(horizontal = 8.dp, vertical = 4.dp),
+                    footer = footer,
                 )
                 CaloriesOverviewPage(
                     energy = energy,
@@ -760,6 +762,7 @@ private fun CaloriesOverview(
                             .fillMaxWidth()
                             .offset { IntOffset((offsetPx + widthPx).roundToInt(), 0) }
                             .padding(horizontal = 8.dp, vertical = 4.dp),
+                    footer = footer,
                 )
             }
             CaloriesOverviewPage(
@@ -773,6 +776,7 @@ private fun CaloriesOverview(
                         .fillMaxWidth()
                         .offset { IntOffset(offsetPx.roundToInt(), 0) }
                         .padding(horizontal = 8.dp, vertical = 4.dp),
+                footer = footer,
             )
         }
     }
@@ -786,6 +790,7 @@ private fun CaloriesOverviewPage(
     netEnergy: Int,
     summary: GoalDisplaySummaryModel,
     modifier: Modifier = Modifier,
+    footer: @Composable () -> Unit = {},
 ) {
     val energyGoal = summary.energyGoal
     val showEnergyGoalValue = summary.showEnergyGoalValue
@@ -810,30 +815,77 @@ private fun CaloriesOverviewPage(
         val sideMetricTopPadding = if (phoneWidth) 39.dp else 50.dp
         val secondaryMetricTopPadding = 18.dp
 
-        if (compact) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                GaugeMetric(
-                    value =
-                        if (showEnergyGoalValue) {
-                            energyFormatter.formatEnergy(remainingValue, withSuffix = false)
-                                .groupDigits()
-                        } else {
-                            "-"
-                        },
-                    label = remainingLabel,
-                    progress = progress,
-                    valueColor = valueColor,
-                    diameter = gaugeDiameter,
-                )
-
-                Spacer(Modifier.height(6.dp))
-
-                Row(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (compact) {
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    GaugeMetric(
+                        value =
+                            if (showEnergyGoalValue) {
+                                energyFormatter.formatEnergy(remainingValue, withSuffix = false)
+                                    .groupDigits()
+                            } else {
+                                "-"
+                            },
+                        label = remainingLabel,
+                        progress = progress,
+                        valueColor = valueColor,
+                        diameter = gaugeDiameter,
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        SideMetric(
+                            value =
+                                energyFormatter
+                                    .formatEnergy(energy, withSuffix = false)
+                                    .groupDigits(),
+                            label = stringResource(Res.string.goal_eaten),
+                            supportingValue = "$reached %",
+                            supportingLabel =
+                                stringResource(Res.string.goal_reached_percentage, reached)
+                                    .substringAfter("% "),
+                            supportingTopPadding = secondaryMetricTopPadding,
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        )
+                        SideMetric(
+                            value =
+                                energyFormatter
+                                    .formatEnergy(burnedEnergy, withSuffix = false)
+                                    .groupDigits(),
+                            deltaValue = burnedEnergyDelta,
+                            label = stringResource(Res.string.goal_burned),
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        )
+                        SideMetric(
+                            value =
+                                if (showEnergyGoalValue) {
+                                    energyFormatter
+                                        .formatEnergy(energyGoal, withSuffix = false)
+                                        .groupDigits()
+                                } else {
+                                    "-"
+                                },
+                            label = stringResource(Res.string.goal_goal),
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            muted = true,
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(caloriesHeight),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
                     SideMetric(
@@ -845,92 +897,56 @@ private fun CaloriesOverviewPage(
                             stringResource(Res.string.goal_reached_percentage, reached)
                                 .substringAfter("% "),
                         supportingTopPadding = secondaryMetricTopPadding,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     )
-                    SideMetric(
-                        value =
-                            energyFormatter.formatEnergy(burnedEnergy, withSuffix = false)
-                                .groupDigits(),
-                        deltaValue = burnedEnergyDelta,
-                        label = stringResource(Res.string.goal_burned),
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    )
-                    SideMetric(
+                    GaugeMetric(
                         value =
                             if (showEnergyGoalValue) {
-                                energyFormatter.formatEnergy(energyGoal, withSuffix = false)
+                                energyFormatter.formatEnergy(remainingValue, withSuffix = false)
                                     .groupDigits()
                             } else {
                                 "-"
                             },
-                        label = stringResource(Res.string.goal_goal),
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        muted = true,
+                        label = remainingLabel,
+                        progress = progress,
+                        valueColor = valueColor,
+                        diameter = gaugeDiameter,
                     )
+                    Column(
+                        modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(secondaryMetricTopPadding + 3.dp),
+                    ) {
+                        SideMetric(
+                            value =
+                                energyFormatter
+                                    .formatEnergy(burnedEnergy, withSuffix = false)
+                                    .groupDigits(),
+                            deltaValue = burnedEnergyDelta,
+                            label = stringResource(Res.string.goal_burned),
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        )
+                        SideMetric(
+                            value =
+                                if (showEnergyGoalValue) {
+                                    energyFormatter
+                                        .formatEnergy(energyGoal, withSuffix = false)
+                                        .groupDigits()
+                                } else {
+                                    "-"
+                                },
+                            label = stringResource(Res.string.goal_goal),
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            muted = true,
+                        )
+                    }
                 }
             }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(caloriesHeight),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                SideMetric(
-                    value = energyFormatter.formatEnergy(energy, withSuffix = false).groupDigits(),
-                    label = stringResource(Res.string.goal_eaten),
-                    supportingValue = "$reached %",
-                    supportingLabel =
-                        stringResource(Res.string.goal_reached_percentage, reached)
-                            .substringAfter("% "),
-                    supportingTopPadding = secondaryMetricTopPadding,
-                    modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                )
-                GaugeMetric(
-                    value =
-                        if (showEnergyGoalValue) {
-                            energyFormatter.formatEnergy(remainingValue, withSuffix = false)
-                                .groupDigits()
-                        } else {
-                            "-"
-                        },
-                    label = remainingLabel,
-                    progress = progress,
-                    valueColor = valueColor,
-                    diameter = gaugeDiameter,
-                )
-                Column(
-                    modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(secondaryMetricTopPadding + 3.dp),
-                ) {
-                    SideMetric(
-                        value =
-                            energyFormatter.formatEnergy(burnedEnergy, withSuffix = false)
-                                .groupDigits(),
-                        deltaValue = burnedEnergyDelta,
-                        label = stringResource(Res.string.goal_burned),
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    )
-                    SideMetric(
-                        value =
-                            if (showEnergyGoalValue) {
-                                energyFormatter.formatEnergy(energyGoal, withSuffix = false)
-                                    .groupDigits()
-                            } else {
-                                "-"
-                            },
-                        label = stringResource(Res.string.goal_goal),
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        muted = true,
-                    )
-                }
-            }
+
+            footer()
         }
 
     }
