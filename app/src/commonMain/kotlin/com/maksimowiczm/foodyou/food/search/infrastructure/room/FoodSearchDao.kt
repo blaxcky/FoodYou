@@ -42,7 +42,7 @@ interface FoodSearchDao {
                 (:excludedRecipeId IS NULL OR NOT EXISTS (
                     SELECT 1
                     FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id 
+                    WHERE rai.targetRecipeId = r.id
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
@@ -55,6 +55,40 @@ interface FoodSearchDao {
         """
     )
     fun observeFood(source: FoodSourceType?, excludedRecipeId: Long?): PagingSource<Int, FoodSearch>
+
+    @Query(
+        """
+        WITH ProductsSearch AS (
+            SELECT $PRODUCT_FOOD_SEARCH_SQL_SELECT
+            FROM Product p
+            WHERE p.sourceType IN (:sources)
+        ),
+        RecipesSearch AS (
+            SELECT $RECIPE_FOOD_SEARCH_SQL_SELECT
+            FROM Recipe r
+            WHERE
+                :includeRecipes AND
+                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
+                (:excludedRecipeId IS NULL OR NOT EXISTS (
+                    SELECT 1
+                    FROM RecipeAllIngredientsView rai
+                    WHERE rai.targetRecipeId = r.id
+                    AND rai.ingredientId = :excludedRecipeId
+                ))
+        )
+        SELECT *, NULL AS measurementType, NULL AS measurementValue
+        FROM ProductsSearch
+        UNION ALL
+        SELECT *, NULL AS measurementType, NULL AS measurementValue
+        FROM RecipesSearch
+        ORDER BY headline COLLATE NOCASE ASC
+        """
+    )
+    fun observeFoodFromSources(
+        sources: List<FoodSourceType>,
+        includeRecipes: Boolean,
+        excludedRecipeId: Long?,
+    ): PagingSource<Int, FoodSearch>
 
     @Query(
         """
@@ -77,10 +111,39 @@ interface FoodSearchDao {
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
-        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch) 
+        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch)
         """
     )
     fun observeFoodCount(source: FoodSourceType?, excludedRecipeId: Long?): Flow<Int>
+
+    @Query(
+        """
+        WITH ProductsSearch AS (
+            SELECT 1
+            FROM Product p
+            WHERE p.sourceType IN (:sources)
+        ),
+        RecipesSearch AS (
+            SELECT 1
+            FROM Recipe r
+            WHERE
+                :includeRecipes AND
+                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
+                (:excludedRecipeId IS NULL OR NOT EXISTS (
+                    SELECT 1
+                    FROM RecipeAllIngredientsView rai
+                    WHERE rai.targetRecipeId = r.id
+                    AND rai.ingredientId = :excludedRecipeId
+                ))
+        )
+        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch)
+        """
+    )
+    fun observeFoodCountFromSources(
+        sources: List<FoodSourceType>,
+        includeRecipes: Boolean,
+        excludedRecipeId: Long?,
+    ): Flow<Int>
 
     @Query(
         """
@@ -101,7 +164,7 @@ interface FoodSearchDao {
                 (:excludedRecipeId IS NULL OR NOT EXISTS (
                     SELECT 1
                     FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id 
+                    WHERE rai.targetRecipeId = r.id
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
@@ -116,6 +179,43 @@ interface FoodSearchDao {
     fun observeFoodByQuery(
         query: String,
         source: FoodSourceType?,
+        excludedRecipeId: Long?,
+    ): PagingSource<Int, FoodSearch>
+
+    @Query(
+        """
+        WITH ProductsSearch AS (
+            SELECT $PRODUCT_FOOD_SEARCH_SQL_SELECT
+            FROM Product p JOIN ProductFts fts ON p.id = fts.rowid
+            WHERE
+                (ProductFts MATCH :query || '*') AND p.sourceType IN (:sources)
+        ),
+        RecipesSearch AS (
+            SELECT $RECIPE_FOOD_SEARCH_SQL_SELECT
+            FROM Recipe r JOIN RecipeFts fts ON r.id = fts.rowid
+            WHERE
+                :includeRecipes AND
+                (RecipeFts MATCH :query || '*') AND
+                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
+                (:excludedRecipeId IS NULL OR NOT EXISTS (
+                    SELECT 1
+                    FROM RecipeAllIngredientsView rai
+                    WHERE rai.targetRecipeId = r.id
+                    AND rai.ingredientId = :excludedRecipeId
+                ))
+        )
+        SELECT *, NULL AS measurementType, NULL AS measurementValue
+        FROM ProductsSearch
+        UNION ALL
+        SELECT *, NULL AS measurementType, NULL AS measurementValue
+        FROM RecipesSearch
+        ORDER BY headline COLLATE NOCASE ASC
+        """
+    )
+    fun observeFoodByQueryFromSources(
+        query: String,
+        sources: List<FoodSourceType>,
+        includeRecipes: Boolean,
         excludedRecipeId: Long?,
     ): PagingSource<Int, FoodSearch>
 
@@ -138,16 +238,48 @@ interface FoodSearchDao {
                 (:excludedRecipeId IS NULL OR NOT EXISTS (
                     SELECT 1
                     FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id 
+                    WHERE rai.targetRecipeId = r.id
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
-        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch) 
+        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch)
         """
     )
     fun observeFoodCountByQuery(
         query: String,
         source: FoodSourceType?,
+        excludedRecipeId: Long?,
+    ): Flow<Int>
+
+    @Query(
+        """
+        WITH ProductsSearch AS (
+            SELECT 1
+            FROM Product p JOIN ProductFts fts ON p.id = fts.rowid
+            WHERE
+                (ProductFts MATCH :query || '*') AND p.sourceType IN (:sources)
+        ),
+        RecipesSearch AS (
+            SELECT 1
+            FROM Recipe r JOIN RecipeFts fts ON r.id = fts.rowid
+            WHERE
+                :includeRecipes AND
+                (RecipeFts MATCH :query || '*') AND
+                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
+                (:excludedRecipeId IS NULL OR NOT EXISTS (
+                    SELECT 1
+                    FROM RecipeAllIngredientsView rai
+                    WHERE rai.targetRecipeId = r.id
+                    AND rai.ingredientId = :excludedRecipeId
+                ))
+        )
+        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch)
+        """
+    )
+    fun observeFoodCountByQueryFromSources(
+        query: String,
+        sources: List<FoodSourceType>,
+        includeRecipes: Boolean,
         excludedRecipeId: Long?,
     ): Flow<Int>
 
@@ -168,6 +300,21 @@ interface FoodSearchDao {
 
     @Query(
         """
+        SELECT ${PRODUCT_FOOD_SEARCH_SQL_SELECT}, NULL AS measurementType, NULL AS measurementValue
+        FROM Product p
+        WHERE
+            p.barcode LIKE '%' || :barcode || '%' AND
+            p.sourceType IN (:sources)
+        ORDER BY headline COLLATE NOCASE ASC
+        """
+    )
+    fun observeFoodByBarcodeFromSources(
+        barcode: String,
+        sources: List<FoodSourceType>,
+    ): PagingSource<Int, FoodSearch>
+
+    @Query(
+        """
         SELECT COUNT(*)
         FROM Product p
         WHERE
@@ -176,6 +323,20 @@ interface FoodSearchDao {
         """
     )
     fun observeFoodCountByBarcode(barcode: String, source: FoodSourceType?): Flow<Int>
+
+    @Query(
+        """
+        SELECT COUNT(*)
+        FROM Product p
+        WHERE
+            p.barcode LIKE '%' || :barcode || '%' AND
+            p.sourceType IN (:sources)
+        """
+    )
+    fun observeFoodCountByBarcodeFromSources(
+        barcode: String,
+        sources: List<FoodSourceType>,
+    ): Flow<Int>
 
     @Query(
         """

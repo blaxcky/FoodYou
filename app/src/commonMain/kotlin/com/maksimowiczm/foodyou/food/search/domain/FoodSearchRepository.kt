@@ -17,6 +17,13 @@ interface FoodSearchRepository {
         excludedRecipeId: FoodId.Recipe?,
     ): Flow<PagingData<FoodSearch>>
 
+    fun search(
+        query: SearchQuery,
+        sources: Set<FoodSource.Type>,
+        config: PagingConfig,
+        excludedRecipeId: FoodId.Recipe?,
+    ): Flow<PagingData<FoodSearch>>
+
     fun searchRecent(
         query: SearchQuery,
         config: PagingConfig,
@@ -27,6 +34,12 @@ interface FoodSearchRepository {
     fun searchFoodCount(
         query: SearchQuery,
         source: FoodSource.Type,
+        excludedRecipeId: FoodId.Recipe?,
+    ): Flow<Int>
+
+    fun searchFoodCount(
+        query: SearchQuery,
+        sources: Set<FoodSource.Type>,
         excludedRecipeId: FoodId.Recipe?,
     ): Flow<Int>
 

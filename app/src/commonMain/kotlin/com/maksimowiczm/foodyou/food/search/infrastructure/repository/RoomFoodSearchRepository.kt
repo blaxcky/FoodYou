@@ -63,6 +63,45 @@ internal class RoomFoodSearchRepository(private val foodSearchDao: FoodSearchDao
             .flow
             .map { data -> data.map { it.toModel() } }
 
+    override fun search(
+        query: SearchQuery,
+        sources: Set<FoodSource.Type>,
+        config: PagingConfig,
+        excludedRecipeId: FoodId.Recipe?,
+    ): Flow<PagingData<FoodSearch>> =
+        Pager(
+                config = config,
+                pagingSourceFactory = {
+                    val entities = sources.map { it.toEntity() }
+                    val includeRecipes = FoodSource.Type.User in sources
+
+                    when (query) {
+                        SearchQuery.Blank ->
+                            foodSearchDao.observeFoodFromSources(
+                                sources = entities,
+                                includeRecipes = includeRecipes,
+                                excludedRecipeId = excludedRecipeId?.id,
+                            )
+
+                        is SearchQuery.Text ->
+                            foodSearchDao.observeFoodByQueryFromSources(
+                                query = query.query,
+                                sources = entities,
+                                includeRecipes = includeRecipes,
+                                excludedRecipeId = excludedRecipeId?.id,
+                            )
+
+                        is SearchQuery.Barcode ->
+                            foodSearchDao.observeFoodByBarcodeFromSources(
+                                barcode = query.query,
+                                sources = entities,
+                            )
+                    }
+                },
+            )
+            .flow
+            .map { data -> data.map { it.toModel() } }
+
     override fun searchRecent(
         query: SearchQuery,
         config: PagingConfig,
@@ -125,6 +164,38 @@ internal class RoomFoodSearchRepository(private val foodSearchDao: FoodSearchDao
                     source = source.toEntity(),
                 )
         }
+
+    override fun searchFoodCount(
+        query: SearchQuery,
+        sources: Set<FoodSource.Type>,
+        excludedRecipeId: FoodId.Recipe?,
+    ): Flow<Int> {
+        val entities = sources.map { it.toEntity() }
+        val includeRecipes = FoodSource.Type.User in sources
+
+        return when (query) {
+            SearchQuery.Blank ->
+                foodSearchDao.observeFoodCountFromSources(
+                    sources = entities,
+                    includeRecipes = includeRecipes,
+                    excludedRecipeId = excludedRecipeId?.id,
+                )
+
+            is SearchQuery.Text ->
+                foodSearchDao.observeFoodCountByQueryFromSources(
+                    query = query.query,
+                    sources = entities,
+                    includeRecipes = includeRecipes,
+                    excludedRecipeId = excludedRecipeId?.id,
+                )
+
+            is SearchQuery.Barcode ->
+                foodSearchDao.observeFoodCountByBarcodeFromSources(
+                    barcode = query.query,
+                    sources = entities,
+                )
+        }
+    }
 
     override fun searchRecentFoodCount(
         query: SearchQuery,

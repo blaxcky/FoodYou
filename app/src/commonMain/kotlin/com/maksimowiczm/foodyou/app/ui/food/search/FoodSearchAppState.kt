@@ -41,6 +41,7 @@ class FoodSearchAppState(
 }
 
 class ListStates(
+    val all: LazyListState,
     val recent: LazyListState,
     val yourFood: LazyListState,
     val openFoodFacts: LazyListState,
@@ -51,6 +52,7 @@ class ListStates(
 
 @Composable
 private fun rememberListStates(): ListStates {
+    val all = rememberLazyListState()
     val recent = rememberLazyListState()
     val yourFood = rememberLazyListState()
     val openFoodFacts = rememberLazyListState()
@@ -58,8 +60,9 @@ private fun rememberListStates(): ListStates {
     val swiss = rememberLazyListState()
     val fddb = rememberLazyListState()
 
-    return remember(recent, yourFood, openFoodFacts, usda, swiss, fddb) {
+    return remember(all, recent, yourFood, openFoodFacts, usda, swiss, fddb) {
         ListStates(
+            all = all,
             recent = recent,
             yourFood = yourFood,
             openFoodFacts = openFoodFacts,

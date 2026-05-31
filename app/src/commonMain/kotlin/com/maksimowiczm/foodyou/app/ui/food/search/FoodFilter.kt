@@ -9,13 +9,14 @@ import com.maksimowiczm.foodyou.app.ui.food.component.Icon
 import com.maksimowiczm.foodyou.app.ui.food.component.stringResource
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import foodyou.app.generated.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Immutable
 internal data class FoodFilter(val source: Source = DefaultFilter) {
 
     companion object {
-        val DefaultFilter = Source.Recent
+        val DefaultFilter = Source.All
     }
 
     val filterCount: Int
@@ -30,6 +31,7 @@ internal data class FoodFilter(val source: Source = DefaultFilter) {
         }
 
     enum class Source {
+        All,
         Recent,
         YourFood,
         OpenFoodFacts,
@@ -40,6 +42,13 @@ internal data class FoodFilter(val source: Source = DefaultFilter) {
         @Composable
         fun Icon(modifier: Modifier = Modifier.Companion) =
             when (this) {
+                All ->
+                    androidx.compose.material3.Icon(
+                        painter = painterResource(Res.drawable.ic_database_search),
+                        contentDescription = null,
+                        modifier = modifier,
+                    )
+
                 Recent ->
                     androidx.compose.material3.Icon(
                         imageVector = Icons.Filled.History,
@@ -63,6 +72,7 @@ internal data class FoodFilter(val source: Source = DefaultFilter) {
         @Composable
         fun stringResource(): String =
             when (this) {
+                All -> stringResource(Res.string.headline_all)
                 Recent -> stringResource(Res.string.headline_recent)
                 YourFood -> stringResource(Res.string.headline_your_food)
                 OpenFoodFacts -> FoodSource.Type.OpenFoodFacts.stringResource()

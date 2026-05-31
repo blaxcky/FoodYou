@@ -429,6 +429,7 @@
     <string name="headline_anonymous">Anonymous</string>
 
     <string name="headline_recent">Recent</string>
+    <string name="headline_all">All</string>
 
     <string name="headline_database">Database</string>
     <string name="description_manage_database">Manage your database</string>

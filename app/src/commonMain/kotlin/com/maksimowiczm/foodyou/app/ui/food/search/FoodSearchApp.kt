@@ -259,6 +259,7 @@ private fun FoodSearchApp(
 
 private fun ListStates.state(source: FoodFilter.Source) =
     when (source) {
+        FoodFilter.Source.All -> all
         FoodFilter.Source.Recent -> recent
         FoodFilter.Source.YourFood -> yourFood
         FoodFilter.Source.OpenFoodFacts -> openFoodFacts

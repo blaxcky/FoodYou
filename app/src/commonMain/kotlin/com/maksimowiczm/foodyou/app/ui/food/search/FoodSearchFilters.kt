@@ -38,7 +38,7 @@ internal fun FoodSearchFilters(
         items(filters.toList()) { (source, state) ->
             val pages = state.collectAsLazyPagingItems()
             val isLoading = pages.delayedLoadingState()
-            val hasError = pages.loadState.hasError
+            val hasError = source != FoodFilter.Source.All && pages.loadState.hasError
             val selected = uiState.filter.source == source
 
             val colors =

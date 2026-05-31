@@ -49,6 +49,7 @@
     <string name="headline_activities">Aktivitäten</string>
     <string name="headline_your_week">Deine Woche</string>
     <string name="headline_recent">Zuletzt verwendet</string>
+    <string name="headline_all">Alle</string>
     <string name="headline_today" description="Today, date">Heute, %1$s</string>
     <string name="headline_yesterday" description="Yesterday, date">Gestern, %1$s</string>
     <string name="headline_tomorrow" description="Tomorrow, date">Morgen, %1$s</string>
