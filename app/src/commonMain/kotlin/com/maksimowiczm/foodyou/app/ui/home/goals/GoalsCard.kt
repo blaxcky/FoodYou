@@ -159,6 +159,7 @@ internal fun GoalsCard(
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
             onShowNextGoalDisplayMode = viewModel::showNextGoalDisplayMode,
+            onShowPreviousGoalDisplayMode = viewModel::showPreviousGoalDisplayMode,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             modifier = modifier,
         )
@@ -205,6 +206,7 @@ internal fun GoalsCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onShowNextGoalDisplayMode: () -> Unit = {},
+    onShowPreviousGoalDisplayMode: () -> Unit = {},
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -256,6 +258,7 @@ internal fun GoalsCard(
                         energyGoal = energyGoal,
                         showEnergyGoalValue = showEnergyGoalValue,
                         onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
+                        onShowPreviousGoalDisplayMode = onShowPreviousGoalDisplayMode,
                         progress = energyProgress,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -668,6 +671,7 @@ private fun CaloriesOverview(
     energyGoal: Int,
     showEnergyGoalValue: Boolean,
     onShowNextGoalDisplayMode: () -> Unit,
+    onShowPreviousGoalDisplayMode: () -> Unit,
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -684,7 +688,10 @@ private fun CaloriesOverview(
     BoxWithConstraints(
         modifier =
             modifier
-                .detectGoalDisplayModeSwipe(onShowNextGoalDisplayMode)
+                .detectGoalDisplayModeSwipe(
+                    onSwipeLeft = onShowPreviousGoalDisplayMode,
+                    onSwipeRight = onShowNextGoalDisplayMode,
+                )
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color.Transparent)
                 .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -943,8 +950,11 @@ private fun GoalDisplayMode.accentColor(): Color =
         GoalDisplayMode.Diet -> DietGoalAccentColor
     }
 
-private fun Modifier.detectGoalDisplayModeSwipe(onSwipeDown: () -> Unit): Modifier =
-    pointerInput(onSwipeDown) {
+private fun Modifier.detectGoalDisplayModeSwipe(
+    onSwipeLeft: () -> Unit,
+    onSwipeRight: () -> Unit,
+): Modifier =
+    pointerInput(onSwipeLeft, onSwipeRight) {
         val threshold = 48.dp.toPx()
         var totalX = 0f
         var totalY = 0f
@@ -960,9 +970,13 @@ private fun Modifier.detectGoalDisplayModeSwipe(onSwipeDown: () -> Unit): Modifi
                 totalX += dragAmount.x
                 totalY += dragAmount.y
 
-                if (!toggled && totalY > threshold && totalY > abs(totalX) * 1.5f) {
+                if (!toggled && abs(totalX) > threshold && abs(totalX) > abs(totalY) * 1.5f) {
                     toggled = true
-                    onSwipeDown()
+                    if (totalX > 0) {
+                        onSwipeRight()
+                    } else {
+                        onSwipeLeft()
+                    }
                 }
             },
         )

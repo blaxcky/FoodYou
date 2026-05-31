@@ -57,6 +57,14 @@ internal class GoalsViewModel(
     }
 
     fun showNextGoalDisplayMode() {
+        showGoalDisplayMode(offset = 1)
+    }
+
+    fun showPreviousGoalDisplayMode() {
+        showGoalDisplayMode(offset = -1)
+    }
+
+    private fun showGoalDisplayMode(offset: Int) {
         viewModelScope.launch {
             settingsRepository.update {
                 val modes =
@@ -70,7 +78,8 @@ internal class GoalsViewModel(
                         listOf(SettingsGoalDisplayMode.Normal, SettingsGoalDisplayMode.Optimized)
                     }
                 val currentIndex = modes.indexOf(goalDisplayMode).takeIf { it >= 0 } ?: 0
-                copy(goalDisplayMode = modes[(currentIndex + 1) % modes.size])
+                val nextIndex = (currentIndex + offset).floorMod(modes.size)
+                copy(goalDisplayMode = modes[nextIndex])
             }
         }
     }
@@ -288,3 +297,5 @@ private data class SelectedGoalDay(
 
 internal fun roundedNetEnergyKcal(consumedEnergy: Double, burnedEnergy: Double): Int =
     calculateNetEnergyKcal(consumedEnergy, burnedEnergy).roundToInt()
+
+private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
