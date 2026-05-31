@@ -100,6 +100,16 @@ internal class GoalsViewModel(
             .flatMapLatest { (date, today, settings) ->
                 val currentWeek = date.startOfWeek() == today.startOfWeek()
                 val dietEnergyDeficitKcal = settings.dietEnergyDeficitKcal?.takeIf { it > 0.0 }
+                val availableGoalDisplayModes =
+                    if (currentWeek) {
+                        if (dietEnergyDeficitKcal != null) {
+                            listOf(GoalDisplayMode.Normal, GoalDisplayMode.Optimized, GoalDisplayMode.Diet)
+                        } else {
+                            listOf(GoalDisplayMode.Normal, GoalDisplayMode.Optimized)
+                        }
+                    } else {
+                        listOf(GoalDisplayMode.Normal)
+                    }
                 val goalDisplayMode =
                     when {
                         !currentWeek -> GoalDisplayMode.Normal
@@ -136,7 +146,7 @@ internal class GoalsViewModel(
                         )
                     }
                 val previousDays =
-                    if (goalDisplayMode != GoalDisplayMode.Normal) {
+                    if (availableGoalDisplayModes.any { it != GoalDisplayMode.Normal }) {
                         val weekStart = date.startOfWeek()
                         List(date.dayOfWeek.isoDayNumber - 1) { weekStart.plus(it, DateTimeUnit.DAY) }
                     } else {
@@ -169,42 +179,28 @@ internal class GoalsViewModel(
                     }
 
                 combine(selectedDay, previousDaySummaries) { day, previous ->
-                    val energyGoal =
-                        if (goalDisplayMode != GoalDisplayMode.Normal) {
-                            adjustedEnergyGoalKcal(
+                    val goalDisplaySummaries =
+                        availableGoalDisplayModes.map { mode ->
+                            mode.summary(
                                 selectedDate = date,
                                 today = today,
                                 baseEnergyGoalKcal = day.baseEnergyGoal,
-                                dailyEnergyDeficitKcal =
-                                    if (goalDisplayMode == GoalDisplayMode.Diet) {
-                                        dietEnergyDeficitKcal ?: 0.0
-                                    } else {
-                                        0.0
-                                    },
+                                dietEnergyDeficitKcal = dietEnergyDeficitKcal,
                                 previousDays = previous,
                             )
-                        } else {
-                            day.baseEnergyGoal
                         }
-                    val roundedEnergyGoal = energyGoal.roundToInt()
-                    val showEnergyGoalValue =
-                        when (goalDisplayMode) {
-                            GoalDisplayMode.Normal -> true
-                            GoalDisplayMode.Optimized,
-                            GoalDisplayMode.Diet ->
-                                energyGoalDiffersFromBase(
-                                    baseEnergyGoalKcal = day.baseEnergyGoal,
-                                    adjustedEnergyGoalKcal = energyGoal,
-                                )
-                        }
+                    val selectedGoalDisplaySummary =
+                        goalDisplaySummaries.firstOrNull { it.mode == goalDisplayMode }
+                            ?: goalDisplaySummaries.first()
 
                     DaySummaryModel(
                         energy = day.consumedEnergy.roundToInt(),
                         burnedEnergy = day.burnedEnergy.roundToInt(),
                         netEnergy = roundedNetEnergyKcal(day.consumedEnergy, day.burnedEnergy),
-                        energyGoal = roundedEnergyGoal,
-                        showEnergyGoalValue = showEnergyGoalValue,
+                        energyGoal = selectedGoalDisplaySummary.energyGoal,
+                        showEnergyGoalValue = selectedGoalDisplaySummary.showEnergyGoalValue,
                         goalDisplayMode = goalDisplayMode,
+                        goalDisplaySummaries = goalDisplaySummaries,
                         dietGoalDisplayModeEnabled = dietEnergyDeficitKcal != null,
                         proteins = day.proteins,
                         proteinsGoal = day.proteinsGoal,
@@ -297,5 +293,48 @@ private data class SelectedGoalDay(
 
 internal fun roundedNetEnergyKcal(consumedEnergy: Double, burnedEnergy: Double): Int =
     calculateNetEnergyKcal(consumedEnergy, burnedEnergy).roundToInt()
+
+private fun GoalDisplayMode.summary(
+    selectedDate: LocalDate,
+    today: LocalDate,
+    baseEnergyGoalKcal: Double,
+    dietEnergyDeficitKcal: Double?,
+    previousDays: List<GoalEnergyOptimizationDay>,
+): GoalDisplaySummaryModel {
+    val energyGoal =
+        if (this != GoalDisplayMode.Normal) {
+            adjustedEnergyGoalKcal(
+                selectedDate = selectedDate,
+                today = today,
+                baseEnergyGoalKcal = baseEnergyGoalKcal,
+                dailyEnergyDeficitKcal =
+                    if (this == GoalDisplayMode.Diet) {
+                        dietEnergyDeficitKcal ?: 0.0
+                    } else {
+                        0.0
+                    },
+                previousDays = previousDays,
+            )
+        } else {
+            baseEnergyGoalKcal
+        }
+
+    val showEnergyGoalValue =
+        when (this) {
+            GoalDisplayMode.Normal -> true
+            GoalDisplayMode.Optimized,
+            GoalDisplayMode.Diet ->
+                energyGoalDiffersFromBase(
+                    baseEnergyGoalKcal = baseEnergyGoalKcal,
+                    adjustedEnergyGoalKcal = energyGoal,
+                )
+        }
+
+    return GoalDisplaySummaryModel(
+        mode = this,
+        energyGoal = energyGoal.roundToInt(),
+        showEnergyGoalValue = showEnergyGoalValue,
+    )
+}
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
