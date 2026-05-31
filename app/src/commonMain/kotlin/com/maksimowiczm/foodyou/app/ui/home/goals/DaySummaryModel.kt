@@ -31,6 +31,7 @@ internal data class GoalDisplaySummaryModel(
     val mode: GoalDisplayMode,
     val energyGoal: Int,
     val showEnergyGoalValue: Boolean,
+    val percentageEnergyGoal: Int = energyGoal,
 )
 
 @Immutable

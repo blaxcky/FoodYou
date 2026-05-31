@@ -201,6 +201,24 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
+    fun negativeAdjustedGoalUsesBaseGoalForReachedPercentage() {
+        val percentageGoal =
+            percentageEnergyGoalKcal(energyGoalKcal = -500.0, baseEnergyGoalKcal = 2000.0)
+
+        assertEquals(2000, percentageGoal)
+        assertEquals(122, goalReachedPercentage(value = 2436, goal = percentageGoal))
+    }
+
+    @Test
+    fun reachedPercentageCanExceedOneHundredForPositiveGoal() {
+        val percentageGoal =
+            percentageEnergyGoalKcal(energyGoalKcal = 2000.0, baseEnergyGoalKcal = 2000.0)
+
+        assertEquals(2000, percentageGoal)
+        assertEquals(115, goalReachedPercentage(value = 2300, goal = percentageGoal))
+    }
+
+    @Test
     fun nonCurrentWeekKeepsBaseGoal() {
         val goal =
             optimizedEnergyGoalKcal(

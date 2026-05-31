@@ -294,6 +294,13 @@ private data class SelectedGoalDay(
 internal fun roundedNetEnergyKcal(consumedEnergy: Double, burnedEnergy: Double): Int =
     calculateNetEnergyKcal(consumedEnergy, burnedEnergy).roundToInt()
 
+internal fun percentageEnergyGoalKcal(energyGoalKcal: Double, baseEnergyGoalKcal: Double): Int =
+    if (energyGoalKcal > 0.0) {
+        energyGoalKcal.roundToInt()
+    } else {
+        baseEnergyGoalKcal.roundToInt()
+    }
+
 private fun GoalDisplayMode.summary(
     selectedDate: LocalDate,
     today: LocalDate,
@@ -334,6 +341,11 @@ private fun GoalDisplayMode.summary(
         mode = this,
         energyGoal = energyGoal.roundToInt(),
         showEnergyGoalValue = showEnergyGoalValue,
+        percentageEnergyGoal =
+            percentageEnergyGoalKcal(
+                energyGoalKcal = energyGoal,
+                baseEnergyGoalKcal = baseEnergyGoalKcal,
+            ),
     )
 }
 

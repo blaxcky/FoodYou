@@ -323,6 +323,9 @@ private fun goalProgress(value: Int, goal: Int): Float =
         (value.toFloat() / goal).coerceIn(0f, 1f)
     }
 
+internal fun goalReachedPercentage(value: Int, goal: Int): Int =
+    (value.toFloat() / goal.coerceAtLeast(1) * 100).roundToInt().coerceAtLeast(0)
+
 @Composable
 private fun WeeklyGoalsContent(
     model: WeekSummaryModel,
@@ -788,9 +791,9 @@ private fun CaloriesOverviewPage(
     val showEnergyGoalValue = summary.showEnergyGoalValue
     val energyFormatter = LocalEnergyFormatter.current
     val left = energyGoal - netEnergy
-    val goal = energyGoal.coerceAtLeast(1)
-    val reached = (netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0)
-    val progress = (netEnergy.toFloat() / goal).coerceIn(0f, 1f)
+    val percentageEnergyGoal = summary.percentageEnergyGoal.coerceAtLeast(1)
+    val reached = goalReachedPercentage(netEnergy, percentageEnergyGoal)
+    val progress = (netEnergy.toFloat() / percentageEnergyGoal).coerceIn(0f, 1f)
     val overflow = left < 0
     val remainingValue = if (overflow) -left else left
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
