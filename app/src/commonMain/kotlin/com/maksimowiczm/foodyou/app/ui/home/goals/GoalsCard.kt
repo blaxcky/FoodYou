@@ -689,8 +689,8 @@ private fun CaloriesOverview(
         modifier =
             modifier
                 .detectGoalDisplayModeSwipe(
-                    onSwipeLeft = onShowPreviousGoalDisplayMode,
-                    onSwipeRight = onShowNextGoalDisplayMode,
+                    onSwipeLeft = onShowNextGoalDisplayMode,
+                    onSwipeRight = onShowPreviousGoalDisplayMode,
                 )
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color.Transparent)
