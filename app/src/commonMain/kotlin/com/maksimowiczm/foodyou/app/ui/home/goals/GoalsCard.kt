@@ -227,12 +227,34 @@ internal fun GoalsCard(
     val proteinsProgress = goalProgress(proteins, proteinsGoal)
     val carbsProgress = goalProgress(carbohydrates, carbohydratesGoal)
     val fatsProgress = goalProgress(fats, fatsGoal)
+    val displayedGoalDisplayModes =
+        remember(goalDisplayMode, goalDisplaySummaries) {
+            goalDisplaySummaries
+                .map { it.mode }
+                .takeIf { modes -> modes.any { it == goalDisplayMode } }
+                ?: listOf(goalDisplayMode)
+        }
+    var displayedGoalDisplayMode by remember { mutableStateOf(goalDisplayMode) }
+
+    LaunchedEffect(goalDisplayMode) { displayedGoalDisplayMode = goalDisplayMode }
+
+    fun showDisplayedGoalDisplayMode(offset: Int) {
+        val currentIndex =
+            displayedGoalDisplayModes.indexOf(displayedGoalDisplayMode).takeIf { it >= 0 } ?: 0
+        displayedGoalDisplayMode =
+            displayedGoalDisplayModes[
+                (currentIndex + offset).floorMod(displayedGoalDisplayModes.size)
+            ]
+    }
 
     Column(modifier = modifier) {
         GoalDisplayModeButtons(
-            goalDisplayMode = goalDisplayMode,
+            goalDisplayMode = displayedGoalDisplayMode,
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
-            onSelectGoalDisplayMode = onSelectGoalDisplayMode,
+            onSelectGoalDisplayMode = {
+                displayedGoalDisplayMode = it
+                onSelectGoalDisplayMode(it)
+            },
             modifier =
                 Modifier.fillMaxWidth()
                     .height(38.dp)
@@ -269,10 +291,16 @@ internal fun GoalsCard(
                         netEnergy = netEnergy,
                         energyGoal = energyGoal,
                         showEnergyGoalValue = showEnergyGoalValue,
-                        goalDisplayMode = goalDisplayMode,
+                        goalDisplayMode = displayedGoalDisplayMode,
                         goalDisplaySummaries = goalDisplaySummaries,
-                        onShowNextGoalDisplayMode = onShowNextGoalDisplayMode,
-                        onShowPreviousGoalDisplayMode = onShowPreviousGoalDisplayMode,
+                        onShowNextGoalDisplayMode = {
+                            showDisplayedGoalDisplayMode(offset = 1)
+                            onShowNextGoalDisplayMode()
+                        },
+                        onShowPreviousGoalDisplayMode = {
+                            showDisplayedGoalDisplayMode(offset = -1)
+                            onShowPreviousGoalDisplayMode()
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Spacer(Modifier.height(10.dp))
@@ -712,8 +740,6 @@ private fun CaloriesOverview(
     var offsetPx by remember { mutableFloatStateOf(0f) }
     val animationScope = rememberCoroutineScope()
 
-    LaunchedEffect(goalDisplayMode) { offsetPx = 0f }
-
     BoxWithConstraints(
         modifier =
             modifier
@@ -1102,9 +1128,23 @@ private fun Modifier.detectGoalDisplayModeSwipe(
                         else -> 0f
                     }
                 animationScope.launch {
-                    val animatedOffset = Animatable(currentOffset)
+                    val animationStart =
+                        when {
+                            target < 0f -> {
+                                onSwipeLeft()
+                                currentOffset + pageWidthPx
+                            }
+                            target > 0f -> {
+                                onSwipeRight()
+                                currentOffset - pageWidthPx
+                            }
+                            else -> currentOffset
+                        }
+                    onOffsetChange(animationStart)
+
+                    val animatedOffset = Animatable(animationStart)
                     animatedOffset.animateTo(
-                        targetValue = target,
+                        targetValue = 0f,
                         animationSpec =
                             spring(
                                 dampingRatio = Spring.DampingRatioNoBouncy,
@@ -1112,11 +1152,6 @@ private fun Modifier.detectGoalDisplayModeSwipe(
                             ),
                     ) {
                         onOffsetChange(value)
-                    }
-                    when {
-                        target < 0f -> onSwipeLeft()
-                        target > 0f -> onSwipeRight()
-                        else -> onOffsetChange(0f)
                     }
                 }
             },
