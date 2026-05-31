@@ -1,6 +1,8 @@
 package com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.domain
 
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
+import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
+import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.importexport.domain.entity.ProductField
 import com.maksimowiczm.foodyou.importexport.domain.usecase.ImportCsvProductUseCase
 import kotlinx.coroutines.flow.Flow
@@ -10,6 +12,20 @@ import kotlinx.coroutines.flow.flow
 
 fun interface ImportSwissFoodCompositionDatabaseUseCase {
     suspend fun import(languages: Set<SwissFoodCompositionDatabaseRepository.Language>): Flow<Int>
+}
+
+fun interface DeleteSwissFoodCompositionDatabaseUseCase {
+    suspend fun delete(): Int
+}
+
+internal class DeleteSwissFoodCompositionDatabaseUseCaseImpl(
+    private val transactionProvider: TransactionProvider,
+    private val productRepository: ProductRepository,
+) : DeleteSwissFoodCompositionDatabaseUseCase {
+    override suspend fun delete(): Int =
+        transactionProvider.withTransaction {
+            productRepository.deleteProductsBySource(FoodSource.Type.SwissFoodCompositionDatabase)
+        }
 }
 
 internal class ImportSwissFoodCompositionDatabaseUseCaseImpl(

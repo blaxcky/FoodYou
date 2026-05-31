@@ -1,6 +1,8 @@
 package com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase
 
 import com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.domain.ImportSwissFoodCompositionDatabaseUseCase
+import com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.domain.DeleteSwissFoodCompositionDatabaseUseCase
+import com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.domain.DeleteSwissFoodCompositionDatabaseUseCaseImpl
 import com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.domain.ImportSwissFoodCompositionDatabaseUseCaseImpl
 import com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.domain.SwissFoodCompositionDatabaseRepository
 import com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.infrastructure.ComposeSwissFoodCompositionDatabaseRepository
@@ -11,6 +13,9 @@ import org.koin.dsl.module
 val importExportSwissFoodCompositionDatabaseModule = module {
     factoryOf(::ImportSwissFoodCompositionDatabaseUseCaseImpl)
         .bind<ImportSwissFoodCompositionDatabaseUseCase>()
+
+    factoryOf(::DeleteSwissFoodCompositionDatabaseUseCaseImpl)
+        .bind<DeleteSwissFoodCompositionDatabaseUseCase>()
 
     factoryOf(::ComposeSwissFoodCompositionDatabaseRepository)
         .bind<SwissFoodCompositionDatabaseRepository>()

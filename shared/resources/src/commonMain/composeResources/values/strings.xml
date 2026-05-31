@@ -289,6 +289,7 @@
     <string name="description_download_product_hint">You can paste any text. First URL will be used.</string>
     <string name="description_show_macronutrients_goals">Show macronutrients goals</string>
     <string name="description_please_wait_while_importing_products">Please wait while importing products</string>
+    <string name="description_please_wait_while_deleting_products">Please wait while deleting products</string>
     <string name="description_please_wait_while_exporting_products">Please wait while exporting products</string>
 
     <string name="link_icons8" translatable="false">https://icons8.com/</string>
@@ -321,6 +322,15 @@
 
     <string name="notification_importing_products">Importing products</string>
     <string name="notification_importing_products_success">Finished importing products</string>
+    <string name="notification_deleting_products">Deleting products</string>
+    <string name="notification_deleting_products_success">Finished deleting products</string>
+    <string name="action_delete_swiss_food_composition_database">Delete imported products</string>
+    <string name="headline_delete_swiss_food_composition_database">Delete Swiss Food Composition Database?</string>
+    <string name="description_delete_swiss_food_composition_database">All products imported from Swiss Food Composition Database will be permanently deleted from your database.</string>
+    <plurals name="neutral_swiss_food_composition_database_imported_x_products">
+        <item quantity="one">%1$d imported Swiss Food Composition Database product</item>
+        <item quantity="other">%1$d imported Swiss Food Composition Database products</item>
+    </plurals>
 
     <string name="headline_food_data_central_usda" translatable="false">FoodData Central (USDA)</string>
     <string name="headline_fddb" translatable="false">FDDB</string>

@@ -23,18 +23,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -53,6 +57,7 @@ import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.importexport.swissfoodcompositiondatabase.domain.SwissFoodCompositionDatabaseRepository.Language
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -65,6 +70,8 @@ fun SwissFoodCompositionDatabaseScreen(onBack: () -> Unit, modifier: Modifier = 
         uiState = uiState,
         onBack = onBack,
         onImport = viewModel::import,
+        onDelete = viewModel::delete,
+        onReset = viewModel::reset,
         modifier = modifier,
     )
 }
@@ -74,6 +81,8 @@ private fun SwissFoodCompositionDatabaseScreen(
     uiState: SwissFoodCompositionDatabaseUiState,
     onBack: () -> Unit,
     onImport: (Set<Language>) -> Unit,
+    onDelete: () -> Unit,
+    onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val coroutinesScope = rememberCoroutineScope()
@@ -81,24 +90,35 @@ private fun SwissFoodCompositionDatabaseScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     var languages by rememberSaveable { mutableStateOf(setOf<Language>()) }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val pleaseWaitMessage =
-        stringResource(Res.string.description_please_wait_while_importing_products)
+        stringResource(
+            if (uiState == SwissFoodCompositionDatabaseUiState.Deleting) {
+                Res.string.description_please_wait_while_deleting_products
+            } else {
+                Res.string.description_please_wait_while_importing_products
+            }
+        )
 
     LaunchedEffect(uiState) {
         when (uiState) {
-            SwissFoodCompositionDatabaseUiState.Finished ->
+            SwissFoodCompositionDatabaseUiState.DeleteFinished,
+            SwissFoodCompositionDatabaseUiState.ImportFinished ->
                 snackbarHostState.currentSnackbarData?.dismiss()
 
+            SwissFoodCompositionDatabaseUiState.Deleting,
             is SwissFoodCompositionDatabaseUiState.Importing,
-            SwissFoodCompositionDatabaseUiState.LanguagePick -> Unit
+            is SwissFoodCompositionDatabaseUiState.LanguagePick -> Unit
         }
     }
 
     NavigationEventHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = uiState is SwissFoodCompositionDatabaseUiState.Importing,
+        isBackEnabled =
+            uiState is SwissFoodCompositionDatabaseUiState.Importing ||
+                uiState == SwissFoodCompositionDatabaseUiState.Deleting,
         onBackCompleted = {
             coroutinesScope.launch { snackbarHostState.showSnackbar(pleaseWaitMessage) }
         },
@@ -114,7 +134,9 @@ private fun SwissFoodCompositionDatabaseScreen(
                 navigationIcon = {
                     ArrowBackIconButton(
                         onClick = onBack,
-                        enabled = uiState !is SwissFoodCompositionDatabaseUiState.Importing,
+                        enabled =
+                            uiState !is SwissFoodCompositionDatabaseUiState.Importing &&
+                                uiState != SwissFoodCompositionDatabaseUiState.Deleting,
                     )
                 },
                 scrollBehavior = scrollBehavior,
@@ -129,10 +151,20 @@ private fun SwissFoodCompositionDatabaseScreen(
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
             when (uiState) {
-                SwissFoodCompositionDatabaseUiState.Finished ->
-                    ImportingFinished(
+                SwissFoodCompositionDatabaseUiState.DeleteFinished ->
+                    Finished(
+                        headline = stringResource(Res.string.notification_deleting_products_success),
                         modifier = Modifier.align(Alignment.Center).padding(paddingValues)
                     )
+
+                SwissFoodCompositionDatabaseUiState.ImportFinished ->
+                    Finished(
+                        headline = stringResource(Res.string.notification_importing_products_success),
+                        modifier = Modifier.align(Alignment.Center).padding(paddingValues),
+                    )
+
+                SwissFoodCompositionDatabaseUiState.Deleting ->
+                    DeletingProgress(modifier = Modifier.align(Alignment.Center).padding(paddingValues))
 
                 is SwissFoodCompositionDatabaseUiState.Importing ->
                     ImportingProgress(
@@ -140,7 +172,7 @@ private fun SwissFoodCompositionDatabaseScreen(
                         modifier = Modifier.align(Alignment.Center).padding(paddingValues),
                     )
 
-                SwissFoodCompositionDatabaseUiState.LanguagePick ->
+                is SwissFoodCompositionDatabaseUiState.LanguagePick ->
                     LazyColumn(
                         modifier =
                             Modifier.fillMaxSize()
@@ -164,12 +196,21 @@ private fun SwissFoodCompositionDatabaseScreen(
                         item {
                             LanguagePicker(selected = languages, onLanguages = { languages = it })
                         }
+
+                        if (uiState.importedProducts > 0) {
+                            item {
+                                DeleteImportedProducts(
+                                    importedProducts = uiState.importedProducts,
+                                    onDelete = { showDeleteDialog = true },
+                                )
+                            }
+                        }
                     }
             }
 
             AnimatedVisibility(
                 visible =
-                    uiState == SwissFoodCompositionDatabaseUiState.LanguagePick &&
+                    uiState is SwissFoodCompositionDatabaseUiState.LanguagePick &&
                         languages.isNotEmpty(),
                 modifier =
                     Modifier.zIndex(10f)
@@ -189,7 +230,9 @@ private fun SwissFoodCompositionDatabaseScreen(
             }
 
             AnimatedVisibility(
-                visible = uiState == SwissFoodCompositionDatabaseUiState.Finished,
+                visible =
+                    uiState == SwissFoodCompositionDatabaseUiState.ImportFinished ||
+                        uiState == SwissFoodCompositionDatabaseUiState.DeleteFinished,
                 modifier =
                     Modifier.zIndex(10f)
                         .align(Alignment.BottomCenter)
@@ -198,7 +241,7 @@ private fun SwissFoodCompositionDatabaseScreen(
                 enter = slideInVertically { it } + fadeIn(),
             ) {
                 Button(
-                    onClick = onBack,
+                    onClick = onReset,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.height(56.dp),
                 ) {
@@ -206,6 +249,16 @@ private fun SwissFoodCompositionDatabaseScreen(
                 }
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        DeleteSwissFoodCompositionDatabaseDialog(
+            onConfirm = {
+                showDeleteDialog = false
+                onDelete()
+            },
+            onDismiss = { showDeleteDialog = false },
+        )
     }
 }
 
@@ -261,6 +314,59 @@ private fun LanguagePicker(
             },
         )
     }
+}
+
+@Composable
+private fun DeleteImportedProducts(
+    importedProducts: Int,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(top = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text =
+                pluralStringResource(
+                    Res.plurals.neutral_swiss_food_composition_database_imported_x_products,
+                    importedProducts,
+                    importedProducts,
+                ),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        OutlinedButton(
+            onClick = onDelete,
+            shapes = ButtonDefaults.shapes(),
+            modifier = Modifier.height(56.dp),
+        ) {
+            Icon(Icons.Default.Delete, contentDescription = null)
+            Text(stringResource(Res.string.action_delete_swiss_food_composition_database))
+        }
+    }
+}
+
+@Composable
+private fun DeleteSwissFoodCompositionDatabaseDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(Res.string.action_delete)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+        },
+        title = { Text(stringResource(Res.string.headline_delete_swiss_food_composition_database)) },
+        text = { Text(stringResource(Res.string.description_delete_swiss_food_composition_database)) },
+    )
 }
 
 @Composable
@@ -357,7 +463,24 @@ private fun ImportingProgress(progress: Float, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ImportingFinished(modifier: Modifier = Modifier) {
+private fun DeletingProgress(modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        CircularWavyProgressIndicator(modifier = Modifier.size(68.dp))
+
+        Spacer(Modifier.height(24.dp))
+
+        Text(
+            text = stringResource(Res.string.notification_deleting_products),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun Finished(headline: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
             imageVector = Icons.Default.Check,
@@ -369,7 +492,7 @@ private fun ImportingFinished(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = stringResource(Res.string.notification_importing_products_success),
+            text = headline,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.headlineSmall,

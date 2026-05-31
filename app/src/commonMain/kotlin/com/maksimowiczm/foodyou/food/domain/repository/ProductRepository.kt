@@ -17,6 +17,8 @@ interface ProductRepository {
 
     fun observeProducts(limit: Int, offset: Int): Flow<List<Product>>
 
+    fun observeProductCountBySource(type: FoodSource.Type): Flow<Int>
+
     /**
      * @param name Name of the product.
      * @param brand Brand of the product, if available.
@@ -62,4 +64,6 @@ interface ProductRepository {
     suspend fun updateProduct(product: Product)
 
     suspend fun deleteProduct(product: Product)
+
+    suspend fun deleteProductsBySource(type: FoodSource.Type): Int
 }

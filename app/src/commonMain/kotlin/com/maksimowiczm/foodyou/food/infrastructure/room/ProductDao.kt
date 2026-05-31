@@ -59,11 +59,28 @@ abstract class ProductDao {
     )
     abstract fun observeProducts(limit: Int, offset: Int): Flow<List<ProductEntity>>
 
+    @Query(
+        """
+        SELECT COUNT(*)
+        FROM Product
+        WHERE sourceType = :sourceType
+        """
+    )
+    abstract fun observeProductCountBySource(sourceType: FoodSourceType): Flow<Int>
+
     @Insert abstract suspend fun insertProduct(product: ProductEntity): Long
 
     @Update abstract suspend fun updateProduct(product: ProductEntity)
 
     @Delete abstract suspend fun deleteProduct(product: ProductEntity)
+
+    @Query(
+        """
+        DELETE FROM Product
+        WHERE sourceType = :sourceType
+        """
+    )
+    abstract suspend fun deleteProductsBySource(sourceType: FoodSourceType): Int
 
     @Query(
         """
