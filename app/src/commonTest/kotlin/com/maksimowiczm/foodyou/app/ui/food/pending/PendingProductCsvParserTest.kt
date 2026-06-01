@@ -66,6 +66,71 @@ class PendingProductCsvParserTest {
     }
 
     @Test
+    fun parsesChatGptCsvWithMissingHeaderLineBreak() = runBlocking {
+        val result =
+            parser.parse(
+                "name,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal," +
+                    "proteins,carbohydrates,fats Freeze Dried Strawberries,Acme,," +
+                    "25,10,false,360,7.8,82.4,3.1"
+            )
+
+        assertEquals(
+            PendingProductCsvData(
+                name = "Freeze Dried Strawberries",
+                brand = "Acme",
+                barcode = null,
+                packageWeight = 25.0,
+                servingWeight = 10.0,
+                isLiquid = false,
+                energyKcal = 360.0,
+                proteins = 7.8,
+                carbohydrates = 82.4,
+                fats = 3.1,
+            ),
+            result.dataOrFail(),
+        )
+    }
+
+    @Test
+    fun parsesHeaderAndDataRowSeparatedBySpaces() = runBlocking {
+        val result =
+            parser.parse(
+                "name,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal," +
+                    "proteins,carbohydrates,fats   \"Apple Juice\",Acme,1234567890123," +
+                    "1000,250,true,46,0.1,11.2,0"
+            )
+
+        assertEquals("Apple Juice", result.dataOrFail().name)
+    }
+
+    @Test
+    fun parsesMissingHeaderLineBreakWithHeaderWhitespaceBomAndCaseDifferences() = runBlocking {
+        val result =
+            parser.parse(
+                "\uFEFF Name , BRAND , Barcode , PackageWeight , ServingWeight , IsLiquid , " +
+                    "EnergyKcal , Proteins , Carbohydrates , Fats \"Apple Juice\",Acme," +
+                    "1234567890123,1000,250,true,46,0.1,11.2,0"
+            )
+
+        assertEquals("Apple Juice", result.dataOrFail().name)
+    }
+
+    @Test
+    fun parsesMissingHeaderLineBreakInsideMarkdownFence() = runBlocking {
+        val result =
+            parser.parse(
+                """
+                ```csv
+                name,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal,proteins,carbohydrates,fats "Apple Juice",Acme,1234567890123,1000,250,true,46,0.1,11.2,0
+                ```
+                """
+                    .trimIndent()
+            )
+
+        assertEquals("Apple Juice", result.dataOrFail().name)
+    }
+
+    @Test
     fun rejectsInvalidHeader() = runBlocking {
         val result =
             parser.parse(
@@ -80,12 +145,38 @@ class PendingProductCsvParserTest {
     }
 
     @Test
+    fun rejectsInvalidHeaderWithMissingLineBreakShape() = runBlocking {
+        val result =
+            parser.parse(
+                "title,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal," +
+                    "proteins,carbohydrates,fats \"Apple Juice\",Acme,1234567890123," +
+                    "1000,250,true,46,0.1,11.2,0"
+            )
+
+        assertEquals(PendingProductCsvError.InvalidHeader, result.errorOrFail())
+    }
+
+    @Test
     fun rejectsMultipleDataRows() = runBlocking {
         val result =
             parser.parse(
                 """
                 name,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal,proteins,carbohydrates,fats
                 "Apple Juice",Acme,1234567890123,1000,250,true,46,0.1,11.2,0
+                "Orange Juice",Acme,1234567890124,1000,250,true,45,0.2,10.5,0
+                """
+                    .trimIndent()
+            )
+
+        assertEquals(PendingProductCsvError.InvalidDataRowCount, result.errorOrFail())
+    }
+
+    @Test
+    fun rejectsMultipleDataRowsAfterMissingHeaderLineBreakRepair() = runBlocking {
+        val result =
+            parser.parse(
+                """
+                name,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal,proteins,carbohydrates,fats "Apple Juice",Acme,1234567890123,1000,250,true,46,0.1,11.2,0
                 "Orange Juice",Acme,1234567890124,1000,250,true,45,0.2,10.5,0
                 """
                     .trimIndent()

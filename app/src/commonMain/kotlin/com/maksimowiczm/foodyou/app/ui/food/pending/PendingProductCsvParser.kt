@@ -51,7 +51,7 @@ internal class PendingProductCsvParserImpl(private val csvParser: CsvParser) :
             return PendingProductCsvParseResult.Failure(PendingProductCsvError.Empty)
         }
 
-        val csvInput = csv.withoutMarkdownFences()
+        val csvInput = csv.withoutMarkdownFences().normalizeMissingHeaderLineBreak()
         if (csvInput.isBlank()) {
             return PendingProductCsvParseResult.Failure(PendingProductCsvError.Empty)
         }
@@ -138,11 +138,21 @@ internal class PendingProductCsvParserImpl(private val csvParser: CsvParser) :
 
         val NormalizedHeader = Header.map { it.lowercase() }
         val NumberIndexes = listOf(3, 4, 6, 7, 8, 9)
+        val MissingHeaderLineBreakRegex =
+            Regex(
+                "^\\s*\\uFEFF?\\s*name\\s*,\\s*brand\\s*,\\s*barcode\\s*,\\s*" +
+                    "packageWeight\\s*,\\s*servingWeight\\s*,\\s*isLiquid\\s*,\\s*" +
+                    "energyKcal\\s*,\\s*proteins\\s*,\\s*carbohydrates\\s*,\\s*fats\\s+(?=\\S)",
+                RegexOption.IGNORE_CASE,
+            )
 
         fun String.withoutMarkdownFences(): String =
             lineSequence()
                 .filterNot { it.trim().startsWith("```") }
                 .joinToString("\n")
+
+        fun String.normalizeMissingHeaderLineBreak(): String =
+            replaceFirst(MissingHeaderLineBreakRegex, Header.joinToString(",") + "\n")
 
         fun List<String?>.isBlankRecord(): Boolean = all { it.normalizedValue() == null }
 
