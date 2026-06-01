@@ -7,7 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -1146,12 +1146,10 @@ private fun Modifier.detectGoalDisplayModeSwipe(
         val threshold = 48.dp.toPx()
         val maxDrag = pageDistancePx * 0.92f
         var currentOffset = offsetPx
-        var totalY = 0f
 
-        detectDragGestures(
+        detectHorizontalDragGestures(
             onDragStart = {
                 currentOffset = offsetPx
-                totalY = 0f
             },
             onDragEnd = {
                 val target =
@@ -1203,14 +1201,11 @@ private fun Modifier.detectGoalDisplayModeSwipe(
                     }
                 }
             },
-            onDrag = { change, dragAmount ->
-                totalY += dragAmount.y
-                val nextOffset = (currentOffset + dragAmount.x).coerceIn(-maxDrag, maxDrag)
-                if (abs(nextOffset) > abs(totalY) * 1.5f) {
-                    change.consume()
-                    currentOffset = nextOffset
-                    onOffsetChange(nextOffset)
-                }
+            onHorizontalDrag = { change, dragAmount ->
+                change.consume()
+                val nextOffset = (currentOffset + dragAmount).coerceIn(-maxDrag, maxDrag)
+                currentOffset = nextOffset
+                onOffsetChange(nextOffset)
             },
         )
     }
