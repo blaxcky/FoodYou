@@ -276,6 +276,9 @@ class ImportFddbProductsUseCaseTest {
         override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
             flowOf(products.drop(offset).take(limit))
 
+        override fun observeProductCountBySource(type: FoodSource.Type): Flow<Int> =
+            flowOf(products.count { it.source.type == type })
+
         override suspend fun insertProduct(
             name: String,
             brand: String?,
@@ -339,6 +342,12 @@ class ImportFddbProductsUseCaseTest {
         }
 
         override suspend fun deleteProduct(product: Product) = Unit
+
+        override suspend fun deleteProductsBySource(type: FoodSource.Type): Int {
+            val count = products.count { it.source.type == type }
+            products.removeAll { it.source.type == type }
+            return count
+        }
     }
 
     private class FakeFoodHistoryRepository : FoodHistoryRepository {

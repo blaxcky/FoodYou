@@ -109,6 +109,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 private val GoalsCardShape = RoundedCornerShape(24.dp)
 private val GoalsCardColor = Color(0xFFFFFFFF)
+private val GoalDisplayPageSpacing = 12.dp
 private val GoalsTextColor = Color(0xFF202124)
 private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE4EEF5)
@@ -263,82 +264,60 @@ internal fun GoalsCard(
 
         Spacer(Modifier.height(4.dp))
 
-        FoodYouHomeCard(
-            modifier = Modifier.fillMaxWidth(),
-            color = GoalsCardColor,
-            shape = GoalsCardShape,
+        CaloriesOverview(
+            energy = energy,
+            burnedEnergy = burnedEnergy,
+            burnedEnergyDelta = burnedEnergyDelta,
+            netEnergy = netEnergy,
+            energyGoal = energyGoal,
+            showEnergyGoalValue = showEnergyGoalValue,
+            goalDisplayMode = displayedGoalDisplayMode,
+            goalDisplaySummaries = goalDisplaySummaries,
+            onShowNextGoalDisplayMode = {
+                showDisplayedGoalDisplayMode(offset = 1)
+                onShowNextGoalDisplayMode()
+            },
+            onShowPreviousGoalDisplayMode = {
+                showDisplayedGoalDisplayMode(offset = -1)
+                onShowPreviousGoalDisplayMode()
+            },
             onClick = onClick,
             onLongClick = onLongClick,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
+            Spacer(Modifier.height(10.dp))
 
-                Column(
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .defaultMinSize(minHeight = 259.dp)
-                            .padding(
-                                start = horizontalPadding,
-                                top = 21.dp,
-                                end = horizontalPadding,
-                                bottom = 14.dp,
-                            ),
-                ) {
-                    CaloriesOverview(
-                        energy = energy,
-                        burnedEnergy = burnedEnergy,
-                        burnedEnergyDelta = burnedEnergyDelta,
-                        netEnergy = netEnergy,
-                        energyGoal = energyGoal,
-                        showEnergyGoalValue = showEnergyGoalValue,
-                        goalDisplayMode = displayedGoalDisplayMode,
-                        goalDisplaySummaries = goalDisplaySummaries,
-                        onShowNextGoalDisplayMode = {
-                            showDisplayedGoalDisplayMode(offset = 1)
-                            onShowNextGoalDisplayMode()
-                        },
-                        onShowPreviousGoalDisplayMode = {
-                            showDisplayedGoalDisplayMode(offset = -1)
-                            onShowPreviousGoalDisplayMode()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Spacer(Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            MacroGoal(
-                                label = stringResource(Res.string.goal_fat),
-                                value = fats,
-                                goal = fatsGoal,
-                                progress = fatsProgress,
-                                trackColor = FatTrackColor,
-                                color = FatColor,
-                                modifier = Modifier.weight(1f),
-                            )
-                            MacroGoal(
-                                label = stringResource(Res.string.goal_carbs_short),
-                                value = carbohydrates,
-                                goal = carbohydratesGoal,
-                                progress = carbsProgress,
-                                trackColor = CarbsTrackColor,
-                                color = CarbsColor,
-                                modifier = Modifier.weight(1f),
-                            )
-                            MacroGoal(
-                                label = stringResource(Res.string.goal_protein),
-                                value = proteins,
-                                goal = proteinsGoal,
-                                progress = proteinsProgress,
-                                trackColor = ProteinTrackColor,
-                                color = ProteinColor,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                MacroGoal(
+                    label = stringResource(Res.string.goal_fat),
+                    value = fats,
+                    goal = fatsGoal,
+                    progress = fatsProgress,
+                    trackColor = FatTrackColor,
+                    color = FatColor,
+                    modifier = Modifier.weight(1f),
+                )
+                MacroGoal(
+                    label = stringResource(Res.string.goal_carbs_short),
+                    value = carbohydrates,
+                    goal = carbohydratesGoal,
+                    progress = carbsProgress,
+                    trackColor = CarbsTrackColor,
+                    color = CarbsColor,
+                    modifier = Modifier.weight(1f),
+                )
+                MacroGoal(
+                    label = stringResource(Res.string.goal_protein),
+                    value = proteins,
+                    goal = proteinsGoal,
+                    progress = proteinsProgress,
+                    trackColor = ProteinTrackColor,
+                    color = ProteinColor,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -718,6 +697,8 @@ private fun CaloriesOverview(
     goalDisplaySummaries: List<GoalDisplaySummaryModel>,
     onShowNextGoalDisplayMode: () -> Unit,
     onShowPreviousGoalDisplayMode: () -> Unit,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -743,10 +724,12 @@ private fun CaloriesOverview(
     BoxWithConstraints(
         modifier =
             modifier
-                .clip(RoundedCornerShape(20.dp))
+                .clip(GoalsCardShape)
                 .background(Color.Transparent)
     ) {
         val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+        val pageSpacingPx = with(LocalDensity.current) { GoalDisplayPageSpacing.toPx() }
+        val pageDistancePx = widthPx + pageSpacingPx
         val swipeEnabled = summaries.size > 1 && widthPx > 0f
 
         Box(
@@ -756,7 +739,7 @@ private fun CaloriesOverview(
                     .detectGoalDisplayModeSwipe(
                         enabled = swipeEnabled,
                         offsetPx = offsetPx,
-                        pageWidthPx = widthPx,
+                        pageDistancePx = pageDistancePx,
                         onOffsetChange = { offsetPx = it },
                         onSwipeLeft = onShowNextGoalDisplayMode,
                         onSwipeRight = onShowPreviousGoalDisplayMode,
@@ -764,46 +747,96 @@ private fun CaloriesOverview(
                     )
         ) {
             if (swipeEnabled) {
-                CaloriesOverviewPage(
+                CaloriesOverviewPageCard(
                     energy = energy,
                     burnedEnergy = burnedEnergy,
                     burnedEnergyDelta = burnedEnergyDelta,
                     netEnergy = netEnergy,
                     summary = previousSummary,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .offset { IntOffset((offsetPx - widthPx).roundToInt(), 0) }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .offset { IntOffset((offsetPx - pageDistancePx).roundToInt(), 0) },
                     footer = footer,
                 )
-                CaloriesOverviewPage(
+                CaloriesOverviewPageCard(
                     energy = energy,
                     burnedEnergy = burnedEnergy,
                     burnedEnergyDelta = burnedEnergyDelta,
                     netEnergy = netEnergy,
                     summary = nextSummary,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .offset { IntOffset((offsetPx + widthPx).roundToInt(), 0) }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .offset { IntOffset((offsetPx + pageDistancePx).roundToInt(), 0) },
                     footer = footer,
                 )
             }
-            CaloriesOverviewPage(
+            CaloriesOverviewPageCard(
                 energy = energy,
                 burnedEnergy = burnedEnergy,
                 burnedEnergyDelta = burnedEnergyDelta,
                 netEnergy = netEnergy,
                 summary = currentSummary,
+                onClick = onClick,
+                onLongClick = onLongClick,
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .offset { IntOffset(offsetPx.roundToInt(), 0) }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .offset { IntOffset(offsetPx.roundToInt(), 0) },
                 footer = footer,
             )
+        }
+    }
+}
+
+@Composable
+private fun CaloriesOverviewPageCard(
+    energy: Int,
+    burnedEnergy: Int,
+    burnedEnergyDelta: Int?,
+    netEnergy: Int,
+    summary: GoalDisplaySummaryModel,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    footer: @Composable () -> Unit = {},
+) {
+    FoodYouHomeCard(
+        modifier = modifier,
+        color = GoalsCardColor,
+        shape = GoalsCardShape,
+        onClick = onClick,
+        onLongClick = onLongClick,
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
+
+            Column(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .defaultMinSize(minHeight = 259.dp)
+                        .padding(
+                            start = horizontalPadding,
+                            top = 21.dp,
+                            end = horizontalPadding,
+                            bottom = 14.dp,
+                        ),
+            ) {
+                CaloriesOverviewPage(
+                    energy = energy,
+                    burnedEnergy = burnedEnergy,
+                    burnedEnergyDelta = burnedEnergyDelta,
+                    netEnergy = netEnergy,
+                    summary = summary,
+                    modifier = Modifier.fillMaxWidth(),
+                    footer = footer,
+                )
+            }
         }
     }
 }
@@ -1102,16 +1135,16 @@ private fun GoalDisplayMode.accentColor(): Color =
 private fun Modifier.detectGoalDisplayModeSwipe(
     enabled: Boolean,
     offsetPx: Float,
-    pageWidthPx: Float,
+    pageDistancePx: Float,
     onOffsetChange: (Float) -> Unit,
     onSwipeLeft: () -> Unit,
     onSwipeRight: () -> Unit,
     animationScope: CoroutineScope,
 ): Modifier =
-    pointerInput(enabled, pageWidthPx, onSwipeLeft, onSwipeRight) {
+    pointerInput(enabled, pageDistancePx, onSwipeLeft, onSwipeRight) {
         if (!enabled) return@pointerInput
         val threshold = 48.dp.toPx()
-        val maxDrag = pageWidthPx * 0.92f
+        val maxDrag = pageDistancePx * 0.92f
         var currentOffset = offsetPx
         var totalY = 0f
 
@@ -1123,8 +1156,8 @@ private fun Modifier.detectGoalDisplayModeSwipe(
             onDragEnd = {
                 val target =
                     when {
-                        currentOffset < -threshold -> -pageWidthPx
-                        currentOffset > threshold -> pageWidthPx
+                        currentOffset < -threshold -> -pageDistancePx
+                        currentOffset > threshold -> pageDistancePx
                         else -> 0f
                     }
                 animationScope.launch {
@@ -1132,11 +1165,11 @@ private fun Modifier.detectGoalDisplayModeSwipe(
                         when {
                             target < 0f -> {
                                 onSwipeLeft()
-                                currentOffset + pageWidthPx
+                                currentOffset + pageDistancePx
                             }
                             target > 0f -> {
                                 onSwipeRight()
-                                currentOffset - pageWidthPx
+                                currentOffset - pageDistancePx
                             }
                             else -> currentOffset
                         }
