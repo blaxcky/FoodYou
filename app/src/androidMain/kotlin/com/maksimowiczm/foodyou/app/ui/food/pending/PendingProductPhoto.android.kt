@@ -77,6 +77,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import org.koin.core.qualifier.named
 
 @Composable
 internal actual fun PendingProductPhoto(
@@ -387,7 +388,8 @@ internal actual fun PendingProductPhotoCapture(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val settingsRepository: UserPreferencesRepository<Settings> = koinInject()
+    val settingsRepository: UserPreferencesRepository<Settings> =
+        koinInject(named(Settings::class.qualifiedName!!))
     val settings by settingsRepository.observe().collectAsStateWithLifecycle(null)
     val photoQuality = settings?.pendingProductPhotoQuality ?: PendingProductPhotoQuality.Balanced
     var hasCameraPermission by remember {

@@ -32,6 +32,7 @@ import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import org.koin.core.qualifier.named
 
 @Composable
 fun SettingsScreen(
@@ -47,7 +48,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val settingsRepository: UserPreferencesRepository<Settings> = koinInject()
+    val settingsRepository: UserPreferencesRepository<Settings> =
+        koinInject(named(Settings::class.qualifiedName!!))
     val settings by settingsRepository.observe().collectAsStateWithLifecycle(null)
     val coroutineScope = rememberCoroutineScope()
 
