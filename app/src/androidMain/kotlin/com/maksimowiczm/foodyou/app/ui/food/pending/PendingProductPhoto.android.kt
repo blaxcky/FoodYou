@@ -6,12 +6,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
@@ -49,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -57,15 +61,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.food.infrastructure.PENDING_PRODUCT_PHOTO_DIRECTORY
+import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
+import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.*
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 
 @Composable
 internal actual fun PendingProductPhoto(
@@ -77,14 +88,13 @@ internal actual fun PendingProductPhoto(
     val file = remember(photoPath) {
         context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY).resolve(photoPath)
     }
-    val bitmap = remember(file.absolutePath) {
-        BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
-    }
+    val bitmap by rememberPendingProductImageBitmap(file = file, maxSizePx = 900)
 
     Box(modifier = modifier.clipToBounds()) {
-        if (bitmap != null) {
+        val imageBitmap = bitmap
+        if (imageBitmap != null) {
             Image(
-                bitmap = bitmap,
+                bitmap = imageBitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize().graphicsLayer { rotationZ = rotationDegrees },
@@ -154,15 +164,14 @@ private fun ZoomablePendingProductPhoto(
     val file = remember(photoPath) {
         context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY).resolve(photoPath)
     }
-    val bitmap = remember(file.absolutePath) {
-        BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
-    }
+    val bitmap by rememberPendingProductImageBitmap(file = file, maxSizePx = 2200)
     var scale by remember(photoPath) { mutableFloatStateOf(1f) }
     var offset by remember(photoPath) { mutableStateOf(Offset.Zero) }
 
-    if (bitmap != null) {
+    val imageBitmap = bitmap
+    if (imageBitmap != null) {
         Image(
-            bitmap = bitmap,
+            bitmap = imageBitmap,
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier =
@@ -206,6 +215,42 @@ private fun ZoomablePendingProductPhoto(
                     },
         )
     }
+}
+
+@Composable
+private fun rememberPendingProductImageBitmap(
+    file: File,
+    maxSizePx: Int,
+): State<ImageBitmap?> =
+    produceState<ImageBitmap?>(initialValue = null, file.absolutePath, maxSizePx) {
+        value =
+            withContext(Dispatchers.IO) {
+                decodeSampledBitmap(file = file, maxSizePx = maxSizePx)?.asImageBitmap()
+            }
+    }
+
+private fun decodeSampledBitmap(file: File, maxSizePx: Int): android.graphics.Bitmap? {
+    val path = file.absolutePath
+    val bounds =
+        BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+            BitmapFactory.decodeFile(path, this)
+        }
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    val largestSide = maxOf(bounds.outWidth, bounds.outHeight)
+    var sampleSize = 1
+    while (largestSide / (sampleSize * 2) >= maxSizePx) {
+        sampleSize *= 2
+    }
+
+    return BitmapFactory.decodeFile(
+        path,
+        BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+        },
+    )
 }
 
 @Composable
@@ -342,6 +387,9 @@ internal actual fun PendingProductPhotoCapture(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val settingsRepository: UserPreferencesRepository<Settings> = koinInject()
+    val settings by settingsRepository.observe().collectAsStateWithLifecycle(null)
+    val photoQuality = settings?.pendingProductPhotoQuality ?: PendingProductPhotoQuality.Balanced
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -377,12 +425,26 @@ internal actual fun PendingProductPhotoCapture(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var cameraBound by remember { mutableStateOf(false) }
     var shutterVisible by remember { mutableStateOf(false) }
+    var photoSaving by remember { mutableStateOf(false) }
+    var photoSaveError by remember { mutableStateOf(false) }
     val latestOnPhotoTaken by rememberUpdatedState(onPhotoTaken)
+
+    LaunchedEffect(photoQuality) {
+        cameraBound = false
+        imageCapture = null
+    }
 
     LaunchedEffect(shutterVisible) {
         if (shutterVisible) {
             delay(90)
             shutterVisible = false
+        }
+    }
+
+    LaunchedEffect(photoSaveError) {
+        if (photoSaveError) {
+            delay(3_000)
+            photoSaveError = false
         }
     }
 
@@ -404,18 +466,32 @@ internal actual fun PendingProductPhotoCapture(
                             Preview.Builder().build().also {
                                 it.surfaceProvider = previewView.surfaceProvider
                             }
-                        val capture =
-                            ImageCapture.Builder()
-                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                                .build()
+                        var capture =
+                            runCatching {
+                                    buildPendingProductImageCapture(photoQuality, zsl = true)
+                                }
+                                .getOrElse {
+                                    buildPendingProductImageCapture(photoQuality, zsl = false)
+                                }
 
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
-                            preview,
-                            capture,
-                        )
+                        try {
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                CameraSelector.DEFAULT_BACK_CAMERA,
+                                preview,
+                                capture,
+                            )
+                        } catch (exception: Exception) {
+                            capture = buildPendingProductImageCapture(photoQuality, zsl = false)
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                CameraSelector.DEFAULT_BACK_CAMERA,
+                                preview,
+                                capture,
+                            )
+                        }
                         imageCapture = capture
                         cameraBound = true
                     },
@@ -442,10 +518,22 @@ internal actual fun PendingProductPhotoCapture(
 
         LargeFloatingActionButton(
             onClick = {
-                imageCapture?.takePendingProductPhoto(context) {
-                    latestOnPhotoTaken(it)
-                    shutterVisible = true
-                }
+                val capture = imageCapture ?: return@LargeFloatingActionButton
+                if (photoSaving) return@LargeFloatingActionButton
+                photoSaving = true
+                shutterVisible = true
+                photoSaveError = false
+                capture.takePendingProductPhoto(
+                    context = context,
+                    onSaved = {
+                        photoSaving = false
+                        latestOnPhotoTaken(it)
+                    },
+                    onError = {
+                        photoSaving = false
+                        photoSaveError = true
+                    },
+                )
             },
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
         ) {
@@ -453,6 +541,21 @@ internal actual fun PendingProductPhotoCapture(
                 imageVector = Icons.Outlined.PhotoCamera,
                 contentDescription = stringResource(Res.string.neutral_take_nutrition_photo),
             )
+        }
+
+        if (photoSaveError) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.96f),
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 104.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.neutral_photo_save_failed),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
         }
 
         if (shutterVisible) {
@@ -464,6 +567,7 @@ internal actual fun PendingProductPhotoCapture(
 private fun ImageCapture.takePendingProductPhoto(
     context: android.content.Context,
     onSaved: (String) -> Unit,
+    onError: () -> Unit,
 ) {
     val directory = context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY)
     directory.mkdirs()
@@ -480,7 +584,52 @@ private fun ImageCapture.takePendingProductPhoto(
 
             override fun onError(exception: ImageCaptureException) {
                 file.delete()
+                onError()
             }
         },
     )
 }
+
+private fun buildPendingProductImageCapture(
+    quality: PendingProductPhotoQuality,
+    zsl: Boolean,
+): ImageCapture =
+    ImageCapture.Builder()
+        .setCaptureMode(
+            if (zsl) ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+            else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+        )
+        .setFlashMode(ImageCapture.FLASH_MODE_OFF)
+        .setJpegQuality(quality.jpegQuality)
+        .apply {
+            quality.resolutionSelector?.let(::setResolutionSelector)
+        }
+        .build()
+
+private val PendingProductPhotoQuality.jpegQuality: Int
+    get() =
+        when (this) {
+            PendingProductPhotoQuality.Fast -> 85
+            PendingProductPhotoQuality.Balanced -> 90
+            PendingProductPhotoQuality.High -> 95
+        }
+
+private val PendingProductPhotoQuality.resolutionSelector: ResolutionSelector?
+    get() =
+        when (this) {
+            PendingProductPhotoQuality.Fast ->
+                pendingProductResolutionSelector(width = 1920, height = 1440)
+            PendingProductPhotoQuality.Balanced ->
+                pendingProductResolutionSelector(width = 2560, height = 1920)
+            PendingProductPhotoQuality.High -> null
+        }
+
+private fun pendingProductResolutionSelector(width: Int, height: Int): ResolutionSelector =
+    ResolutionSelector.Builder()
+        .setResolutionStrategy(
+            ResolutionStrategy(
+                Size(width, height),
+                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+            )
+        )
+        .build()

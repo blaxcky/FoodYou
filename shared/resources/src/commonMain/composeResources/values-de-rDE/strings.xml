@@ -322,6 +322,7 @@
     <string name="neutral_no_barcode">Kein Barcode</string>
     <string name="neutral_take_nutrition_photo">Nährwertfoto aufnehmen</string>
     <string name="neutral_camera_request">Erlaube Kamerazugriff, um Produktfotos aufzunehmen</string>
+    <string name="neutral_photo_save_failed">Foto konnte nicht gespeichert werden</string>
     <string name="neutral_pending_product_saved">Produkt vorgemerkt</string>
     <string name="neutral_pending_product_photo_count">%1$d Fotos</string>
     <string name="neutral_loading_activity">Aktivitäten werden geladen</string>
@@ -502,4 +503,8 @@
     <string name="description_replacing_database">Datenbank wird ersetzt, bitte warten...</string>
     <string name="description_privacy_policy">Erfahre, wie deine Daten verarbeitet werden</string>
     <string name="error_open_food_facts_timeout">Open Food Facts braucht zu lange, um zu reagieren. Der Dienst ist eventuell vorübergehend langsam oder nicht verfügbar. Versuche stattdessen den Barcode des Produkts zu scannen.</string>
+    <string name="headline_pending_product_photo_quality">Fotoqualität für vorgemerkte Produkte</string>
+    <string name="headline_photo_quality_fast">Schnell</string>
+    <string name="headline_photo_quality_balanced">Ausgewogen</string>
+    <string name="headline_photo_quality_high">Hoch</string>
 </resources>

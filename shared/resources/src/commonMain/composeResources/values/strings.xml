@@ -226,6 +226,7 @@
     <string name="neutral_no_barcode">No barcode</string>
     <string name="neutral_take_nutrition_photo">Take nutrition photo</string>
     <string name="neutral_camera_request">Allow camera access to take product photos</string>
+    <string name="neutral_photo_save_failed">Could not save photo</string>
     <string name="neutral_pending_product_saved">Pending product saved</string>
     <string name="neutral_pending_product_photo_count">%1$d photos</string>
     <string name="neutral_loading_activity">Loading activity</string>
@@ -505,6 +506,10 @@
     <string name="error_quick_add_csv_empty_name">Name must not be empty</string>
     <string name="action_analyze_with_chatgpt">Analyze with ChatGPT</string>
     <string name="headline_pending_product_csv">Product CSV</string>
+    <string name="headline_pending_product_photo_quality">Pending product photo quality</string>
+    <string name="headline_photo_quality_fast">Fast</string>
+    <string name="headline_photo_quality_balanced">Balanced</string>
+    <string name="headline_photo_quality_high">High</string>
     <string name="description_pending_product_csv">Paste header and one data row from ChatGPT</string>
     <string name="error_pending_product_csv_empty">CSV is empty</string>
     <string name="error_pending_product_csv_header">CSV header must be: name,brand,barcode,packageWeight,servingWeight,isLiquid,energyKcal,proteins,carbohydrates,fats</string>

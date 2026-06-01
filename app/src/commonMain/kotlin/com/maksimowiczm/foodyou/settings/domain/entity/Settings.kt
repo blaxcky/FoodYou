@@ -25,6 +25,7 @@ data class Settings(
     val fddbDiarySyncLastFailed: Int? = null,
     val fddbDiarySyncLastErrorMessage: String? = null,
     val fddbDiarySyncLastAttemptEpochSeconds: Long? = null,
+    val pendingProductPhotoQuality: PendingProductPhotoQuality = PendingProductPhotoQuality.Balanced,
 ) : UserPreferences
 
 data class FddbDiarySyncStatus(
@@ -62,4 +63,10 @@ enum class GoalDisplayMode {
     Normal,
     Optimized,
     Diet,
+}
+
+enum class PendingProductPhotoQuality {
+    Fast,
+    Balanced,
+    High,
 }

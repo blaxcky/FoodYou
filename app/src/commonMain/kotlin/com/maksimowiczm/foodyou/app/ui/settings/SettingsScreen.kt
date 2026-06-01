@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -17,12 +20,18 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.component.SettingsListItem
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalAppConfig
 import com.maksimowiczm.foodyou.common.compose.extension.add
+import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
+import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.*
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 
 @Composable
 fun SettingsScreen(
@@ -38,6 +47,9 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val settingsRepository: UserPreferencesRepository<Settings> = koinInject()
+    val settings by settingsRepository.observe().collectAsStateWithLifecycle(null)
+    val coroutineScope = rememberCoroutineScope()
 
     val color = MaterialTheme.colorScheme.surface
     val contentColor = MaterialTheme.colorScheme.onSurface
@@ -106,6 +118,22 @@ fun SettingsScreen(
             }
 
             item {
+                PendingProductPhotoQualitySettingsListItem(
+                    value = settings?.pendingProductPhotoQuality,
+                    onValueChange = { value ->
+                        coroutineScope.launch {
+                            settingsRepository.update {
+                                copy(pendingProductPhotoQuality = value)
+                            }
+                        }
+                    },
+                    shape = shape,
+                    color = color,
+                    contentColor = contentColor,
+                )
+            }
+
+            item {
                 LanguageSettingsListItem(
                     onClick = onLanguage,
                     shape = shape,
@@ -141,3 +169,47 @@ fun SettingsScreen(
         }
     }
 }
+
+@Composable
+private fun PendingProductPhotoQualitySettingsListItem(
+    value: PendingProductPhotoQuality?,
+    onValueChange: (PendingProductPhotoQuality) -> Unit,
+    shape: androidx.compose.ui.graphics.Shape,
+    color: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = value ?: PendingProductPhotoQuality.Balanced
+
+    SettingsListItem(
+        icon = { Icon(Icons.Outlined.PhotoCamera, null) },
+        label = { Text(stringResource(Res.string.headline_pending_product_photo_quality)) },
+        supportingContent = { Text(selected.label()) },
+        trailingContent = {
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                PendingProductPhotoQuality.entries.forEach { quality ->
+                    DropdownMenuItem(
+                        text = { Text(quality.label()) },
+                        onClick = {
+                            expanded = false
+                            onValueChange(quality)
+                        },
+                    )
+                }
+            }
+        },
+        onClick = { expanded = true },
+        shape = shape,
+        color = color,
+        contentColor = contentColor,
+    )
+}
+
+@Composable
+private fun PendingProductPhotoQuality.label(): String =
+    when (this) {
+        PendingProductPhotoQuality.Fast -> stringResource(Res.string.headline_photo_quality_fast)
+        PendingProductPhotoQuality.Balanced ->
+            stringResource(Res.string.headline_photo_quality_balanced)
+        PendingProductPhotoQuality.High -> stringResource(Res.string.headline_photo_quality_high)
+    }

@@ -15,6 +15,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
+import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.time.Instant
 
@@ -50,6 +51,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 this[SettingsPreferencesKeys.fddbDiarySyncLastErrorMessage],
             fddbDiarySyncLastAttemptEpochSeconds =
                 this[SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds],
+            pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: Settings) {
@@ -95,6 +97,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds,
             updated.fddbDiarySyncLastAttemptEpochSeconds,
         )
+        setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
     }
 }
 
@@ -155,6 +158,17 @@ private fun Preferences.getGoalDisplayMode(): GoalDisplayMode =
                 }
         }
         .getOrElse { GoalDisplayMode.Normal }
+
+private fun MutablePreferences.setPendingProductPhotoQuality(value: PendingProductPhotoQuality) =
+    setWithNull(SettingsPreferencesKeys.pendingProductPhotoQuality, value.name)
+
+private fun Preferences.getPendingProductPhotoQuality(): PendingProductPhotoQuality =
+    runCatching {
+            this[SettingsPreferencesKeys.pendingProductPhotoQuality]?.let(
+                PendingProductPhotoQuality::valueOf
+            ) ?: PendingProductPhotoQuality.Balanced
+        }
+        .getOrElse { PendingProductPhotoQuality.Balanced }
 
 private fun Preferences.getAppLaunchInfo(): AppLaunchInfo =
     AppLaunchInfo(
@@ -228,6 +242,7 @@ private object SettingsPreferencesKeys {
         stringPreferencesKey("settings:fddbDiarySyncLastErrorMessage")
     val fddbDiarySyncLastAttemptEpochSeconds =
         longPreferencesKey("settings:fddbDiarySyncLastAttemptEpochSeconds")
+    val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
     val firstLaunchCurrentVersionEpoch = longPreferencesKey("first_launch_current_version_epoch")
