@@ -18,13 +18,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Warning
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
@@ -36,6 +36,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +58,7 @@ import com.maksimowiczm.foodyou.app.ui.home.poll.PollsCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.rememberHomeState
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import foodyou.app.generated.resources.*
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -93,6 +97,24 @@ fun HomeScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showFddbLoginDialog by remember { mutableStateOf(false) }
+    var pullRefreshActive by remember { mutableStateOf(false) }
+    var pullRefreshSyncStarted by remember { mutableStateOf(false) }
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    fun showFddbLoginDialogIfNeeded() {
+        if (
+            homeSyncState.fddbDiaryEnabled &&
+                homeSyncState.fddbSyncState is HomeFddbSyncState.MissingCredentials
+        ) {
+            showFddbLoginDialog = true
+        }
+    }
+
+    fun syncConfiguredHome() {
+        showFddbLoginDialogIfNeeded()
+        viewModel.syncConfigured(homeState.selectedDate)
+    }
+
     val onFddbSyncClick = {
         if (fddbSyncState is HomeFddbSyncState.MissingCredentials) {
             showFddbLoginDialog = true
@@ -100,15 +122,35 @@ fun HomeScreen(
             viewModel.syncFddbDiary(homeState.selectedDate)
         }
     }
-    val onHomeSyncClick = {
-        if (
-            homeSyncState.fddbDiaryEnabled &&
-                homeSyncState.fddbSyncState is HomeFddbSyncState.MissingCredentials
-        ) {
-            showFddbLoginDialog = true
+    val onHomeSyncClick = { syncConfiguredHome() }
+    val onPullRefresh = {
+        if (!homeSyncState.isSyncing) {
+            pullRefreshActive = true
+            pullRefreshSyncStarted = false
+            syncConfiguredHome()
         }
-        viewModel.syncConfigured(homeState.selectedDate)
     }
+
+    LaunchedEffect(pullRefreshActive, homeSyncState.isSyncing) {
+        when {
+            !pullRefreshActive -> pullRefreshSyncStarted = false
+            homeSyncState.isSyncing -> pullRefreshSyncStarted = true
+            pullRefreshSyncStarted -> {
+                pullRefreshActive = false
+                pullRefreshSyncStarted = false
+            }
+        }
+    }
+
+    LaunchedEffect(pullRefreshActive) {
+        if (pullRefreshActive) {
+            delay(PULL_REFRESH_NO_SYNC_FALLBACK_MILLIS)
+            if (!homeSyncState.isSyncing && !pullRefreshSyncStarted) {
+                pullRefreshActive = false
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -160,76 +202,95 @@ fun HomeScreen(
         if (showFddbLoginDialog) {
             FddbLoginDialog(onDismissRequest = { showFddbLoginDialog = false })
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = paddingValues,
-        ) {
-            item(key = "polls", contentType = "polls") {
-                PollsCard(modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp))
-            }
-
-            order.forEach { homeCard ->
-                when (homeCard) {
-                    HomeCard.Calendar ->
-                        item(key = HomeCard.Calendar, contentType = HomeCard.Calendar) {
-                            CalendarCard(
-                                homeState = homeState,
-                                modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                            )
-                        }
-
-                    HomeCard.Goals ->
-                        item(key = HomeCard.Goals, contentType = HomeCard.Goals) {
-                            GoalsCard(
-                                homeState = homeState,
-                                burnedEnergyDelta = burnedEnergyDelta,
-                                onClick = onGoalsCardClick,
-                                onLongClick = onGoalsCardLongClick,
-                                modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                            )
-                        }
-
-                    HomeCard.Meals -> {
-                        mealsCards(
-                            state = mealsCardsState,
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                        item(key = "fddb-sync", contentType = "fddb-sync") {
-                            FddbSyncSection(
-                                state = fddbSyncState,
-                                onClick = onFddbSyncClick,
-                                modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                            )
-                        }
-                    }
-
-                    HomeCard.Activities ->
-                        item(key = HomeCard.Activities, contentType = HomeCard.Activities) {
-                            ActivitiesCard(
-                                homeState = homeState,
-                                onAdd = onAddActivityClick,
-                                onEdit = onEditActivityClick,
-                                onLongClick = onActivityCardLongClick,
-                                modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                            )
-                        }
-                }
-            }
-
-            item(key = "weekly-goals", contentType = "weekly-goals") {
-                WeeklyGoalsCard(
-                    homeState = homeState,
-                    modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+        PullToRefreshBox(
+            isRefreshing = pullRefreshActive,
+            onRefresh = onPullRefresh,
+            modifier = Modifier.fillMaxSize(),
+            state = pullToRefreshState,
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullToRefreshState,
+                    isRefreshing = pullRefreshActive,
+                    modifier =
+                        Modifier.align(Alignment.TopCenter)
+                            .padding(top = paddingValues.calculateTopPadding()),
                 )
+            },
+        ) {
+            LazyColumn(
+                modifier =
+                    Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = paddingValues,
+            ) {
+                item(key = "polls", contentType = "polls") {
+                    PollsCard(modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp))
+                }
+
+                order.forEach { homeCard ->
+                    when (homeCard) {
+                        HomeCard.Calendar ->
+                            item(key = HomeCard.Calendar, contentType = HomeCard.Calendar) {
+                                CalendarCard(
+                                    homeState = homeState,
+                                    modifier =
+                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                                )
+                            }
+
+                        HomeCard.Goals ->
+                            item(key = HomeCard.Goals, contentType = HomeCard.Goals) {
+                                GoalsCard(
+                                    homeState = homeState,
+                                    burnedEnergyDelta = burnedEnergyDelta,
+                                    onClick = onGoalsCardClick,
+                                    onLongClick = onGoalsCardLongClick,
+                                    modifier =
+                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                                )
+                            }
+
+                        HomeCard.Meals -> {
+                            mealsCards(
+                                state = mealsCardsState,
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                            item(key = "fddb-sync", contentType = "fddb-sync") {
+                                FddbSyncSection(
+                                    state = fddbSyncState,
+                                    onClick = onFddbSyncClick,
+                                    modifier =
+                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                                )
+                            }
+                        }
+
+                        HomeCard.Activities ->
+                            item(key = HomeCard.Activities, contentType = HomeCard.Activities) {
+                                ActivitiesCard(
+                                    homeState = homeState,
+                                    onAdd = onAddActivityClick,
+                                    onEdit = onEditActivityClick,
+                                    onLongClick = onActivityCardLongClick,
+                                    modifier =
+                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                                )
+                            }
+                    }
+                }
+
+                item(key = "weekly-goals", contentType = "weekly-goals") {
+                    WeeklyGoalsCard(
+                        homeState = homeState,
+                        modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                    )
+                }
             }
         }
     }
 }
+
+private const val PULL_REFRESH_NO_SYNC_FALLBACK_MILLIS = 1_200L
 
 @Composable
 private fun FddbSyncSection(state: HomeFddbSyncState, onClick: () -> Unit, modifier: Modifier = Modifier) {
