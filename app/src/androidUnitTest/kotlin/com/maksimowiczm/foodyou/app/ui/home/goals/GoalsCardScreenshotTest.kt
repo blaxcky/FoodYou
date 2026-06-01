@@ -237,6 +237,7 @@ class GoalsCardScreenshotTest {
                         netEnergy = fixture.netEnergy,
                         energyGoal = fixture.energyGoal,
                         goalDisplayMode = fixture.goalDisplayMode,
+                        goalDisplaySummaries = fixture.goalDisplaySummaries,
                         dietGoalDisplayModeEnabled = fixture.dietGoalDisplayModeEnabled,
                         proteins = fixture.proteins,
                         proteinsGoal = fixture.proteinsGoal,
@@ -260,6 +261,8 @@ class GoalsCardScreenshotTest {
         val netEnergy: Int,
         val energyGoal: Int,
         val goalDisplayMode: GoalDisplayMode = GoalDisplayMode.Normal,
+        val goalDisplaySummaries: List<GoalDisplaySummaryModel> =
+            defaultGoalDisplaySummaries(energyGoal),
         val dietGoalDisplayModeEnabled: Boolean = true,
         val proteins: Int,
         val proteinsGoal: Int,
@@ -287,6 +290,25 @@ class GoalsCardScreenshotTest {
                 carbohydratesGoal = 128,
                 fats = 0,
                 fatsGoal = 68,
+            )
+
+        fun defaultGoalDisplaySummaries(energyGoal: Int): List<GoalDisplaySummaryModel> =
+            listOf(
+                GoalDisplaySummaryModel(
+                    mode = GoalDisplayMode.Normal,
+                    energyGoal = energyGoal,
+                    showEnergyGoalValue = true,
+                ),
+                GoalDisplaySummaryModel(
+                    mode = GoalDisplayMode.Optimized,
+                    energyGoal = energyGoal,
+                    showEnergyGoalValue = true,
+                ),
+                GoalDisplaySummaryModel(
+                    mode = GoalDisplayMode.Diet,
+                    energyGoal = energyGoal,
+                    showEnergyGoalValue = true,
+                ),
             )
     }
 }

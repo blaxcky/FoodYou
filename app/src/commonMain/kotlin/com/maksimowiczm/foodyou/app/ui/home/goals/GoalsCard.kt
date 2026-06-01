@@ -228,33 +228,46 @@ internal fun GoalsCard(
     val proteinsProgress = goalProgress(proteins, proteinsGoal)
     val carbsProgress = goalProgress(carbohydrates, carbohydratesGoal)
     val fatsProgress = goalProgress(fats, fatsGoal)
-    val displayedGoalDisplayModes =
-        remember(goalDisplayMode, goalDisplaySummaries) {
-            goalDisplaySummaries
-                .map { it.mode }
-                .takeIf { modes -> modes.any { it == goalDisplayMode } }
-                ?: listOf(goalDisplayMode)
+    val summaries =
+        remember(goalDisplayMode, energyGoal, showEnergyGoalValue, goalDisplaySummaries) {
+            goalDisplaySummaries.withNormalGoalDisplaySummary(
+                goalDisplayMode = goalDisplayMode,
+                energyGoal = energyGoal,
+                showEnergyGoalValue = showEnergyGoalValue,
+            )
         }
-    var displayedGoalDisplayMode by remember { mutableStateOf(goalDisplayMode) }
+    val availableGoalDisplaySummaries =
+        remember(summaries, dietGoalDisplayModeEnabled) {
+            summaries.availableForGoalDisplayModes(dietGoalDisplayModeEnabled)
+        }
+    val availableGoalDisplayModes =
+        remember(availableGoalDisplaySummaries) { availableGoalDisplaySummaries.map { it.mode } }
+    val effectiveGoalDisplayMode = goalDisplayMode.availableOrNormal(availableGoalDisplayModes)
+    var displayedGoalDisplayMode by remember { mutableStateOf(effectiveGoalDisplayMode) }
 
-    LaunchedEffect(goalDisplayMode) { displayedGoalDisplayMode = goalDisplayMode }
+    LaunchedEffect(goalDisplayMode, availableGoalDisplayModes) {
+        displayedGoalDisplayMode = goalDisplayMode.availableOrNormal(availableGoalDisplayModes)
+    }
 
-    fun showDisplayedGoalDisplayMode(offset: Int) {
-        val currentIndex =
-            displayedGoalDisplayModes.indexOf(displayedGoalDisplayMode).takeIf { it >= 0 } ?: 0
+    fun showDisplayedGoalDisplayMode(offset: Int): GoalDisplayMode {
         displayedGoalDisplayMode =
-            displayedGoalDisplayModes[
-                (currentIndex + offset).floorMod(displayedGoalDisplayModes.size)
-            ]
+            displayedGoalDisplayMode.goalDisplayModeAtOffset(
+                availableGoalDisplayModes = availableGoalDisplayModes,
+                offset = offset,
+            )
+        return displayedGoalDisplayMode
     }
 
     Column(modifier = modifier) {
         GoalDisplayModeButtons(
             goalDisplayMode = displayedGoalDisplayMode,
+            availableGoalDisplayModes = availableGoalDisplayModes,
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
             onSelectGoalDisplayMode = {
-                displayedGoalDisplayMode = it
-                onSelectGoalDisplayMode(it)
+                if (it in availableGoalDisplayModes) {
+                    displayedGoalDisplayMode = it
+                    onSelectGoalDisplayMode(it)
+                }
             },
             modifier =
                 Modifier.fillMaxWidth()
@@ -272,14 +285,12 @@ internal fun GoalsCard(
             energyGoal = energyGoal,
             showEnergyGoalValue = showEnergyGoalValue,
             goalDisplayMode = displayedGoalDisplayMode,
-            goalDisplaySummaries = goalDisplaySummaries,
+            goalDisplaySummaries = availableGoalDisplaySummaries,
             onShowNextGoalDisplayMode = {
-                showDisplayedGoalDisplayMode(offset = 1)
-                onShowNextGoalDisplayMode()
+                onSelectGoalDisplayMode(showDisplayedGoalDisplayMode(offset = 1))
             },
             onShowPreviousGoalDisplayMode = {
-                showDisplayedGoalDisplayMode(offset = -1)
-                onShowPreviousGoalDisplayMode()
+                onSelectGoalDisplayMode(showDisplayedGoalDisplayMode(offset = -1))
             },
             onClick = onClick,
             onLongClick = onLongClick,
@@ -1014,6 +1025,7 @@ private fun CaloriesOverviewPage(
 @Composable
 private fun GoalDisplayModeButtons(
     goalDisplayMode: GoalDisplayMode,
+    availableGoalDisplayModes: List<GoalDisplayMode>,
     dietGoalDisplayModeEnabled: Boolean,
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit,
     modifier: Modifier = Modifier,
@@ -1044,19 +1056,22 @@ private fun GoalDisplayModeButtons(
         GoalDisplayModeButton(
             mode = GoalDisplayMode.Normal,
             selected = goalDisplayMode == GoalDisplayMode.Normal,
+            enabled = GoalDisplayMode.Normal in availableGoalDisplayModes,
             contentDescription = stringResource(Res.string.goal_display_mode_normal),
             onClick = onSelectGoalDisplayMode,
         )
         GoalDisplayModeButton(
             mode = GoalDisplayMode.Optimized,
             selected = goalDisplayMode == GoalDisplayMode.Optimized,
+            enabled = GoalDisplayMode.Optimized in availableGoalDisplayModes,
             contentDescription = stringResource(Res.string.goal_display_mode_optimized),
             onClick = onSelectGoalDisplayMode,
         )
         GoalDisplayModeButton(
             mode = GoalDisplayMode.Diet,
             selected = goalDisplayMode == GoalDisplayMode.Diet,
-            enabled = dietGoalDisplayModeEnabled,
+            enabled =
+                dietGoalDisplayModeEnabled && GoalDisplayMode.Diet in availableGoalDisplayModes,
             contentDescription = stringResource(Res.string.goal_display_mode_diet),
             onClick = onSelectGoalDisplayMode,
         )
@@ -1110,6 +1125,69 @@ private fun GoalDisplayModeButton(
         )
     }
 }
+
+internal fun List<GoalDisplaySummaryModel>.withNormalGoalDisplaySummary(
+    goalDisplayMode: GoalDisplayMode,
+    energyGoal: Int,
+    showEnergyGoalValue: Boolean,
+): List<GoalDisplaySummaryModel> {
+    val fallbackSummary =
+        GoalDisplaySummaryModel(
+            mode = goalDisplayMode,
+            energyGoal = energyGoal,
+            showEnergyGoalValue = showEnergyGoalValue,
+        )
+    val baseSummaries =
+        takeIf { summaries ->
+            summaries.any { it.mode == goalDisplayMode } ||
+                summaries.any { it.mode == GoalDisplayMode.Normal }
+        } ?: listOf(fallbackSummary)
+    return if (baseSummaries.any { it.mode == GoalDisplayMode.Normal }) {
+        baseSummaries
+    } else {
+        listOf(
+            GoalDisplaySummaryModel(
+                mode = GoalDisplayMode.Normal,
+                energyGoal = energyGoal,
+                showEnergyGoalValue = true,
+            )
+        ) + baseSummaries
+    }.distinctBy { it.mode }
+}
+
+internal fun List<GoalDisplaySummaryModel>.availableForGoalDisplayModes(
+    dietGoalDisplayModeEnabled: Boolean
+): List<GoalDisplaySummaryModel> =
+    filter { it.availableForGoalDisplayMode(dietGoalDisplayModeEnabled) }
+
+internal fun GoalDisplayMode.availableOrNormal(
+    availableGoalDisplayModes: List<GoalDisplayMode>
+): GoalDisplayMode =
+    if (this in availableGoalDisplayModes) {
+        this
+    } else {
+        GoalDisplayMode.Normal
+    }
+
+internal fun GoalDisplayMode.goalDisplayModeAtOffset(
+    availableGoalDisplayModes: List<GoalDisplayMode>,
+    offset: Int,
+): GoalDisplayMode {
+    if (availableGoalDisplayModes.isEmpty()) return GoalDisplayMode.Normal
+    val currentIndex = availableGoalDisplayModes.indexOf(this).takeIf { it >= 0 } ?: 0
+    return availableGoalDisplayModes[
+        (currentIndex + offset).floorMod(availableGoalDisplayModes.size)
+    ]
+}
+
+private fun GoalDisplaySummaryModel.availableForGoalDisplayMode(
+    dietGoalDisplayModeEnabled: Boolean
+): Boolean =
+    when (mode) {
+        GoalDisplayMode.Normal -> true
+        GoalDisplayMode.Optimized -> showEnergyGoalValue
+        GoalDisplayMode.Diet -> showEnergyGoalValue && dietGoalDisplayModeEnabled
+    }
 
 private fun GoalDisplayMode.toSettingsGoalDisplayMode(): SettingsGoalDisplayMode =
     when (this) {

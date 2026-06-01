@@ -94,6 +94,7 @@ class HomeScreenScreenshotTest {
                                 burnedEnergy = 5,
                                 netEnergy = -5,
                                 energyGoal = 2100,
+                                goalDisplaySummaries = goalDisplaySummaries(energyGoal = 2100),
                                 proteins = 0,
                                 proteinsGoal = 10,
                                 carbohydrates = 0,
@@ -266,6 +267,25 @@ class HomeScreenScreenshotTest {
             )
         }
     }
+
+    private fun goalDisplaySummaries(energyGoal: Int): List<GoalDisplaySummaryModel> =
+        listOf(
+            GoalDisplaySummaryModel(
+                mode = GoalDisplayMode.Normal,
+                energyGoal = energyGoal,
+                showEnergyGoalValue = true,
+            ),
+            GoalDisplaySummaryModel(
+                mode = GoalDisplayMode.Optimized,
+                energyGoal = energyGoal,
+                showEnergyGoalValue = true,
+            ),
+            GoalDisplaySummaryModel(
+                mode = GoalDisplayMode.Diet,
+                energyGoal = energyGoal,
+                showEnergyGoalValue = true,
+            ),
+        )
 
     private companion object {
         val HomeScreenOptions: RoborazziComposeOptions =
