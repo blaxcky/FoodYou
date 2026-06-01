@@ -164,11 +164,13 @@ android {
     }
     buildTypes {
         getByName("release") {
+            manifestPlaceholders += mapOf()
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
         create("devRelease") {
             initWith(getByName("release"))
