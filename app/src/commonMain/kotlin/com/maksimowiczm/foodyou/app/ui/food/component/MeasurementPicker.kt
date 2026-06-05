@@ -93,6 +93,17 @@ fun MeasurementPicker(
             modifier = Modifier.padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            state.labelSuggestions.forEach { suggestion ->
+                SuggestionChip(
+                    onClick = {
+                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
+                            text = suggestion.measurement.rawValue.formatClipZeros()
+                        )
+                        state.type = suggestion.measurement.type
+                    },
+                    label = { Text(suggestion.label) },
+                )
+            }
             state.suggestions.filter { it.type.isUserSelectable }.forEach { measurement ->
                 SuggestionChip(
                     onClick = {
@@ -217,6 +228,7 @@ private fun Input(
 @Composable
 fun rememberMeasurementPickerState(
     suggestions: List<Measurement>,
+    labelSuggestions: List<LabeledMeasurementSuggestion> = emptyList(),
     possibleTypes: List<MeasurementType>,
     selectedMeasurement: Measurement,
 ): MeasurementPickerState {
@@ -246,9 +258,17 @@ fun rememberMeasurementPickerState(
         measurementState.value = selectedMeasurement
     }
 
-    return remember(suggestions, possibleTypes, inputField, typeState, measurementState) {
+    return remember(
+        suggestions,
+        labelSuggestions,
+        possibleTypes,
+        inputField,
+        typeState,
+        measurementState,
+    ) {
         MeasurementPickerState(
             suggestions = suggestions,
+            labelSuggestions = labelSuggestions,
             possibleTypes = possibleTypes,
             inputField = inputField,
             measurementState = measurementState,
@@ -259,6 +279,7 @@ fun rememberMeasurementPickerState(
 
 class MeasurementPickerState(
     val suggestions: List<Measurement>,
+    val labelSuggestions: List<LabeledMeasurementSuggestion>,
     val possibleTypes: List<MeasurementType>,
     val inputField: FormField<Float?, String>,
     measurementState: MutableState<Measurement>,
@@ -267,3 +288,9 @@ class MeasurementPickerState(
     var measurement by measurementState
     var type by typeState
 }
+
+@Immutable
+data class LabeledMeasurementSuggestion(
+    val label: String,
+    val measurement: Measurement,
+)

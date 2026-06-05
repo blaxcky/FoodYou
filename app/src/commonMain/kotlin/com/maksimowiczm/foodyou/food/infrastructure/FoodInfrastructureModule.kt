@@ -35,6 +35,7 @@ fun Module.foodInfrastructureModule() {
     factory { database.measurementSuggestionDao }
     factory { database.pendingProductDao }
     factory { database.productDao }
+    factory { database.productPortionDao }
     factory { database.recipeDao }
 
     factoryOf(::RoomFddbDiarySyncEntryRepository).bind<FddbDiarySyncEntryRepository>()

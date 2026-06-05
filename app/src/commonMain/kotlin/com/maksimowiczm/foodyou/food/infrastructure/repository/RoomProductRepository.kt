@@ -6,15 +6,23 @@ import com.maksimowiczm.foodyou.common.infrastructure.room.toDomain
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntity
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntityNutrients
 import com.maksimowiczm.foodyou.common.infrastructure.room.toNutritionFacts
+import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductDao
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionDao
+import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
-internal class RoomProductRepository(private val productDao: ProductDao) : ProductRepository {
+internal class RoomProductRepository(
+    private val productDao: ProductDao,
+    private val productPortionDao: ProductPortionDao,
+) : ProductRepository {
     override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
         productDao.observeProducts(limit, offset).map { list -> list.map { it.toModel() } }
 
@@ -22,16 +30,25 @@ internal class RoomProductRepository(private val productDao: ProductDao) : Produ
         productDao.observeProductCountBySource(type.toEntity())
 
     override fun observeProduct(id: FoodId.Product): Flow<Product?> =
-        productDao.observeProduct(id.id).map { it?.toModel() }
+        combine(
+            productDao.observeProduct(id.id),
+            productPortionDao.observeProductPortions(id.id),
+        ) { product, portions ->
+            product?.toModel(portions)
+        }
 
     override fun observeProductByBarcode(barcode: String): Flow<Product?> =
         productDao.observeProductByBarcode(barcode).map { it?.toModel() }
 
     override suspend fun getProductByBarcode(barcode: String): Product? =
-        productDao.getProductByBarcode(barcode)?.toModel()
+        productDao.getProductByBarcode(barcode)?.let { product ->
+            product.toModel(productPortionDao.getProductPortions(product.id))
+        }
 
     override suspend fun getProductBySource(type: FoodSource.Type, url: String): Product? =
-        productDao.getProductBySource(type.toEntity(), url)?.toModel()
+        productDao.getProductBySource(type.toEntity(), url)?.let { product ->
+            product.toModel(productPortionDao.getProductPortions(product.id))
+        }
 
     override suspend fun deleteProduct(product: Product) {
         val entity = product.toEntity()
@@ -62,6 +79,7 @@ internal class RoomProductRepository(private val productDao: ProductDao) : Produ
                 isLiquid = isLiquid,
                 packageWeight = packageWeight,
                 servingWeight = servingWeight,
+                portions = emptyList(),
                 source = source,
                 nutritionFacts = nutritionFacts,
             )
@@ -91,6 +109,7 @@ internal class RoomProductRepository(private val productDao: ProductDao) : Produ
                 isLiquid = isLiquid,
                 packageWeight = packageWeight,
                 servingWeight = servingWeight,
+                portions = emptyList(),
                 source = source,
                 nutritionFacts = nutritionFacts,
             )
@@ -100,9 +119,23 @@ internal class RoomProductRepository(private val productDao: ProductDao) : Produ
     override suspend fun updateProduct(product: Product) {
         productDao.updateProduct(product.toEntity())
     }
+
+    override suspend fun replaceProductPortions(
+        productId: FoodId.Product,
+        sourceType: FoodSource.Type,
+        portions: List<FddbPortion>,
+    ) {
+        val sourceTypeEntity = sourceType.toEntity()
+        productPortionDao.deleteProductPortions(productId.id, sourceTypeEntity)
+        if (portions.isNotEmpty()) {
+            productPortionDao.insertProductPortions(
+                portions.map { it.toEntity(productId.id, sourceTypeEntity) }
+            )
+        }
+    }
 }
 
-private fun ProductEntity.toModel(): Product =
+private fun ProductEntity.toModel(portions: List<ProductPortionEntity> = emptyList()): Product =
     Product(
         id = FoodId.Product(this.id),
         name = this.name,
@@ -112,6 +145,7 @@ private fun ProductEntity.toModel(): Product =
         isLiquid = this.isLiquid,
         packageWeight = this.packageWeight,
         servingWeight = this.servingWeight,
+        portions = portions.mapNotNull { it.toModel() },
         source = FoodSource(type = this.sourceType.toDomain(), url = this.sourceUrl),
         nutritionFacts = this.toNutritionFacts(),
     )
@@ -138,3 +172,34 @@ private fun Product.toEntity(): ProductEntity {
         isLiquid = isLiquid,
     )
 }
+
+private fun FddbPortion.toEntity(
+    productId: Long,
+    sourceType: FoodSourceType,
+): ProductPortionEntity =
+    ProductPortionEntity(
+        productId = productId,
+        sourceType = sourceType,
+        label = label,
+        normalizedLabel = label.normalizePortionLabel(),
+        amount = amount,
+        unit =
+            when (unit) {
+                FddbPortion.Unit.Gram -> "g"
+                FddbPortion.Unit.Milliliter -> "ml"
+            },
+    )
+
+private fun ProductPortionEntity.toModel(): FddbPortion? {
+    val unit =
+        when (unit) {
+            "g" -> FddbPortion.Unit.Gram
+            "ml" -> FddbPortion.Unit.Milliliter
+            else -> return null
+        }
+
+    return FddbPortion(label = label, amount = amount, unit = unit)
+}
+
+private fun String.normalizePortionLabel(): String =
+    trim().lowercase().replace(Regex("""\s+"""), " ")

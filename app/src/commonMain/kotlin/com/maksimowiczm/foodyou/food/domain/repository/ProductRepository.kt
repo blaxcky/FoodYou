@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.domain.repository
 
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import kotlinx.coroutines.flow.Flow
@@ -62,6 +63,12 @@ interface ProductRepository {
     ): FoodId.Product?
 
     suspend fun updateProduct(product: Product)
+
+    suspend fun replaceProductPortions(
+        productId: FoodId.Product,
+        sourceType: FoodSource.Type,
+        portions: List<FddbPortion>,
+    )
 
     suspend fun deleteProduct(product: Product)
 

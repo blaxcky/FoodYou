@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.food.domain.entity.FddbImportQueueItem
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
@@ -103,6 +104,35 @@ class ImportFddbProductsUseCaseTest {
     }
 
     @Test
+    fun storesPortionsForImportedProduct() = runBlocking {
+        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val gateway = FakeFddbProductGateway(portions = portions)
+        val repository = FakeProductRepository()
+        val useCase = useCase(gateway, repository, FakeFddbImportQueueRepository())
+
+        val result = useCase.import(Url(1)).toList().last().results.single()
+
+        val imported = assertIs<FddbImportResult.Imported>(result)
+        assertEquals(Url(1), imported.link)
+        assertEquals(portions, repository.products.single().portions)
+    }
+
+    @Test
+    fun addsPortionsForExistingBarcode() = runBlocking {
+        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val gateway = FakeFddbProductGateway(portions = portions)
+        val existing = product(id = 1, barcode = "1234567890123")
+        val repository = FakeProductRepository(existingProduct = existing)
+        val useCase = useCase(gateway, repository, FakeFddbImportQueueRepository())
+
+        val result = useCase.import(Url(1)).toList().last().results.single()
+
+        val skipped = assertIs<FddbImportResult.Skipped>(result)
+        assertEquals(FddbSkipReason.UpdatedWeights, skipped.reason)
+        assertEquals(portions, repository.products.single().portions)
+    }
+
+    @Test
     fun doesNotOverwriteExistingWeightsForExistingBarcode() = runBlocking {
         val gateway = FakeFddbProductGateway(packageWeight = 200.0, servingWeight = 12.0)
         val existing =
@@ -178,6 +208,7 @@ class ImportFddbProductsUseCaseTest {
         private val blockedUrl: String? = null,
         private val packageWeight: Double? = null,
         private val servingWeight: Double? = null,
+        private val portions: List<FddbPortion> = emptyList(),
     ) : FddbProductGateway {
         val requests = mutableListOf<String>()
 
@@ -197,6 +228,7 @@ class ImportFddbProductsUseCaseTest {
                 isLiquid = false,
                 packageWeight = packageWeight,
                 servingWeight = servingWeight,
+                portions = portions,
                 nutritionFacts =
                     NutritionFacts(
                         energy = NutrientValue.Complete(100.0),
@@ -341,6 +373,16 @@ class ImportFddbProductsUseCaseTest {
             products.replaceAll { if (it.id == product.id) product else it }
         }
 
+        override suspend fun replaceProductPortions(
+            productId: FoodId.Product,
+            sourceType: FoodSource.Type,
+            portions: List<FddbPortion>,
+        ) {
+            products.replaceAll { product ->
+                if (product.id == productId) product.copy(portions = portions) else product
+            }
+        }
+
         override suspend fun deleteProduct(product: Product) = Unit
 
         override suspend fun deleteProductsBySource(type: FoodSource.Type): Int {
@@ -386,6 +428,7 @@ class ImportFddbProductsUseCaseTest {
             servingWeight: Double? = null,
             source: FoodSource = FoodSource(FoodSource.Type.FDDB),
             nutritionFacts: NutritionFacts = NutritionFacts.Empty,
+            portions: List<FddbPortion> = emptyList(),
         ) =
             Product(
                 id = FoodId.Product(id),
@@ -396,6 +439,7 @@ class ImportFddbProductsUseCaseTest {
                 isLiquid = false,
                 packageWeight = packageWeight,
                 servingWeight = servingWeight,
+                portions = portions,
                 source = source,
                 nutritionFacts = nutritionFacts,
             )

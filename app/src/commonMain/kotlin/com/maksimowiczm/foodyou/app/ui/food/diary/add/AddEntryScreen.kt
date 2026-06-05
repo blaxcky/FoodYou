@@ -42,7 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
+import com.maksimowiczm.foodyou.app.ui.food.component.LabeledMeasurementSuggestion
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
+import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsMealPicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.FoodMeasurementFormState
@@ -54,6 +56,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import foodyou.app.generated.resources.*
@@ -135,6 +138,11 @@ fun AddEntryScreen(
                         }
                         ?.name,
                 suggestions = suggestions,
+                labelSuggestions =
+                    remember(food) {
+                        (food as? ProductModel)?.portions?.map { it.toMeasurementSuggestion() }
+                            .orEmpty()
+                    },
                 possibleTypes = possibleTypes,
                 selectedMeasurement = selectedMeasurement,
             )
@@ -180,6 +188,23 @@ fun AddEntryScreen(
         )
     }
 }
+
+private fun FddbPortion.toMeasurementSuggestion(): LabeledMeasurementSuggestion =
+    LabeledMeasurementSuggestion(
+        label = "1 $label (${amount.formatClipZeros()} ${unit.label})",
+        measurement =
+            when (unit) {
+                FddbPortion.Unit.Gram -> Measurement.Gram(amount)
+                FddbPortion.Unit.Milliliter -> Measurement.Milliliter(amount)
+            },
+    )
+
+private val FddbPortion.Unit.label: String
+    get() =
+        when (this) {
+            FddbPortion.Unit.Gram -> "g"
+            FddbPortion.Unit.Milliliter -> "ml"
+        }
 
 @Composable
 private fun AddEntryScreen(

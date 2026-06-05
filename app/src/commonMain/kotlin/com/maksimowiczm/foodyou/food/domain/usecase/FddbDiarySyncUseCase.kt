@@ -1,11 +1,10 @@
 package com.maksimowiczm.foodyou.food.domain.usecase
 
+import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
-import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.isSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
-import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiaryGateway
@@ -30,6 +29,7 @@ class FddbDiarySyncUseCase(
     private val syncEntryRepository: FddbDiarySyncEntryRepository,
     private val mealRepository: MealRepository,
     private val createFoodDiaryEntryUseCase: CreateFoodDiaryEntryUseCase,
+    private val transactionProvider: TransactionProvider,
     private val dateProvider: DateProvider,
 ) {
     suspend fun hasCredentials(): Boolean = credentialsRepository.hasCredentials().first()
@@ -86,47 +86,12 @@ class FddbDiarySyncUseCase(
     }
 
     private suspend fun resolveProduct(entry: FddbDiaryEntry): Product? {
-        productRepository
-            .getProductBySource(FoodSource.Type.FDDB, entry.productUrl)
-            ?.let {
-                return it
-            }
-
         val fddbProduct = productGateway.getProduct(entry.productUrl)
-        fddbProduct.barcode?.let { barcode ->
-            productRepository.getProductByBarcode(barcode)?.let {
-                return it
+        return transactionProvider.withTransaction {
+            when (val result = productRepository.upsertFddbProduct(entry.productUrl, fddbProduct)) {
+                is FddbProductUpsertResult.Inserted -> result.product
+                is FddbProductUpsertResult.Updated -> result.product
             }
-        }
-
-        val id =
-            productRepository.insertUniqueProduct(
-                name = fddbProduct.name,
-                brand = fddbProduct.brand,
-                barcode = fddbProduct.barcode,
-                note = null,
-                isLiquid = fddbProduct.isLiquid,
-                packageWeight = fddbProduct.packageWeight,
-                servingWeight = fddbProduct.servingWeight,
-                source = FoodSource(type = FoodSource.Type.FDDB, url = entry.productUrl),
-                nutritionFacts = fddbProduct.nutritionFacts,
-            )
-        return if (id == null) {
-            productRepository.getProductBySource(FoodSource.Type.FDDB, entry.productUrl)
-                ?: fddbProduct.barcode?.let { productRepository.getProductByBarcode(it) }
-        } else {
-            Product(
-                id = id,
-                name = fddbProduct.name,
-                brand = fddbProduct.brand,
-                barcode = fddbProduct.barcode,
-                note = null,
-                isLiquid = fddbProduct.isLiquid,
-                packageWeight = fddbProduct.packageWeight,
-                servingWeight = fddbProduct.servingWeight,
-                source = FoodSource(type = FoodSource.Type.FDDB, url = entry.productUrl),
-                nutritionFacts = fddbProduct.nutritionFacts,
-            )
         }
     }
 

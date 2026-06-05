@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.food.infrastructure.fddb
 
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,6 +37,13 @@ class FddbProductParserTest {
         assertEquals("Clever", product.brand)
         assertEquals(200.0, product.packageWeight)
         assertEquals(12.0, product.servingWeight)
+        assertEquals(
+            listOf(
+                FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram),
+                FddbPortion("Packung", 200.0, FddbPortion.Unit.Gram),
+            ),
+            product.portions,
+        )
         assertEquals(526.0, product.nutritionFacts.energy.value)
         assertEquals(30.0, product.nutritionFacts.proteins.value)
         assertEquals(0.5, product.nutritionFacts.carbohydrates.value)
@@ -48,6 +56,20 @@ class FddbProductParserTest {
         val product = parser.parse(ProductGroupFixture)
 
         assertEquals("Hofer", product.brand)
+    }
+
+    @Test
+    fun parsesMultiplePortionLabelsAndUnits() {
+        val product = parser.parse(PortionsFixture)
+
+        assertEquals(
+            listOf(
+                FddbPortion("Scheibe", 30.0, FddbPortion.Unit.Gram),
+                FddbPortion("Riegel", 25.5, FddbPortion.Unit.Gram),
+                FddbPortion("Glas", 200.0, FddbPortion.Unit.Milliliter),
+            ),
+            product.portions,
+        )
     }
 
     private companion object {
@@ -115,6 +137,25 @@ class FddbProductParserTest {
                     <table>
                         <tr><td>Kalorien</td><td>250 kcal</td></tr>
                     </table>
+                </body>
+            </html>
+            """
+
+        const val PortionsFixture =
+            """
+            <html>
+                <body>
+                    <h1 id="fddb-headline1">Portion Test</h1>
+                    <h3>Nährwerte für 100 ml</h3>
+                    <table>
+                        <tr><td>Kalorien</td><td>50 kcal</td></tr>
+                    </table>
+                    <h3>Portionen</h3>
+                    <p>100 g (100 g)</p>
+                    <p>100 ml (100 ml)</p>
+                    <p>Scheibe (30 g)</p>
+                    <p>Riegel (25,5 g)</p>
+                    <p>Glas (200 ml)</p>
                 </body>
             </html>
             """

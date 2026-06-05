@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
@@ -71,6 +72,43 @@ class FddbDiarySyncUseCaseTest {
     }
 
     @Test
+    fun addsPortionsForExistingProductByFddbSourceUrl() = runBlocking {
+        val source = "https://fddb.info/db/de/lebensmittel/local_food/index.html"
+        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val productRepository = FakeProductRepository(existing = listOf(product(id = 1, sourceUrl = source)))
+        val useCase =
+            useCase(
+                productRepository = productRepository,
+                diaryGateway = FakeFddbDiaryGateway(listOf(diaryEntry("1", "local_food"))),
+                productGateway = FakeFddbProductGateway(portions = portions),
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(1, result.imported)
+        assertEquals(portions, productRepository.products.single().portions)
+    }
+
+    @Test
+    fun addsPortionsForExistingProductByBarcode() = runBlocking {
+        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val productRepository =
+            FakeProductRepository(existing = listOf(product(id = 1, barcode = "barcode-remote_food")))
+        val useCase =
+            useCase(
+                productRepository = productRepository,
+                diaryGateway = FakeFddbDiaryGateway(listOf(diaryEntry("1", "remote_food"))),
+                productGateway = FakeFddbProductGateway(portions = portions),
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(1, result.imported)
+        assertEquals(portions, productRepository.products.single().portions)
+        assertEquals(emptyList(), productRepository.insertedNames)
+    }
+
+    @Test
     fun importsMissingProductAndCreatesDiaryEntry() = runBlocking {
         val productRepository = FakeProductRepository()
         val foodEntries = FakeFoodDiaryEntryRepository()
@@ -124,18 +162,20 @@ class FddbDiarySyncUseCaseTest {
                     dateProvider = FixedDateProvider,
                     logger = NoopLogger,
                 ),
+            transactionProvider = ImmediateTransactionProvider,
             dateProvider = FixedDateProvider,
         )
 
-    private class FakeFddbDiaryGateway(private val entries: List<FddbDiaryEntry>) :
-        FddbDiaryGateway {
+    private class FakeFddbDiaryGateway(private val entries: List<FddbDiaryEntry>) : FddbDiaryGateway {
         override suspend fun login(username: String, password: String) = Unit
 
         override suspend fun getLastSevenDays(referenceDate: LocalDate): List<FddbDiaryEntry> = entries
     }
 
-    private class FakeFddbProductGateway(private val failingSlug: String? = null) :
-        FddbProductGateway {
+    private class FakeFddbProductGateway(
+        private val failingSlug: String? = null,
+        private val portions: List<FddbPortion> = emptyList(),
+    ) : FddbProductGateway {
         override suspend fun getProduct(url: String): FddbProduct {
             if (failingSlug != null && url.contains(failingSlug)) error("Failed")
             val slug = url.substringAfterLast("lebensmittel/").substringBefore("/")
@@ -146,6 +186,7 @@ class FddbDiarySyncUseCaseTest {
                 isLiquid = false,
                 packageWeight = null,
                 servingWeight = null,
+                portions = portions,
                 nutritionFacts = NutritionFacts.Empty,
             )
         }
@@ -197,7 +238,14 @@ class FddbDiarySyncUseCaseTest {
             nutritionFacts: NutritionFacts,
         ): FoodId.Product {
             val id = FoodId.Product(nextId++)
-            products += product(id = id.id, name = name, brand = brand, barcode = barcode, sourceUrl = source.url)
+            products +=
+                product(
+                    id = id.id,
+                    name = name,
+                    brand = brand,
+                    barcode = barcode,
+                    source = source,
+                )
             insertedNames += name
             return id
         }
@@ -214,7 +262,19 @@ class FddbDiarySyncUseCaseTest {
             nutritionFacts: NutritionFacts,
         ): FoodId.Product? = insertProduct(name, brand, barcode, note, isLiquid, packageWeight, servingWeight, source, nutritionFacts)
 
-        override suspend fun updateProduct(product: Product) = Unit
+        override suspend fun updateProduct(product: Product) {
+            products.replaceAll { if (it.id == product.id) product else it }
+        }
+
+        override suspend fun replaceProductPortions(
+            productId: FoodId.Product,
+            sourceType: FoodSource.Type,
+            portions: List<FddbPortion>,
+        ) {
+            products.replaceAll { product ->
+                if (product.id == productId) product.copy(portions = portions) else product
+            }
+        }
 
         override suspend fun deleteProduct(product: Product) = Unit
 
@@ -320,6 +380,7 @@ class FddbDiarySyncUseCaseTest {
             brand: String? = "Brand",
             barcode: String? = null,
             sourceUrl: String? = null,
+            source: FoodSource = FoodSource(FoodSource.Type.FDDB, sourceUrl),
         ) =
             Product(
                 id = FoodId.Product(id),
@@ -330,7 +391,7 @@ class FddbDiarySyncUseCaseTest {
                 isLiquid = false,
                 packageWeight = null,
                 servingWeight = null,
-                source = FoodSource(FoodSource.Type.FDDB, sourceUrl),
+                source = source,
                 nutritionFacts = NutritionFacts.Empty,
             )
     }

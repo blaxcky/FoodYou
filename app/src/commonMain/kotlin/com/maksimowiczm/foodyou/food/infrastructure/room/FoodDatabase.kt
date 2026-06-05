@@ -8,4 +8,5 @@ interface FoodDatabase {
     val recipeDao: RecipeDao
     val foodEventDao: FoodEventDao
     val measurementSuggestionDao: MeasurementSuggestionDao
+    val productPortionDao: ProductPortionDao
 }

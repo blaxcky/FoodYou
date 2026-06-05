@@ -2,11 +2,8 @@ package com.maksimowiczm.foodyou.food.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
-import com.maksimowiczm.foodyou.common.domain.food.FoodSource
-import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FddbImportQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
-import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbImportQueueRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
@@ -123,54 +120,27 @@ class ImportFddbProductsUseCase(
         val product = fddbProductGateway.getProduct(link)
 
         return transactionProvider.withTransaction {
-            val existingProduct =
-                product.barcode?.let { productRepository.getProductByBarcode(it) }
-
-            if (
-                existingProduct != null &&
-                    existingProduct.fillMissingFddbWeights(product)
-            ) {
-                productRepository.updateProduct(existingProduct.withMissingFddbWeights(product))
-                return@withTransaction FddbImportResult.Skipped(
-                    link = link,
-                    name = product.name,
-                    reason = FddbSkipReason.UpdatedWeights,
-                )
-            }
-
-            if (existingProduct != null) {
-                return@withTransaction FddbImportResult.Skipped(
-                    link = link,
-                    name = product.name,
-                    reason = FddbSkipReason.BarcodeExists,
-                )
-            }
-
-            val id =
-                productRepository.insertUniqueProduct(
-                    name = product.name,
-                    brand = product.brand,
-                    barcode = product.barcode,
-                    note = null,
-                    isLiquid = product.isLiquid,
-                    packageWeight = product.packageWeight,
-                    servingWeight = product.servingWeight,
-                    source = FoodSource(type = FoodSource.Type.FDDB, url = link),
-                    nutritionFacts = product.nutritionFacts,
-                )
-
-            if (id == null) {
-                FddbImportResult.Skipped(
-                    link = link,
-                    name = product.name,
-                    reason = FddbSkipReason.ProductExists,
-                )
-            } else {
-                historyRepository.insert(
-                    id,
-                    FoodHistory.Imported(timestamp = dateProvider.nowInstant()),
-                )
-                FddbImportResult.Imported(link = link, name = product.name)
+            when (val result = productRepository.upsertFddbProduct(link, product)) {
+                is FddbProductUpsertResult.Updated -> {
+                    val reason =
+                        if (result.changed) {
+                            FddbSkipReason.UpdatedWeights
+                        } else {
+                            FddbSkipReason.BarcodeExists
+                        }
+                    FddbImportResult.Skipped(
+                        link = link,
+                        name = product.name,
+                        reason = reason,
+                    )
+                }
+                is FddbProductUpsertResult.Inserted -> {
+                    historyRepository.insert(
+                        result.product.id,
+                        FoodHistory.Imported(timestamp = dateProvider.nowInstant()),
+                    )
+                    FddbImportResult.Imported(link = link, name = product.name)
+                }
             }
         }
     }
@@ -217,13 +187,3 @@ enum class FddbSkipReason {
     ProductExists,
     UpdatedWeights,
 }
-
-private fun Product.fillMissingFddbWeights(product: FddbProduct): Boolean =
-    (packageWeight == null && product.packageWeight != null) ||
-        (servingWeight == null && product.servingWeight != null)
-
-private fun Product.withMissingFddbWeights(product: FddbProduct): Product =
-    copy(
-        packageWeight = packageWeight ?: product.packageWeight,
-        servingWeight = servingWeight ?: product.servingWeight,
-    )

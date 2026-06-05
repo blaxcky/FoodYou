@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.component
 
 import androidx.compose.runtime.*
+import com.maksimowiczm.foodyou.app.ui.food.component.LabeledMeasurementSuggestion
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerState
 import com.maksimowiczm.foodyou.app.ui.food.component.rememberMeasurementPickerState
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
@@ -16,6 +17,7 @@ fun rememberFoodMeasurementFormState(
     meals: List<String>,
     selectedMeal: String?,
     suggestions: List<Measurement>,
+    labelSuggestions: List<LabeledMeasurementSuggestion> = emptyList(),
     possibleTypes: List<MeasurementType>,
     selectedMeasurement: Measurement,
 ): FoodMeasurementFormState {
@@ -30,6 +32,7 @@ fun rememberFoodMeasurementFormState(
     val measurementState =
         rememberMeasurementPickerState(
             suggestions = suggestions,
+            labelSuggestions = labelSuggestions,
             possibleTypes = possibleTypes,
             selectedMeasurement = selectedMeasurement,
         )

@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.infrastructure.fddb
 
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 
 class FddbProductParser {
@@ -17,6 +18,7 @@ class FddbProductParser {
             isLiquid = servingUnit == "ml",
             packageWeight = portions.findPackageWeight(),
             servingWeight = portions.findServingWeight(),
+            portions = portions,
             nutritionFacts =
                 NutritionFacts(
                     proteins = lines.nutrient("Protein", "Eiweiß"),
@@ -135,19 +137,35 @@ private fun List<String>.findPortions(): List<FddbPortion> =
                 return@mapNotNull null
             }
 
+            val amount =
+                match.groupValues[2].replace(',', '.').toDoubleOrNull()
+                    ?: return@mapNotNull null
+            val unit =
+                when (match.groupValues[3].lowercase()) {
+                    "g" -> FddbPortion.Unit.Gram
+                    "ml" -> FddbPortion.Unit.Milliliter
+                    else -> return@mapNotNull null
+                }
+
             FddbPortion(
-                label = normalizedLabel,
-                weight = match.groupValues[2].replace(',', '.').toDoubleOrNull()
-                    ?: return@mapNotNull null,
+                label = label,
+                amount = amount,
+                unit = unit,
             )
         }
-        .filter { it.weight > 0.0 }
+        .filter { it.amount > 0.0 }
 
 private fun List<FddbPortion>.findPackageWeight(): Double? =
-    firstOrNull { portion -> PackageLabels.any { portion.label.contains(it) } }?.weight
+    firstOrNull { portion ->
+        portion.unit == FddbPortion.Unit.Gram &&
+            PackageLabels.any { portion.label.contains(it, ignoreCase = true) }
+    }?.amount
 
 private fun List<FddbPortion>.findServingWeight(): Double? =
-    firstOrNull { portion -> ServingLabels.any { portion.label.contains(it) } }?.weight
+    firstOrNull { portion ->
+        portion.unit == FddbPortion.Unit.Gram &&
+            ServingLabels.any { portion.label.contains(it, ignoreCase = true) }
+    }?.amount
 
 private fun List<String>.nutrient(vararg labels: String): NutrientValue {
     val value =
@@ -193,10 +211,8 @@ private fun String.parseFddbNumber(): Double? {
         ?.toDoubleOrNull()
 }
 
-private data class FddbPortion(val label: String, val weight: Double)
-
 private val PortionRegex =
-    Regex("""^(.+?)\s*\(\s*([-+]?\d+(?:[,.]\d+)?)\s*(?:g|ml)\s*\)$""", RegexOption.IGNORE_CASE)
+    Regex("""^(.+?)\s*\(\s*([-+]?\d+(?:[,.]\d+)?)\s*(g|ml)\s*\)$""", RegexOption.IGNORE_CASE)
 
 private val BasePortionRegex = Regex("""^100\s*(?:g|ml)$""", RegexOption.IGNORE_CASE)
 

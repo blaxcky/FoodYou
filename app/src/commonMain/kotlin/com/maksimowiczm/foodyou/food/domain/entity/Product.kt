@@ -27,6 +27,7 @@ data class Product(
     override val isLiquid: Boolean,
     val packageWeight: Double?,
     override val servingWeight: Double?,
+    val portions: List<FddbPortion> = emptyList(),
     val source: FoodSource,
     override val nutritionFacts: NutritionFacts,
 ) : Food {

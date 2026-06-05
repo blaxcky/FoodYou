@@ -35,6 +35,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.MeasurementSuggestionEn
 import com.maksimowiczm.foodyou.food.infrastructure.room.PendingProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductFts
+import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeFts
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeIngredientEntity
@@ -79,6 +80,7 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntit
             RecipeFts::class,
             FddbImportQueueItemEntity::class,
             FddbDiarySyncEntryEntity::class,
+            ProductPortionEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
     version = FoodYouDatabase.VERSION,
@@ -154,7 +156,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 38
+        const val VERSION = 39
 
         private val migrations: List<Migration> =
             listOf(
@@ -178,6 +180,7 @@ abstract class FoodYouDatabase :
                 PendingProductMultiplePhotosMigration,
                 FddbImportQueueMigration,
                 FddbDiarySyncEntryMigration,
+                ProductPortionMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -187,6 +190,32 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object ProductPortionMigration : Migration(38, 39) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `ProductPortion` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `productId` INTEGER NOT NULL,
+                `sourceType` INTEGER NOT NULL,
+                `label` TEXT NOT NULL,
+                `normalizedLabel` TEXT NOT NULL,
+                `amount` REAL NOT NULL,
+                `unit` TEXT NOT NULL,
+                FOREIGN KEY(`productId`) REFERENCES `Product`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """
+                .trimIndent()
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ProductPortion_productId` ON `ProductPortion` (`productId`)"
+        )
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_ProductPortion_productId_sourceType_normalizedLabel` ON `ProductPortion` (`productId`, `sourceType`, `normalizedLabel`)"
+        )
     }
 }
 
