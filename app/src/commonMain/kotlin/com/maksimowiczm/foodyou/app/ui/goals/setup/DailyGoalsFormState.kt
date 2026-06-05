@@ -265,8 +265,8 @@ internal fun rememberDailyGoalsFormState(dailyGoal: DailyGoal? = null): DailyGoa
                 return@derivedStateOf true
             }
 
-            !proteinsFormField.value.isCloseTo(dailyGoal.macronutrientGoal.proteinsGrams) &&
-                !fatsFormField.value.isCloseTo(dailyGoal.macronutrientGoal.fatsGrams) &&
+            !proteinsFormField.value.isCloseTo(dailyGoal.macronutrientGoal.proteinsGrams) ||
+                !fatsFormField.value.isCloseTo(dailyGoal.macronutrientGoal.fatsGrams) ||
                 !carbsFormField.value.isCloseTo(dailyGoal.macronutrientGoal.carbohydratesGrams)
         }
     }
@@ -287,17 +287,6 @@ internal fun rememberDailyGoalsFormState(dailyGoal: DailyGoal? = null): DailyGoa
                     return@combine
                 }
 
-                val energyKcal =
-                    NutrientsHelper.calculateEnergy(
-                        proteins = proteins,
-                        carbohydrates = carbs,
-                        fats = fats,
-                    )
-                energyFormField.textFieldState.setTextAndPlaceCursorAtEnd(
-                    energyKcal.roundToInt().toString()
-                )
-
-                // Update sliders
                 proteinsSlider.value =
                     NutrientsHelper.proteinsPercentage(energy.roundToInt(), proteins) * 100
                 fatsSlider.value = NutrientsHelper.fatsPercentage(energy.roundToInt(), fats) * 100

@@ -164,6 +164,8 @@
     <string name="weight">Gewicht</string>
     <string name="unit_energy" description="Energy as calories">Brennwert in Kalorien</string>
     <string name="unit_kcal">kcal</string>
+    <string name="unit_kilogram_short" translatable="false">kg</string>
+    <string name="unit_centimeter_short" translatable="false">cm</string>
     <string name="label_burned_kcal">Verbrannte kcal</string>
     <string name="label_additional_amount">Zusätzliche Menge</string>
     <string name="unit_kilojoules">kJ</string>
@@ -444,6 +446,15 @@
     <string name="neutral_measurement_added">Alles klar! Deine Messung wurde hinzugefügt</string>
     <string name="headline_imported_from_food_you_2">Importiert aus Food You 2</string>
     <string name="action_set_goals">Ziele setzen</string>
+    <string name="headline_body_data">Körperdaten</string>
+    <string name="height">Größe</string>
+    <string name="birth_date">Geburtsdatum</string>
+    <string name="biological_sex">Geschlecht</string>
+    <string name="biological_sex_male">Männlich</string>
+    <string name="biological_sex_female">Weiblich</string>
+    <string name="neutral_basal_metabolic_rate_value">Grundumsatz: %1$d kcal</string>
+    <string name="neutral_minimal_activity_value">Mit minimaler Aktivität: %1$d kcal</string>
+    <string name="hint_body_data_required_for_bmr">Gib alle Körperdaten ein, um Vorschläge anzuzeigen.</string>
     <string name="neutral_no_column">Keine Spalte</string>
     <plurals name="neutral_imported_x_food_products">
         <item quantity="one">%1$d Lebensmittel wurde importiert</item>

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.Save
@@ -32,10 +34,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -49,7 +53,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
@@ -63,9 +66,16 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
+import com.maksimowiczm.foodyou.common.extension.now
+import com.maksimowiczm.foodyou.goals.domain.entity.BiologicalSex
+import com.maksimowiczm.foodyou.goals.domain.usecase.calculateBasalMetabolicRateSuggestion
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
 import kotlin.math.roundToInt
+import kotlin.time.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -73,7 +83,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier = Modifier) {
     val viewModel: DailyGoalsViewModel = koinViewModel()
-    val weeklyGoals = viewModel.weeklyGoals.collectAsStateWithLifecycle().value
+    val setupState = viewModel.state.collectAsStateWithLifecycle().value
 
     LaunchedCollectWithLifecycle(viewModel.events) {
         when (it) {
@@ -81,19 +91,25 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
         }
     }
 
-    if (weeklyGoals == null) {
+    if (setupState == null) {
         // TODO loading state
         return
     }
 
-    val state = rememberWeeklyGoalsState(weeklyGoals)
+    val weeklyState = rememberWeeklyGoalsState(setupState.weeklyGoals)
+    val basalMetabolicRateProfileState =
+        rememberBasalMetabolicRateProfileFormState(setupState.basalMetabolicRateProfile)
 
     DailyGoalsContent(
-        weeklyState = state,
+        weeklyState = weeklyState,
+        basalMetabolicRateProfileState = basalMetabolicRateProfileState,
         onBack = onBack,
         onSave = {
-            val weeklyGoals = state.intoWeeklyGoals()
-            viewModel.updateWeeklyGoals(weeklyGoals)
+            viewModel.update(
+                weeklyGoals = weeklyState.intoWeeklyGoals(),
+                basalMetabolicRateProfile =
+                    basalMetabolicRateProfileState.intoProfile(),
+            )
         },
         modifier = modifier,
     )
@@ -102,15 +118,18 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
 @Composable
 internal fun DailyGoalsContent(
     weeklyState: WeeklyGoalsState,
+    basalMetabolicRateProfileState: BasalMetabolicRateProfileFormState,
     onBack: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier,
 ) {
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
-    val handleOnBack = { if (weeklyState.isModified) showDiscardDialog = true else onBack() }
+    val isModified = weeklyState.isModified || basalMetabolicRateProfileState.isModified
+    val isValid = weeklyState.isValid && basalMetabolicRateProfileState.isValid
+    val handleOnBack = { if (isModified) showDiscardDialog = true else onBack() }
     NavigationEventHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = weeklyState.isModified,
+        isBackEnabled = isModified,
         onBackCompleted = { showDiscardDialog = true },
     )
     if (showDiscardDialog) {
@@ -131,7 +150,7 @@ internal fun DailyGoalsContent(
                     FilledIconButton(
                         onClick = onSave,
                         shapes = IconButtonDefaults.shapes(),
-                        enabled = weeklyState.isValid,
+                        enabled = isValid,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Save,
@@ -167,6 +186,11 @@ internal fun DailyGoalsContent(
                 val state = weeklyState.selectedDayGoals
 
                 Column(modifier) {
+                    BasalMetabolicRateProfileForm(
+                        state = basalMetabolicRateProfileState,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    )
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     Text(
                         text = stringResource(Res.string.action_set_goals),
                         style = MaterialTheme.typography.labelLarge,
@@ -202,6 +226,177 @@ internal fun DailyGoalsContent(
         }
     }
 }
+
+@Composable
+private fun BasalMetabolicRateProfileForm(
+    state: BasalMetabolicRateProfileFormState,
+    modifier: Modifier = Modifier,
+) {
+    val today = LocalDate.now()
+    val suggestion =
+        calculateBasalMetabolicRateSuggestion(profile = state.intoProfile(), today = today)
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = stringResource(Res.string.headline_body_data),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        BodyMetricTextField(
+            field = state.weightKg,
+            label = stringResource(Res.string.weight),
+            suffix = stringResource(Res.string.unit_kilogram_short),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        BodyMetricTextField(
+            field = state.heightCm,
+            label = stringResource(Res.string.height),
+            suffix = stringResource(Res.string.unit_centimeter_short),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        BirthDatePickerField(
+            birthDate = state.birthDate,
+            onBirthDateChange = { state.birthDate = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = stringResource(Res.string.biological_sex),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        BiologicalSexToggle(
+            sex = state.sex,
+            onSexChange = { state.sex = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        if (suggestion == null) {
+            Text(
+                text = stringResource(Res.string.hint_body_data_required_for_bmr),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                text =
+                    stringResource(
+                        Res.string.neutral_basal_metabolic_rate_value,
+                        suggestion.basalMetabolicRateKcal,
+                    ),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text =
+                    stringResource(
+                        Res.string.neutral_minimal_activity_value,
+                        suggestion.minimalActivityKcal,
+                    ),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BodyMetricTextField(
+    field: FormField<Double?, DailyGoalsFormError>,
+    label: String,
+    suffix: String,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        state = field.textFieldState,
+        modifier = modifier,
+        label = { Text(label) },
+        suffix = { Text(suffix) },
+        isError = field.error != null,
+        keyboardOptions =
+            KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+    )
+}
+
+@Composable
+private fun BirthDatePickerField(
+    birthDate: LocalDate?,
+    onBirthDateChange: (LocalDate?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    val dateFormatter = LocalDateFormatter.current
+
+    if (showDatePicker) {
+        val datePickerState =
+            rememberDatePickerState(initialSelectedDateMillis = birthDate?.toUtcEpochMillis())
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onBirthDateChange(
+                            datePickerState.selectedDateMillis
+                                ?.let(Instant::fromEpochMilliseconds)
+                                ?.toLocalDateTime(TimeZone.UTC)
+                                ?.date
+                        )
+                        showDatePicker = false
+                    }
+                ) {
+                    Text(stringResource(Res.string.positive_ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    OutlinedTextField(
+        value = birthDate?.let(dateFormatter::formatDate).orEmpty(),
+        onValueChange = {},
+        readOnly = true,
+        modifier = modifier.clickable { showDatePicker = true },
+        label = { Text(stringResource(Res.string.birth_date)) },
+    )
+}
+
+@Composable
+private fun BiologicalSexToggle(
+    sex: BiologicalSex?,
+    onSexChange: (BiologicalSex) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement =
+            Arrangement.spacedBy(
+                ButtonGroupDefaults.ConnectedSpaceBetween,
+                Alignment.CenterHorizontally,
+            ),
+    ) {
+        ToggleButton(
+            checked = sex == BiologicalSex.Male,
+            onCheckedChange = { onSexChange(BiologicalSex.Male) },
+            modifier = Modifier.height(56.dp).semantics { role = Role.RadioButton },
+            shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+        ) {
+            Text(stringResource(Res.string.biological_sex_male))
+        }
+        ToggleButton(
+            checked = sex == BiologicalSex.Female,
+            onCheckedChange = { onSexChange(BiologicalSex.Female) },
+            modifier = Modifier.height(56.dp).semantics { role = Role.RadioButton },
+            shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+        ) {
+            Text(stringResource(Res.string.biological_sex_female))
+        }
+    }
+}
+
+private fun LocalDate.toUtcEpochMillis(): Long = toEpochDays() * 86_400_000L
 
 @Composable
 private fun DayPicker(
@@ -409,6 +604,13 @@ private fun MacroInput(state: DailyGoalsFormState, modifier: Modifier = Modifier
     val nutrientsOrder = LocalNutrientsOrder.current
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        state.energy.TextField(
+            label = stringResource(Res.string.unit_energy),
+            color = MaterialTheme.colorScheme.outline,
+            suffix = stringResource(Res.string.unit_kcal),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         nutrientsOrder.forEach {
             when (it) {
                 NutrientsOrder.Proteins ->
@@ -437,19 +639,6 @@ private fun MacroInput(state: DailyGoalsFormState, modifier: Modifier = Modifier
                 NutrientsOrder.Minerals -> Unit
             }
         }
-
-        val str = buildString {
-            append("=")
-            append(" ${state.energy.value.roundToInt()} ")
-            append(stringResource(Res.string.unit_kcal))
-        }
-
-        Text(
-            text = str,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.headlineSmall,
-        )
     }
 }
 
