@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.goals.setup
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -354,13 +355,16 @@ private fun BirthDatePickerField(
         }
     }
 
-    OutlinedTextField(
-        value = birthDate?.let(dateFormatter::formatDate).orEmpty(),
-        onValueChange = {},
-        readOnly = true,
-        modifier = modifier.clickable { showDatePicker = true },
-        label = { Text(stringResource(Res.string.birth_date)) },
-    )
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = birthDate?.let(dateFormatter::formatDate).orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(Res.string.birth_date)) },
+        )
+        Box(Modifier.matchParentSize().clickable { showDatePicker = true })
+    }
 }
 
 @Composable
