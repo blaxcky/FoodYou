@@ -940,6 +940,7 @@ private fun GoalComparisonOverviewCard(
 @Composable
 private fun GoalComparisonHeader(netEnergy: Int, modifier: Modifier = Modifier) {
     val energyFormatter = LocalEnergyFormatter.current
+    val valueColor = if (netEnergy < 0) GoalsErrorColor else GoalsTextColor
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -956,7 +957,7 @@ private fun GoalComparisonHeader(netEnergy: Int, modifier: Modifier = Modifier) 
                 text =
                     "${energyFormatter.formatEnergy(netEnergy, withSuffix = false).groupDigits()} " +
                         stringResource(Res.string.unit_kcal),
-                color = GoalsTextColor,
+                color = valueColor,
                 style =
                     MaterialTheme.typography.titleLarge.copy(
                         fontFamily = interNumberFontFamily(),
@@ -996,6 +997,12 @@ private fun GoalComparisonItem(
     val remainingValue = abs(remaining)
     val progress = summary?.let { (netEnergy.toFloat() / percentageGoal).coerceIn(0f, 1f) } ?: 0f
     val contentAlpha = if (enabled) 1f else 0.46f
+    val targetColor =
+        if (summary?.showEnergyGoalValue == true && target < 0) {
+            GoalsErrorColor
+        } else {
+            GoalsTextColor
+        }
 
     Column(
         modifier =
@@ -1036,7 +1043,7 @@ private fun GoalComparisonItem(
                 } else {
                     "-"
                 },
-            color = GoalsTextColor,
+            color = targetColor,
             style =
                 MaterialTheme.typography.titleMedium.copy(
                     fontFamily = numberFontFamily,
