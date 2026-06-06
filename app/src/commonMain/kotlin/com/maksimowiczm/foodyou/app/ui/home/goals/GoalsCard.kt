@@ -340,7 +340,7 @@ internal fun GoalsCard(
             energyGoal = energyGoal,
             showEnergyGoalValue = showEnergyGoalValue,
             goalCardView = displayedGoalCardView,
-            goalDisplayMode = effectiveGoalDisplayMode,
+            goalDisplayMode = displayedGoalCardView.toGoalDisplayMode(),
             goalDisplaySummaries = summaries,
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
             onClick = onClick,
@@ -1177,6 +1177,7 @@ private fun CaloriesOverviewPage(
                         label = remainingLabel,
                         progress = progress,
                         overflowProgress = overflowProgress,
+                        progressColor = summary.mode.accentColor(),
                         valueColor = valueColor,
                         diameter = gaugeDiameter,
                     )
@@ -1257,6 +1258,7 @@ private fun CaloriesOverviewPage(
                         label = remainingLabel,
                         progress = progress,
                         overflowProgress = overflowProgress,
+                        progressColor = summary.mode.accentColor(),
                         valueColor = valueColor,
                         diameter = gaugeDiameter,
                     )
@@ -1679,6 +1681,7 @@ private fun GaugeMetric(
     label: String,
     progress: Float,
     overflowProgress: Float,
+    progressColor: Color,
     valueColor: Color,
     diameter: Dp,
     modifier: Modifier = Modifier,
@@ -1692,6 +1695,7 @@ private fun GaugeMetric(
         SemiCircleGauge(
             progress = progress,
             overflowProgress = overflowProgress,
+            progressColor = progressColor,
             diameter = diameter,
             modifier = Modifier.size(width = diameter, height = diameter - 7.dp),
         )
@@ -1734,6 +1738,7 @@ private fun GaugeMetric(
 private fun SemiCircleGauge(
     progress: Float,
     overflowProgress: Float,
+    progressColor: Color,
     diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -1752,16 +1757,22 @@ private fun SemiCircleGauge(
             size = arcSize,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
+        val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
+        val visibleProgress =
+            if (coercedOverflowProgress > 0f) {
+                1f - coercedOverflowProgress
+            } else {
+                progress.coerceIn(0f, 1f)
+            }
         drawArc(
-            color = GoalsProgressColor,
+            color = progressColor,
             startAngle = 135f,
-            sweepAngle = 270f * progress.coerceIn(0f, 1f),
+            sweepAngle = 270f * visibleProgress,
             useCenter = false,
             topLeft = topLeft,
             size = arcSize,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
-        val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
         if (coercedOverflowProgress > 0f) {
             val overflowSweepAngle = 270f * coercedOverflowProgress
             drawArc(
@@ -1880,6 +1891,12 @@ private fun MacroProgressBar(
 ) {
     val barShape = RoundedCornerShape(50)
     val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
+    val visibleProgress =
+        if (coercedOverflowProgress > 0f) {
+            1f - coercedOverflowProgress
+        } else {
+            progress.coerceIn(0f, 1f)
+        }
     Box(
         modifier =
             modifier
@@ -1890,7 +1907,7 @@ private fun MacroProgressBar(
     ) {
         Box(
             modifier =
-                Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
+                Modifier.fillMaxWidth(visibleProgress)
                     .height(6.dp)
                     .clip(barShape)
                     .background(
