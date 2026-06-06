@@ -115,12 +115,12 @@ private val GoalsErrorColor = Color(0xFFC51F1F)
 private val OverviewGoalAccentColor = Color(0xFF537188)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 private val DietGoalAccentColor = Color(0xFFC98A00)
-private val FatTrackColor = Color(0xFFFFE5E5)
-private val FatColor = Color(0xFFF4D5DC)
-private val CarbsTrackColor = Color(0xFFFFF3DC)
-private val CarbsColor = Color(0xFFF4E6C9)
-private val ProteinTrackColor = Color(0xFFE3F7E9)
-private val ProteinColor = Color(0xFFCFE6CD)
+private val FatTrackColor = Color(0xFFFFCFCF)
+private val FatColor = Color(0xFFFF7477)
+private val CarbsTrackColor = Color(0xFFFFE5B8)
+private val CarbsColor = Color(0xFFFFB743)
+private val ProteinTrackColor = Color(0xFFD4F0DD)
+private val ProteinColor = Color(0xFF61BF80)
 
 private enum class GoalCardView {
     Overview,
