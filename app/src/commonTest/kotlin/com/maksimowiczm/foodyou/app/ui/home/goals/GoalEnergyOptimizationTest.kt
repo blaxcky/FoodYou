@@ -201,21 +201,53 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
-    fun negativeAdjustedGoalUsesBaseGoalForReachedPercentage() {
-        val percentageGoal =
-            percentageEnergyGoalKcal(energyGoalKcal = -500.0, baseEnergyGoalKcal = 2000.0)
+    fun calorieProgressForPositiveGoalShowsReachedPercentageWithoutOverflow() {
+        val progress =
+            calorieGoalProgress(netEnergy = 322, energyGoal = 2100, percentageEnergyGoal = 2100)
 
-        assertEquals(2000, percentageGoal)
-        assertEquals(122, goalReachedPercentage(value = 2436, goal = percentageGoal))
+        assertEquals(0.153f, progress.progress, absoluteTolerance = 0.001f)
+        assertEquals(0f, progress.overflowProgress)
+        assertEquals(15, progress.reachedPercentage)
     }
 
     @Test
-    fun reachedPercentageCanExceedOneHundredForPositiveGoal() {
-        val percentageGoal =
-            percentageEnergyGoalKcal(energyGoalKcal = 2000.0, baseEnergyGoalKcal = 2000.0)
+    fun calorieProgressForPositiveGoalShowsOverflow() {
+        val progress =
+            calorieGoalProgress(netEnergy = 2300, energyGoal = 2100, percentageEnergyGoal = 2100)
 
-        assertEquals(2000, percentageGoal)
-        assertEquals(115, goalReachedPercentage(value = 2300, goal = percentageGoal))
+        assertEquals(1f, progress.progress)
+        assertEquals(0.095f, progress.overflowProgress, absoluteTolerance = 0.001f)
+        assertEquals(110, progress.reachedPercentage)
+    }
+
+    @Test
+    fun calorieProgressForNegativeGoalShowsFullOverflowForPositiveNetEnergy() {
+        val progress =
+            calorieGoalProgress(netEnergy = 322, energyGoal = -2100, percentageEnergyGoal = 2100)
+
+        assertEquals(0f, progress.progress)
+        assertEquals(1f, progress.overflowProgress)
+        assertEquals(0, progress.reachedPercentage)
+    }
+
+    @Test
+    fun calorieProgressForNegativeGoalShowsProgressTowardDeficit() {
+        val progress =
+            calorieGoalProgress(netEnergy = -1050, energyGoal = -2100, percentageEnergyGoal = 2100)
+
+        assertEquals(0.5f, progress.progress)
+        assertEquals(0.5f, progress.overflowProgress)
+        assertEquals(50, progress.reachedPercentage)
+    }
+
+    @Test
+    fun calorieProgressForNegativeGoalIsCompleteAtTarget() {
+        val progress =
+            calorieGoalProgress(netEnergy = -2100, energyGoal = -2100, percentageEnergyGoal = 2100)
+
+        assertEquals(1f, progress.progress)
+        assertEquals(0f, progress.overflowProgress)
+        assertEquals(100, progress.reachedPercentage)
     }
 
     @Test

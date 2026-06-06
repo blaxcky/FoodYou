@@ -420,6 +420,29 @@ private fun goalProgress(value: Int, goal: Int): Float =
 internal fun goalReachedPercentage(value: Int, goal: Int): Int =
     (value.toFloat() / goal.coerceAtLeast(1) * 100).roundToInt().coerceAtLeast(0)
 
+internal data class CalorieGoalProgress(
+    val progress: Float,
+    val overflowProgress: Float,
+    val reachedPercentage: Int,
+)
+
+internal fun calorieGoalProgress(netEnergy: Int, energyGoal: Int, percentageEnergyGoal: Int) =
+    if (energyGoal < 0) {
+        val goal = abs(energyGoal).coerceAtLeast(1)
+        CalorieGoalProgress(
+            progress = (-netEnergy.toFloat() / goal).coerceIn(0f, 1f),
+            overflowProgress = ((netEnergy - energyGoal).toFloat() / goal).coerceIn(0f, 1f),
+            reachedPercentage = (-netEnergy.toFloat() / goal * 100).roundToInt().coerceAtLeast(0),
+        )
+    } else {
+        val goal = percentageEnergyGoal.coerceAtLeast(1)
+        CalorieGoalProgress(
+            progress = (netEnergy.toFloat() / goal).coerceIn(0f, 1f),
+            overflowProgress = ((netEnergy - goal).toFloat() / goal).coerceIn(0f, 1f),
+            reachedPercentage = goalReachedPercentage(netEnergy, goal),
+        )
+    }
+
 @Composable
 private fun WeeklyGoalsContent(
     model: WeekSummaryModel,
@@ -991,13 +1014,13 @@ private fun GoalComparisonItem(
     val accentColor = mode.accentColor()
     val cardShape = RoundedCornerShape(14.dp)
     val target = summary?.energyGoal ?: 0
-    val percentageGoal = summary?.percentageEnergyGoal?.coerceAtLeast(1) ?: 1
     val remaining = target - netEnergy
     val overflow = remaining < 0
     val remainingValue = abs(remaining)
-    val progress = summary?.let { (netEnergy.toFloat() / percentageGoal).coerceIn(0f, 1f) } ?: 0f
-    val overflowProgress =
-        summary?.let { calorieOverflowProgress(netEnergy, percentageGoal) } ?: 0f
+    val calorieProgress =
+        summary?.let { calorieGoalProgress(netEnergy, it.energyGoal, it.percentageEnergyGoal) }
+    val progress = calorieProgress?.progress ?: 0f
+    val overflowProgress = calorieProgress?.overflowProgress ?: 0f
     val contentAlpha = if (enabled) 1f else 0.46f
     val remainingColor = if (enabled && overflow) GoalsErrorColor else GoalsTextColor
     val targetColor = if (target < 0) GoalsErrorColor else GoalsMutedTextColor
@@ -1140,10 +1163,15 @@ private fun CaloriesOverviewPage(
     val showEnergyGoalValue = summary.showEnergyGoalValue
     val energyFormatter = LocalEnergyFormatter.current
     val left = energyGoal - netEnergy
-    val percentageEnergyGoal = summary.percentageEnergyGoal.coerceAtLeast(1)
-    val reached = goalReachedPercentage(netEnergy, percentageEnergyGoal)
-    val progress = (netEnergy.toFloat() / percentageEnergyGoal).coerceIn(0f, 1f)
-    val overflowProgress = calorieOverflowProgress(netEnergy, percentageEnergyGoal)
+    val calorieProgress =
+        calorieGoalProgress(
+            netEnergy = netEnergy,
+            energyGoal = summary.energyGoal,
+            percentageEnergyGoal = summary.percentageEnergyGoal,
+        )
+    val reached = calorieProgress.reachedPercentage
+    val progress = calorieProgress.progress
+    val overflowProgress = calorieProgress.overflowProgress
     val overflow = left < 0
     val remainingValue = if (overflow) -left else left
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
@@ -1521,11 +1549,6 @@ private fun GoalDisplayMode.icon(): androidx.compose.ui.graphics.vector.ImageVec
 
 private fun Dp.coerceIn(minimumValue: Dp, maximumValue: Dp): Dp =
     coerceAtLeast(minimumValue).coerceAtMost(maximumValue)
-
-private fun calorieOverflowProgress(netEnergy: Int, percentageEnergyGoal: Int): Float {
-    val goal = percentageEnergyGoal.coerceAtLeast(1)
-    return ((netEnergy - goal).toFloat() / goal).coerceIn(0f, 1f)
-}
 
 @Composable
 private fun SideMetric(
