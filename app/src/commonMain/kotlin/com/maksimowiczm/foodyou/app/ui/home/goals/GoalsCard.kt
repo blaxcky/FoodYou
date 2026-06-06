@@ -558,7 +558,6 @@ private fun WeeklyBar(
     modifier: Modifier = Modifier,
 ) {
     val valueHeight = (day.energy.toFloat() / max).coerceIn(0.03f, 1f)
-    val goalHeight = (day.goal.toFloat() / max).coerceIn(0f, 1f)
     val overflow = day.energy > day.goal && day.goal > 0
 
     Column(
@@ -580,21 +579,37 @@ private fun WeeklyBar(
                     .padding(horizontal = 2.dp),
             contentAlignment = Alignment.BottomCenter,
         ) {
-            Box(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .fillMaxHeight(valueHeight)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(FatColor)
-            )
             if (overflow) {
+                val goalFraction = (day.goal.toFloat() / day.energy).coerceIn(0f, 1f)
+                Column(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .fillMaxHeight(valueHeight)
+                            .align(Alignment.BottomCenter)
+                ) {
+                    Box(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .weight(1f - goalFraction)
+                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                .background(Color(0xFFC57484))
+                    )
+                    Box(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .weight(goalFraction)
+                                .clip(RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp))
+                                .background(FatColor)
+                    )
+                }
+            } else {
                 Box(
                     modifier =
                         Modifier.fillMaxWidth()
-                            .fillMaxHeight((valueHeight - goalHeight).coerceAtLeast(0.02f))
-                            .align(Alignment.TopCenter)
-                            .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                            .background(Color(0xFFC57484))
+                            .fillMaxHeight(valueHeight)
+                            .align(Alignment.BottomCenter)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(FatColor)
                 )
             }
         }
