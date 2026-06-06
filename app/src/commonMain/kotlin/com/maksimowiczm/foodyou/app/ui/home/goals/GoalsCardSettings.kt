@@ -28,7 +28,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun GoalsCardSettings(
     onBack: () -> Unit,
-    onGoalsSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: GoalsCardSettingsViewModel = koinViewModel(),
 ) {
@@ -37,7 +36,6 @@ internal fun GoalsCardSettings(
     GoalsCardSettingsContent(
         model = model,
         onBack = onBack,
-        onGoalsSettings = onGoalsSettings,
         onDietEnergyDeficitKcalChange = viewModel::setDietEnergyDeficitKcal,
         onHomeSyncHealthConnectEnabledChange = viewModel::setHomeSyncHealthConnectEnabled,
         onHomeSyncFddbDiaryEnabledChange = viewModel::setHomeSyncFddbDiaryEnabled,
@@ -49,7 +47,6 @@ internal fun GoalsCardSettings(
 private fun GoalsCardSettingsContent(
     model: GoalsCardSettingsModel,
     onBack: () -> Unit,
-    onGoalsSettings: () -> Unit,
     onDietEnergyDeficitKcalChange: (String) -> Unit,
     onHomeSyncHealthConnectEnabledChange: (Boolean) -> Unit,
     onHomeSyncFddbDiaryEnabledChange: (Boolean) -> Unit,
@@ -61,7 +58,7 @@ private fun GoalsCardSettingsContent(
         modifier = modifier,
         topBar = {
             MediumFlexibleTopAppBar(
-                title = { Text(stringResource(Res.string.headline_daily_goals)) },
+                title = { Text(stringResource(Res.string.headline_goals_card)) },
                 navigationIcon = { ArrowBackIconButton(onBack) },
                 scrollBehavior = scrollBehavior,
             )
@@ -90,15 +87,6 @@ private fun GoalsCardSettingsContent(
             }
 
             item { HorizontalDivider() }
-
-            item {
-                ListItem(
-                    headlineContent = {
-                        Text(stringResource(Res.string.headline_daily_goals_settings))
-                    },
-                    modifier = Modifier.clickable { onGoalsSettings() },
-                )
-            }
 
             item {
                 OutlinedTextField(

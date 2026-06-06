@@ -258,7 +258,7 @@ private fun RowScope.GoalsCardContent(onMore: () -> Unit) {
         Icon(imageVector = Icons.Outlined.Flag, contentDescription = null)
     }
     Spacer(Modifier.width(16.dp))
-    Text(stringResource(Res.string.headline_daily_goals))
+    Text(stringResource(Res.string.headline_goals_card))
     Spacer(Modifier.weight(1f))
     IconButton(onClick = onMore) {
         Icon(

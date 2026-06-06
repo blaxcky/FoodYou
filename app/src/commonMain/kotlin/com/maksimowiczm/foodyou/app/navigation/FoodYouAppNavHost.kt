@@ -68,7 +68,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onMealCardQuickAddClick = { epochDay, mealId ->
                     navController.navigateSingleTop(FoodDiaryCreateQuickAdd(epochDay, mealId))
                 },
-                onGoalsCardLongClick = { navController.navigateSingleTop(GoalsPersonalization) },
+                onGoalsCardLongClick = {},
                 onGoalsCardClick = { epochDate ->
                     navController.navigateSingleTop(Goals(epochDate))
                 },
@@ -446,7 +446,6 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
         forwardBackwardComposable<GoalsPersonalization> {
             GoalsCardSettings(
                 onBack = { navController.popBackStackInclusive<GoalsPersonalization>() },
-                onGoalsSettings = { navController.navigateSingleTop(GoalsSetup) },
             )
         }
     }

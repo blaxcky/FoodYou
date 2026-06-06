@@ -30,6 +30,7 @@
     <string name="headline_installed" description="Installed version of the app">Installiert</string>
     <string name="headline_home" description="Home screen">Startseite</string>
     <string name="headline_home_settings" description="Home screen settings">Einstellungen Startseite</string>
+    <string name="headline_goals_card">Kalorienkarte</string>
     <string name="headline_calendar">Kalender</string>
     <string name="headline_meals_settings">Einstellung der Mahlzeiten</string>
     <string name="headline_horizontal">Horizontal</string>
