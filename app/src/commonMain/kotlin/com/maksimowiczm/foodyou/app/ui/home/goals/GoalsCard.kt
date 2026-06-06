@@ -1035,7 +1035,9 @@ private fun GoalComparisonItem(
             text =
                 if (enabled && summary?.showEnergyGoalValue == true) {
                     "${energyFormatter.formatEnergy(remainingValue, withSuffix = false).groupDigits()} " +
-                        stringResource(Res.string.unit_kcal)
+                        stringResource(Res.string.unit_kcal) +
+                        " " +
+                        stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
                 } else {
                     "-"
                 },
