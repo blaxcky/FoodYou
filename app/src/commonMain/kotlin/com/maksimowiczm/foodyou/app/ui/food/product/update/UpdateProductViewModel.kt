@@ -34,7 +34,7 @@ internal class UpdateProductViewModel(
     val product =
         observeFoodUseCase
             .observe(productId)
-            .mapNotNull { it as Product }
+            .mapNotNull { it as? Product }
             .stateIn(scope = viewModelScope, initialValue = null, started = WhileSubscribed(2_000))
 
     private val eventBus = Channel<UpdateProductEvent>()
