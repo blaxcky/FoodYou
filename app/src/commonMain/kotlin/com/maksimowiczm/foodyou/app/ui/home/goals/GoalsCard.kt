@@ -71,7 +71,6 @@ import foodyou.app.generated.resources.action_details
 import foodyou.app.generated.resources.goal_burned
 import foodyou.app.generated.resources.goal_carbs_short
 import foodyou.app.generated.resources.goal_eaten
-import foodyou.app.generated.resources.goal_display_mode_overview
 import foodyou.app.generated.resources.goal_display_mode_diet
 import foodyou.app.generated.resources.goal_display_mode_normal
 import foodyou.app.generated.resources.goal_display_mode_optimized
@@ -197,6 +196,57 @@ internal fun WeeklyGoalsCard(
 }
 
 @Composable
+internal fun GoalOverviewCard(
+    homeState: HomeState,
+    onClick: (epochDay: Long) -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: GoalsViewModel = koinViewModel(),
+) {
+    LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
+
+    val model = viewModel.model.collectAsStateWithLifecycle().value ?: return
+    val summaries =
+        remember(
+            model.goalDisplayMode,
+            model.energyGoal,
+            model.showEnergyGoalValue,
+            model.goalDisplaySummaries,
+        ) {
+            model.goalDisplaySummaries.withNormalGoalDisplaySummary(
+                goalDisplayMode = model.goalDisplayMode,
+                energyGoal = model.energyGoal,
+                showEnergyGoalValue = model.showEnergyGoalValue,
+            )
+        }
+
+    CaloriesOverview(
+        energy = model.energy,
+        burnedEnergy = model.burnedEnergy,
+        burnedEnergyDelta = null,
+        netEnergy = model.netEnergy,
+        energyGoal = model.energyGoal,
+        showEnergyGoalValue = model.showEnergyGoalValue,
+        goalCardView = GoalCardView.Overview,
+        goalDisplayMode = model.goalDisplayMode.availableOrNormal(summaries.map { it.mode }),
+        goalDisplaySummaries = summaries,
+        dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
+        onClick = { onClick(homeState.selectedDate.toEpochDays()) },
+        onLongClick = onLongClick,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        MacroGoalsFooter(
+            proteins = model.proteins,
+            proteinsGoal = model.proteinsGoal,
+            carbohydrates = model.carbohydrates,
+            carbohydratesGoal = model.carbohydratesGoal,
+            fats = model.fats,
+            fatsGoal = model.fatsGoal,
+        )
+    }
+}
+
+@Composable
 internal fun GoalsCard(
     energy: Int,
     burnedEnergy: Int,
@@ -254,10 +304,6 @@ internal fun GoalsCard(
         GoalDisplayModeButtons(
             goalCardView = displayedGoalCardView,
             availableGoalDisplayModes = availableGoalDisplayModes,
-            overviewEnabled =
-                summaries.any {
-                    it.mode == GoalDisplayMode.Optimized && it.showEnergyGoalValue
-                },
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
             onSelectGoalCardView = {
                 when (it) {
@@ -296,41 +342,66 @@ internal fun GoalsCard(
             onLongClick = onLongClick,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Spacer(Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                MacroGoal(
-                    label = stringResource(Res.string.goal_fat),
-                    value = fats,
-                    goal = fatsGoal,
-                    progress = fatsProgress,
-                    trackColor = FatTrackColor,
-                    color = FatColor,
-                    modifier = Modifier.weight(1f),
-                )
-                MacroGoal(
-                    label = stringResource(Res.string.goal_carbs_short),
-                    value = carbohydrates,
-                    goal = carbohydratesGoal,
-                    progress = carbsProgress,
-                    trackColor = CarbsTrackColor,
-                    color = CarbsColor,
-                    modifier = Modifier.weight(1f),
-                )
-                MacroGoal(
-                    label = stringResource(Res.string.goal_protein),
-                    value = proteins,
-                    goal = proteinsGoal,
-                    progress = proteinsProgress,
-                    trackColor = ProteinTrackColor,
-                    color = ProteinColor,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            MacroGoalsFooter(
+                proteins = proteins,
+                proteinsGoal = proteinsGoal,
+                carbohydrates = carbohydrates,
+                carbohydratesGoal = carbohydratesGoal,
+                fats = fats,
+                fatsGoal = fatsGoal,
+                proteinsProgress = proteinsProgress,
+                carbsProgress = carbsProgress,
+                fatsProgress = fatsProgress,
+            )
         }
+    }
+}
+
+@Composable
+private fun MacroGoalsFooter(
+    proteins: Int,
+    proteinsGoal: Int,
+    carbohydrates: Int,
+    carbohydratesGoal: Int,
+    fats: Int,
+    fatsGoal: Int,
+    proteinsProgress: Float = goalProgress(proteins, proteinsGoal),
+    carbsProgress: Float = goalProgress(carbohydrates, carbohydratesGoal),
+    fatsProgress: Float = goalProgress(fats, fatsGoal),
+) {
+    Spacer(Modifier.height(10.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        MacroGoal(
+            label = stringResource(Res.string.goal_fat),
+            value = fats,
+            goal = fatsGoal,
+            progress = fatsProgress,
+            trackColor = FatTrackColor,
+            color = FatColor,
+            modifier = Modifier.weight(1f),
+        )
+        MacroGoal(
+            label = stringResource(Res.string.goal_carbs_short),
+            value = carbohydrates,
+            goal = carbohydratesGoal,
+            progress = carbsProgress,
+            trackColor = CarbsTrackColor,
+            color = CarbsColor,
+            modifier = Modifier.weight(1f),
+        )
+        MacroGoal(
+            label = stringResource(Res.string.goal_protein),
+            value = proteins,
+            goal = proteinsGoal,
+            progress = proteinsProgress,
+            trackColor = ProteinTrackColor,
+            color = ProteinColor,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -1233,7 +1304,6 @@ private fun CaloriesOverviewPage(
 private fun GoalDisplayModeButtons(
     goalCardView: GoalCardView,
     availableGoalDisplayModes: List<GoalDisplayMode>,
-    overviewEnabled: Boolean,
     dietGoalDisplayModeEnabled: Boolean,
     onSelectGoalCardView: (GoalCardView) -> Unit,
     modifier: Modifier = Modifier,
@@ -1260,13 +1330,6 @@ private fun GoalDisplayModeButtons(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-        )
-        GoalDisplayModeButton(
-            view = GoalCardView.Overview,
-            selected = goalCardView == GoalCardView.Overview,
-            enabled = overviewEnabled,
-            contentDescription = stringResource(Res.string.goal_display_mode_overview),
-            onClick = onSelectGoalCardView,
         )
         GoalDisplayModeButton(
             view = GoalCardView.Normal,

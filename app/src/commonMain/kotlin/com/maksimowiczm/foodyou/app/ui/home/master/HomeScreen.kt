@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.calendar.CalendarCard
 import com.maksimowiczm.foodyou.app.ui.home.activity.ActivitiesCard
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalOverviewCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.WeeklyGoalsCard
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.mealsCards
@@ -282,6 +283,15 @@ fun HomeScreen(
                 item(key = "weekly-goals", contentType = "weekly-goals") {
                     WeeklyGoalsCard(
                         homeState = homeState,
+                        modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                    )
+                }
+
+                item(key = "goal-overview", contentType = "goal-overview") {
+                    GoalOverviewCard(
+                        homeState = homeState,
+                        onClick = onGoalsCardClick,
+                        onLongClick = onGoalsCardLongClick,
                         modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
                     )
                 }
