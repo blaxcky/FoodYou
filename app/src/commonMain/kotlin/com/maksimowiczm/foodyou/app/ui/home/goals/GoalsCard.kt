@@ -997,12 +997,8 @@ private fun GoalComparisonItem(
     val remainingValue = abs(remaining)
     val progress = summary?.let { (netEnergy.toFloat() / percentageGoal).coerceIn(0f, 1f) } ?: 0f
     val contentAlpha = if (enabled) 1f else 0.46f
-    val targetColor =
-        if (summary?.showEnergyGoalValue == true && target < 0) {
-            GoalsErrorColor
-        } else {
-            GoalsTextColor
-        }
+    val remainingColor = if (enabled && overflow) GoalsErrorColor else GoalsTextColor
+    val targetColor = if (target < 0) GoalsErrorColor else GoalsMutedTextColor
 
     Column(
         modifier =
@@ -1037,13 +1033,13 @@ private fun GoalComparisonItem(
         }
         Text(
             text =
-                if (summary?.showEnergyGoalValue == true) {
-                    "${energyFormatter.formatEnergy(target, withSuffix = false).groupDigits()} " +
+                if (enabled && summary?.showEnergyGoalValue == true) {
+                    "${energyFormatter.formatEnergy(remainingValue, withSuffix = false).groupDigits()} " +
                         stringResource(Res.string.unit_kcal)
                 } else {
                     "-"
                 },
-            color = targetColor,
+            color = remainingColor,
             style =
                 MaterialTheme.typography.titleMedium.copy(
                     fontFamily = numberFontFamily,
@@ -1063,12 +1059,14 @@ private fun GoalComparisonItem(
         Text(
             text =
                 if (enabled && summary?.showEnergyGoalValue == true) {
-                    "${energyFormatter.formatEnergy(remainingValue, withSuffix = false).groupDigits()} " +
-                        stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
+                    "${energyFormatter.formatEnergy(target, withSuffix = false).groupDigits()} " +
+                        stringResource(Res.string.unit_kcal) +
+                        " " +
+                        stringResource(Res.string.goal_goal)
                 } else {
                     disabledLabel ?: "-"
                 },
-            color = if (enabled && overflow) GoalsErrorColor else GoalsMutedTextColor,
+            color = targetColor,
             style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp, lineHeight = 14.sp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
