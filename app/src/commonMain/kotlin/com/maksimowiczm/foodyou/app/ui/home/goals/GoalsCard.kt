@@ -1017,6 +1017,8 @@ private fun GoalComparisonItem(
     val remaining = target - netEnergy
     val overflow = remaining < 0
     val remainingValue = abs(remaining)
+    val remainingLabel =
+        stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
     val calorieProgress =
         summary?.let { calorieGoalProgress(netEnergy, it.energyGoal, it.percentageEnergyGoal) }
     val progress = calorieProgress?.progress ?: 0f
@@ -1060,9 +1062,7 @@ private fun GoalComparisonItem(
             text =
                 if (enabled && summary?.showEnergyGoalValue == true) {
                     "${energyFormatter.formatEnergy(remainingValue, withSuffix = false).groupDigits()} " +
-                        stringResource(Res.string.unit_kcal) +
-                        " " +
-                        stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
+                        stringResource(Res.string.unit_kcal)
                 } else {
                     "-"
                 },
@@ -1076,6 +1076,16 @@ private fun GoalComparisonItem(
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
+        if (enabled && summary?.showEnergyGoalValue == true) {
+            Text(
+                text = remainingLabel,
+                color = remainingColor,
+                style =
+                    MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, lineHeight = 14.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         MacroProgressBar(
             progress = progress,
             trackColor = GoalsTrackColor,
