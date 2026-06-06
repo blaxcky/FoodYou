@@ -97,6 +97,7 @@ import foodyou.app.generated.resources.weekly_so_far
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlin.math.abs
+import kotlin.math.atan
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.Font
@@ -1776,10 +1777,12 @@ private fun SemiCircleGauge(
     diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val overflowGapAngle = 5f
+    val visibleOverflowGapAngle = 5f
     Canvas(modifier = modifier) {
         val strokeWidth = 10.dp.toPx()
         val arcDiameter = diameter.toPx()
+        val capSweepAngle =
+            Math.toDegrees(atan((strokeWidth / arcDiameter).toDouble())).toFloat()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
 
@@ -1802,7 +1805,7 @@ private fun SemiCircleGauge(
         val progressSweepAngle = 270f * visibleProgress
         val progressOverflowGap =
             if (visibleProgress > 0f && coercedOverflowProgress > 0f) {
-                overflowGapAngle.coerceAtMost(progressSweepAngle)
+                (visibleOverflowGapAngle + capSweepAngle * 2f).coerceAtMost(progressSweepAngle)
             } else {
                 0f
             }
