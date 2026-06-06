@@ -55,8 +55,13 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
@@ -186,19 +191,6 @@ internal fun DailyGoalsContent(
             contentPadding = paddingValues.add(vertical = 8.dp),
         ) {
             item {
-                DayPicker(
-                    useSeparateGoals = weeklyState.useSeparateGoals,
-                    onUseSeparateGoalsChange = { weeklyState.useSeparateGoals = it },
-                    selectedDay = weeklyState.selectedDay,
-                    onSelectedDayChange = { weeklyState.selectedDay = it },
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            item { Spacer(Modifier.height(16.dp)) }
-
-            item {
                 val state = weeklyState.selectedDayGoals
 
                 Column(modifier) {
@@ -206,12 +198,12 @@ internal fun DailyGoalsContent(
                         state = basalMetabolicRateProfileState,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     )
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
                     DietEnergyDeficitForm(
                         state = dietEnergyDeficitState,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     )
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
                     Text(
                         text = stringResource(Res.string.action_set_goals),
                         style = MaterialTheme.typography.labelLarge,
@@ -237,6 +229,15 @@ internal fun DailyGoalsContent(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         )
                     }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    DayPicker(
+                        useSeparateGoals = weeklyState.useSeparateGoals,
+                        onUseSeparateGoalsChange = { weeklyState.useSeparateGoals = it },
+                        selectedDay = weeklyState.selectedDay,
+                        onSelectedDayChange = { weeklyState.selectedDay = it },
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     AdditionalGoalsForm(
                         state = state.additionalState,
@@ -394,14 +395,30 @@ private fun BmrSuggestionBlock(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text =
-                    stringResource(
-                        Res.string.neutral_minimal_activity_value,
-                        minimalActivityKcal,
-                    ),
+                text = minimalActivitySuggestionText(minimalActivityKcal),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+    }
+}
+
+@Composable
+private fun minimalActivitySuggestionText(minimalActivityKcal: Int): AnnotatedString {
+    val text = stringResource(Res.string.neutral_minimal_activity_value, minimalActivityKcal)
+    val valueText = "$minimalActivityKcal ${stringResource(Res.string.unit_kcal)}"
+    val valueIndex = text.lastIndexOf(valueText)
+
+    return buildAnnotatedString {
+        if (valueIndex == -1) {
+            append(text)
+            return@buildAnnotatedString
+        }
+
+        append(text.substring(0, valueIndex))
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+            append(valueText)
+        }
+        append(text.substring(valueIndex + valueText.length))
     }
 }
 
