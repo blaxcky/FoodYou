@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -70,12 +71,15 @@ import foodyou.app.generated.resources.action_details
 import foodyou.app.generated.resources.goal_burned
 import foodyou.app.generated.resources.goal_carbs_short
 import foodyou.app.generated.resources.goal_eaten
+import foodyou.app.generated.resources.goal_display_mode_overview
 import foodyou.app.generated.resources.goal_display_mode_diet
 import foodyou.app.generated.resources.goal_display_mode_normal
 import foodyou.app.generated.resources.goal_display_mode_optimized
 import foodyou.app.generated.resources.goal_fat
 import foodyou.app.generated.resources.goal_goal
 import foodyou.app.generated.resources.goal_left
+import foodyou.app.generated.resources.goal_no_diet_deficit
+import foodyou.app.generated.resources.goal_net_energy
 import foodyou.app.generated.resources.goal_protein
 import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
@@ -107,6 +111,7 @@ private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE4EEF5)
 private val GoalsProgressColor = Color(0xFF45AEE6)
 private val GoalsErrorColor = Color(0xFFE25555)
+private val OverviewGoalAccentColor = Color(0xFF537188)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 private val DietGoalAccentColor = Color(0xFFC98A00)
 private val FatTrackColor = Color(0xFFFFE5E5)
@@ -115,6 +120,13 @@ private val CarbsTrackColor = Color(0xFFFFF3DC)
 private val CarbsColor = Color(0xFFF4E6C9)
 private val ProteinTrackColor = Color(0xFFE3F7E9)
 private val ProteinColor = Color(0xFFCFE6CD)
+
+private enum class GoalCardView {
+    Overview,
+    Normal,
+    Optimized,
+    Diet,
+}
 
 @Composable
 private fun interNumberFontFamily(): FontFamily = FontFamily(Font(Res.font.inter))
@@ -231,21 +243,34 @@ internal fun GoalsCard(
     val availableGoalDisplayModes =
         remember(availableGoalDisplaySummaries) { availableGoalDisplaySummaries.map { it.mode } }
     val effectiveGoalDisplayMode = goalDisplayMode.availableOrNormal(availableGoalDisplayModes)
-    var displayedGoalDisplayMode by remember { mutableStateOf(effectiveGoalDisplayMode) }
+    var displayedGoalCardView by remember { mutableStateOf(effectiveGoalDisplayMode.toGoalCardView()) }
 
     LaunchedEffect(goalDisplayMode, availableGoalDisplayModes) {
-        displayedGoalDisplayMode = goalDisplayMode.availableOrNormal(availableGoalDisplayModes)
+        displayedGoalCardView =
+            goalDisplayMode.availableOrNormal(availableGoalDisplayModes).toGoalCardView()
     }
 
     Column(modifier = modifier) {
         GoalDisplayModeButtons(
-            goalDisplayMode = displayedGoalDisplayMode,
+            goalCardView = displayedGoalCardView,
             availableGoalDisplayModes = availableGoalDisplayModes,
+            overviewEnabled =
+                summaries.any {
+                    it.mode == GoalDisplayMode.Optimized && it.showEnergyGoalValue
+                },
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
-            onSelectGoalDisplayMode = {
-                if (it in availableGoalDisplayModes) {
-                    displayedGoalDisplayMode = it
-                    onSelectGoalDisplayMode(it)
+            onSelectGoalCardView = {
+                when (it) {
+                    GoalCardView.Overview -> displayedGoalCardView = GoalCardView.Overview
+                    GoalCardView.Normal,
+                    GoalCardView.Optimized,
+                    GoalCardView.Diet -> {
+                        val mode = it.toGoalDisplayMode()
+                        if (mode in availableGoalDisplayModes) {
+                            displayedGoalCardView = it
+                            onSelectGoalDisplayMode(mode)
+                        }
+                    }
                 }
             },
             modifier =
@@ -263,8 +288,10 @@ internal fun GoalsCard(
             netEnergy = netEnergy,
             energyGoal = energyGoal,
             showEnergyGoalValue = showEnergyGoalValue,
-            goalDisplayMode = displayedGoalDisplayMode,
-            goalDisplaySummaries = availableGoalDisplaySummaries,
+            goalCardView = displayedGoalCardView,
+            goalDisplayMode = effectiveGoalDisplayMode,
+            goalDisplaySummaries = summaries,
+            dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
             onClick = onClick,
             onLongClick = onLongClick,
             modifier = Modifier.fillMaxWidth(),
@@ -677,8 +704,10 @@ private fun CaloriesOverview(
     netEnergy: Int,
     energyGoal: Int,
     showEnergyGoalValue: Boolean,
+    goalCardView: GoalCardView,
     goalDisplayMode: GoalDisplayMode,
     goalDisplaySummaries: List<GoalDisplaySummaryModel>,
+    dietGoalDisplayModeEnabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -708,18 +737,278 @@ private fun CaloriesOverview(
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            CaloriesOverviewPageCard(
-                energy = energy,
-                burnedEnergy = burnedEnergy,
-                burnedEnergyDelta = burnedEnergyDelta,
-                netEnergy = netEnergy,
-                summary = currentSummary,
-                onClick = onClick,
-                onLongClick = onLongClick,
-                modifier = Modifier.fillMaxWidth(),
-                footer = footer,
+            if (goalCardView == GoalCardView.Overview) {
+                GoalComparisonOverviewCard(
+                    netEnergy = netEnergy,
+                    summaries = summaries,
+                    dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    footer = footer,
+                )
+            } else {
+                CaloriesOverviewPageCard(
+                    energy = energy,
+                    burnedEnergy = burnedEnergy,
+                    burnedEnergyDelta = burnedEnergyDelta,
+                    netEnergy = netEnergy,
+                    summary = currentSummary,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    footer = footer,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GoalComparisonOverviewCard(
+    netEnergy: Int,
+    summaries: List<GoalDisplaySummaryModel>,
+    dietGoalDisplayModeEnabled: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    footer: @Composable () -> Unit = {},
+) {
+    FoodYouHomeCard(
+        modifier = modifier,
+        color = GoalsCardColor,
+        shape = GoalsCardShape,
+        onClick = onClick,
+        onLongClick = onLongClick,
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
+            val compact = maxWidth < 360.dp
+
+            Column(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .defaultMinSize(minHeight = 259.dp)
+                        .padding(
+                            start = horizontalPadding,
+                            top = 21.dp,
+                            end = horizontalPadding,
+                            bottom = 14.dp,
+                        ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GoalComparisonHeader(netEnergy = netEnergy)
+
+                val normalSummary = summaries.firstOrNull { it.mode == GoalDisplayMode.Normal }
+                val optimizedSummary =
+                    summaries.firstOrNull { it.mode == GoalDisplayMode.Optimized }
+                val dietSummary = summaries.firstOrNull { it.mode == GoalDisplayMode.Diet }
+
+                if (compact) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GoalComparisonItem(
+                            mode = GoalDisplayMode.Normal,
+                            netEnergy = netEnergy,
+                            summary = normalSummary,
+                            enabled = normalSummary != null,
+                        )
+                        GoalComparisonItem(
+                            mode = GoalDisplayMode.Optimized,
+                            netEnergy = netEnergy,
+                            summary = optimizedSummary,
+                            enabled = optimizedSummary?.showEnergyGoalValue == true,
+                        )
+                        GoalComparisonItem(
+                            mode = GoalDisplayMode.Diet,
+                            netEnergy = netEnergy,
+                            summary = dietSummary,
+                            enabled = dietGoalDisplayModeEnabled && dietSummary != null,
+                            disabledLabel = stringResource(Res.string.goal_no_diet_deficit),
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        GoalComparisonItem(
+                            mode = GoalDisplayMode.Normal,
+                            netEnergy = netEnergy,
+                            summary = normalSummary,
+                            enabled = normalSummary != null,
+                            modifier = Modifier.weight(1f),
+                        )
+                        GoalComparisonItem(
+                            mode = GoalDisplayMode.Optimized,
+                            netEnergy = netEnergy,
+                            summary = optimizedSummary,
+                            enabled = optimizedSummary?.showEnergyGoalValue == true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        GoalComparisonItem(
+                            mode = GoalDisplayMode.Diet,
+                            netEnergy = netEnergy,
+                            summary = dietSummary,
+                            enabled = dietGoalDisplayModeEnabled && dietSummary != null,
+                            disabledLabel = stringResource(Res.string.goal_no_diet_deficit),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+
+                footer()
+            }
+        }
+    }
+}
+
+@Composable
+private fun GoalComparisonHeader(netEnergy: Int, modifier: Modifier = Modifier) {
+    val energyFormatter = LocalEnergyFormatter.current
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.LocalFireDepartment,
+            contentDescription = null,
+            tint = GoalsProgressColor,
+            modifier = Modifier.size(26.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(
+                text =
+                    "${energyFormatter.formatEnergy(netEnergy, withSuffix = false).groupDigits()} " +
+                        stringResource(Res.string.unit_kcal),
+                color = GoalsTextColor,
+                style =
+                    MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = interNumberFontFamily(),
+                        fontSize = 20.sp,
+                        lineHeight = 24.sp,
+                    ),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+            Text(
+                text = stringResource(Res.string.goal_net_energy),
+                color = GoalsMutedTextColor,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
             )
         }
+    }
+}
+
+@Composable
+private fun GoalComparisonItem(
+    mode: GoalDisplayMode,
+    netEnergy: Int,
+    summary: GoalDisplaySummaryModel?,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    disabledLabel: String? = null,
+) {
+    val energyFormatter = LocalEnergyFormatter.current
+    val numberFontFamily = interNumberFontFamily()
+    val accentColor = mode.accentColor()
+    val cardShape = RoundedCornerShape(14.dp)
+    val target = summary?.energyGoal ?: 0
+    val percentageGoal = summary?.percentageEnergyGoal?.coerceAtLeast(1) ?: 1
+    val remaining = target - netEnergy
+    val overflow = remaining < 0
+    val remainingValue = abs(remaining)
+    val reached = summary?.let { goalReachedPercentage(netEnergy, percentageGoal) } ?: 0
+    val progress = summary?.let { (netEnergy.toFloat() / percentageGoal).coerceIn(0f, 1f) } ?: 0f
+    val contentAlpha = if (enabled) 1f else 0.46f
+
+    Column(
+        modifier =
+            modifier
+                .clip(cardShape)
+                .background(accentColor.copy(alpha = if (enabled) 0.1f else 0.04f))
+                .border(
+                    width = 1.dp,
+                    color = accentColor.copy(alpha = if (enabled) 0.28f else 0.1f),
+                    shape = cardShape,
+                )
+                .padding(horizontal = 10.dp, vertical = 10.dp)
+                .alpha(contentAlpha),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = mode.icon(),
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(5.dp))
+            Text(
+                text = mode.label(),
+                color = GoalsTextColor,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            text =
+                if (summary?.showEnergyGoalValue == true) {
+                    "${energyFormatter.formatEnergy(target, withSuffix = false).groupDigits()} " +
+                        stringResource(Res.string.unit_kcal)
+                } else {
+                    "-"
+                },
+            color = GoalsTextColor,
+            style =
+                MaterialTheme.typography.titleMedium.copy(
+                    fontFamily = numberFontFamily,
+                    fontSize = 16.sp,
+                    lineHeight = 20.sp,
+                ),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+        MacroProgressBar(
+            progress = progress,
+            trackColor = GoalsTrackColor,
+            color = accentColor,
+            overflow = enabled && overflow,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text =
+                if (enabled && summary?.showEnergyGoalValue == true) {
+                    "${energyFormatter.formatEnergy(remainingValue, withSuffix = false).groupDigits()} " +
+                        stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
+                } else {
+                    disabledLabel ?: "-"
+                },
+            color = if (enabled && overflow) GoalsErrorColor else GoalsMutedTextColor,
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp, lineHeight = 14.sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text =
+                if (enabled) {
+                    stringResource(Res.string.goal_reached_percentage, reached)
+                } else {
+                    ""
+                },
+            color = GoalsMutedTextColor,
+            style =
+                MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = numberFontFamily,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -942,10 +1231,11 @@ private fun CaloriesOverviewPage(
 
 @Composable
 private fun GoalDisplayModeButtons(
-    goalDisplayMode: GoalDisplayMode,
+    goalCardView: GoalCardView,
     availableGoalDisplayModes: List<GoalDisplayMode>,
+    overviewEnabled: Boolean,
     dietGoalDisplayModeEnabled: Boolean,
-    onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit,
+    onSelectGoalCardView: (GoalCardView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -954,13 +1244,13 @@ private fun GoalDisplayModeButtons(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = goalDisplayMode.label(),
+            text = goalCardView.label(),
             modifier = Modifier.weight(1f).padding(start = 16.dp, end = 8.dp),
             color =
-                if (goalDisplayMode == GoalDisplayMode.Normal) {
+                if (goalCardView == GoalCardView.Normal) {
                     GoalsTextColor
                 } else {
-                    goalDisplayMode.accentColor()
+                    goalCardView.accentColor()
                 },
             style =
                 MaterialTheme.typography.headlineSmall.copy(
@@ -972,40 +1262,47 @@ private fun GoalDisplayModeButtons(
             overflow = TextOverflow.Ellipsis,
         )
         GoalDisplayModeButton(
-            mode = GoalDisplayMode.Normal,
-            selected = goalDisplayMode == GoalDisplayMode.Normal,
+            view = GoalCardView.Overview,
+            selected = goalCardView == GoalCardView.Overview,
+            enabled = overviewEnabled,
+            contentDescription = stringResource(Res.string.goal_display_mode_overview),
+            onClick = onSelectGoalCardView,
+        )
+        GoalDisplayModeButton(
+            view = GoalCardView.Normal,
+            selected = goalCardView == GoalCardView.Normal,
             enabled = GoalDisplayMode.Normal in availableGoalDisplayModes,
             contentDescription = stringResource(Res.string.goal_display_mode_normal),
-            onClick = onSelectGoalDisplayMode,
+            onClick = onSelectGoalCardView,
         )
         GoalDisplayModeButton(
-            mode = GoalDisplayMode.Optimized,
-            selected = goalDisplayMode == GoalDisplayMode.Optimized,
+            view = GoalCardView.Optimized,
+            selected = goalCardView == GoalCardView.Optimized,
             enabled = GoalDisplayMode.Optimized in availableGoalDisplayModes,
             contentDescription = stringResource(Res.string.goal_display_mode_optimized),
-            onClick = onSelectGoalDisplayMode,
+            onClick = onSelectGoalCardView,
         )
         GoalDisplayModeButton(
-            mode = GoalDisplayMode.Diet,
-            selected = goalDisplayMode == GoalDisplayMode.Diet,
+            view = GoalCardView.Diet,
+            selected = goalCardView == GoalCardView.Diet,
             enabled =
                 dietGoalDisplayModeEnabled && GoalDisplayMode.Diet in availableGoalDisplayModes,
             contentDescription = stringResource(Res.string.goal_display_mode_diet),
-            onClick = onSelectGoalDisplayMode,
+            onClick = onSelectGoalCardView,
         )
     }
 }
 
 @Composable
 private fun GoalDisplayModeButton(
-    mode: GoalDisplayMode,
+    view: GoalCardView,
     selected: Boolean,
     contentDescription: String,
-    onClick: (GoalDisplayMode) -> Unit,
+    onClick: (GoalCardView) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val accentColor = mode.accentColor()
+    val accentColor = view.accentColor()
     val shape = RoundedCornerShape(50)
     Box(
         contentAlignment = Alignment.Center,
@@ -1021,15 +1318,10 @@ private fun GoalDisplayModeButton(
                         Modifier
                     }
                 )
-                .clickable(enabled = enabled) { onClick(mode) },
+                .clickable(enabled = enabled) { onClick(view) },
     ) {
         Icon(
-            imageVector =
-                when (mode) {
-                    GoalDisplayMode.Normal -> Icons.Filled.LocalFireDepartment
-                    GoalDisplayMode.Optimized -> Icons.Filled.Speed
-                    GoalDisplayMode.Diet -> Icons.Filled.MonitorWeight
-                },
+            imageVector = view.icon(),
             contentDescription = contentDescription,
             tint =
                 when {
@@ -1103,6 +1395,29 @@ private fun GoalDisplayMode.toSettingsGoalDisplayMode(): SettingsGoalDisplayMode
         GoalDisplayMode.Diet -> SettingsGoalDisplayMode.Diet
     }
 
+private fun GoalDisplayMode.toGoalCardView(): GoalCardView =
+    when (this) {
+        GoalDisplayMode.Normal -> GoalCardView.Normal
+        GoalDisplayMode.Optimized -> GoalCardView.Optimized
+        GoalDisplayMode.Diet -> GoalCardView.Diet
+    }
+
+private fun GoalCardView.toGoalDisplayMode(): GoalDisplayMode =
+    when (this) {
+        GoalCardView.Overview -> GoalDisplayMode.Normal
+        GoalCardView.Normal -> GoalDisplayMode.Normal
+        GoalCardView.Optimized -> GoalDisplayMode.Optimized
+        GoalCardView.Diet -> GoalDisplayMode.Diet
+    }
+
+private fun GoalCardView.label(): String =
+    when (this) {
+        GoalCardView.Overview -> "Übersicht"
+        GoalCardView.Normal -> GoalDisplayMode.Normal.label()
+        GoalCardView.Optimized -> GoalDisplayMode.Optimized.label()
+        GoalCardView.Diet -> GoalDisplayMode.Diet.label()
+    }
+
 private fun GoalDisplayMode.label(): String =
     when (this) {
         GoalDisplayMode.Normal -> "Normal"
@@ -1110,11 +1425,34 @@ private fun GoalDisplayMode.label(): String =
         GoalDisplayMode.Diet -> "Diät"
     }
 
+private fun GoalCardView.accentColor(): Color =
+    when (this) {
+        GoalCardView.Overview -> OverviewGoalAccentColor
+        GoalCardView.Normal -> GoalDisplayMode.Normal.accentColor()
+        GoalCardView.Optimized -> GoalDisplayMode.Optimized.accentColor()
+        GoalCardView.Diet -> GoalDisplayMode.Diet.accentColor()
+    }
+
 private fun GoalDisplayMode.accentColor(): Color =
     when (this) {
         GoalDisplayMode.Normal -> GoalsProgressColor
         GoalDisplayMode.Optimized -> OptimizedGoalAccentColor
         GoalDisplayMode.Diet -> DietGoalAccentColor
+    }
+
+private fun GoalCardView.icon(): androidx.compose.ui.graphics.vector.ImageVector =
+    when (this) {
+        GoalCardView.Overview -> Icons.Filled.Dashboard
+        GoalCardView.Normal -> GoalDisplayMode.Normal.icon()
+        GoalCardView.Optimized -> GoalDisplayMode.Optimized.icon()
+        GoalCardView.Diet -> GoalDisplayMode.Diet.icon()
+    }
+
+private fun GoalDisplayMode.icon(): androidx.compose.ui.graphics.vector.ImageVector =
+    when (this) {
+        GoalDisplayMode.Normal -> Icons.Filled.LocalFireDepartment
+        GoalDisplayMode.Optimized -> Icons.Filled.Speed
+        GoalDisplayMode.Diet -> Icons.Filled.MonitorWeight
     }
 
 private fun Dp.coerceIn(minimumValue: Dp, maximumValue: Dp): Dp =
