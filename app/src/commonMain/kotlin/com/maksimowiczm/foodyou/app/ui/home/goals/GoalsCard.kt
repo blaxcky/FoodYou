@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.outlined.LocalFireDepartment as OutlinedLocalFireDepartment
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -112,6 +113,8 @@ private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE4EEF5)
 private val GoalsProgressColor = Color(0xFF006B9A)
 private val GoalsErrorColor = Color(0xFFC51F1F)
+private val NormalGoalComparisonBorderColor = Color(0xFFDADCE0)
+private val NormalGoalComparisonTrackColor = Color(0xFFE0E3E7)
 private val OverviewGoalAccentColor = Color(0xFF537188)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 private val DietGoalAccentColor = Color(0xFFC98A00)
@@ -1029,6 +1032,17 @@ private fun GoalComparisonItem(
     val energyFormatter = LocalEnergyFormatter.current
     val numberFontFamily = interNumberFontFamily()
     val accentColor = mode.accentColor()
+    val neutral = mode == GoalDisplayMode.Normal
+    val backgroundColor =
+        if (neutral) Color.Transparent else accentColor.copy(alpha = if (enabled) 0.1f else 0.04f)
+    val borderColor =
+        if (neutral) {
+            NormalGoalComparisonBorderColor.copy(alpha = if (enabled) 1f else 0.42f)
+        } else {
+            accentColor.copy(alpha = if (enabled) 0.28f else 0.1f)
+        }
+    val iconColor = if (neutral) GoalsMutedTextColor else accentColor
+    val progressTrackColor = if (neutral) NormalGoalComparisonTrackColor else GoalsTrackColor
     val cardShape = RoundedCornerShape(14.dp)
     val target = summary?.energyGoal ?: 0
     val remaining = target - netEnergy
@@ -1048,21 +1062,30 @@ private fun GoalComparisonItem(
         modifier =
             modifier
                 .clip(cardShape)
-                .background(accentColor.copy(alpha = if (enabled) 0.1f else 0.04f))
+                .background(backgroundColor)
                 .border(
                     width = 1.dp,
-                    color = accentColor.copy(alpha = if (enabled) 0.28f else 0.1f),
+                    color = borderColor,
                     shape = cardShape,
                 )
                 .padding(horizontal = 10.dp, vertical = 10.dp)
                 .alpha(contentAlpha),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Icon(
-                imageVector = mode.icon(),
+                imageVector =
+                    if (neutral) {
+                        Icons.Outlined.OutlinedLocalFireDepartment
+                    } else {
+                        mode.icon()
+                    },
                 contentDescription = null,
-                tint = accentColor,
+                tint = iconColor,
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(5.dp))
@@ -1092,6 +1115,9 @@ private fun GoalComparisonItem(
                 ),
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
         if (enabled && summary?.showEnergyGoalValue == true) {
             Text(
@@ -1101,11 +1127,13 @@ private fun GoalComparisonItem(
                     MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, lineHeight = 14.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
         MacroProgressBar(
             progress = progress,
-            trackColor = GoalsTrackColor,
+            trackColor = progressTrackColor,
             color = accentColor,
             overflow = false,
             overflowProgress = if (enabled) overflowProgress else 0f,
@@ -1126,6 +1154,8 @@ private fun GoalComparisonItem(
             style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp, lineHeight = 14.sp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
