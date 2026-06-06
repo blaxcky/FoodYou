@@ -1820,6 +1820,17 @@ private fun SemiCircleGauge(
             }
         val hasOverflowGap = progressOverflowGap > 0f
         val progressDrawSweepAngle = progressSweepAngle - progressOverflowGap
+        if (hasOverflowGap) {
+            drawArc(
+                color = GoalsCardColor,
+                startAngle = 135f + progressDrawSweepAngle,
+                sweepAngle = progressOverflowGap,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
+            )
+        }
         if (progressDrawSweepAngle > 0f) {
             drawArc(
                 color = progressColor,
