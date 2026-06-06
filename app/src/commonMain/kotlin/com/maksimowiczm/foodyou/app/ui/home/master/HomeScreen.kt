@@ -243,7 +243,7 @@ fun HomeScreen(
                                 GoalsCard(
                                     homeState = homeState,
                                     burnedEnergyDelta = burnedEnergyDelta,
-                                    onClick = onGoalsCardClick,
+                                    onClick = {},
                                     onLongClick = onGoalsCardLongClick,
                                     modifier =
                                         Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
@@ -290,7 +290,7 @@ fun HomeScreen(
                 item(key = "goal-overview", contentType = "goal-overview") {
                     GoalOverviewCard(
                         homeState = homeState,
-                        onClick = onGoalsCardClick,
+                        onClick = {},
                         onLongClick = onGoalsCardLongClick,
                         modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
                     )
