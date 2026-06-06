@@ -453,6 +453,7 @@
     <string name="biological_sex">Sex</string>
     <string name="biological_sex_male">Male</string>
     <string name="biological_sex_female">Female</string>
+    <string name="headline_basal_metabolic_rate_suggestions">Suggestions</string>
     <string name="neutral_basal_metabolic_rate_value">Basal metabolic rate: %1$d kcal</string>
     <string name="neutral_minimal_activity_value">With minimal activity: %1$d kcal</string>
     <string name="hint_body_data_required_for_bmr">Enter all body data to show suggestions.</string>

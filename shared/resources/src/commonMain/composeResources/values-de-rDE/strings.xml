@@ -455,6 +455,7 @@
     <string name="biological_sex">Geschlecht</string>
     <string name="biological_sex_male">Männlich</string>
     <string name="biological_sex_female">Weiblich</string>
+    <string name="headline_basal_metabolic_rate_suggestions">Vorschläge</string>
     <string name="neutral_basal_metabolic_rate_value">Grundumsatz: %1$d kcal</string>
     <string name="neutral_minimal_activity_value">Mit minimaler Aktivität: %1$d kcal</string>
     <string name="hint_body_data_required_for_bmr">Gib alle Körperdaten ein, um Vorschläge anzuzeigen.</string>

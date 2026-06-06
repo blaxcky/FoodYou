@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
@@ -205,7 +206,7 @@ internal fun DailyGoalsContent(
                         state = basalMetabolicRateProfileState,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     )
-                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     DietEnergyDeficitForm(
                         state = dietEnergyDeficitState,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -313,33 +314,40 @@ private fun BasalMetabolicRateProfileForm(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
         )
-        BodyMetricTextField(
-            field = state.weightKg,
-            label = stringResource(Res.string.weight),
-            suffix = stringResource(Res.string.unit_kilogram_short),
+        Row(
             modifier = Modifier.fillMaxWidth(),
-        )
-        BodyMetricTextField(
-            field = state.heightCm,
-            label = stringResource(Res.string.height),
-            suffix = stringResource(Res.string.unit_centimeter_short),
-            modifier = Modifier.fillMaxWidth(),
-        )
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            BodyMetricTextField(
+                field = state.weightKg,
+                label = stringResource(Res.string.weight),
+                suffix = stringResource(Res.string.unit_kilogram_short),
+                modifier = Modifier.weight(1f),
+            )
+            BodyMetricTextField(
+                field = state.heightCm,
+                label = stringResource(Res.string.height),
+                suffix = stringResource(Res.string.unit_centimeter_short),
+                modifier = Modifier.weight(1f),
+            )
+        }
         BirthDatePickerField(
             birthDate = state.birthDate,
             onBirthDateChange = { state.birthDate = it },
             modifier = Modifier.fillMaxWidth(),
         )
-        Text(
-            text = stringResource(Res.string.biological_sex),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        BiologicalSexToggle(
-            sex = state.sex,
-            onSexChange = { state.sex = it },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = stringResource(Res.string.biological_sex),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            BiologicalSexToggle(
+                sex = state.sex,
+                onSexChange = { state.sex = it },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         if (suggestion == null) {
             Text(
@@ -348,11 +356,40 @@ private fun BasalMetabolicRateProfileForm(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
+            BmrSuggestionBlock(
+                basalMetabolicRateKcal = suggestion.basalMetabolicRateKcal,
+                minimalActivityKcal = suggestion.minimalActivityKcal,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BmrSuggestionBlock(
+    basalMetabolicRateKcal: Int,
+    minimalActivityKcal: Int,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.headline_basal_metabolic_rate_suggestions),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
             Text(
                 text =
                     stringResource(
                         Res.string.neutral_basal_metabolic_rate_value,
-                        suggestion.basalMetabolicRateKcal,
+                        basalMetabolicRateKcal,
                     ),
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -360,7 +397,7 @@ private fun BasalMetabolicRateProfileForm(
                 text =
                     stringResource(
                         Res.string.neutral_minimal_activity_value,
-                        suggestion.minimalActivityKcal,
+                        minimalActivityKcal,
                     ),
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -427,7 +464,7 @@ private fun BirthDatePickerField(
 
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = birthDate?.let(dateFormatter::formatDate).orEmpty(),
+            value = birthDate?.let(dateFormatter::formatDateShort).orEmpty(),
             onValueChange = {},
             readOnly = true,
             modifier = Modifier.fillMaxWidth(),
@@ -454,7 +491,7 @@ private fun BiologicalSexToggle(
         ToggleButton(
             checked = sex == BiologicalSex.Male,
             onCheckedChange = { onSexChange(BiologicalSex.Male) },
-            modifier = Modifier.height(56.dp).semantics { role = Role.RadioButton },
+            modifier = Modifier.height(44.dp).semantics { role = Role.RadioButton },
             shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
         ) {
             Text(stringResource(Res.string.biological_sex_male))
@@ -462,7 +499,7 @@ private fun BiologicalSexToggle(
         ToggleButton(
             checked = sex == BiologicalSex.Female,
             onCheckedChange = { onSexChange(BiologicalSex.Female) },
-            modifier = Modifier.height(56.dp).semantics { role = Role.RadioButton },
+            modifier = Modifier.height(44.dp).semantics { role = Role.RadioButton },
             shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
         ) {
             Text(stringResource(Res.string.biological_sex_female))
