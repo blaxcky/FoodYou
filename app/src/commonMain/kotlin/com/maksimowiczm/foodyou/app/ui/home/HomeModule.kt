@@ -28,6 +28,7 @@ fun Module.home() {
             foodEntryRepository = get(),
             manualEntryRepository = get(),
             dateProvider = get(),
+            productRepository = get(),
             mealsPreferencesRepository = userPreferencesRepository(),
         )
     }

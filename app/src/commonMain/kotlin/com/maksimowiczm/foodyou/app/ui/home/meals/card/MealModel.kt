@@ -33,7 +33,7 @@ internal sealed interface MealEntryModel {
 @Immutable
 internal data class FoodMealEntryModel(
     val id: FoodDiaryEntryId,
-    val foodId: FoodId,
+    val editableProductId: FoodId.Product?,
     override val name: String,
     override val energy: Int?,
     override val proteins: Double?,

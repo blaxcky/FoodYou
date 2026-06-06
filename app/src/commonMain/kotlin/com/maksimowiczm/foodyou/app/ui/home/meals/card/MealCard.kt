@@ -384,7 +384,7 @@ private fun BottomSheetContent(
             leadingContent = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
-        val productId = (entry as? FoodMealEntryModel)?.foodId as? FoodId.Product
+        val productId = (entry as? FoodMealEntryModel)?.editableProductId
         if (productId != null) {
             ListItem(
                 headlineContent = { Text(stringResource(Res.string.action_edit_food)) },

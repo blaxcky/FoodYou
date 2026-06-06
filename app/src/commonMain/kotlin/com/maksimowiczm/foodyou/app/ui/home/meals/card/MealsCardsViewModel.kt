@@ -9,6 +9,8 @@ import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.extension.now
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
@@ -39,6 +41,7 @@ internal class MealsCardsViewModel(
     private val foodEntryRepository: FoodDiaryEntryRepository,
     private val manualEntryRepository: ManualDiaryEntryRepository,
     private val dateProvider: DateProvider,
+    private val productRepository: ProductRepository,
     mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
@@ -47,7 +50,7 @@ internal class MealsCardsViewModel(
         dateState
             .filterNotNull()
             .flatMapLatest { date -> observeDiaryMealsUseCase.observe(date) }
-            .map { list -> list.map { it.toMealModel() } }
+            .map { list -> list.map { it.toMealModel(productRepository) } }
             .distinctUntilChanged()
             .stateIn(
                 scope = viewModelScope,
@@ -109,30 +112,29 @@ internal class MealsCardsViewModel(
     }
 }
 
-private fun DiaryMeal.toMealModel(): MealModel =
+private suspend fun DiaryMeal.toMealModel(productRepository: ProductRepository): MealModel =
     MealModel(
         id = meal.id,
         name = meal.name,
         from = meal.from,
         to = meal.to,
         isAllDay = meal.from == meal.to,
-        foods = entries.map { it.toMealEntryModel() },
+        foods = entries.map { it.toMealEntryModel(productRepository) },
         energy = nutritionFacts.energy.value?.roundToInt() ?: 0,
         proteins = nutritionFacts.proteins.value ?: 0.0,
         carbohydrates = nutritionFacts.carbohydrates.value ?: 0.0,
         fats = nutritionFacts.fats.value ?: 0.0,
     )
 
-private fun DiaryEntry.toMealEntryModel(): MealEntryModel =
+private suspend fun DiaryEntry.toMealEntryModel(
+    productRepository: ProductRepository
+): MealEntryModel =
     when (this) {
         is FoodDiaryEntry ->
             FoodMealEntryModel(
                 id = id,
-                foodId =
-                    when (val food = food) {
-                        is DiaryFoodProduct -> food.id
-                        is DiaryFoodRecipe -> food.id
-                    },
+                editableProductId =
+                    (food as? DiaryFoodProduct)?.editableProductId(productRepository),
                 name = food.name,
                 energy = nutritionFacts.energy.value?.roundToInt(),
                 proteins = nutritionFacts.proteins.value,
@@ -156,3 +158,10 @@ private fun DiaryEntry.toMealEntryModel(): MealEntryModel =
                 fats = nutritionFacts.fats.value,
             )
     }
+
+private suspend fun DiaryFoodProduct.editableProductId(
+    productRepository: ProductRepository
+): FoodId.Product? {
+    val sourceUrl = source.url?.takeIf { it.isNotBlank() } ?: return null
+    return productRepository.getProductBySource(source.type, sourceUrl)?.id
+}
