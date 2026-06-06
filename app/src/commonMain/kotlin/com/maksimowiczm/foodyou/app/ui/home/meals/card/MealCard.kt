@@ -51,6 +51,7 @@ import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -61,6 +62,7 @@ internal fun MealCard(
     onAddFood: () -> Unit,
     onQuickAdd: () -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
+    onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     onLongClick: () -> Unit,
@@ -144,6 +146,7 @@ internal fun MealCard(
             FoodContainer(
                 foods = meal.foods,
                 onEditEntry = onEditEntry,
+                onEditFood = onEditFood,
                 onAddToEntry = onAddToEntry,
                 onDeleteEntry = onDeleteEntry,
                 modifier =
@@ -234,6 +237,7 @@ private data class MacroSummary(
 private fun FoodContainer(
     foods: List<MealEntryModel>,
     onEditEntry: (MealEntryModel) -> Unit,
+    onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     modifier: Modifier = Modifier,
@@ -253,6 +257,7 @@ private fun FoodContainer(
                 FoodContainerItem(
                     entry = entry,
                     onEditEntry = onEditEntry,
+                    onEditFood = onEditFood,
                     onAddToEntry = onAddToEntry,
                     onDeleteEntry = onDeleteEntry,
                     shape = foodItemShape(index = i, lastIndex = foods.lastIndex),
@@ -276,6 +281,7 @@ private fun foodItemShape(index: Int, lastIndex: Int): Shape {
 private fun FoodContainerItem(
     entry: MealEntryModel,
     onEditEntry: (MealEntryModel) -> Unit,
+    onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     shape: Shape,
@@ -293,6 +299,13 @@ private fun FoodContainerItem(
                 onEdit = {
                     coroutineScope.launch {
                         onEditEntry(entry)
+                        sheetState.hide()
+                        showBottomSheet = false
+                    }
+                },
+                onEditFood = { foodId ->
+                    coroutineScope.launch {
+                        onEditFood(foodId)
                         sheetState.hide()
                         showBottomSheet = false
                     }
@@ -328,6 +341,7 @@ private fun FoodContainerItem(
 private fun BottomSheetContent(
     entry: MealEntryModel,
     onEdit: () -> Unit,
+    onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (Double) -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -370,6 +384,17 @@ private fun BottomSheetContent(
             leadingContent = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
+        val productId = (entry as? FoodMealEntryModel)?.foodId as? FoodId.Product
+        if (productId != null) {
+            ListItem(
+                headlineContent = { Text(stringResource(Res.string.action_edit_food)) },
+                modifier = Modifier.clickable { onEditFood(productId) },
+                leadingContent = {
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            )
+        }
         ListItem(
             headlineContent = { Text(stringResource(Res.string.action_add_to_entry)) },
             modifier = Modifier.clickable { showAddToEntryDialog = true },

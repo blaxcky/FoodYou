@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
 import androidx.compose.runtime.*
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import kotlinx.datetime.LocalTime
@@ -32,6 +33,7 @@ internal sealed interface MealEntryModel {
 @Immutable
 internal data class FoodMealEntryModel(
     val id: FoodDiaryEntryId,
+    val foodId: FoodId,
     override val name: String,
     override val energy: Int?,
     override val proteins: Double?,

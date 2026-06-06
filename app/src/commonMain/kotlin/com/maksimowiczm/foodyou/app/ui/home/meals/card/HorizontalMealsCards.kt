@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 
 @Composable
 internal fun HorizontalMealsCards(
@@ -18,6 +19,7 @@ internal fun HorizontalMealsCards(
     onAdd: (mealId: Long) -> Unit,
     onQuickAdd: (mealId: Long) -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
+    onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     onLongClick: (mealId: Long) -> Unit,
@@ -50,6 +52,7 @@ internal fun HorizontalMealsCards(
                 onAddFood = { onAdd(meal.id) },
                 onQuickAdd = { onQuickAdd(meal.id) },
                 onEditEntry = onEditEntry,
+                onEditFood = onEditFood,
                 onAddToEntry = onAddToEntry,
                 onDeleteEntry = onDeleteEntry,
                 onLongClick = { onLongClick(meal.id) },

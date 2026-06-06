@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryEntry
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryMeal
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
@@ -127,6 +128,11 @@ private fun DiaryEntry.toMealEntryModel(): MealEntryModel =
         is FoodDiaryEntry ->
             FoodMealEntryModel(
                 id = id,
+                foodId =
+                    when (val food = food) {
+                        is DiaryFoodProduct -> food.id
+                        is DiaryFoodRecipe -> food.id
+                    },
                 name = food.name,
                 energy = nutritionFacts.energy.value?.roundToInt(),
                 proteins = nutritionFacts.proteins.value,

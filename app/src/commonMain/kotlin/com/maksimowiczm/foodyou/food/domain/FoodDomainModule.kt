@@ -19,6 +19,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductsUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateRecipeUseCase
 import org.koin.core.module.Module
@@ -51,6 +52,7 @@ fun Module.foodDomainModule() {
     factoryOf(::ObserveMeasurementSuggestionsUseCase)
     factoryOf(::ObservePendingProductUseCase)
     factoryOf(::ObservePendingProductsUseCase)
+    factoryOf(::ResyncFddbProductUseCase)
     factoryOf(::UpdateProductUseCase)
     factoryOf(::UpdateRecipeUseCase)
 

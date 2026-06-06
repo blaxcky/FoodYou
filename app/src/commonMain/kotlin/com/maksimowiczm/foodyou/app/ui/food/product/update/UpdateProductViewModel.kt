@@ -11,9 +11,14 @@ import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductError
+import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -22,6 +27,7 @@ import kotlinx.coroutines.launch
 internal class UpdateProductViewModel(
     observeFoodUseCase: ObserveFoodUseCase,
     private val updateProductUseCase: UpdateProductUseCase,
+    private val resyncFddbProductUseCase: ResyncFddbProductUseCase,
     private val productId: FoodId.Product,
 ) : ViewModel() {
 
@@ -33,6 +39,9 @@ internal class UpdateProductViewModel(
 
     private val eventBus = Channel<UpdateProductEvent>()
     val events = eventBus.receiveAsFlow()
+
+    private val _isResyncing = MutableStateFlow(false)
+    val isResyncing: StateFlow<Boolean> = _isResyncing.asStateFlow()
 
     fun updateProduct(form: ProductFormState) {
         if (!form.isValid) {
@@ -71,4 +80,32 @@ internal class UpdateProductViewModel(
                 }
         }
     }
+
+    fun resyncFddbProduct() {
+        if (_isResyncing.value) {
+            return
+        }
+
+        viewModelScope.launch {
+            _isResyncing.value = true
+            try {
+                resyncFddbProductUseCase
+                    .resync(productId)
+                    .onSuccess { eventBus.send(UpdateProductEvent.Resynced) }
+                    .onError { eventBus.send(UpdateProductEvent.ResyncFailed(it.toUiError())) }
+            } finally {
+                _isResyncing.value = false
+            }
+        }
+    }
 }
+
+private fun ResyncFddbProductError.toUiError(): ResyncFddbProductUiError =
+    when (this) {
+        is ResyncFddbProductError.ProductNotFound -> ResyncFddbProductUiError.ProductNotFound
+        ResyncFddbProductError.NotFddbProduct -> ResyncFddbProductUiError.NotFddbProduct
+        ResyncFddbProductError.MissingSourceUrl -> ResyncFddbProductUiError.MissingSourceUrl
+        ResyncFddbProductError.Blocked -> ResyncFddbProductUiError.Blocked
+        ResyncFddbProductError.NetworkOrParseFailed ->
+            ResyncFddbProductUiError.NetworkOrParseFailed
+    }

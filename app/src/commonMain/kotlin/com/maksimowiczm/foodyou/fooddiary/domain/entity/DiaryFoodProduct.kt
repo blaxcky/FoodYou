@@ -4,8 +4,10 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.food.WeightCalculator
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 
 data class DiaryFoodProduct(
+    val id: FoodId.Product,
     override val name: String,
     override val nutritionFacts: NutritionFacts,
     override val servingWeight: Double?,

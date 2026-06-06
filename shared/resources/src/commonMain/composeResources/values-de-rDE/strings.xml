@@ -284,6 +284,12 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_insert_suggested_search">Vorgeschlagene Suche einfügen</string>
     <string name="action_edit_entry">Eintrag bearbeiten</string>
+    <string name="action_edit_food">Lebensmittel bearbeiten</string>
+    <string name="action_resync_fddb_product">Lebensmittel erneut syncen</string>
+    <string name="message_product_resynced">Lebensmittel wurde erneut synchronisiert</string>
+    <string name="error_fddb_resync_blocked">FDDB hat den Sync blockiert. Versuche es später erneut.</string>
+    <string name="error_fddb_resync_missing_source">Die FDDB-Quell-URL fehlt.</string>
+    <string name="error_fddb_resync_failed">Lebensmittel konnte nicht synchronisiert werden.</string>
     <string name="action_add_to_entry">Ergänzen</string>
     <string name="action_delete_entry">Eintrag löschen</string>
     <string name="action_close">Schließen</string>

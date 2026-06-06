@@ -4,6 +4,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.food.WeightCalculator
 import com.maksimowiczm.foodyou.common.domain.food.sum
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 
 /**
  * Represents a food recipe in the food diary.
@@ -14,6 +15,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
  * @param isLiquid Indicates whether the recipe is a liquid.
  */
 data class DiaryFoodRecipe(
+    val id: FoodId.Recipe,
     override val name: String,
     val servings: Int,
     val ingredients: List<DiaryFoodRecipeIngredient>,

@@ -63,6 +63,7 @@ internal fun ProductForm(
     state: ProductFormState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    sourceContent: @Composable (() -> Unit)? = null,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val horizontalPadding =
@@ -82,7 +83,7 @@ internal fun ProductForm(
         modifier = modifier.padding(verticalPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        General(state = state, horizontalPadding = horizontalPadding)
+        General(state = state, horizontalPadding = horizontalPadding, sourceContent = sourceContent)
 
         Text(
             text = stringResource(Res.string.headline_macronutrients),
@@ -141,7 +142,11 @@ internal fun ProductForm(
 }
 
 @Composable
-private fun General(state: ProductFormState, horizontalPadding: PaddingValues) {
+private fun General(
+    state: ProductFormState,
+    horizontalPadding: PaddingValues,
+    sourceContent: @Composable (() -> Unit)?,
+) {
     var showBarcodeScanner by rememberSaveable { mutableStateOf(false) }
     FullScreenCameraBarcodeScanner(
         visible = showBarcodeScanner,
@@ -189,6 +194,8 @@ private fun General(state: ProductFormState, horizontalPadding: PaddingValues) {
         onTypeChange = { state.sourceType = it },
         modifier = Modifier.padding(horizontalPadding).fillMaxWidth(),
     )
+
+    sourceContent?.invoke()
 
     Row(
         modifier =

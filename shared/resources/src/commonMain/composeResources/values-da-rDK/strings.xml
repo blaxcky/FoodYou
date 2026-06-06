@@ -104,6 +104,12 @@
     <string name="action_edit">Redigér</string>
     <string name="action_insert_suggested_search">Indsæt foreslået søgning</string>
     <string name="action_edit_entry">Redigér optegnelse</string>
+    <string name="action_edit_food">Edit food</string>
+    <string name="action_resync_fddb_product">Sync food again</string>
+    <string name="message_product_resynced">Food was synced again</string>
+    <string name="error_fddb_resync_blocked">FDDB blocked the sync. Try again later.</string>
+    <string name="error_fddb_resync_missing_source">FDDB source URL is missing.</string>
+    <string name="error_fddb_resync_failed">Food sync failed.</string>
     <string name="action_delete_entry">Slet optegnelse</string>
     <string name="action_close">Luk</string>
     <string name="action_discard">Kassér</string>

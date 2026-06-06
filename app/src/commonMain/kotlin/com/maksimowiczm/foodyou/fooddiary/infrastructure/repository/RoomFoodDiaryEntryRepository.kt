@@ -12,6 +12,7 @@ import com.maksimowiczm.foodyou.common.infrastructure.room.toDomain
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntity
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntityNutrients
 import com.maksimowiczm.foodyou.common.infrastructure.room.toNutritionFacts
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
@@ -243,6 +244,7 @@ internal class RoomFoodDiaryEntryRepository(
 
                 ingredients.map { ingredients ->
                     DiaryFoodRecipe(
+                        id = FoodId.Recipe(entity.id),
                         name = entity.name,
                         servings = entity.servings,
                         ingredients = ingredients,
@@ -326,6 +328,7 @@ private fun DiaryFoodProduct.toEntity(): DiaryProductEntity {
 
 private fun DiaryProductEntity.toModel(): DiaryFoodProduct =
     DiaryFoodProduct(
+        id = FoodId.Product(id),
         name = name,
         nutritionFacts = toNutritionFacts(nutrients, vitamins, minerals),
         servingWeight = servingWeight,

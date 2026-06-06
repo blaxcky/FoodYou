@@ -187,6 +187,12 @@
     <string name="action_edit">Edit</string>
     <string name="action_insert_suggested_search">Insert suggested search</string>
     <string name="action_edit_entry">Edit entry</string>
+    <string name="action_edit_food">Edit food</string>
+    <string name="action_resync_fddb_product">Sync food again</string>
+    <string name="message_product_resynced">Food was synced again</string>
+    <string name="error_fddb_resync_blocked">FDDB blocked the sync. Try again later.</string>
+    <string name="error_fddb_resync_missing_source">FDDB source URL is missing.</string>
+    <string name="error_fddb_resync_failed">Food sync failed.</string>
     <string name="action_add_to_entry">Add more</string>
     <string name="action_delete_entry">Delete entry</string>
     <string name="action_close">Close</string>

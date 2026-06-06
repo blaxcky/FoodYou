@@ -97,6 +97,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                         else -> error("Either foodEntryId or manualEntryId must be non-null")
                     }
                 },
+                onEditFoodClick = { navController.navigateSingleTop(UpdateProduct(it.id)) },
             )
         }
         forwardBackwardComposable<Settings> {

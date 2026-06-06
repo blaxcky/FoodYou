@@ -17,6 +17,7 @@ internal fun Food.toDiaryFood(): DiaryFood =
 
 private fun Product.toDiaryProduct(): DiaryFoodProduct =
     DiaryFoodProduct(
+        id = id,
         name = headline,
         nutritionFacts = nutritionFacts,
         servingWeight = servingWeight,
@@ -28,6 +29,7 @@ private fun Product.toDiaryProduct(): DiaryFoodProduct =
 
 private fun Recipe.toDiaryRecipe(): DiaryFoodRecipe =
     DiaryFoodRecipe(
+        id = id,
         name = headline,
         servings = servings,
         ingredients = ingredients.map { it.toDiaryRecipeIngredient() },

@@ -126,6 +126,12 @@
     <string name="action_edit">编辑</string>
     <string name="action_insert_suggested_search">插入建议的搜索</string>
     <string name="action_edit_entry">编辑条目</string>
+    <string name="action_edit_food">Edit food</string>
+    <string name="action_resync_fddb_product">Sync food again</string>
+    <string name="message_product_resynced">Food was synced again</string>
+    <string name="error_fddb_resync_blocked">FDDB blocked the sync. Try again later.</string>
+    <string name="error_fddb_resync_missing_source">FDDB source URL is missing.</string>
+    <string name="error_fddb_resync_failed">Food sync failed.</string>
     <string name="action_delete_entry">删除条目</string>
     <string name="action_close">关闭</string>
     <string name="action_discard">丢弃</string>

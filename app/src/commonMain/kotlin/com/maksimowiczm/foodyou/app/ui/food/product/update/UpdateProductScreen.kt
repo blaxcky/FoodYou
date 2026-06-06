@@ -2,13 +2,20 @@ package com.maksimowiczm.foodyou.app.ui.food.product.update
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -26,6 +33,7 @@ import com.maksimowiczm.foodyou.app.ui.common.component.DiscardDialog
 import com.maksimowiczm.foodyou.app.ui.food.product.ProductForm
 import com.maksimowiczm.foodyou.app.ui.food.product.rememberProductFormState
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
+import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -37,20 +45,40 @@ internal fun UpdateProductScreen(
     modifier: Modifier = Modifier,
 ) {
     val latestOnUpdate by rememberUpdatedState(onUpdate)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val resyncedMessage = stringResource(Res.string.message_product_resynced)
+    val resyncBlockedMessage = stringResource(Res.string.error_fddb_resync_blocked)
+    val resyncMissingSourceMessage = stringResource(Res.string.error_fddb_resync_missing_source)
+    val resyncFailedMessage = stringResource(Res.string.error_fddb_resync_failed)
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
         when (event) {
             UpdateProductEvent.Updated -> latestOnUpdate()
+            UpdateProductEvent.Resynced -> snackbarHostState.showSnackbar(resyncedMessage)
+            is UpdateProductEvent.ResyncFailed -> {
+                val message =
+                    when (event.error) {
+                        ResyncFddbProductUiError.Blocked -> resyncBlockedMessage
+                        ResyncFddbProductUiError.MissingSourceUrl -> resyncMissingSourceMessage
+                        ResyncFddbProductUiError.ProductNotFound,
+                        ResyncFddbProductUiError.NotFddbProduct,
+                        ResyncFddbProductUiError.NetworkOrParseFailed -> resyncFailedMessage
+                    }
+                snackbarHostState.showSnackbar(message)
+            }
         }
     }
 
     val product = viewModel.product.collectAsStateWithLifecycle().value
+    val isResyncing by viewModel.isResyncing.collectAsStateWithLifecycle()
 
     if (product == null) {
         // TODO loading state
         return
     } else {
-        val productForm = rememberProductFormState(product)
+        val productForm = key(product) { rememberProductFormState(product) }
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+        val showFddbResync =
+            product.source.type == FoodSource.Type.FDDB && !product.source.url.isNullOrBlank()
 
         var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
         val handleBack = {
@@ -79,6 +107,7 @@ internal fun UpdateProductScreen(
 
         Scaffold(
             modifier = modifier,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = { Text(stringResource(Res.string.headline_edit_product)) },
@@ -106,6 +135,34 @@ internal fun UpdateProductScreen(
                     ProductForm(
                         state = productForm,
                         contentPadding = PaddingValues(horizontal = 16.dp),
+                        sourceContent =
+                            if (showFddbResync) {
+                                {
+                                    FilledTonalButton(
+                                        onClick = viewModel::resyncFddbProduct,
+                                        enabled = !isResyncing,
+                                        modifier =
+                                            Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Sync,
+                                            contentDescription = null,
+                                        )
+                                        Text(
+                                            text =
+                                                stringResource(
+                                                    Res.string.action_resync_fddb_product
+                                                ),
+                                            modifier =
+                                                Modifier.padding(
+                                                    start = ButtonDefaults.IconSpacing
+                                                ),
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                     )
                 }
             }

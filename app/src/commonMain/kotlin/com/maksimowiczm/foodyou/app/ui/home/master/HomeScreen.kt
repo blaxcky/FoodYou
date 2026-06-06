@@ -57,6 +57,7 @@ import com.maksimowiczm.foodyou.app.ui.home.meals.card.mealsCards
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.rememberMealsCardsState
 import com.maksimowiczm.foodyou.app.ui.home.poll.PollsCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.rememberHomeState
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.delay
@@ -77,6 +78,7 @@ fun HomeScreen(
     onAddActivityClick: (epochDay: Long) -> Unit,
     onEditActivityClick: (id: Long) -> Unit,
     onEditDiaryEntryClick: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
+    onEditFoodClick: (FoodId.Product) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = koinViewModel()
@@ -92,6 +94,7 @@ fun HomeScreen(
             onAdd = onMealCardAddClick,
             onQuickAdd = onMealCardQuickAddClick,
             onEditEntry = onEditDiaryEntryClick,
+            onEditFood = onEditFoodClick,
             onLongClick = onMealCardLongClick,
         )
 

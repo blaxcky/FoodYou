@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -17,6 +18,7 @@ internal fun rememberMealsCardsState(
     onAdd: (epochDay: Long, mealId: Long) -> Unit,
     onQuickAdd: (epochDay: Long, mealId: Long) -> Unit,
     onEditEntry: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
+    onEditFood: (FoodId.Product) -> Unit,
     onLongClick: (mealId: Long) -> Unit,
 ): MealsCardsState {
     val viewModel: MealsCardsViewModel = koinViewModel()
@@ -35,6 +37,7 @@ internal fun rememberMealsCardsState(
             val manualEntry = model as? ManualMealEntryModel
             onEditEntry(foodEntry?.id?.value, manualEntry?.id?.value)
         },
+        onEditFood = onEditFood,
         onAddToEntry = viewModel::onAddToEntry,
         onDeleteEntry = viewModel::onDeleteEntry,
         onLongClick = onLongClick,
@@ -47,6 +50,7 @@ internal class MealsCardsState(
     val onAdd: (mealId: Long) -> Unit,
     val onQuickAdd: (mealId: Long) -> Unit,
     val onEditEntry: (MealEntryModel) -> Unit,
+    val onEditFood: (FoodId.Product) -> Unit,
     val onAddToEntry: (MealEntryModel, Double) -> Unit,
     val onDeleteEntry: (MealEntryModel) -> Unit,
     val onLongClick: (mealId: Long) -> Unit,
@@ -65,6 +69,7 @@ internal fun LazyListScope.mealsCards(
                     onAdd = state.onAdd,
                     onQuickAdd = state.onQuickAdd,
                     onEditEntry = state.onEditEntry,
+                    onEditFood = state.onEditFood,
                     onAddToEntry = state.onAddToEntry,
                     onDeleteEntry = state.onDeleteEntry,
                     onLongClick = state.onLongClick,
@@ -99,6 +104,7 @@ internal fun LazyListScope.mealsCards(
                         onAddFood = { state.onAdd(meal.id) },
                         onQuickAdd = { state.onQuickAdd(meal.id) },
                         onEditEntry = state.onEditEntry,
+                        onEditFood = state.onEditFood,
                         onAddToEntry = state.onAddToEntry,
                         onDeleteEntry = state.onDeleteEntry,
                         onLongClick = { state.onLongClick(meal.id) },
