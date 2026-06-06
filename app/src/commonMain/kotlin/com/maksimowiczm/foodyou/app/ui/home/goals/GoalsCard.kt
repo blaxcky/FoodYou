@@ -864,7 +864,6 @@ private fun GoalComparisonOverviewCard(
             Column(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .defaultMinSize(minHeight = 259.dp)
                         .padding(
                             start = horizontalPadding,
                             top = 21.dp,
