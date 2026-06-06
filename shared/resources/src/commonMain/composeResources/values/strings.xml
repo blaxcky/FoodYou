@@ -46,6 +46,7 @@
     <string name="headline_supported_URLs" description="URLs that can be used to add products">Supported URLs</string>
     <string name="headline_something_went_wrong">Oops! Something went wrong</string>
     <string name="headline_daily_goals_settings">Daily goals settings</string>
+    <string name="headline_synchronization">Synchronization</string>
     <string name="headline_home_sync">Home sync</string>
     <string name="headline_fddb_sync_status">FDDB sync status</string>
     <string name="headline_api_key">API key</string>
@@ -53,6 +54,7 @@
     <string name="headline_features">Features</string>
     <string name="headline_activities">Activities</string>
     <string name="headline_your_week">Your week</string>
+    <string name="description_synchronization">Home screen sync sources and FDDB diary status</string>
 
     <string name="x_times_y" translatable="false">%1$s x %2$s</string>
     <string name="weight">Weight</string>

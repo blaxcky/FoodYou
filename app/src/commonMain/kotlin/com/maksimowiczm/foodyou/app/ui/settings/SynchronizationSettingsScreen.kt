@@ -1,0 +1,134 @@
+package com.maksimowiczm.foodyou.app.ui.settings
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import foodyou.app.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
+
+@Composable
+internal fun SynchronizationSettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SynchronizationSettingsViewModel = koinViewModel(),
+) {
+    val model = viewModel.model.collectAsStateWithLifecycle().value
+
+    SynchronizationSettingsContent(
+        model = model,
+        onBack = onBack,
+        onHomeSyncHealthConnectEnabledChange = viewModel::setHomeSyncHealthConnectEnabled,
+        onHomeSyncFddbDiaryEnabledChange = viewModel::setHomeSyncFddbDiaryEnabled,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun SynchronizationSettingsContent(
+    model: SynchronizationSettingsModel?,
+    onBack: () -> Unit,
+    onHomeSyncHealthConnectEnabledChange: (Boolean) -> Unit,
+    onHomeSyncFddbDiaryEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            MediumFlexibleTopAppBar(
+                title = { Text(stringResource(Res.string.headline_synchronization)) },
+                navigationIcon = { ArrowBackIconButton(onBack) },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = paddingValues,
+        ) {
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(Res.string.headline_home_sync)) },
+                    supportingContent = {
+                        Text(stringResource(Res.string.neutral_home_sync_settings))
+                    },
+                )
+            }
+
+            item {
+                val checked = model?.homeSyncHealthConnectEnabled ?: false
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(Res.string.action_sync_health_connect))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = checked,
+                            onCheckedChange = onHomeSyncHealthConnectEnabledChange,
+                        )
+                    },
+                    modifier =
+                        Modifier.clickable {
+                            onHomeSyncHealthConnectEnabledChange(!checked)
+                        },
+                )
+            }
+
+            item {
+                val checked = model?.homeSyncFddbDiaryEnabled ?: false
+                ListItem(
+                    headlineContent = { Text(stringResource(Res.string.action_sync_fddb_diary)) },
+                    trailingContent = {
+                        Switch(
+                            checked = checked,
+                            onCheckedChange = onHomeSyncFddbDiaryEnabledChange,
+                        )
+                    },
+                    modifier =
+                        Modifier.clickable {
+                            onHomeSyncFddbDiaryEnabledChange(!checked)
+                        },
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(Res.string.headline_fddb_sync_status))
+                    },
+                    supportingContent = { Text(model.fddbSyncStatusText()) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {
+    val status = this?.fddbDiarySyncStatus
+        ?: return stringResource(Res.string.neutral_fddb_sync_never_run)
+
+    status.errorMessage?.let { message ->
+        return stringResource(Res.string.neutral_fddb_sync_failed_with_message, message)
+    }
+
+    return stringResource(
+        Res.string.neutral_fddb_import_summary,
+        status.imported,
+        status.skipped,
+        status.failed,
+    )
+}

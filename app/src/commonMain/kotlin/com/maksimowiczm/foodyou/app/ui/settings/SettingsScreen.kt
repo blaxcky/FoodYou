@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -42,6 +43,7 @@ fun SettingsScreen(
     onMeals: () -> Unit,
     onLanguage: () -> Unit,
     onGoals: () -> Unit,
+    onSynchronization: () -> Unit,
     onActivities: () -> Unit,
     onPersonalization: () -> Unit,
     onDatabase: () -> Unit,
@@ -100,8 +102,22 @@ fun SettingsScreen(
 
             item {
                 SettingsListItem(
+                    icon = { Icon(Icons.Outlined.Sync, null) },
+                    label = { Text(stringResource(Res.string.headline_synchronization)) },
+                    supportingContent = {
+                        Text(stringResource(Res.string.description_synchronization))
+                    },
+                    onClick = onSynchronization,
+                    shape = shape,
+                    color = color,
+                    contentColor = contentColor,
+                )
+            }
+
+            item {
+                SettingsListItem(
                     icon = { Icon(Icons.AutoMirrored.Outlined.DirectionsWalk, null) },
-                    label = { Text("Activities") },
+                    label = { Text(stringResource(Res.string.headline_activities)) },
                     supportingContent = { Text("Steps, manual burned calories, and Health Connect") },
                     onClick = onActivities,
                     shape = shape,

@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material.icons.Icons
@@ -67,6 +69,7 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
+import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.goals.domain.entity.BiologicalSex
 import com.maksimowiczm.foodyou.goals.domain.usecase.calculateBasalMetabolicRateSuggestion
@@ -100,16 +103,20 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
     val weeklyState = rememberWeeklyGoalsState(setupState.weeklyGoals)
     val basalMetabolicRateProfileState =
         rememberBasalMetabolicRateProfileFormState(setupState.basalMetabolicRateProfile)
+    val dietEnergyDeficitState =
+        rememberDietEnergyDeficitFormState(setupState.dietEnergyDeficitKcal)
 
     DailyGoalsContent(
         weeklyState = weeklyState,
         basalMetabolicRateProfileState = basalMetabolicRateProfileState,
+        dietEnergyDeficitState = dietEnergyDeficitState,
         onBack = onBack,
         onSave = {
             viewModel.update(
                 weeklyGoals = weeklyState.intoWeeklyGoals(),
                 basalMetabolicRateProfile =
                     basalMetabolicRateProfileState.intoProfile(),
+                dietEnergyDeficitKcal = dietEnergyDeficitState.value,
             )
         },
         modifier = modifier,
@@ -120,13 +127,20 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
 internal fun DailyGoalsContent(
     weeklyState: WeeklyGoalsState,
     basalMetabolicRateProfileState: BasalMetabolicRateProfileFormState,
+    dietEnergyDeficitState: DietEnergyDeficitFormState,
     onBack: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier,
 ) {
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
-    val isModified = weeklyState.isModified || basalMetabolicRateProfileState.isModified
-    val isValid = weeklyState.isValid && basalMetabolicRateProfileState.isValid
+    val isModified =
+        weeklyState.isModified ||
+            basalMetabolicRateProfileState.isModified ||
+            dietEnergyDeficitState.isModified
+    val isValid =
+        weeklyState.isValid &&
+            basalMetabolicRateProfileState.isValid &&
+            dietEnergyDeficitState.isValid
     val handleOnBack = { if (isModified) showDiscardDialog = true else onBack() }
     NavigationEventHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
@@ -191,6 +205,11 @@ internal fun DailyGoalsContent(
                         state = basalMetabolicRateProfileState,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     )
+                    Spacer(Modifier.height(12.dp))
+                    DietEnergyDeficitForm(
+                        state = dietEnergyDeficitState,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    )
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     Text(
                         text = stringResource(Res.string.action_set_goals),
@@ -227,6 +246,57 @@ internal fun DailyGoalsContent(
         }
     }
 }
+
+@Stable
+internal class DietEnergyDeficitFormState(
+    val textFieldState: TextFieldState,
+    private val initialInput: String,
+) {
+    private val input: String
+        get() = textFieldState.text.toString()
+
+    val parsedValue: Double? by derivedStateOf { input.parseNonNegativeDeficit() }
+
+    val value: Double? by derivedStateOf { parsedValue?.takeIf { it > 0.0 } }
+
+    val isValid: Boolean by derivedStateOf { input.isBlank() || parsedValue != null }
+
+    val isModified: Boolean by derivedStateOf { input != initialInput }
+}
+
+@Composable
+internal fun rememberDietEnergyDeficitFormState(
+    initialValue: Double?
+): DietEnergyDeficitFormState {
+    val sanitizedInitialValue = initialValue?.takeIf { it > 0.0 }
+    val textFieldState = rememberTextFieldState(sanitizedInitialValue?.formatClipZeros().orEmpty())
+
+    return remember(textFieldState, sanitizedInitialValue) {
+        DietEnergyDeficitFormState(
+            textFieldState = textFieldState,
+            initialInput = sanitizedInitialValue?.formatClipZeros().orEmpty(),
+        )
+    }
+}
+
+@Composable
+private fun DietEnergyDeficitForm(
+    state: DietEnergyDeficitFormState,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        state = state.textFieldState,
+        modifier = modifier,
+        label = { Text(stringResource(Res.string.label_daily_calorie_deficit)) },
+        supportingText = { Text(stringResource(Res.string.neutral_daily_calorie_deficit)) },
+        suffix = { Text(stringResource(Res.string.unit_kcal)) },
+        isError = !state.isValid,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+    )
+}
+
+private fun String.parseNonNegativeDeficit(): Double? =
+    trim().replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0.0 }
 
 @Composable
 private fun BasalMetabolicRateProfileForm(

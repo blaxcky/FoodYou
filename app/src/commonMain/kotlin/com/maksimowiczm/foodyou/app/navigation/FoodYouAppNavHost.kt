@@ -40,6 +40,7 @@ import com.maksimowiczm.foodyou.app.ui.meal.MealSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizationScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizeNutritionFactsScreen
 import com.maksimowiczm.foodyou.app.ui.settings.SettingsScreen
+import com.maksimowiczm.foodyou.app.ui.settings.SynchronizationSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.sponsor.SponsorScreen
 import com.maksimowiczm.foodyou.app.ui.theme.ThemeScreen
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
@@ -106,6 +107,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onMeals = { navController.navigateSingleTop(MealSetup) },
                 onLanguage = { navController.navigateSingleTop(Language) },
                 onGoals = { navController.navigateSingleTop(GoalsSetup) },
+                onSynchronization = { navController.navigateSingleTop(SynchronizationSettings) },
                 onActivities = { navController.navigateSingleTop(ActivitySettings) },
                 onPersonalization = { navController.navigateSingleTop(Personalization) },
                 onDatabase = { navController.navigateSingleTop(DatabaseSettings) },
@@ -167,6 +169,11 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             DailyGoalsScreen(
                 onBack = { navController.popBackStackInclusive<GoalsSetup>() },
                 onSave = { navController.popBackStackInclusive<GoalsSetup>() },
+            )
+        }
+        forwardBackwardComposable<SynchronizationSettings> {
+            SynchronizationSettingsScreen(
+                onBack = { navController.popBackStackInclusive<SynchronizationSettings>() }
             )
         }
         forwardBackwardComposable<ActivitySettings> {
@@ -474,6 +481,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private data class Goals(val epochDay: Long)
 
 @Serializable private object GoalsSetup
+
+@Serializable private object SynchronizationSettings
 
 @Serializable private object ActivitySettings
 
