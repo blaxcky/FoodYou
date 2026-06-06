@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 class FddbProductParser {
     fun parse(html: String): FddbProduct {
         val lines = html.toTextLines()
+        val nutrientRows = html.nutrientRows()
         val servingUnit = lines.findServingUnit()
         val portions = lines.findPortions()
 
@@ -21,42 +22,47 @@ class FddbProductParser {
             portions = portions,
             nutritionFacts =
                 NutritionFacts(
-                    proteins = lines.nutrient("Protein", "Eiweiß"),
-                    carbohydrates = lines.nutrient("Carbohydrates", "Kohlenhydrate"),
-                    energy = lines.nutrient("Calories", "Kalorien"),
-                    fats = lines.nutrient("Fat", "Fett"),
+                    proteins = nutrientRows.nutrient("Protein", "Eiweiß"),
+                    carbohydrates = nutrientRows.nutrient("Carbohydrates", "Kohlenhydrate"),
+                    energy = nutrientRows.nutrient("Calories", "Kalorien"),
+                    fats = nutrientRows.nutrient("Fat", "Fett"),
                     saturatedFats =
-                        lines.nutrient("thereof Saturates", "davon gesättigte Fettsäuren"),
-                    sugars = lines.nutrient("thereof Sugar", "davon Zucker"),
-                    dietaryFiber = lines.nutrient("Fiber", "Ballaststoffe"),
-                    salt = lines.nutrient("Salt", "Salz"),
-                    vitaminA = lines.nutrient("Retinol", "Vitamin A"),
-                    vitaminB1 = lines.nutrient("Thiamine", "Vitamin B1"),
-                    vitaminB2 = lines.nutrient("Riboflavin", "Vitamin B2"),
-                    vitaminB3 = lines.nutrient("Niacin", "Vitamin B3"),
-                    vitaminB5 = lines.nutrient("Pantothenic acid", "Vitamin B5"),
-                    vitaminB6 = lines.nutrient("Vitamin B6"),
-                    vitaminB7 = lines.nutrient("Biotin", "Vitamin B7"),
-                    vitaminB9 = lines.nutrient("Folic acid", "Folsäure", "Vitamin B9"),
-                    vitaminB12 = lines.nutrient("Vitamin B12"),
-                    vitaminC = lines.nutrient("Vitamin C"),
-                    vitaminD = lines.nutrient("Vitamin D"),
-                    vitaminE = lines.nutrient("Vitamin E"),
-                    vitaminK = lines.nutrient("Vitamin K"),
-                    magnesium = lines.nutrient("Magnesium"),
-                    potassium = lines.nutrient("Potassium", "Kalium"),
-                    calcium = lines.nutrient("Calcium", "Kalzium"),
-                    copper = lines.nutrient("Copper", "Kupfer"),
-                    zinc = lines.nutrient("Zinc", "Zink"),
-                    sodium = lines.nutrient("Sodium", "Natrium"),
-                    iron = lines.nutrient("Iron", "Eisen"),
-                    phosphorus = lines.nutrient("Phosphorus", "Phosphor"),
-                    selenium = lines.nutrient("Selenium", "Selen"),
-                    iodine = lines.nutrient("Iodine", "Jod"),
+                        nutrientRows.nutrient("thereof Saturates", "davon gesättigte Fettsäuren"),
+                    sugars = nutrientRows.nutrient("thereof Sugar", "davon Zucker"),
+                    dietaryFiber = nutrientRows.nutrient("Fiber", "Ballaststoffe"),
+                    salt = nutrientRows.nutrient("Salt", "Salz"),
+                    vitaminA = nutrientRows.nutrient("Retinol", "Vitamin A"),
+                    vitaminB1 = nutrientRows.nutrient("Thiamine", "Vitamin B1"),
+                    vitaminB2 = nutrientRows.nutrient("Riboflavin", "Vitamin B2"),
+                    vitaminB3 = nutrientRows.nutrient("Niacin", "Vitamin B3"),
+                    vitaminB5 = nutrientRows.nutrient("Pantothenic acid", "Vitamin B5"),
+                    vitaminB6 = nutrientRows.nutrient("Vitamin B6"),
+                    vitaminB7 = nutrientRows.nutrient("Biotin", "Vitamin B7"),
+                    vitaminB9 = nutrientRows.nutrient("Folic acid", "Folsäure", "Vitamin B9"),
+                    vitaminB12 = nutrientRows.nutrient("Vitamin B12"),
+                    vitaminC = nutrientRows.nutrient("Vitamin C"),
+                    vitaminD = nutrientRows.nutrient("Vitamin D"),
+                    vitaminE = nutrientRows.nutrient("Vitamin E"),
+                    vitaminK = nutrientRows.nutrient("Vitamin K"),
+                    magnesium = nutrientRows.nutrient("Magnesium"),
+                    potassium = nutrientRows.nutrient("Potassium", "Kalium"),
+                    calcium = nutrientRows.nutrient("Calcium", "Kalzium"),
+                    copper = nutrientRows.nutrient("Copper", "Kupfer"),
+                    zinc = nutrientRows.nutrient("Zinc", "Zink"),
+                    sodium = nutrientRows.nutrient("Sodium", "Natrium"),
+                    iron = nutrientRows.nutrient("Iron", "Eisen"),
+                    phosphorus = nutrientRows.nutrient("Phosphorus", "Phosphor"),
+                    selenium = nutrientRows.nutrient("Selenium", "Selen"),
+                    iodine = nutrientRows.nutrient("Iodine", "Jod"),
                 ),
         )
     }
 }
+
+private data class FddbNutrientRow(
+    val label: String,
+    val value: String,
+)
 
 private fun String.tagText(tag: String, id: String): String? =
     Regex(
@@ -109,6 +115,41 @@ private fun String.decodeHtml(): String =
         .replace("&Uuml;", "Ü")
         .replace("&uuml;", "ü")
         .replace("&szlig;", "ß")
+
+private fun String.nutrientRows(): List<FddbNutrientRow> =
+    (tableNutrientRows() + sidNutrientRows()).sortedBy { it.first }.map { it.second }
+
+private fun String.tableNutrientRows(): List<Pair<Int, FddbNutrientRow>> =
+    TableRowRegex.findAll(this).mapNotNull { rowMatch ->
+        val cells =
+            TableCellRegex.findAll(rowMatch.groupValues[1])
+                .map { it.groupValues[1].toNutrientCellText() }
+                .filter { it.isNotBlank() }
+                .toList()
+
+        if (cells.size < 2) {
+            null
+        } else {
+            rowMatch.range.first to
+                FddbNutrientRow(label = cells[0].toNutrientLabel(), value = cells[1])
+        }
+    }.toList()
+
+private fun String.sidNutrientRows(): List<Pair<Int, FddbNutrientRow>> =
+    SidRowRegex.findAll(this).mapNotNull { match ->
+        val label = match.groupValues[1].toNutrientCellText().toNutrientLabel()
+        val value = match.groupValues[2].toNutrientCellText()
+        if (label.isBlank() || value.isBlank()) {
+            null
+        } else {
+            match.range.first to FddbNutrientRow(label = label, value = value)
+        }
+    }.toList()
+
+private fun String.toNutrientCellText(): String =
+    stripTags().decodeHtml().replace(Regex("""\s+"""), " ").trim()
+
+private fun String.toNutrientLabel(): String = trim().trimEnd(':').trim()
 
 private fun List<String>.findServingUnit(): String {
     val joined = joinToString(" ")
@@ -167,33 +208,16 @@ private fun List<FddbPortion>.findServingWeight(): Double? =
             ServingLabels.any { portion.label.contains(it, ignoreCase = true) }
     }?.amount
 
-private fun List<String>.nutrient(vararg labels: String): NutrientValue {
+private fun List<FddbNutrientRow>.nutrient(vararg labels: String): NutrientValue {
     val value =
-        labels.firstNotNullOfOrNull { label ->
-            valueAfterLabel(label)
+        firstNotNullOfOrNull { row ->
+            if (labels.any { label -> row.label.equals(label, ignoreCase = true) }) {
+                row.value.parseFddbNumber()
+            } else {
+                null
+            }
         }
     return NutrientValue.from(value)
-}
-
-private fun List<String>.valueAfterLabel(label: String): Double? {
-    forEachIndexed { index, line ->
-        val labelIndex = line.indexOf(label, ignoreCase = true)
-        if (labelIndex == -1) {
-            return@forEachIndexed
-        }
-
-        line.drop(labelIndex + label.length).parseFddbNumber()?.let { return it }
-
-        for (next in index + 1..minOf(index + 3, lastIndex)) {
-            val nextLine = this[next]
-            if (nextLine.isUnknown()) {
-                return null
-            }
-            nextLine.parseFddbNumber()?.let { return it }
-        }
-    }
-
-    return null
 }
 
 private fun String.isUnknown(): Boolean =
@@ -215,6 +239,24 @@ private val PortionRegex =
     Regex("""^(.+?)\s*\(\s*([-+]?\d+(?:[,.]\d+)?)\s*(g|ml)\s*\)$""", RegexOption.IGNORE_CASE)
 
 private val BasePortionRegex = Regex("""^100\s*(?:g|ml)$""", RegexOption.IGNORE_CASE)
+
+private val TableRowRegex =
+    Regex(
+        """<\s*tr\b[^>]*>(.*?)</\s*tr\s*>""",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+
+private val TableCellRegex =
+    Regex(
+        """<\s*t[dh]\b[^>]*>(.*?)</\s*t[dh]\s*>""",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
+
+private val SidRowRegex =
+    Regex(
+        """<\s*div\b[^>]*>\s*<\s*div\b[^>]*\bclass\s*=\s*["'][^"']*\bsidrow\b[^"']*["'][^>]*>(.*?)</\s*div\s*>\s*<\s*div\b[^>]*>(.*?)</\s*div\s*>\s*</\s*div\s*>""",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
 
 private val PackageLabels =
     listOf(

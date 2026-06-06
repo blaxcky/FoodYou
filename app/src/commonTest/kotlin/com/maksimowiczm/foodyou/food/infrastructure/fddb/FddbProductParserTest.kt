@@ -72,6 +72,30 @@ class FddbProductParserTest {
         )
     }
 
+    @Test
+    fun parsesProteinFromSidrowInsteadOfNearbyUploaderName() {
+        val product = parser.parse(ProteinRiegelFixture)
+
+        assertEquals("Protein Riegel, Schoko Orange", product.name)
+        assertEquals("Rühls Bestes", product.brand)
+        assertEquals("714824380957", product.barcode)
+        assertEquals(55.0, product.servingWeight)
+        assertEquals(390.0, product.nutritionFacts.energy.value)
+        assertEquals(33.0, product.nutritionFacts.proteins.value)
+        assertEquals(33.0, product.nutritionFacts.carbohydrates.value)
+        assertEquals(2.5, product.nutritionFacts.sugars.value)
+        assertEquals(14.0, product.nutritionFacts.fats.value)
+        assertEquals(0.98, product.nutritionFacts.salt.value)
+    }
+
+    @Test
+    fun matchesNutrientLabelsExactly() {
+        val product = parser.parse(VitaminB12OnlyFixture)
+
+        assertEquals(NutrientValue.Incomplete(null), product.nutritionFacts.vitaminB1)
+        assertEquals(12.0, product.nutritionFacts.vitaminB12.value)
+    }
+
     private companion object {
         const val Fixture =
             """
@@ -156,6 +180,67 @@ class FddbProductParserTest {
                     <p>Scheibe (30 g)</p>
                     <p>Riegel (25,5 g)</p>
                     <p>Glas (200 ml)</p>
+                </body>
+            </html>
+            """
+
+        const val ProteinRiegelFixture =
+            """
+            <html>
+                <body>
+                    <h1 id="fddb-headline1">Protein Riegel, Schoko Orange</h1>
+                    <h2 id="fddb-headline2"><a>R&uuml;hls Bestes</a></h2>
+                    <a href="/foto.html">
+                        <img title="Hochgeladen von: maximilian1405" alt="Hochgeladen von: maximilian1405">
+                    </a>
+                    <a>Hochgeladen von: maximilian1405</a>
+                    <p>Datenquelle: Extern. EAN: 714824380957</p>
+                    <h2>Nährwerte für 100 g</h2>
+                    <div style="background-color:#f0f5f9;padding:2px 4px;">
+                        <div class="sidrow"><a href="/db/de/lexikon/brennwert/index.html">Brennwert</a></div>
+                        <div>1633 kj</div>
+                    </div>
+                    <div style="padding:2px 4px;">
+                        <div class="sidrow"><span>Kalorien</span></div>
+                        <div>390 kcal</div>
+                    </div>
+                    <div style="background-color:#f0f5f9;padding:2px 4px;">
+                        <div class="sidrow"><a href="/db/de/lexikon/protein/index.html">Protein</a></div>
+                        <div>33 g</div>
+                    </div>
+                    <div style="padding:2px 4px;">
+                        <div class="sidrow"><a href="/db/de/lexikon/kohlenhydrate/index.html">Kohlenhydrate</a></div>
+                        <div>33 g</div>
+                    </div>
+                    <div style="background-color:#f0f5f9;padding:2px 4px;">
+                        <div class="sidrow"><a href="/db/de/lexikon/information_zucker/index.html">davon Zucker</a></div>
+                        <div>2,5 g</div>
+                    </div>
+                    <div style="padding:2px 4px;">
+                        <div class="sidrow"><a href="/db/de/lexikon/fett/index.html">Fett</a></div>
+                        <div>14 g</div>
+                    </div>
+                    <h2>Mineralstoffe</h2>
+                    <div style="background-color:#f0f5f9;padding:2px 4px;">
+                        <div class="sidrow"><a href="/db/de/lexikon/information_mineralstoff-natrium/index.html">Salz</a></div>
+                        <div>0,98 g</div>
+                    </div>
+                    <p>100 g (100 g)</p>
+                    <p>Riegel (55 g)</p>
+                </body>
+            </html>
+            """
+
+        const val VitaminB12OnlyFixture =
+            """
+            <html>
+                <body>
+                    <h1 id="fddb-headline1">Vitamin Test</h1>
+                    <h3>Nährwerte für 100 g</h3>
+                    <table>
+                        <tr><td>Kalorien</td><td>10 kcal</td></tr>
+                        <tr><td>Vitamin B12</td><td>12 &micro;g</td></tr>
+                    </table>
                 </body>
             </html>
             """
