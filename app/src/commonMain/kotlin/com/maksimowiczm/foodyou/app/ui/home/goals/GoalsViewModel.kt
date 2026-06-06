@@ -56,34 +56,6 @@ internal class GoalsViewModel(
         viewModelScope.launch { settingsRepository.update { copy(expandGoalCard = expand) } }
     }
 
-    fun showNextGoalDisplayMode() {
-        showGoalDisplayMode(offset = 1)
-    }
-
-    fun showPreviousGoalDisplayMode() {
-        showGoalDisplayMode(offset = -1)
-    }
-
-    private fun showGoalDisplayMode(offset: Int) {
-        viewModelScope.launch {
-            settingsRepository.update {
-                val modes =
-                    if ((dietEnergyDeficitKcal ?: 0.0) > 0.0) {
-                        listOf(
-                            SettingsGoalDisplayMode.Normal,
-                            SettingsGoalDisplayMode.Optimized,
-                            SettingsGoalDisplayMode.Diet,
-                        )
-                    } else {
-                        listOf(SettingsGoalDisplayMode.Normal, SettingsGoalDisplayMode.Optimized)
-                    }
-                val currentIndex = modes.indexOf(goalDisplayMode).takeIf { it >= 0 } ?: 0
-                val nextIndex = (currentIndex + offset).floorMod(modes.size)
-                copy(goalDisplayMode = modes[nextIndex])
-            }
-        }
-    }
-
     fun setGoalDisplayMode(goalDisplayMode: SettingsGoalDisplayMode) {
         viewModelScope.launch {
             settingsRepository.update { copy(goalDisplayMode = goalDisplayMode) }
@@ -348,5 +320,3 @@ private fun GoalDisplayMode.summary(
             ),
     )
 }
-
-private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other

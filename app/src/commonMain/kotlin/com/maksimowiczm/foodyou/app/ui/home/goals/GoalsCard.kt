@@ -1,13 +1,9 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -45,7 +41,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
@@ -96,8 +91,6 @@ import foodyou.app.generated.resources.weekly_reached
 import foodyou.app.generated.resources.weekly_weight_gained
 import foodyou.app.generated.resources.weekly_weight_lost
 import foodyou.app.generated.resources.weekly_so_far
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlin.math.abs
@@ -109,7 +102,6 @@ import org.koin.compose.viewmodel.koinViewModel
 
 private val GoalsCardShape = RoundedCornerShape(24.dp)
 private val GoalsCardColor = Color(0xFFFFFFFF)
-private val GoalDisplayPageSpacing = 12.dp
 private val GoalsTextColor = Color(0xFF202124)
 private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE4EEF5)
@@ -165,8 +157,6 @@ internal fun GoalsCard(
             fatsGoal = model.fatsGoal,
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
-            onShowNextGoalDisplayMode = viewModel::showNextGoalDisplayMode,
-            onShowPreviousGoalDisplayMode = viewModel::showPreviousGoalDisplayMode,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             modifier = modifier,
         )
@@ -220,8 +210,6 @@ internal fun GoalsCard(
     fatsGoal: Int,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onShowNextGoalDisplayMode: () -> Unit = {},
-    onShowPreviousGoalDisplayMode: () -> Unit = {},
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -247,15 +235,6 @@ internal fun GoalsCard(
 
     LaunchedEffect(goalDisplayMode, availableGoalDisplayModes) {
         displayedGoalDisplayMode = goalDisplayMode.availableOrNormal(availableGoalDisplayModes)
-    }
-
-    fun showDisplayedGoalDisplayMode(offset: Int): GoalDisplayMode {
-        displayedGoalDisplayMode =
-            displayedGoalDisplayMode.goalDisplayModeAtOffset(
-                availableGoalDisplayModes = availableGoalDisplayModes,
-                offset = offset,
-            )
-        return displayedGoalDisplayMode
     }
 
     Column(modifier = modifier) {
@@ -286,12 +265,6 @@ internal fun GoalsCard(
             showEnergyGoalValue = showEnergyGoalValue,
             goalDisplayMode = displayedGoalDisplayMode,
             goalDisplaySummaries = availableGoalDisplaySummaries,
-            onShowNextGoalDisplayMode = {
-                onSelectGoalDisplayMode(showDisplayedGoalDisplayMode(offset = 1))
-            },
-            onShowPreviousGoalDisplayMode = {
-                onSelectGoalDisplayMode(showDisplayedGoalDisplayMode(offset = -1))
-            },
             onClick = onClick,
             onLongClick = onLongClick,
             modifier = Modifier.fillMaxWidth(),
@@ -706,8 +679,6 @@ private fun CaloriesOverview(
     showEnergyGoalValue: Boolean,
     goalDisplayMode: GoalDisplayMode,
     goalDisplaySummaries: List<GoalDisplaySummaryModel>,
-    onShowNextGoalDisplayMode: () -> Unit,
-    onShowPreviousGoalDisplayMode: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -726,67 +697,17 @@ private fun CaloriesOverview(
                 )
         }
     val selectedIndex = summaries.indexOfFirst { it.mode == goalDisplayMode }.coerceAtLeast(0)
-    val previousSummary = summaries[(selectedIndex - 1).floorMod(summaries.size)]
     val currentSummary = summaries[selectedIndex]
-    val nextSummary = summaries[(selectedIndex + 1).floorMod(summaries.size)]
-    var offsetPx by remember { mutableFloatStateOf(0f) }
-    val animationScope = rememberCoroutineScope()
 
-    BoxWithConstraints(
+    Box(
         modifier =
             modifier
                 .clip(GoalsCardShape)
                 .background(Color.Transparent)
     ) {
-        val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
-        val pageSpacingPx = with(LocalDensity.current) { GoalDisplayPageSpacing.toPx() }
-        val pageDistancePx = widthPx + pageSpacingPx
-        val swipeEnabled = summaries.size > 1 && widthPx > 0f
-
         Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .detectGoalDisplayModeSwipe(
-                        enabled = swipeEnabled,
-                        offsetPx = offsetPx,
-                        pageDistancePx = pageDistancePx,
-                        onOffsetChange = { offsetPx = it },
-                        onSwipeLeft = onShowNextGoalDisplayMode,
-                        onSwipeRight = onShowPreviousGoalDisplayMode,
-                        animationScope = animationScope,
-                    )
+            modifier = Modifier.fillMaxWidth()
         ) {
-            if (swipeEnabled) {
-                CaloriesOverviewPageCard(
-                    energy = energy,
-                    burnedEnergy = burnedEnergy,
-                    burnedEnergyDelta = burnedEnergyDelta,
-                    netEnergy = netEnergy,
-                    summary = previousSummary,
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .offset { IntOffset((offsetPx - pageDistancePx).roundToInt(), 0) },
-                    footer = footer,
-                )
-                CaloriesOverviewPageCard(
-                    energy = energy,
-                    burnedEnergy = burnedEnergy,
-                    burnedEnergyDelta = burnedEnergyDelta,
-                    netEnergy = netEnergy,
-                    summary = nextSummary,
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .offset { IntOffset((offsetPx + pageDistancePx).roundToInt(), 0) },
-                    footer = footer,
-                )
-            }
             CaloriesOverviewPageCard(
                 energy = energy,
                 burnedEnergy = burnedEnergy,
@@ -795,10 +716,7 @@ private fun CaloriesOverview(
                 summary = currentSummary,
                 onClick = onClick,
                 onLongClick = onLongClick,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .offset { IntOffset(offsetPx.roundToInt(), 0) },
+                modifier = Modifier.fillMaxWidth(),
                 footer = footer,
             )
         }
@@ -1169,17 +1087,6 @@ internal fun GoalDisplayMode.availableOrNormal(
         GoalDisplayMode.Normal
     }
 
-internal fun GoalDisplayMode.goalDisplayModeAtOffset(
-    availableGoalDisplayModes: List<GoalDisplayMode>,
-    offset: Int,
-): GoalDisplayMode {
-    if (availableGoalDisplayModes.isEmpty()) return GoalDisplayMode.Normal
-    val currentIndex = availableGoalDisplayModes.indexOf(this).takeIf { it >= 0 } ?: 0
-    return availableGoalDisplayModes[
-        (currentIndex + offset).floorMod(availableGoalDisplayModes.size)
-    ]
-}
-
 private fun GoalDisplaySummaryModel.availableForGoalDisplayMode(
     dietGoalDisplayModeEnabled: Boolean
 ): Boolean =
@@ -1210,88 +1117,8 @@ private fun GoalDisplayMode.accentColor(): Color =
         GoalDisplayMode.Diet -> DietGoalAccentColor
     }
 
-private fun Modifier.detectGoalDisplayModeSwipe(
-    enabled: Boolean,
-    offsetPx: Float,
-    pageDistancePx: Float,
-    onOffsetChange: (Float) -> Unit,
-    onSwipeLeft: () -> Unit,
-    onSwipeRight: () -> Unit,
-    animationScope: CoroutineScope,
-): Modifier =
-    pointerInput(enabled, pageDistancePx, onSwipeLeft, onSwipeRight) {
-        if (!enabled) return@pointerInput
-        val threshold = 48.dp.toPx()
-        val maxDrag = pageDistancePx * 0.92f
-        var currentOffset = offsetPx
-
-        detectHorizontalDragGestures(
-            onDragStart = {
-                currentOffset = offsetPx
-            },
-            onDragEnd = {
-                val target =
-                    when {
-                        currentOffset < -threshold -> -pageDistancePx
-                        currentOffset > threshold -> pageDistancePx
-                        else -> 0f
-                    }
-                animationScope.launch {
-                    val animationStart =
-                        when {
-                            target < 0f -> {
-                                onSwipeLeft()
-                                currentOffset + pageDistancePx
-                            }
-                            target > 0f -> {
-                                onSwipeRight()
-                                currentOffset - pageDistancePx
-                            }
-                            else -> currentOffset
-                        }
-                    onOffsetChange(animationStart)
-
-                    val animatedOffset = Animatable(animationStart)
-                    animatedOffset.animateTo(
-                        targetValue = 0f,
-                        animationSpec =
-                            spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow,
-                            ),
-                    ) {
-                        onOffsetChange(value)
-                    }
-                }
-            },
-            onDragCancel = {
-                animationScope.launch {
-                    val animatedOffset = Animatable(currentOffset)
-                    animatedOffset.animateTo(
-                        targetValue = 0f,
-                        animationSpec =
-                            spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow,
-                            ),
-                    ) {
-                        onOffsetChange(value)
-                    }
-                }
-            },
-            onHorizontalDrag = { change, dragAmount ->
-                change.consume()
-                val nextOffset = (currentOffset + dragAmount).coerceIn(-maxDrag, maxDrag)
-                currentOffset = nextOffset
-                onOffsetChange(nextOffset)
-            },
-        )
-    }
-
 private fun Dp.coerceIn(minimumValue: Dp, maximumValue: Dp): Dp =
     coerceAtLeast(minimumValue).coerceAtMost(maximumValue)
-
-private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
 
 @Composable
 private fun SideMetric(
