@@ -220,28 +220,33 @@ internal fun GoalOverviewCard(
             )
         }
 
-    CaloriesOverview(
-        energy = model.energy,
-        burnedEnergy = model.burnedEnergy,
-        burnedEnergyDelta = null,
-        netEnergy = model.netEnergy,
-        energyGoal = model.energyGoal,
-        showEnergyGoalValue = model.showEnergyGoalValue,
-        goalCardView = GoalCardView.Overview,
-        goalDisplayMode = model.goalDisplayMode.availableOrNormal(summaries.map { it.mode }),
-        goalDisplaySummaries = summaries,
-        dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
-        onClick = { onClick(homeState.selectedDate.toEpochDays()) },
-        onLongClick = onLongClick,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        MacroGoalsFooter(
-            proteins = model.proteins,
-            proteinsGoal = model.proteinsGoal,
-            carbohydrates = model.carbohydrates,
-            carbohydratesGoal = model.carbohydratesGoal,
-            fats = model.fats,
-            fatsGoal = model.fatsGoal,
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = GoalCardView.Overview.label(),
+                style = MaterialTheme.typography.titleMedium,
+                color = GoalsTextColor,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        CaloriesOverview(
+            energy = model.energy,
+            burnedEnergy = model.burnedEnergy,
+            burnedEnergyDelta = null,
+            netEnergy = model.netEnergy,
+            energyGoal = model.energyGoal,
+            showEnergyGoalValue = model.showEnergyGoalValue,
+            goalCardView = GoalCardView.Overview,
+            goalDisplayMode = model.goalDisplayMode.availableOrNormal(summaries.map { it.mode }),
+            goalDisplaySummaries = summaries,
+            dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
+            onClick = { onClick(homeState.selectedDate.toEpochDays()) },
+            onLongClick = onLongClick,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -990,7 +995,6 @@ private fun GoalComparisonItem(
     val remaining = target - netEnergy
     val overflow = remaining < 0
     val remainingValue = abs(remaining)
-    val reached = summary?.let { goalReachedPercentage(netEnergy, percentageGoal) } ?: 0
     val progress = summary?.let { (netEnergy.toFloat() / percentageGoal).coerceIn(0f, 1f) } ?: 0f
     val contentAlpha = if (enabled) 1f else 0.46f
 
@@ -1061,23 +1065,6 @@ private fun GoalComparisonItem(
             color = if (enabled && overflow) GoalsErrorColor else GoalsMutedTextColor,
             style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp, lineHeight = 14.sp),
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text =
-                if (enabled) {
-                    stringResource(Res.string.goal_reached_percentage, reached)
-                } else {
-                    ""
-                },
-            color = GoalsMutedTextColor,
-            style =
-                MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = numberFontFamily,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
-                ),
-            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
