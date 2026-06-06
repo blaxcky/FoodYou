@@ -1763,10 +1763,11 @@ private fun SemiCircleGauge(
         )
         val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
         if (coercedOverflowProgress > 0f) {
+            val overflowSweepAngle = 270f * coercedOverflowProgress
             drawArc(
                 color = GoalsErrorColor,
-                startAngle = 45f,
-                sweepAngle = -270f * coercedOverflowProgress,
+                startAngle = 45f - overflowSweepAngle,
+                sweepAngle = overflowSweepAngle,
                 useCenter = false,
                 topLeft = topLeft,
                 size = arcSize,
