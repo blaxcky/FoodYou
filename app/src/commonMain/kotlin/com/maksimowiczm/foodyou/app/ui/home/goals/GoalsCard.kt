@@ -97,9 +97,10 @@ import foodyou.app.generated.resources.weekly_so_far
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
 import kotlin.math.abs
-import kotlin.math.atan
 import kotlin.math.ceil
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -1781,10 +1782,18 @@ private fun SemiCircleGauge(
     Canvas(modifier = modifier) {
         val strokeWidth = 10.dp.toPx()
         val arcDiameter = diameter.toPx()
-        val capSweepAngle =
-            Math.toDegrees(atan((strokeWidth / arcDiameter).toDouble())).toFloat()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
+        val center = Offset(topLeft.x + arcDiameter / 2f, topLeft.y + arcDiameter / 2f)
+        val radius = arcDiameter / 2f
+
+        fun arcPoint(angle: Float): Offset {
+            val radians = Math.toRadians(angle.toDouble())
+            return Offset(
+                x = center.x + radius * cos(radians).toFloat(),
+                y = center.y + radius * sin(radians).toFloat(),
+            )
+        }
 
         drawArc(
             color = GoalsTrackColor,
@@ -1805,19 +1814,34 @@ private fun SemiCircleGauge(
         val progressSweepAngle = 270f * visibleProgress
         val progressOverflowGap =
             if (visibleProgress > 0f && coercedOverflowProgress > 0f) {
-                (visibleOverflowGapAngle + capSweepAngle * 2f).coerceAtMost(progressSweepAngle)
+                visibleOverflowGapAngle.coerceAtMost(progressSweepAngle)
             } else {
                 0f
             }
-        drawArc(
-            color = progressColor,
-            startAngle = 135f,
-            sweepAngle = progressSweepAngle - progressOverflowGap,
-            useCenter = false,
-            topLeft = topLeft,
-            size = arcSize,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-        )
+        val hasOverflowGap = progressOverflowGap > 0f
+        val progressDrawSweepAngle = progressSweepAngle - progressOverflowGap
+        if (progressDrawSweepAngle > 0f) {
+            drawArc(
+                color = progressColor,
+                startAngle = 135f,
+                sweepAngle = progressDrawSweepAngle,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style =
+                    Stroke(
+                        width = strokeWidth,
+                        cap = if (hasOverflowGap) StrokeCap.Butt else StrokeCap.Round,
+                    ),
+            )
+            if (hasOverflowGap) {
+                drawCircle(
+                    color = progressColor,
+                    radius = strokeWidth / 2f,
+                    center = arcPoint(135f),
+                )
+            }
+        }
         if (coercedOverflowProgress > 0f) {
             val overflowSweepAngle = 270f * coercedOverflowProgress
             drawArc(
@@ -1827,8 +1851,19 @@ private fun SemiCircleGauge(
                 useCenter = false,
                 topLeft = topLeft,
                 size = arcSize,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                style =
+                    Stroke(
+                        width = strokeWidth,
+                        cap = if (hasOverflowGap) StrokeCap.Butt else StrokeCap.Round,
+                    ),
             )
+            if (hasOverflowGap) {
+                drawCircle(
+                    color = GoalsErrorColor,
+                    radius = strokeWidth / 2f,
+                    center = arcPoint(45f),
+                )
+            }
         }
     }
 }
