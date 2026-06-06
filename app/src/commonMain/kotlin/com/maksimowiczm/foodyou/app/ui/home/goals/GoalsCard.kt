@@ -996,6 +996,8 @@ private fun GoalComparisonItem(
     val overflow = remaining < 0
     val remainingValue = abs(remaining)
     val progress = summary?.let { (netEnergy.toFloat() / percentageGoal).coerceIn(0f, 1f) } ?: 0f
+    val overflowProgress =
+        summary?.let { calorieOverflowProgress(netEnergy, percentageGoal) } ?: 0f
     val contentAlpha = if (enabled) 1f else 0.46f
     val remainingColor = if (enabled && overflow) GoalsErrorColor else GoalsTextColor
     val targetColor = if (target < 0) GoalsErrorColor else GoalsMutedTextColor
@@ -1055,7 +1057,8 @@ private fun GoalComparisonItem(
             progress = progress,
             trackColor = GoalsTrackColor,
             color = accentColor,
-            overflow = enabled && overflow,
+            overflow = false,
+            overflowProgress = if (enabled) overflowProgress else 0f,
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
@@ -1140,6 +1143,7 @@ private fun CaloriesOverviewPage(
     val percentageEnergyGoal = summary.percentageEnergyGoal.coerceAtLeast(1)
     val reached = goalReachedPercentage(netEnergy, percentageEnergyGoal)
     val progress = (netEnergy.toFloat() / percentageEnergyGoal).coerceIn(0f, 1f)
+    val overflowProgress = calorieOverflowProgress(netEnergy, percentageEnergyGoal)
     val overflow = left < 0
     val remainingValue = if (overflow) -left else left
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
@@ -1172,6 +1176,7 @@ private fun CaloriesOverviewPage(
                             },
                         label = remainingLabel,
                         progress = progress,
+                        overflowProgress = overflowProgress,
                         valueColor = valueColor,
                         diameter = gaugeDiameter,
                     )
@@ -1251,6 +1256,7 @@ private fun CaloriesOverviewPage(
                             },
                         label = remainingLabel,
                         progress = progress,
+                        overflowProgress = overflowProgress,
                         valueColor = valueColor,
                         diameter = gaugeDiameter,
                     )
@@ -1514,6 +1520,11 @@ private fun GoalDisplayMode.icon(): androidx.compose.ui.graphics.vector.ImageVec
 private fun Dp.coerceIn(minimumValue: Dp, maximumValue: Dp): Dp =
     coerceAtLeast(minimumValue).coerceAtMost(maximumValue)
 
+private fun calorieOverflowProgress(netEnergy: Int, percentageEnergyGoal: Int): Float {
+    val goal = percentageEnergyGoal.coerceAtLeast(1)
+    return ((netEnergy - goal).toFloat() / goal).coerceIn(0f, 1f)
+}
+
 @Composable
 private fun SideMetric(
     value: String,
@@ -1667,6 +1678,7 @@ private fun GaugeMetric(
     value: String,
     label: String,
     progress: Float,
+    overflowProgress: Float,
     valueColor: Color,
     diameter: Dp,
     modifier: Modifier = Modifier,
@@ -1679,6 +1691,7 @@ private fun GaugeMetric(
     ) {
         SemiCircleGauge(
             progress = progress,
+            overflowProgress = overflowProgress,
             diameter = diameter,
             modifier = Modifier.size(width = diameter, height = diameter - 7.dp),
         )
@@ -1718,7 +1731,12 @@ private fun GaugeMetric(
 }
 
 @Composable
-private fun SemiCircleGauge(progress: Float, diameter: Dp, modifier: Modifier = Modifier) {
+private fun SemiCircleGauge(
+    progress: Float,
+    overflowProgress: Float,
+    diameter: Dp,
+    modifier: Modifier = Modifier,
+) {
     Canvas(modifier = modifier) {
         val strokeWidth = 10.dp.toPx()
         val arcDiameter = diameter.toPx()
@@ -1743,6 +1761,18 @@ private fun SemiCircleGauge(progress: Float, diameter: Dp, modifier: Modifier = 
             size = arcSize,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
+        val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
+        if (coercedOverflowProgress > 0f) {
+            drawArc(
+                color = GoalsErrorColor,
+                startAngle = 45f,
+                sweepAngle = -270f * coercedOverflowProgress,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+            )
+        }
     }
 }
 
@@ -1844,9 +1874,11 @@ private fun MacroProgressBar(
     trackColor: Color,
     color: Color,
     overflow: Boolean,
+    overflowProgress: Float = 0f,
     modifier: Modifier = Modifier,
 ) {
     val barShape = RoundedCornerShape(50)
+    val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
     Box(
         modifier =
             modifier
@@ -1860,8 +1892,24 @@ private fun MacroProgressBar(
                 Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
                     .height(6.dp)
                     .clip(barShape)
-                    .background(if (overflow) GoalsErrorColor else color)
+                    .background(
+                        if (overflow && coercedOverflowProgress == 0f) {
+                            GoalsErrorColor
+                        } else {
+                            color
+                        }
+                    )
         )
+        if (coercedOverflowProgress > 0f) {
+            Box(
+                modifier =
+                    Modifier.align(Alignment.CenterEnd)
+                        .fillMaxWidth(coercedOverflowProgress)
+                        .height(6.dp)
+                        .clip(barShape)
+                        .background(GoalsErrorColor)
+            )
+        }
     }
 }
 
