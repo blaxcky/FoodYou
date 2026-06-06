@@ -108,8 +108,8 @@ private val GoalsCardColor = Color(0xFFFFFFFF)
 private val GoalsTextColor = Color(0xFF202124)
 private val GoalsMutedTextColor = Color(0xFF5F6368)
 private val GoalsTrackColor = Color(0xFFE4EEF5)
-private val GoalsProgressColor = Color(0xFF45AEE6)
-private val GoalsErrorColor = Color(0xFFE25555)
+private val GoalsProgressColor = Color(0xFF006B9A)
+private val GoalsErrorColor = Color(0xFFC51F1F)
 private val OverviewGoalAccentColor = Color(0xFF537188)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 private val DietGoalAccentColor = Color(0xFFC98A00)
@@ -1082,6 +1082,7 @@ private fun GoalComparisonItem(
             color = accentColor,
             overflow = false,
             overflowProgress = if (enabled) overflowProgress else 0f,
+            overflowGapWidth = 2.dp,
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
@@ -1765,6 +1766,7 @@ private fun SemiCircleGauge(
     diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val overflowGapAngle = 5f
     Canvas(modifier = modifier) {
         val strokeWidth = 10.dp.toPx()
         val arcDiameter = diameter.toPx()
@@ -1787,10 +1789,17 @@ private fun SemiCircleGauge(
             } else {
                 progress.coerceIn(0f, 1f)
             }
+        val progressSweepAngle = 270f * visibleProgress
+        val progressOverflowGap =
+            if (visibleProgress > 0f && coercedOverflowProgress > 0f) {
+                overflowGapAngle.coerceAtMost(progressSweepAngle)
+            } else {
+                0f
+            }
         drawArc(
             color = progressColor,
             startAngle = 135f,
-            sweepAngle = 270f * visibleProgress,
+            sweepAngle = progressSweepAngle - progressOverflowGap,
             useCenter = false,
             topLeft = topLeft,
             size = arcSize,
@@ -1910,6 +1919,7 @@ private fun MacroProgressBar(
     color: Color,
     overflow: Boolean,
     overflowProgress: Float = 0f,
+    overflowGapWidth: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val barShape = RoundedCornerShape(50)
@@ -1920,7 +1930,8 @@ private fun MacroProgressBar(
         } else {
             progress.coerceIn(0f, 1f)
         }
-    Box(
+    val density = LocalDensity.current
+    BoxWithConstraints(
         modifier =
             modifier
                 .width(132.dp)
@@ -1928,9 +1939,16 @@ private fun MacroProgressBar(
                 .clip(barShape)
                 .background(trackColor)
     ) {
+        val overflowGapProgress =
+            if (visibleProgress > 0f && coercedOverflowProgress > 0f && overflowGapWidth > 0.dp) {
+                with(density) { overflowGapWidth.toPx() / maxWidth.toPx() }
+                    .coerceIn(0f, visibleProgress)
+            } else {
+                0f
+            }
         Box(
             modifier =
-                Modifier.fillMaxWidth(visibleProgress)
+                Modifier.fillMaxWidth(visibleProgress - overflowGapProgress)
                     .height(6.dp)
                     .clip(barShape)
                     .background(
