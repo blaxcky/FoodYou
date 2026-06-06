@@ -1453,6 +1453,20 @@ private fun GoalDisplayModeButton(
     enabled: Boolean = true,
 ) {
     val accentColor = view.accentColor()
+    val neutral = view == GoalCardView.Normal
+    val selectedBackgroundColor =
+        if (neutral) {
+            Color.Transparent
+        } else {
+            accentColor.copy(alpha = 0.12f)
+        }
+    val selectedBorderColor =
+        if (neutral) {
+            NormalGoalComparisonBorderColor
+        } else {
+            accentColor.copy(alpha = 0.7f)
+        }
+    val selectedIconColor = if (neutral) GoalsMutedTextColor else accentColor
     val shape = RoundedCornerShape(50)
     Box(
         contentAlignment = Alignment.Center,
@@ -1460,10 +1474,10 @@ private fun GoalDisplayModeButton(
             modifier
                 .size(34.dp)
                 .clip(shape)
-                .background(if (selected) accentColor.copy(alpha = 0.12f) else Color.Transparent)
+                .background(if (selected) selectedBackgroundColor else Color.Transparent)
                 .then(
                     if (selected) {
-                        Modifier.border(1.dp, accentColor.copy(alpha = 0.7f), shape)
+                        Modifier.border(1.dp, selectedBorderColor, shape)
                     } else {
                         Modifier
                     }
@@ -1471,12 +1485,17 @@ private fun GoalDisplayModeButton(
                 .clickable(enabled = enabled) { onClick(view) },
     ) {
         Icon(
-            imageVector = view.icon(),
+            imageVector =
+                if (neutral) {
+                    Icons.Outlined.OutlinedLocalFireDepartment
+                } else {
+                    view.icon()
+                },
             contentDescription = contentDescription,
             tint =
                 when {
                     !enabled -> GoalsMutedTextColor.copy(alpha = 0.34f)
-                    selected -> accentColor
+                    selected -> selectedIconColor
                     else -> GoalsMutedTextColor.copy(alpha = 0.62f)
                 },
                 modifier =
