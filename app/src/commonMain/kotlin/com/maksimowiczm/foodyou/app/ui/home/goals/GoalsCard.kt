@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -562,58 +563,71 @@ private fun WeeklyBar(
 ) {
     val valueHeight = (day.energy.toFloat() / max).coerceIn(0.03f, 1f)
     val overflow = day.energy > day.goal && day.goal > 0
+    val barMaxHeight = 126.dp
+    val overflowSegmentGap = 2.dp
+    val allowedCaloriesColor = FatColor.copy(alpha = 0.42f)
 
     Column(
         modifier = modifier.fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Bottom,
     ) {
-        Text(
-            text = day.energy.toString().groupDigits(),
-            color = GoalsTextColor,
-            style = MaterialTheme.typography.labelMedium.copy(fontFamily = interNumberFontFamily()),
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(4.dp))
         Box(
             modifier =
                 Modifier.fillMaxWidth()
-                    .height(126.dp)
+                    .height(barMaxHeight + 24.dp)
                     .padding(horizontal = 2.dp),
             contentAlignment = Alignment.BottomCenter,
         ) {
-            if (overflow) {
-                val goalFraction = (day.goal.toFloat() / day.energy).coerceIn(0f, 1f)
-                Column(
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .fillMaxHeight(valueHeight)
-                            .align(Alignment.BottomCenter)
-                ) {
-                    Box(
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .weight(1f - goalFraction)
-                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                .background(Color(0xFFC57484))
-                    )
-                    Box(
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .weight(goalFraction)
-                                .clip(RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp))
-                                .background(FatColor)
-                    )
-                }
-            } else {
-                Box(
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .fillMaxHeight(valueHeight)
-                            .align(Alignment.BottomCenter)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(FatColor)
+            Column(
+                modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+            ) {
+                Text(
+                    text = day.energy.toString().groupDigits(),
+                    color = GoalsTextColor,
+                    style =
+                        MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = interNumberFontFamily()
+                        ),
+                    maxLines = 1,
                 )
+                Spacer(Modifier.height(4.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(barMaxHeight * valueHeight)) {
+                    if (overflow) {
+                        val goalFraction = (day.goal.toFloat() / day.energy).coerceIn(0f, 1f)
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .weight(1f - goalFraction)
+                                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                        .background(Color(0xFFC57484))
+                            )
+                            Spacer(Modifier.height(overflowSegmentGap))
+                            Box(
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .weight(goalFraction)
+                                        .clip(
+                                            RoundedCornerShape(
+                                                bottomStart = 6.dp,
+                                                bottomEnd = 6.dp,
+                                            )
+                                        )
+                                        .background(allowedCaloriesColor)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier =
+                                Modifier.fillMaxSize()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(FatColor)
+                        )
+                    }
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
