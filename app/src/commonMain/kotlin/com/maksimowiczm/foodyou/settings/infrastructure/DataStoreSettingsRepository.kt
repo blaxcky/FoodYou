@@ -38,8 +38,12 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             stepsCaloriesPerStepKcal = this[SettingsPreferencesKeys.stepsCaloriesPerStepKcal],
             healthConnectStepsEnabled =
                 this[SettingsPreferencesKeys.healthConnectStepsEnabled] ?: false,
+            healthConnectWeightEnabled =
+                this[SettingsPreferencesKeys.healthConnectWeightEnabled] ?: false,
             healthConnectStepsLastSyncedEpochSeconds =
                 this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds],
+            healthConnectWeightLastSyncedEpochSeconds =
+                this[SettingsPreferencesKeys.healthConnectWeightLastSyncedEpochSeconds],
             homeSyncHealthConnectEnabled =
                 this[SettingsPreferencesKeys.homeSyncHealthConnectEnabled] ?: true,
             homeSyncFddbDiaryEnabled =
@@ -72,8 +76,11 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setAppLaunchInfo(updated.appLaunchInfo)
         this[SettingsPreferencesKeys.stepsCaloriesPerStepKcal] = updated.stepsCaloriesPerStepKcal
         this[SettingsPreferencesKeys.healthConnectStepsEnabled] = updated.healthConnectStepsEnabled
+        this[SettingsPreferencesKeys.healthConnectWeightEnabled] = updated.healthConnectWeightEnabled
         this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds] =
             updated.healthConnectStepsLastSyncedEpochSeconds
+        this[SettingsPreferencesKeys.healthConnectWeightLastSyncedEpochSeconds] =
+            updated.healthConnectWeightLastSyncedEpochSeconds
         this[SettingsPreferencesKeys.homeSyncHealthConnectEnabled] =
             updated.homeSyncHealthConnectEnabled
         this[SettingsPreferencesKeys.homeSyncFddbDiaryEnabled] = updated.homeSyncFddbDiaryEnabled
@@ -230,8 +237,11 @@ private object SettingsPreferencesKeys {
     val energyFormat = intPreferencesKey("settings:energyFormat")
     val stepsCaloriesPerStepKcal = doublePreferencesKey("settings:stepsCaloriesPerStepKcal")
     val healthConnectStepsEnabled = booleanPreferencesKey("settings:healthConnectStepsEnabled")
+    val healthConnectWeightEnabled = booleanPreferencesKey("settings:healthConnectWeightEnabled")
     val healthConnectStepsLastSyncedEpochSeconds =
         longPreferencesKey("settings:healthConnectStepsLastSyncedEpochSeconds")
+    val healthConnectWeightLastSyncedEpochSeconds =
+        longPreferencesKey("settings:healthConnectWeightLastSyncedEpochSeconds")
     val homeSyncHealthConnectEnabled =
         booleanPreferencesKey("settings:homeSyncHealthConnectEnabled")
     val homeSyncFddbDiaryEnabled = booleanPreferencesKey("settings:homeSyncFddbDiaryEnabled")

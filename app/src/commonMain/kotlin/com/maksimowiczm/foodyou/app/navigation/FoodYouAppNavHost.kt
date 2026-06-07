@@ -43,6 +43,7 @@ import com.maksimowiczm.foodyou.app.ui.settings.SettingsScreen
 import com.maksimowiczm.foodyou.app.ui.settings.SynchronizationSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.sponsor.SponsorScreen
 import com.maksimowiczm.foodyou.app.ui.theme.ThemeScreen
+import com.maksimowiczm.foodyou.app.ui.weight.WeightReportScreen
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.from
@@ -98,7 +99,11 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                     }
                 },
                 onEditFoodClick = { navController.navigateSingleTop(UpdateProduct(it.id)) },
+                onWeightReportClick = { navController.navigateSingleTop(WeightReport) },
             )
+        }
+        forwardBackwardComposable<WeightReport> {
+            WeightReportScreen(onBack = { navController.popBackStackInclusive<WeightReport>() })
         }
         forwardBackwardComposable<Settings> {
             SettingsScreen(
@@ -462,6 +467,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object Home
 
 @Serializable private object Settings
+
+@Serializable private object WeightReport
 
 @Serializable private object PendingProducts
 

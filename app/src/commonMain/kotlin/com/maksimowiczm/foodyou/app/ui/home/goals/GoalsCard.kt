@@ -183,6 +183,7 @@ internal fun GoalsCard(
 @Composable
 internal fun WeeklyGoalsCard(
     homeState: HomeState,
+    onWeightClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
@@ -196,6 +197,7 @@ internal fun WeeklyGoalsCard(
             model = weekModel,
             expanded = expanded,
             onExpandedChange = viewModel::setExpandGoalsCard,
+            onWeightClick = onWeightClick,
             modifier = modifier,
         )
     }
@@ -454,6 +456,7 @@ private fun WeeklyGoalsContent(
     model: WeekSummaryModel,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
+    onWeightClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -482,7 +485,7 @@ private fun WeeklyGoalsContent(
                 if (expanded) {
                     WeeklyDetailsTable(model.days)
                     HorizontalDivider(color = GoalsTrackColor)
-                    WeeklySummaryFooter(model)
+                    WeeklySummaryFooter(model, onWeightClick = onWeightClick)
                 }
             }
         }
@@ -729,7 +732,11 @@ private fun WeeklyDetailsRow(
 }
 
 @Composable
-private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Modifier) {
+private fun WeeklySummaryFooter(
+    model: WeekSummaryModel,
+    onWeightClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val remaining = model.totalGoal - model.totalEnergy
     val absoluteRemaining = abs(remaining)
     val estimatedWeightKg = (absoluteRemaining / 7700.0).formatKgEstimate()
@@ -777,6 +784,7 @@ private fun WeeklySummaryFooter(model: WeekSummaryModel, modifier: Modifier = Mo
             icon = Icons.Filled.MonitorWeight,
             value = "$estimatedWeightKg kg",
             label = weightChangeLabel,
+            onClick = onWeightClick,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -819,6 +827,7 @@ private fun WeeklyFooterWeightEstimate(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
     label: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val text =
@@ -828,7 +837,10 @@ private fun WeeklyFooterWeightEstimate(
             append(label)
         }
 
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = modifier.clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
@@ -1580,6 +1592,16 @@ internal fun GoalDisplayMode.availableOrNormal(
     } else {
         GoalDisplayMode.Normal
     }
+
+internal fun GoalDisplayMode.goalDisplayModeAtOffset(
+    availableGoalDisplayModes: List<GoalDisplayMode>,
+    offset: Int,
+): GoalDisplayMode {
+    if (availableGoalDisplayModes.isEmpty()) return GoalDisplayMode.Normal
+    val currentIndex = availableGoalDisplayModes.indexOf(this).takeIf { it >= 0 } ?: 0
+    val targetIndex = (currentIndex + offset).mod(availableGoalDisplayModes.size)
+    return availableGoalDisplayModes[targetIndex]
+}
 
 private fun GoalDisplaySummaryModel.availableForGoalDisplayMode(
     dietGoalDisplayModeEnabled: Boolean

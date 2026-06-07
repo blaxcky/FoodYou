@@ -54,6 +54,8 @@ import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.MealEntity
 import com.maksimowiczm.foodyou.fooddiary.infrastructure.room.MeasurementEntity
 import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipDatabase
 import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntity
+import com.maksimowiczm.foodyou.weight.WeightDatabase
+import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntity
 
 @Database(
     entities =
@@ -81,6 +83,7 @@ import com.maksimowiczm.foodyou.sponsorship.infrastructure.room.SponsorshipEntit
             FddbImportQueueItemEntity::class,
             FddbDiarySyncEntryEntity::class,
             ProductPortionEntity::class,
+            DailyWeightEntryEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
     version = FoodYouDatabase.VERSION,
@@ -145,7 +148,8 @@ abstract class FoodYouDatabase :
     FoodSearchDatabase,
     FoodDiaryDatabase,
     ActivityDatabase,
-    SponsorshipDatabase {
+    SponsorshipDatabase,
+    WeightDatabase {
 
     override suspend fun <T> withTransaction(block: suspend DomainTransactionScope<T>.() -> T): T =
         useWriterConnection {
@@ -156,7 +160,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 39
+        const val VERSION = 40
 
         private val migrations: List<Migration> =
             listOf(
@@ -181,6 +185,7 @@ abstract class FoodYouDatabase :
                 FddbImportQueueMigration,
                 FddbDiarySyncEntryMigration,
                 ProductPortionMigration,
+                DailyWeightEntryMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -190,6 +195,27 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object DailyWeightEntryMigration : Migration(39, 40) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `DailyWeightEntry` (
+                `dateEpochDay` INTEGER NOT NULL,
+                `measuredEpochSeconds` INTEGER NOT NULL,
+                `weightKg` REAL NOT NULL,
+                `healthConnectRecordId` TEXT,
+                `isFoodYouRecord` INTEGER NOT NULL,
+                PRIMARY KEY(`dateEpochDay`)
+            )
+            """
+                .trimIndent()
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_DailyWeightEntry_measuredEpochSeconds` ON `DailyWeightEntry` (`measuredEpochSeconds`)"
+        )
     }
 }
 

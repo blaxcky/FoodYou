@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.app.ui.personalization.personalization
 import com.maksimowiczm.foodyou.app.ui.settings.SynchronizationSettingsViewModel
 import com.maksimowiczm.foodyou.app.ui.sponsor.sponsor
 import com.maksimowiczm.foodyou.app.ui.theme.theme
+import com.maksimowiczm.foodyou.app.ui.weight.weightReport
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -37,4 +38,5 @@ val uiModule = module {
     personalization()
     sponsor()
     theme()
+    weightReport()
 }
