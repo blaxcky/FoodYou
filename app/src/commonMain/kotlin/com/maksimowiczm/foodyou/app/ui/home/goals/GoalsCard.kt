@@ -561,11 +561,13 @@ private fun WeeklyBar(
     max: Int,
     modifier: Modifier = Modifier,
 ) {
-    val valueHeight = (day.energy.toFloat() / max).coerceIn(0.03f, 1f)
+    val valueHeight =
+        if (day.energy > 0) (day.energy.toFloat() / max).coerceIn(0.03f, 1f) else 0f
+    val goalHeight = if (day.goal > 0) (day.goal.toFloat() / max).coerceIn(0.03f, 1f) else 0f
     val overflow = day.energy > day.goal && day.goal > 0
     val barMaxHeight = 126.dp
     val overflowSegmentGap = 2.dp
-    val allowedCaloriesColor = FatColor.copy(alpha = 0.42f)
+    val targetCaloriesColor = FatColor.copy(alpha = 0.24f)
 
     Column(
         modifier = modifier.fillMaxHeight(),
@@ -579,6 +581,21 @@ private fun WeeklyBar(
                     .padding(horizontal = 2.dp),
             contentAlignment = Alignment.BottomCenter,
         ) {
+            Box(
+                modifier =
+                    Modifier.fillMaxWidth().height(barMaxHeight).align(Alignment.BottomCenter)
+            ) {
+                if (goalHeight > 0f) {
+                    Box(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .fillMaxHeight(goalHeight)
+                                .align(Alignment.BottomCenter)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(targetCaloriesColor)
+                    )
+                }
+            }
             Column(
                 modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -616,7 +633,7 @@ private fun WeeklyBar(
                                                 bottomEnd = 6.dp,
                                             )
                                         )
-                                        .background(allowedCaloriesColor)
+                                        .background(FatColor)
                             )
                         }
                     } else {
