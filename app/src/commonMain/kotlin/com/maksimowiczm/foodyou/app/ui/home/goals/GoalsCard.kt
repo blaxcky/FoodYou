@@ -1137,7 +1137,7 @@ private fun GoalComparisonItem(
             color = accentColor,
             overflow = false,
             overflowProgress = if (enabled) overflowProgress else 0f,
-            overflowGapWidth = 2.dp,
+            overflowGapWidth = 1.dp,
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
@@ -1842,7 +1842,7 @@ private fun SemiCircleGauge(
     diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val visibleOverflowGapAngle = 5f
+    val visibleOverflowGapAngle = 2.5f
     Canvas(modifier = modifier) {
         val strokeWidth = 10.dp.toPx()
         val arcDiameter = diameter.toPx()
@@ -2069,11 +2069,24 @@ private fun MacroProgressBar(
             } else {
                 0f
             }
+        val hasOverflowGap = overflowGapProgress > 0f
+        val progressShape =
+            if (hasOverflowGap) {
+                RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp)
+            } else {
+                barShape
+            }
+        val overflowShape =
+            if (hasOverflowGap) {
+                RoundedCornerShape(topEnd = 50.dp, bottomEnd = 50.dp)
+            } else {
+                barShape
+            }
         Box(
             modifier =
                 Modifier.fillMaxWidth(visibleProgress - overflowGapProgress)
                     .height(6.dp)
-                    .clip(barShape)
+                    .clip(progressShape)
                     .background(
                         if (overflow && coercedOverflowProgress == 0f) {
                             GoalsErrorColor
@@ -2088,7 +2101,7 @@ private fun MacroProgressBar(
                     Modifier.align(Alignment.CenterEnd)
                         .fillMaxWidth(coercedOverflowProgress)
                         .height(6.dp)
-                        .clip(barShape)
+                        .clip(overflowShape)
                         .background(GoalsErrorColor)
             )
         }
