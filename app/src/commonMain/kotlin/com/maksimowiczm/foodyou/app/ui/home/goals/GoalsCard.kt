@@ -1265,6 +1265,7 @@ private fun CaloriesOverviewPage(
                         overflowProgress = overflowProgress,
                         progressColor = summary.mode.accentColor(),
                         valueColor = valueColor,
+                        labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
                         diameter = gaugeDiameter,
                     )
 
@@ -1346,6 +1347,7 @@ private fun CaloriesOverviewPage(
                         overflowProgress = overflowProgress,
                         progressColor = summary.mode.accentColor(),
                         valueColor = valueColor,
+                        labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
                         diameter = gaugeDiameter,
                     )
                     Column(
@@ -1783,6 +1785,7 @@ private fun GaugeMetric(
     overflowProgress: Float,
     progressColor: Color,
     valueColor: Color,
+    labelColor: Color = GoalsMutedTextColor,
     diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -1820,7 +1823,7 @@ private fun GaugeMetric(
             Text(
                 text = label,
                 modifier = Modifier.padding(top = 8.dp),
-                color = GoalsMutedTextColor,
+                color = labelColor,
                 style =
                     MaterialTheme.typography.labelLarge.copy(
                         fontSize = 12.sp,
