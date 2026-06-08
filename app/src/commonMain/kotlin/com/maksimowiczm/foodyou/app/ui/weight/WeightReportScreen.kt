@@ -91,9 +91,6 @@ internal fun WeightReportContent(
             contentPadding = PaddingValues(12.dp),
         ) {
             item {
-                WeightChartCard(entries = state.chartEntries, modifier = Modifier.fillMaxWidth())
-            }
-            item {
                 CurrentWeightCard(
                     startWeightKg = state.startWeightKg,
                     currentWeightKg = state.todayWeightKg,
@@ -124,6 +121,9 @@ internal fun WeightReportContent(
                 item {
                     HistoryCard(entries = state.entries, modifier = Modifier.fillMaxWidth())
                 }
+            }
+            item {
+                WeightChartCard(entries = state.chartEntries, modifier = Modifier.fillMaxWidth())
             }
         }
     }

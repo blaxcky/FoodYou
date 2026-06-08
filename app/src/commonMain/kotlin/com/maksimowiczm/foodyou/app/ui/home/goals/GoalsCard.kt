@@ -101,6 +101,7 @@ import kotlinx.datetime.isoDayNumber
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import org.jetbrains.compose.resources.Font
@@ -1908,7 +1909,7 @@ private fun SemiCircleGauge(
         val radius = arcDiameter / 2f
 
         fun arcPoint(angle: Float): Offset {
-            val radians = Math.toRadians(angle.toDouble())
+            val radians = angle.toDouble() * PI / 180.0
             return Offset(
                 x = center.x + radius * cos(radians).toFloat(),
                 y = center.y + radius * sin(radians).toFloat(),

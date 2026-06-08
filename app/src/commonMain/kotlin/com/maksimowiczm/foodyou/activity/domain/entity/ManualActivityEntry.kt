@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.activity.domain.entity
 
+import kotlin.jvm.JvmInline
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 
