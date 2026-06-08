@@ -447,38 +447,33 @@ private fun BmiCard(bmi: Double, modifier: Modifier = Modifier) {
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Column {
-                    Text(
-                        text = "BMI",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = ReportText,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = bmiCategoryLabel(bmi),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ReportMutedText,
-                    )
-                }
+            Column(modifier = Modifier.width(74.dp)) {
+                Text(
+                    text = "BMI",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ReportMutedText,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Text(
                     text = formatOneDecimal(bmi),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     color = ReportText,
                     fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = bmiCategoryLabel(bmi),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ReportMutedText,
                 )
             }
             BmiScale(
                 bmi = bmi,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -486,13 +481,13 @@ private fun BmiCard(bmi: Double, modifier: Modifier = Modifier) {
 
 @Composable
 private fun BmiScale(bmi: Double, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(28.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(18.dp)) {
             val minBmi = 15.0
             val maxBmi = 40.0
             val markerBmi = bmi.coerceIn(minBmi, maxBmi)
             val y = size.height / 2f
-            val strokeWidth = 12.dp.toPx()
+            val strokeWidth = 8.dp.toPx()
 
             fun xFor(value: Double): Float =
                 (((value - minBmi) / (maxBmi - minBmi)).toFloat() * size.width)
@@ -529,9 +524,9 @@ private fun BmiScale(bmi: Double, modifier: Modifier = Modifier) {
             val markerX = xFor(markerBmi)
             drawLine(
                 color = Color.Black,
-                start = Offset(markerX, y - 13.dp.toPx()),
-                end = Offset(markerX, y + 13.dp.toPx()),
-                strokeWidth = 3.dp.toPx(),
+                start = Offset(markerX, y - 8.dp.toPx()),
+                end = Offset(markerX, y + 8.dp.toPx()),
+                strokeWidth = 2.dp.toPx(),
                 cap = StrokeCap.Round,
             )
         }
