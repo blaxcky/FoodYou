@@ -73,7 +73,7 @@ private val ReportGrid = Color(0xFFD7E2EB)
 private val ReportSoftButton = Color(0xFFD8ECFA)
 private val ReportCardShape = RoundedCornerShape(26.dp)
 private const val WeightAdjustRepeatStartMillis = 550L
-private const val WeightAdjustRepeatMillis = 350L
+private const val WeightAdjustRepeatMillis = 175L
 
 @Composable
 internal fun WeightReportScreen(
