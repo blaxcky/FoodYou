@@ -2,6 +2,8 @@ package com.maksimowiczm.foodyou.app.ui.weight
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,12 +36,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,6 +58,10 @@ import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import com.maksimowiczm.foodyou.weight.domain.usecase.calculateWeightGoalProgress
 import kotlin.math.abs
 import kotlin.math.round
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 private val ReportBackground = Color(0xFFEAF5FC)
@@ -59,6 +72,8 @@ private val ReportMutedText = Color(0xFF718292)
 private val ReportGrid = Color(0xFFD7E2EB)
 private val ReportSoftButton = Color(0xFFD8ECFA)
 private val ReportCardShape = RoundedCornerShape(26.dp)
+private const val WeightAdjustRepeatStartMillis = 550L
+private const val WeightAdjustRepeatMillis = 350L
 
 @Composable
 internal fun WeightReportScreen(
@@ -369,17 +384,50 @@ private fun WeightAdjustButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currentOnClick by rememberUpdatedState(onClick)
     Surface(
-        modifier = modifier.size(38.dp),
+        modifier =
+            modifier
+                .size(38.dp)
+                .weightAdjustPressHandler(enabled = enabled, onClick = { currentOnClick() })
+                .semantics {
+                    role = Role.Button
+                    if (!enabled) disabled()
+                    onClick {
+                        if (enabled) currentOnClick()
+                        enabled
+                    }
+                },
         shape = RoundedCornerShape(19.dp),
         color = if (enabled) ReportSoftButton else Color(0xFFEAF0F5),
         contentColor = if (enabled) ReportPrimaryDark else ReportMutedText,
     ) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxSize()) {
-            icon()
-        }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { icon() }
     }
 }
+
+private fun Modifier.weightAdjustPressHandler(enabled: Boolean, onClick: () -> Unit): Modifier =
+    pointerInput(enabled) {
+        if (!enabled) return@pointerInput
+        coroutineScope {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                onClick()
+                val repeatJob =
+                    launch {
+                        delay(WeightAdjustRepeatStartMillis)
+                        while (isActive) {
+                            onClick()
+                            delay(WeightAdjustRepeatMillis)
+                        }
+                    }
+                do {
+                    val event = awaitPointerEvent()
+                } while (event.changes.any { it.pressed })
+                repeatJob.cancel()
+            }
+        }
+    }
 
 @Composable
 private fun HealthConnectCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
