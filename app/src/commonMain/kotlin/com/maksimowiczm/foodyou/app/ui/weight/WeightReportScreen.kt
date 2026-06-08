@@ -135,6 +135,15 @@ internal fun WeightReportContent(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 )
             }
+            val currentBmi = calculateBmi(state.currentWeightKg ?: state.suggestedWeightKg, state.heightCm)
+            if (currentBmi != null) {
+                item {
+                    BmiCard(
+                        bmi = currentBmi,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    )
+                }
+            }
             if (state.healthConnectAvailable && !state.healthConnectPermissionGranted) {
                 item {
                     HealthConnectCard(
@@ -430,6 +439,113 @@ private fun Modifier.weightAdjustPressHandler(enabled: Boolean, onClick: () -> U
     }
 
 @Composable
+private fun BmiCard(bmi: Double, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = ReportCardShape,
+        color = Color.White,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Column {
+                    Text(
+                        text = "BMI",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = ReportText,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = bmiCategoryLabel(bmi),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ReportMutedText,
+                    )
+                }
+                Text(
+                    text = formatOneDecimal(bmi),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = ReportText,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            BmiScale(
+                bmi = bmi,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BmiScale(bmi: Double, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(28.dp)) {
+            val minBmi = 15.0
+            val maxBmi = 40.0
+            val markerBmi = bmi.coerceIn(minBmi, maxBmi)
+            val y = size.height / 2f
+            val strokeWidth = 12.dp.toPx()
+
+            fun xFor(value: Double): Float =
+                (((value - minBmi) / (maxBmi - minBmi)).toFloat() * size.width)
+
+            drawLine(
+                color = Color(0xFFF0C84B),
+                start = Offset(0f, y),
+                end = Offset(xFor(18.5), y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = Color(0xFF53B96A),
+                start = Offset(xFor(18.5), y),
+                end = Offset(xFor(25.0), y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Butt,
+            )
+            drawLine(
+                color = Color(0xFFF0C84B),
+                start = Offset(xFor(25.0), y),
+                end = Offset(xFor(30.0), y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Butt,
+            )
+            drawLine(
+                color = Color(0xFFE05A4F),
+                start = Offset(xFor(30.0), y),
+                end = Offset(size.width, y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+            )
+
+            val markerX = xFor(markerBmi)
+            drawLine(
+                color = Color.Black,
+                start = Offset(markerX, y - 13.dp.toPx()),
+                end = Offset(markerX, y + 13.dp.toPx()),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("15", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
+            Text("18,5", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
+            Text("25", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
+            Text("30", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
+            Text("40", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
+        }
+    }
+}
+
+@Composable
 private fun HealthConnectCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(modifier = modifier, shape = ReportCardShape, color = Color.White) {
         Row(
@@ -602,10 +718,19 @@ private fun chartDateLabels(entries: List<DailyWeightEntry>): List<String> {
     }
 }
 
-private fun calculateBmi(weightKg: Double, heightCm: Double?): Double? {
+private fun calculateBmi(weightKg: Double?, heightCm: Double?): Double? {
+    val weight = weightKg?.takeIf { it > 0.0 } ?: return null
     val heightM = heightCm?.takeIf { it > 0.0 }?.div(100.0) ?: return null
-    return weightKg / (heightM * heightM)
+    return weight / (heightM * heightM)
 }
+
+private fun bmiCategoryLabel(bmi: Double): String =
+    when {
+        bmi < 18.5 -> "Untergewicht"
+        bmi < 25.0 -> "Normalgewicht"
+        bmi < 30.0 -> "Übergewicht"
+        else -> "Adipositas"
+    }
 
 private fun formatWeight(value: Double?): String =
     value?.let { "${formatWeightInput(it)} kg" } ?: "-"
