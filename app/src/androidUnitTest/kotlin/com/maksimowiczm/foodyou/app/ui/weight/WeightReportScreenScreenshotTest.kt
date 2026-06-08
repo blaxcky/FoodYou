@@ -27,7 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rDE-w414dp-h720dp-mdpi")
+@Config(sdk = [35], qualifiers = "de-rDE-w390dp-h844dp-mdpi")
 @OptIn(ExperimentalRoborazziApi::class)
 class WeightReportScreenScreenshotTest {
 
@@ -41,7 +41,7 @@ class WeightReportScreenScreenshotTest {
         captureRoboImage(
             filePath = "WeightReportScreenScreenshotTest.weight-entry-history.png",
             roborazziComposeOptions =
-                RoborazziComposeOptions.Builder().size(widthDp = 414, heightDp = 720)
+                RoborazziComposeOptions.Builder().size(widthDp = 390, heightDp = 844)
                     .locale("de-rDE")
                     .build(),
         ) {
@@ -54,19 +54,20 @@ class WeightReportScreenScreenshotTest {
         MaterialTheme {
             Box(
                 modifier =
-                    Modifier.requiredSize(width = 414.dp, height = 720.dp)
+                    Modifier.requiredSize(width = 390.dp, height = 844.dp)
                         .background(Color(0xFFEEF5FA))
             ) {
                 WeightReportContent(
                     state =
                         WeightReportUiState(
                             entries = WeightEntries,
-                            chartEntries = WeightEntries.reversed(),
-                            todayWeightKg = 82.3,
-                            suggestedWeightKg = 82.3,
-                            startWeightKg = 86.0,
-                            currentWeightKg = 82.3,
-                            targetWeightKg = 78.0,
+                            chartEntries = ChartEntries,
+                            todayWeightKg = 101.3,
+                            suggestedWeightKg = 101.3,
+                            startWeightKg = 105.0,
+                            currentWeightKg = 101.3,
+                            targetWeightKg = 90.0,
+                            heightCm = 188.0,
                         ),
                     onBack = {},
                     onMinus = {},
@@ -81,10 +82,19 @@ class WeightReportScreenScreenshotTest {
     private companion object {
         val WeightEntries =
             listOf(
-                weight("2026-06-08", 82.3, "2026-06-08T06:30:00Z"),
-                weight("2026-06-07", 82.5, "2026-06-07T06:35:00Z"),
-                weight("2026-06-06", 82.9, "2026-06-06T06:20:00Z"),
-                weight("2026-06-05", 83.1, "2026-06-05T06:25:00Z"),
+                weight("2026-06-07", 101.3, "2026-06-07T06:30:00Z"),
+                weight("2025-08-08", 104.4, "2025-08-08T06:35:00Z"),
+                weight("2025-08-07", 105.0, "2025-08-07T06:20:00Z"),
+            )
+
+        val ChartEntries =
+            listOf(
+                weight("2025-08-07", 105.0, "2025-08-07T06:20:00Z"),
+                weight("2025-10-20", 103.7, "2025-10-20T06:25:00Z"),
+                weight("2025-12-12", 102.8, "2025-12-12T06:25:00Z"),
+                weight("2026-02-18", 102.1, "2026-02-18T06:25:00Z"),
+                weight("2026-04-16", 101.8, "2026-04-16T06:25:00Z"),
+                weight("2026-06-07", 101.3, "2026-06-07T06:30:00Z"),
             )
 
         fun weight(date: String, weightKg: Double, measuredAt: String) =

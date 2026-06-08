@@ -8,6 +8,7 @@ fun Module.weightReport() {
     viewModel {
         WeightReportViewModel(
             repository = get(),
+            basalMetabolicRateProfileRepository = get(),
             healthConnectWeightSync = get(),
             settingsRepository = userPreferencesRepository(),
         )

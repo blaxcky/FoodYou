@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.HealthConnectAvailability
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.goals.domain.entity.BasalMetabolicRateProfile
+import com.maksimowiczm.foodyou.goals.domain.repository.BasalMetabolicRateProfileRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
@@ -24,30 +26,29 @@ import kotlinx.datetime.toLocalDateTime
 
 internal class WeightReportViewModel(
     private val repository: WeightRepository,
+    private val basalMetabolicRateProfileRepository: BasalMetabolicRateProfileRepository,
     private val healthConnectWeightSync: HealthConnectWeightSync,
     private val settingsRepository: UserPreferencesRepository<Settings>,
 ) : ViewModel() {
     private val healthConnectPermissionGranted = MutableStateFlow(false)
     private val availability = MutableStateFlow<HealthConnectAvailability?>(null)
 
+    private val reportState =
+        combine(
+            repository.observeEntries(),
+            repository.observeToday(),
+            repository.observeGoal(),
+            basalMetabolicRateProfileRepository.observeProfile(),
+            ::createReportState,
+        )
+
     val state =
         combine(
-                repository.observeEntries(),
-                repository.observeToday(),
-                repository.observeGoal(),
+                reportState,
                 healthConnectPermissionGranted,
                 availability,
-            ) { entries, todayEntry, goal, permissionGranted, availability ->
-                val current = todayEntry ?: entries.maxByOrNull { it.measuredAt }
-                val chartStart = today().minus(1, DateTimeUnit.YEAR)
-                WeightReportUiState(
-                    entries = entries,
-                    chartEntries = entries.filter { it.date >= chartStart }.sortedBy { it.date },
-                    todayWeightKg = todayEntry?.weightKg,
-                    suggestedWeightKg = current?.weightKg,
-                    startWeightKg = entries.minByOrNull { it.date }?.weightKg,
-                    currentWeightKg = current?.weightKg,
-                    targetWeightKg = goal.targetWeightKg,
+            ) { reportState, permissionGranted, availability ->
+                reportState.copy(
                     healthConnectAvailable = availability == HealthConnectAvailability.Available,
                     healthConnectPermissionGranted = permissionGranted,
                 )
@@ -93,6 +94,26 @@ internal class WeightReportViewModel(
         }
     }
 
+    private fun createReportState(
+        entries: List<DailyWeightEntry>,
+        todayEntry: DailyWeightEntry?,
+        goal: WeightGoal,
+        profile: BasalMetabolicRateProfile,
+    ): WeightReportUiState {
+        val current = todayEntry ?: entries.maxByOrNull { it.measuredAt }
+        val chartStart = today().minus(1, DateTimeUnit.YEAR)
+        return WeightReportUiState(
+            entries = entries,
+            chartEntries = entries.filter { it.date >= chartStart }.sortedBy { it.date },
+            todayWeightKg = todayEntry?.weightKg,
+            suggestedWeightKg = current?.weightKg,
+            startWeightKg = entries.minByOrNull { it.date }?.weightKg,
+            currentWeightKg = current?.weightKg,
+            targetWeightKg = goal.targetWeightKg,
+            heightCm = profile.heightCm,
+        )
+    }
+
     private fun today(): LocalDate =
         Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 }
@@ -105,6 +126,7 @@ internal data class WeightReportUiState(
     val startWeightKg: Double? = null,
     val currentWeightKg: Double? = null,
     val targetWeightKg: Double? = null,
+    val heightCm: Double? = null,
     val healthConnectAvailable: Boolean = false,
     val healthConnectPermissionGranted: Boolean = false,
 )
