@@ -1,47 +1,44 @@
 package com.maksimowiczm.foodyou.app.ui.weight
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
@@ -60,6 +57,25 @@ internal fun WeightReportScreen(
     val permissionRequester =
         rememberHealthConnectWeightPermissionRequester(viewModel::onHealthConnectPermissionResult)
 
+    WeightReportContent(
+        state = state,
+        onBack = onBack,
+        onMinus = { viewModel.adjustWeight(-0.1) },
+        onPlus = { viewModel.adjustWeight(0.1) },
+        onHealthConnectClick = permissionRequester::request,
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun WeightReportContent(
+    state: WeightReportUiState,
+    onBack: () -> Unit,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+    onHealthConnectClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -79,30 +95,23 @@ internal fun WeightReportScreen(
             }
             item {
                 CurrentWeightCard(
+                    startWeightKg = state.startWeightKg,
                     currentWeightKg = state.todayWeightKg,
                     suggestedWeightKg = state.suggestedWeightKg,
-                    onWeightChange = viewModel::setWeight,
-                    onMinus = { viewModel.adjustWeight(-0.1) },
-                    onPlus = { viewModel.adjustWeight(0.1) },
+                    progressWeightKg = state.currentWeightKg,
+                    targetWeightKg = state.targetWeightKg,
+                    onMinus = onMinus,
+                    onPlus = onPlus,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             if (state.healthConnectAvailable && !state.healthConnectPermissionGranted) {
                 item {
                     HealthConnectCard(
-                        onClick = permissionRequester::request,
+                        onClick = onHealthConnectClick,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-            }
-            item {
-                GoalCard(
-                    startWeightKg = state.startWeightKg,
-                    currentWeightKg = state.currentWeightKg,
-                    targetWeightKg = state.targetWeightKg,
-                    onTargetWeightChange = viewModel::setTargetWeight,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
             item {
                 Text(
@@ -111,8 +120,10 @@ internal fun WeightReportScreen(
                     fontWeight = FontWeight.SemiBold,
                 )
             }
-            items(state.entries, key = { it.date.toEpochDays() }) { entry ->
-                HistoryRow(entry = entry, modifier = Modifier.fillMaxWidth())
+            if (state.entries.isNotEmpty()) {
+                item {
+                    HistoryCard(entries = state.entries, modifier = Modifier.fillMaxWidth())
+                }
             }
         }
     }
@@ -170,48 +181,64 @@ private fun WeightChartCard(entries: List<DailyWeightEntry>, modifier: Modifier 
 
 @Composable
 private fun CurrentWeightCard(
+    startWeightKg: Double?,
     currentWeightKg: Double?,
     suggestedWeightKg: Double?,
-    onWeightChange: (Double) -> Unit,
+    progressWeightKg: Double?,
+    targetWeightKg: Double?,
     onMinus: () -> Unit,
     onPlus: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var text by remember { mutableStateOf(formatWeightInput(currentWeightKg ?: suggestedWeightKg)) }
-    LaunchedEffect(currentWeightKg, suggestedWeightKg) {
-        text = formatWeightInput(currentWeightKg ?: suggestedWeightKg)
-    }
+    val displayWeight = currentWeightKg ?: suggestedWeightKg
+    val progress = calculateWeightGoalProgress(startWeightKg, progressWeightKg, targetWeightKg)
+    val startDelta = progressWeightKg?.let { current -> startWeightKg?.let { current - it } }
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Text("Aktuelles Gewicht", style = MaterialTheme.typography.titleMedium)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                IconButton(onClick = onMinus, enabled = suggestedWeightKg != null) {
-                    Icon(Icons.Filled.Remove, contentDescription = "0,1 kg abziehen")
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Dein Gewicht: ${formatWeight(displayWeight)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    if (startDelta != null && startDelta != 0.0) {
+                        Text(
+                            text = formatWeightChangeSinceStart(startDelta),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = {
-                        text = it
-                        parseWeight(it)?.let(onWeightChange)
-                    },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    suffix = { Text("kg") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                )
-                IconButton(onClick = onPlus, enabled = suggestedWeightKg != null) {
-                    Icon(Icons.Filled.Add, contentDescription = "0,1 kg addieren")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    FilledTonalIconButton(onClick = onMinus, enabled = suggestedWeightKg != null) {
+                        Icon(Icons.Filled.Remove, contentDescription = "0,1 kg abziehen")
+                    }
+                    Text(
+                        text = "0,1 kg",
+                        style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                    FilledTonalIconButton(onClick = onPlus, enabled = suggestedWeightKg != null) {
+                        Icon(Icons.Filled.Add, contentDescription = "0,1 kg addieren")
+                    }
                 }
             }
-            if (currentWeightKg == null && suggestedWeightKg != null) {
-                Text("Vorschlag aus dem letzten Eintrag", style = MaterialTheme.typography.bodySmall)
-            }
+            WeightGoalProgress(
+                startWeightKg = startWeightKg,
+                targetWeightKg = targetWeightKg,
+                progress = progress,
+            )
         }
     }
 }
@@ -232,93 +259,137 @@ private fun HealthConnectCard(onClick: () -> Unit, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun GoalCard(
+private fun WeightGoalProgress(
     startWeightKg: Double?,
-    currentWeightKg: Double?,
     targetWeightKg: Double?,
-    onTargetWeightChange: (Double?) -> Unit,
+    progress: Float?,
     modifier: Modifier = Modifier,
 ) {
-    var targetText by remember { mutableStateOf(formatWeightInput(targetWeightKg)) }
-    LaunchedEffect(targetWeightKg) { targetText = formatWeightInput(targetWeightKg) }
-    val progress = calculateWeightGoalProgress(startWeightKg, currentWeightKg, targetWeightKg)
-    Card(modifier = modifier) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("Ziel", style = MaterialTheme.typography.titleMedium)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Metric("Start", startWeightKg)
-                Metric("Aktuell", currentWeightKg)
-                Metric("Ziel", targetWeightKg)
-            }
-            LinearProgressIndicator(
-                progress = { progress ?: 0f },
-                modifier = Modifier.fillMaxWidth(),
-                color =
-                    if (progress == null) MaterialTheme.colorScheme.surfaceVariant
-                    else MaterialTheme.colorScheme.primary,
-            )
-            OutlinedTextField(
-                value = targetText,
-                onValueChange = {
-                    targetText = it
-                    onTargetWeightChange(parseWeight(it))
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Ziel setzen") },
-                suffix = { Text("kg") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            )
-        }
-    }
-}
-
-@Composable
-private fun RowScope.Metric(label: String, weightKg: Double?) {
-    Column(modifier = Modifier.weight(1f)) {
-        Text(label, style = MaterialTheme.typography.labelMedium)
-        Text(
-            text = formatWeight(weightKg),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LinearProgressIndicator(
+            progress = { progress ?: 0f },
+            modifier = Modifier.fillMaxWidth(),
+            color =
+                if (progress == null) MaterialTheme.colorScheme.surfaceVariant
+                else MaterialTheme.colorScheme.primary,
         )
-    }
-}
-
-@Composable
-private fun HistoryRow(entry: DailyWeightEntry, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.MonitorWeight, contentDescription = null)
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(entry.date.toString(), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = formatWeight(startWeightKg),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Flag,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
                 Text(
-                    text = entry.date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.bodySmall,
+                    text = formatWeight(targetWeightKg),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(formatWeight(entry.weightKg), style = MaterialTheme.typography.titleMedium)
         }
     }
 }
 
-private fun parseWeight(value: String): Double? =
-    value.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 }
+@Composable
+private fun HistoryCard(entries: List<DailyWeightEntry>, modifier: Modifier = Modifier) {
+    val changesByDate = remember(entries) {
+        entries
+            .zipWithNext()
+            .associate { (newer, older) -> newer.date to newer.weightKg - older.weightKg }
+    }
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            entries.forEachIndexed { index, entry ->
+                HistoryRow(
+                    entry = entry,
+                    changeKg = changesByDate[entry.date],
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (index != entries.lastIndex) {
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryRow(entry: DailyWeightEntry, changeKg: Double?, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier.size(40.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.MonitorWeight, contentDescription = null)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(entry.date.toString(), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = germanWeekday(entry.date.dayOfWeek),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                formatWeight(entry.weightKg),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (changeKg != null && changeKg != 0.0) {
+                Text(
+                    text = formatSignedWeightChange(changeKg),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
 
 private fun formatWeight(value: Double?): String =
     value?.let { "${formatWeightInput(it)} kg" } ?: "-"
 
 private fun formatWeightInput(value: Double?): String =
     value?.let { (round(it * 10.0) / 10.0).toString().replace('.', ',') } ?: ""
+
+private fun formatWeightChangeSinceStart(deltaKg: Double): String {
+    val value = formatWeightInput(kotlin.math.abs(deltaKg))
+    return if (deltaKg < 0) "$value kg abgenommen" else "$value kg zugenommen"
+}
+
+private fun formatSignedWeightChange(deltaKg: Double): String {
+    val sign = if (deltaKg > 0) "+" else "-"
+    return "$sign${formatWeightInput(kotlin.math.abs(deltaKg))} kg"
+}
+
+private fun germanWeekday(dayOfWeek: kotlinx.datetime.DayOfWeek): String =
+    when (dayOfWeek) {
+        kotlinx.datetime.DayOfWeek.MONDAY -> "Montag"
+        kotlinx.datetime.DayOfWeek.TUESDAY -> "Dienstag"
+        kotlinx.datetime.DayOfWeek.WEDNESDAY -> "Mittwoch"
+        kotlinx.datetime.DayOfWeek.THURSDAY -> "Donnerstag"
+        kotlinx.datetime.DayOfWeek.FRIDAY -> "Freitag"
+        kotlinx.datetime.DayOfWeek.SATURDAY -> "Samstag"
+        kotlinx.datetime.DayOfWeek.SUNDAY -> "Sonntag"
+    }
