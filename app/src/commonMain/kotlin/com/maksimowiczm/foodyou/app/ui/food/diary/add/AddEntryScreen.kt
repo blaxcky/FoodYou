@@ -59,6 +59,7 @@ import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
 import kotlinx.datetime.LocalDate
@@ -99,7 +100,7 @@ fun AddEntryScreen(
 
     // This is stupid that it is here but it's going to be deleted in 4.0.0
     val selectedMeasurement =
-        remember(measurement, measurementSuggestion, possibleTypes) {
+        remember(food, measurement, measurementSuggestion, possibleTypes) {
             val realMeasurement = measurement ?: measurementSuggestion
             if (realMeasurement == null) return@remember null
             if (food == null) return@remember realMeasurement
@@ -110,7 +111,7 @@ fun AddEntryScreen(
             if (food.weight(realMeasurement) != null) {
                 realMeasurement
             } else {
-                if (food.isLiquid) Measurement.Milliliter(100.0) else Measurement.Gram(100.0)
+                defaultEntryMeasurement(food.isLiquid)
             }
         }
 

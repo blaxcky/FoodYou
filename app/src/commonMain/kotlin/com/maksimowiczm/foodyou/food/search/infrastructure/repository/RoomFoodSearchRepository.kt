@@ -8,10 +8,9 @@ import androidx.paging.map
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
-import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
-import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.search.SearchQuery
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntity
+import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearchRepository
@@ -298,14 +297,4 @@ private val RoomFoodSearch.foodId: FoodId
             ?: error("Food must have either productId or recipeId")
 
 private val RoomFoodSearch.suggestedMeasurement
-    get() =
-        when {
-            recipeId == null && totalWeight != null -> Measurement.Package(1.0)
-
-            measurementType != null && measurementValue != null ->
-                Measurement.from(measurementType, measurementValue)
-
-            recipeId != null || servingWeight != null -> Measurement.Serving(1.0)
-            isLiquid -> Measurement.Milliliter(100.0)
-            else -> Measurement.Gram(100.0)
-        }
+    get() = defaultEntryMeasurement(isLiquid)

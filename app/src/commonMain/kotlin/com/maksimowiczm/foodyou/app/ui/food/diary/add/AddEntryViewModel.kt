@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
+import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
@@ -125,11 +126,7 @@ internal class AddEntryViewModel(
     val suggestedMeasurement: StateFlow<Measurement?> =
         domainFood
             .filterNotNull()
-            .flatMapLatest { food ->
-                suggestions.filterNotNull().flatMapLatest { list ->
-                    list.firstOrNull()?.let(::flowOf) ?: food.defaultMeasurement
-                }
-            }
+            .map { defaultEntryMeasurement(it.isLiquid) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(2_000),
@@ -225,16 +222,5 @@ private val Food.possibleMeasurementTypes: Flow<List<MeasurementType>>
                         MeasurementType.Package -> totalWeight != null
                         MeasurementType.Serving -> servingWeight != null
                     }
-            }
-        )
-
-private val Food.defaultMeasurement: Flow<Measurement>
-    get() =
-        flowOf(
-            when {
-                servingWeight != null -> Measurement.Serving(1.0)
-                totalWeight != null -> Measurement.Package(1.0)
-                isLiquid -> Measurement.Milliliter(100.0)
-                else -> Measurement.Gram(100.0)
             }
         )
