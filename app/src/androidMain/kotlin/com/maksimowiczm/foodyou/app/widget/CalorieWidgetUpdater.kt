@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 import com.maksimowiczm.foodyou.R
@@ -84,12 +85,22 @@ internal class CalorieWidgetUpdater(
         manager: AppWidgetManager,
         appWidgetId: Int,
         model: CalorieWidgetModel,
-    ): RemoteViews {
-        val layout = layout(manager, appWidgetId)
-        return RemoteViews(context.packageName, layout).apply {
-            setValues(context, model)
+    ): RemoteViews =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            RemoteViews(
+                mapOf(
+                    CalorieWidgetLayoutSelector.mediumSize to
+                        createRemoteViews(context, R.layout.widget_calories_medium, model),
+                    CalorieWidgetLayoutSelector.largeSize to
+                        createRemoteViews(context, R.layout.widget_calories_large, model),
+                )
+            )
+        } else {
+            createRemoteViews(context, layout(manager, appWidgetId), model)
         }
-    }
+
+    private fun createRemoteViews(context: Context, layout: Int, model: CalorieWidgetModel) =
+        RemoteViews(context.packageName, layout).apply { setValues(context, model) }
 
     private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
         setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
@@ -184,17 +195,7 @@ internal class CalorieWidgetUpdater(
     }
 
     private fun layout(manager: AppWidgetManager, appWidgetId: Int): Int =
-        if (isLargeWidget(manager, appWidgetId)) {
-            R.layout.widget_calories_large
-        } else {
-            R.layout.widget_calories_medium
-        }
-
-    private fun isLargeWidget(manager: AppWidgetManager, appWidgetId: Int): Boolean {
-        val options = manager.getAppWidgetOptions(appWidgetId)
-        return options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) >= 160
-    }
-
+        CalorieWidgetLayoutSelector.layout(manager.getAppWidgetOptions(appWidgetId))
 }
 
 private fun previousWeekDates(today: LocalDate): List<LocalDate> {

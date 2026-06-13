@@ -18,7 +18,7 @@ class CalorieWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
     ) {
-        scope.launch { updater().update(context, appWidgetIds) }
+        launchUpdate(context) { updater().update(it, appWidgetIds) }
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -27,28 +27,67 @@ class CalorieWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: Bundle,
     ) {
-        scope.launch { updater().update(context, intArrayOf(appWidgetId)) }
+        launchUpdate(context) { updater().update(it, intArrayOf(appWidgetId)) }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            updateAll(context)
+        when (intent.action) {
+            AppWidgetManager.ACTION_APPWIDGET_UPDATE -> {
+                val appWidgetIds = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)
+                if (appWidgetIds == null) {
+                    super.onReceive(context, intent)
+                } else {
+                    launchReceiverUpdate(context) { updater().update(it, appWidgetIds) }
+                }
+            }
+            AppWidgetManager.ACTION_APPWIDGET_OPTIONS_CHANGED -> {
+                val appWidgetId =
+                    intent.getIntExtra(
+                        AppWidgetManager.EXTRA_APPWIDGET_ID,
+                        AppWidgetManager.INVALID_APPWIDGET_ID,
+                    )
+                if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    super.onReceive(context, intent)
+                } else {
+                    launchReceiverUpdate(context) { updater().update(it, intArrayOf(appWidgetId)) }
+                }
+            }
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                launchReceiverUpdate(context) { updateAllSuspending(it) }
+            }
+            else -> super.onReceive(context, intent)
         }
     }
 
     companion object {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        private val receiverUpdateLauncher = ReceiverUpdateLauncher(scope)
 
         fun updateAll(context: Context) {
-            scope.launch { updateAllSuspending(context) }
+            launchUpdate(context) { updateAllSuspending(it) }
         }
 
         fun updateAllValues(context: Context) {
-            scope.launch { updateAllSuspending(context) }
+            launchUpdate(context) { updateAllSuspending(it) }
         }
 
         private fun updater(): CalorieWidgetUpdater = GlobalContext.get().get()
+
+        private fun launchUpdate(context: Context, block: suspend (Context) -> Unit) {
+            val applicationContext = context.applicationContext
+            scope.launch { block(applicationContext) }
+        }
+
+        private fun CalorieWidgetProvider.launchReceiverUpdate(
+            context: Context,
+            block: suspend (Context) -> Unit,
+        ) {
+            val applicationContext = context.applicationContext
+            val pendingResult = goAsync()
+            receiverUpdateLauncher.launch(finish = pendingResult::finish) {
+                block(applicationContext)
+            }
+        }
 
         private suspend fun updateAllSuspending(context: Context) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
