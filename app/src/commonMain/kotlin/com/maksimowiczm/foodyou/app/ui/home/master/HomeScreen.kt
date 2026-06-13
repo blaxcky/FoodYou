@@ -8,31 +8,25 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -85,7 +79,6 @@ fun HomeScreen(
     val viewModel: HomeViewModel = koinViewModel()
     val order by viewModel.homeOrder.collectAsStateWithLifecycle()
     val activitySyncState by viewModel.activitySyncState.collectAsStateWithLifecycle()
-    val fddbSyncState by viewModel.fddbSyncState.collectAsStateWithLifecycle()
     val homeSyncState by viewModel.homeSyncState.collectAsStateWithLifecycle()
     val homeState = rememberHomeState()
     val burnedEnergyDelta = activitySyncState.burnedEnergySyncDeltas[homeState.selectedDate]
@@ -120,13 +113,6 @@ fun HomeScreen(
         viewModel.syncConfigured(homeState.selectedDate)
     }
 
-    val onFddbSyncClick = {
-        if (fddbSyncState is HomeFddbSyncState.MissingCredentials) {
-            showFddbLoginDialog = true
-        } else {
-            viewModel.syncFddbDiary(homeState.selectedDate)
-        }
-    }
     val onHomeSyncClick = { syncConfiguredHome() }
     val onPullRefresh = {
         if (!homeSyncState.isSyncing) {
@@ -260,14 +246,6 @@ fun HomeScreen(
                                 contentPadding = PaddingValues(horizontal = 8.dp),
                                 modifier = Modifier.padding(bottom = 8.dp),
                             )
-                            item(key = "fddb-sync", contentType = "fddb-sync") {
-                                FddbSyncSection(
-                                    state = fddbSyncState,
-                                    onClick = onFddbSyncClick,
-                                    modifier =
-                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                                )
-                            }
                         }
 
                         HomeCard.Activities ->
@@ -306,74 +284,6 @@ fun HomeScreen(
 }
 
 private const val PULL_REFRESH_NO_SYNC_FALLBACK_MILLIS = 1_200L
-
-@Composable
-private fun FddbSyncSection(state: HomeFddbSyncState, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.small,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FddbSyncButton(state = state, onClick = onClick)
-            FddbSyncStatusText(state = state, modifier = Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun FddbSyncStatusText(state: HomeFddbSyncState, modifier: Modifier = Modifier) {
-    val text =
-        when (state) {
-            is HomeFddbSyncState.MissingCredentials ->
-                stringResource(Res.string.neutral_fddb_sync_not_configured)
-            is HomeFddbSyncState.Syncing -> stringResource(Res.string.neutral_fddb_sync_running)
-            is HomeFddbSyncState.Failed -> stringResource(Res.string.neutral_fddb_sync_failed)
-            is HomeFddbSyncState.Idle ->
-                state.lastStatus?.let {
-                    stringResource(
-                        Res.string.neutral_fddb_import_summary,
-                        it.imported,
-                        it.skipped,
-                        it.failed,
-                    )
-                } ?: stringResource(Res.string.action_sync_fddb_diary)
-        }
-
-    Text(text = text, style = MaterialTheme.typography.bodySmall, modifier = modifier)
-}
-
-@Composable
-private fun FddbSyncButton(state: HomeFddbSyncState, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    val isSyncing = state is HomeFddbSyncState.Syncing
-    val isError = state is HomeFddbSyncState.Failed || state is HomeFddbSyncState.MissingCredentials
-    val transition = rememberInfiniteTransition(label = "fddb-sync")
-    val rotation by
-        transition.animateFloat(
-            initialValue = 0f,
-            targetValue = if (isSyncing) 360f else 0f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(durationMillis = 900, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart,
-                ),
-            label = "fddb-sync-rotation",
-        )
-
-    FilledTonalButton(onClick = onClick, enabled = !isSyncing, modifier = modifier) {
-        Icon(
-            imageVector = Icons.Filled.CloudSync,
-            contentDescription = stringResource(Res.string.action_sync_fddb_diary),
-            tint = if (isError) colors.error else colors.primary,
-            modifier = Modifier.graphicsLayer { rotationZ = rotation },
-        )
-    }
-}
 
 @Composable
 private fun HomeSyncButton(state: HomeSyncState, onClick: () -> Unit) {

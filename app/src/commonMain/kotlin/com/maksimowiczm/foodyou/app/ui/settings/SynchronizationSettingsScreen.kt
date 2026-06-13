@@ -3,6 +3,10 @@ package com.maksimowiczm.foodyou.app.ui.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
@@ -14,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.app.ui.home.master.FddbLoginDialog
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -25,14 +30,26 @@ internal fun SynchronizationSettingsScreen(
     viewModel: SynchronizationSettingsViewModel = koinViewModel(),
 ) {
     val model = viewModel.model.collectAsStateWithLifecycle().value
+    var showFddbLoginDialog by remember { mutableStateOf(false) }
 
     SynchronizationSettingsContent(
         model = model,
         onBack = onBack,
         onHomeSyncHealthConnectEnabledChange = viewModel::setHomeSyncHealthConnectEnabled,
         onHomeSyncFddbDiaryEnabledChange = viewModel::setHomeSyncFddbDiaryEnabled,
+        onFddbSync = {
+            if (model?.hasFddbCredentials == true) {
+                viewModel.syncFddbDiary()
+            } else {
+                showFddbLoginDialog = true
+            }
+        },
         modifier = modifier,
     )
+
+    if (showFddbLoginDialog) {
+        FddbLoginDialog(onDismissRequest = { showFddbLoginDialog = false })
+    }
 }
 
 @Composable
@@ -41,6 +58,7 @@ private fun SynchronizationSettingsContent(
     onBack: () -> Unit,
     onHomeSyncHealthConnectEnabledChange: (Boolean) -> Unit,
     onHomeSyncFddbDiaryEnabledChange: (Boolean) -> Unit,
+    onFddbSync: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -110,6 +128,18 @@ private fun SynchronizationSettingsContent(
                         Text(stringResource(Res.string.headline_fddb_sync_status))
                     },
                     supportingContent = { Text(model.fddbSyncStatusText()) },
+                    trailingContent = {
+                        FilledTonalButton(
+                            onClick = onFddbSync,
+                            enabled = model?.fddbSyncInProgress != true,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CloudSync,
+                                contentDescription =
+                                    stringResource(Res.string.action_sync_fddb_diary),
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -118,6 +148,13 @@ private fun SynchronizationSettingsContent(
 
 @Composable
 private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {
+    if (this?.fddbSyncInProgress == true) {
+        return stringResource(Res.string.neutral_fddb_sync_running)
+    }
+    if (this?.hasFddbCredentials == false) {
+        return stringResource(Res.string.neutral_fddb_sync_not_configured)
+    }
+
     val status = this?.fddbDiarySyncStatus
         ?: return stringResource(Res.string.neutral_fddb_sync_never_run)
 

@@ -16,13 +16,18 @@ import com.maksimowiczm.foodyou.app.ui.sponsor.sponsor
 import com.maksimowiczm.foodyou.app.ui.theme.theme
 import com.maksimowiczm.foodyou.app.ui.weight.weightReport
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
+import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val uiModule = module {
     viewModel { AppViewModel(settingsRepository = userPreferencesRepository(), healthConnectActivitySync = get()) }
     viewModel {
-        SynchronizationSettingsViewModel(settingsRepository = userPreferencesRepository())
+        SynchronizationSettingsViewModel(
+            settingsRepository = userPreferencesRepository(),
+            fddbDiarySyncUseCase = get(),
+            fddbCredentialsRepository = get<FddbCredentialsRepository>(),
+        )
     }
 
     activityUi()
