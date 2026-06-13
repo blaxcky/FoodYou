@@ -9,7 +9,7 @@ internal object CalorieWidgetLayoutSelector {
     private const val MediumWidthDp = 250f
     private const val MediumHeightDp = 110f
     private const val LargeWidthDp = 250f
-    private const val LargeMinHeightDp = 160
+    private const val LargeMinHeightDp = 300
 
     val mediumSize = SizeF(MediumWidthDp, MediumHeightDp)
     val largeSize = SizeF(LargeWidthDp, LargeMinHeightDp.toFloat())

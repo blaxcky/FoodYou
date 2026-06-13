@@ -31,7 +31,7 @@ class CalorieWidgetLayoutSelectorTest {
     @Test
     fun smallHeightUsesMediumLayout() {
         val options =
-            Bundle().apply { putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 159) }
+            Bundle().apply { putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 299) }
 
         assertFalse(CalorieWidgetLayoutSelector.isLarge(options))
         assertEquals(R.layout.widget_calories_medium, CalorieWidgetLayoutSelector.layout(options))
@@ -40,7 +40,7 @@ class CalorieWidgetLayoutSelectorTest {
     @Test
     fun largeHeightUsesLargeLayout() {
         val options =
-            Bundle().apply { putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 160) }
+            Bundle().apply { putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 300) }
 
         assertTrue(CalorieWidgetLayoutSelector.isLarge(options))
         assertEquals(R.layout.widget_calories_large, CalorieWidgetLayoutSelector.layout(options))
