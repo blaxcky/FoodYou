@@ -420,6 +420,12 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             UpdateEntryScreen(
                 entryId = foodEntryId,
                 onBack = { navController.popBackStackInclusive<FoodDiaryUpdateEntry>() },
+                onEditFood = { id ->
+                    when (id) {
+                        is FoodId.Product -> navController.navigateSingleTop(UpdateProduct(id.id))
+                        is FoodId.Recipe -> navController.navigateSingleTop(UpdateRecipe(id.id))
+                    }
+                },
                 onSave = { navController.popBackStackInclusive<FoodDiaryUpdateEntry>() },
                 animatedVisibilityScope = this,
             )

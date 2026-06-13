@@ -181,9 +181,9 @@ fun AddEntryScreen(
                 selectedMeasurement = selectedMeasurement,
             )
 
-        AddEntryScreen(
+        FoodEntryForm(
             onBack = onBack,
-            onAdd = {
+            onSave = {
                 val selectedMealId =
                     state.mealsState.selectedMeal?.let { mealName ->
                         meals.firstOrNull { it.name == mealName }?.id
@@ -241,13 +241,13 @@ private val FddbPortion.Unit.label: String
         }
 
 @Composable
-private fun AddEntryScreen(
+internal fun FoodEntryForm(
     onBack: () -> Unit,
-    onAdd: () -> Unit,
+    onSave: () -> Unit,
     onUnpack: () -> Unit,
     onEditFood: (FoodId) -> Unit,
-    onDelete: () -> Unit,
-    onIngredient: (FoodId, Measurement) -> Unit,
+    onDelete: (() -> Unit)?,
+    onIngredient: ((FoodId, Measurement) -> Unit)?,
     food: FoodModel,
     history: List<FoodHistory>,
     state: FoodMeasurementFormState,
@@ -263,7 +263,9 @@ private fun AddEntryScreen(
             MediumTopAppBar(
                 title = {},
                 navigationIcon = { ArrowBackIconButton(onBack) },
-                actions = { Menu(onEdit = { onEditFood(food.foodId) }, onDelete = onDelete) },
+                actions = {
+                    Menu(onEdit = { onEditFood(food.foodId) }, onDelete = onDelete)
+                },
                 scrollBehavior = scrollBehavior,
                 colors =
                     TopAppBarDefaults.topAppBarColors(
@@ -344,7 +346,7 @@ private fun AddEntryScreen(
                         Button(
                             onClick = {
                                 if (state.isValid) {
-                                    onAdd()
+                                    onSave()
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -454,7 +456,7 @@ private fun AddEntryScreen(
 }
 
 @Composable
-private fun AddEntryCard(
+internal fun AddEntryCard(
     shape: RoundedCornerShape,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
@@ -469,7 +471,7 @@ private fun AddEntryCard(
 }
 
 @Composable
-private fun MacroSummary(food: FoodModel, measurement: Measurement, modifier: Modifier = Modifier) {
+internal fun MacroSummary(food: FoodModel, measurement: Measurement, modifier: Modifier = Modifier) {
     val energyFormatter = LocalEnergyFormatter.current
     val weight = remember(food, measurement) { food.weight(measurement) }
     val facts = remember(food, weight) { weight?.let { food.nutritionFacts * (it / 100) } }
@@ -531,10 +533,10 @@ private fun MacroSummaryItem(value: String, label: String, modifier: Modifier = 
     }
 }
 
-private fun Double.formatMacroValue(): String = "${formatClipZeros("%.1f")}g"
+internal fun Double.formatMacroValue(): String = "${formatClipZeros("%.1f")}g"
 
 @Composable
-private fun ReferenceMeasurementPicker(
+internal fun ReferenceMeasurementPicker(
     state: MeasurementPickerState,
     servingUnit: ServingUnit,
     modifier: Modifier = Modifier,
@@ -683,21 +685,21 @@ private fun ReferenceMeasurementTypePicker(
 }
 
 @Composable
-private fun ReferenceDatePicker(state: ChipsDatePickerState, modifier: Modifier = Modifier) {
+internal fun ReferenceDatePicker(state: ChipsDatePickerState, modifier: Modifier = Modifier) {
     ChipsDatePicker(state = state, modifier = modifier)
 }
 
 @Composable
-private fun ReferenceMealPicker(state: ChipsMealPickerState, modifier: Modifier = Modifier) {
+internal fun ReferenceMealPicker(state: ChipsMealPickerState, modifier: Modifier = Modifier) {
     ChipsMealPicker(state = state, modifier = modifier)
 }
 
 @Composable
-private fun Menu(onEdit: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+private fun Menu(onEdit: () -> Unit, onDelete: (() -> Unit)?, modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
 
-    if (showDeleteDialog) {
+    if (showDeleteDialog && onDelete != null) {
         DeleteDialog(onDismissRequest = { showDeleteDialog = false }, onDelete = onDelete)
     }
 
@@ -716,13 +718,15 @@ private fun Menu(onEdit: () -> Unit, onDelete: () -> Unit, modifier: Modifier = 
                     onEdit()
                 },
             )
-            DropdownMenuItem(
-                text = { Text(stringResource(Res.string.action_delete)) },
-                onClick = {
-                    expanded = false
-                    showDeleteDialog = true
-                },
-            )
+            if (onDelete != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.action_delete)) },
+                    onClick = {
+                        expanded = false
+                        showDeleteDialog = true
+                    },
+                )
+            }
         }
     }
 }

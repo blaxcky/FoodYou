@@ -1,56 +1,24 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.update
 
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.CallSplit
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeExtendedFloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
-import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
-import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
-import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
-import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsMealPicker
-import com.maksimowiczm.foodyou.app.ui.food.diary.component.FoodMeasurementFormState
-import com.maksimowiczm.foodyou.app.ui.food.diary.component.Source
+import com.maksimowiczm.foodyou.app.ui.food.diary.add.FoodEntryForm
+import com.maksimowiczm.foodyou.app.ui.food.diary.add.FoodModel
+import com.maksimowiczm.foodyou.app.ui.food.diary.add.ProductModel
+import com.maksimowiczm.foodyou.app.ui.food.diary.add.RecipeModel
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberFoodMeasurementFormState
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
-import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
+import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
-import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
-import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -58,6 +26,7 @@ import org.koin.core.parameter.parametersOf
 fun UpdateEntryScreen(
     entryId: Long,
     onBack: () -> Unit,
+    onEditFood: (FoodId) -> Unit,
     onSave: () -> Unit,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
@@ -111,7 +80,7 @@ fun UpdateEntryScreen(
                 selectedMeasurement = selectedMeasurement,
             )
 
-        UpdateEntryScreen(
+        FoodEntryForm(
             onBack = onBack,
             onUnpack = {
                 val selectedMealId =
@@ -127,6 +96,9 @@ fun UpdateEntryScreen(
                     )
                 }
             },
+            onEditFood = onEditFood,
+            onDelete = null,
+            onIngredient = null,
             onSave = {
                 val selectedMealId =
                     state.mealsState.selectedMeal?.let { mealName ->
@@ -141,164 +113,17 @@ fun UpdateEntryScreen(
                     )
                 }
             },
+            food = entry.food.toFoodModel(),
+            history = emptyList(),
             state = state,
-            entry = entry,
             animatedVisibilityScope = animatedVisibilityScope,
             modifier = modifier,
         )
     }
 }
 
-@Composable
-private fun UpdateEntryScreen(
-    onBack: () -> Unit,
-    onUnpack: () -> Unit,
-    onSave: () -> Unit,
-    state: FoodMeasurementFormState,
-    entry: FoodDiaryEntry,
-    animatedVisibilityScope: AnimatedVisibilityScope,
-    modifier: Modifier = Modifier,
-) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val topBar =
-        @Composable {
-            MediumTopAppBar(
-                title = { Text(entry.food.name) },
-                navigationIcon = { ArrowBackIconButton(onBack) },
-                scrollBehavior = scrollBehavior,
-            )
-        }
-    val fab =
-        @Composable {
-            Column(
-                modifier =
-                    Modifier.animateFloatingActionButton(
-                        visible = !animatedVisibilityScope.transition.isRunning && state.isValid,
-                        alignment = Alignment.BottomEnd,
-                    ),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (entry.food is DiaryFoodRecipe) {
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            if (state.isValid) {
-                                onUnpack()
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.CallSplit,
-                                contentDescription = null,
-                            )
-                        },
-                        text = { Text(stringResource(Res.string.action_unpack)) },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
-                LargeExtendedFloatingActionButton(
-                    onClick = {
-                        if (state.isValid) {
-                            onSave()
-                        }
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = stringResource(Res.string.action_save),
-                            modifier = Modifier.size(FloatingActionButtonDefaults.LargeIconSize),
-                        )
-                    },
-                    text = { Text(stringResource(Res.string.action_save)) },
-                )
-            }
-        }
-
-    Scaffold(modifier = modifier, topBar = topBar, floatingActionButton = fab) { paddingValues ->
-        LazyColumn(
-            modifier =
-                Modifier.fillMaxSize()
-                    .imePadding()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding =
-                paddingValues.add(vertical = 8.dp).let {
-                    if (entry.food is DiaryFoodRecipe) {
-                        it.add(bottom = 8.dp + 56.dp + 8.dp + 80.dp + 24.dp) // Double FAB
-                    } else {
-                        it.add(bottom = 80.dp + 24.dp) // FAB
-                    }
-                },
-        ) {
-            item { HorizontalDivider(Modifier.padding(horizontal = 8.dp)) }
-
-            item {
-                ChipsDatePicker(state = state.dateState, modifier = Modifier.padding(8.dp))
-                HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                ChipsMealPicker(state = state.mealsState, modifier = Modifier.padding(8.dp))
-                HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                MeasurementPicker(
-                    state = state.measurementState,
-                    modifier = Modifier.padding(8.dp),
-                    servingUnit =
-                        if (entry.food is DiaryFoodRecipe) ServingUnit.Serving
-                        else ServingUnit.Piece,
-                )
-            }
-
-            val food = entry.food
-            if (food is DiaryFoodRecipe) {
-                item {
-                    val measurement = state.measurementState.measurement
-                    val ingredients = food.unpack(measurement)
-
-                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                    Ingredients(
-                        ingredients = ingredients,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            }
-
-            item {
-                HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                NutrientList(
-                    food = food,
-                    measurement = state.measurementState.measurement,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-            }
-
-            val note = food.note
-            if (note != null) {
-                item {
-                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(Res.string.headline_note),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(text = note, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-
-            if (food is DiaryFoodProduct) {
-                item {
-                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                    Column(Modifier.padding(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.headline_source),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Source(food.source)
-                    }
-                }
-            }
-        }
+private fun DiaryFood.toFoodModel(): FoodModel =
+    when (this) {
+        is DiaryFoodProduct -> ProductModel(this)
+        is DiaryFoodRecipe -> RecipeModel(this)
     }
-}

@@ -26,7 +26,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun Ingredients(
     ingredients: List<IngredientModel>,
-    onIngredient: (FoodId, Measurement) -> Unit,
+    onIngredient: ((FoodId, Measurement) -> Unit)?,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -90,7 +90,10 @@ internal fun Ingredients(
                     measurement = { Text(measurementString) },
                     contentPadding = horizontal.add(vertical = 8.dp),
                     isRecipe = ingredient.isRecipe,
-                    onClick = { onIngredient(ingredient.foodId, ingredient.measurement) },
+                    onClick =
+                        onIngredient?.let {
+                            { it(ingredient.foodId, ingredient.measurement) }
+                        },
                 )
             }
         }

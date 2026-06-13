@@ -6,6 +6,8 @@ import com.maksimowiczm.foodyou.common.domain.food.WeightCalculator
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 
 @Immutable
 internal data class RecipeModel(
@@ -38,6 +40,28 @@ internal data class RecipeModel(
         ingredients = recipe.ingredients.map(::IngredientModel).sortedBy { it.name.lowercase() },
         allIngredients =
             recipe.flatIngredients().map { Triple(it.id, it.headline, it.nutritionFacts) },
+    )
+
+    constructor(
+        recipe: DiaryFoodRecipe
+    ) : this(
+        foodId = recipe.id,
+        name = recipe.name,
+        nutritionFacts = recipe.nutritionFacts,
+        isLiquid = recipe.isLiquid,
+        note = recipe.note,
+        totalWeight = recipe.totalWeight,
+        servings = recipe.servings,
+        ingredients = recipe.ingredients.map(::IngredientModel).sortedBy { it.name.lowercase() },
+        allIngredients =
+            recipe.flatIngredients().map {
+                val id =
+                    when (it) {
+                        is DiaryFoodProduct -> it.id
+                        is DiaryFoodRecipe -> it.id
+                    }
+                Triple(id, it.name, it.nutritionFacts)
+            },
     )
 
     fun unpack(weight: Double): List<IngredientModel> {

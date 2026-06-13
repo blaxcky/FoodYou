@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 
 @Immutable
 internal data class ProductModel(
@@ -33,6 +34,19 @@ internal data class ProductModel(
         totalWeight = product.totalWeight,
         servingWeight = product.servingWeight,
         portions = product.portions,
+    )
+
+    constructor(
+        product: DiaryFoodProduct
+    ) : this(
+        foodId = product.id,
+        name = product.name,
+        nutritionFacts = product.nutritionFacts,
+        isLiquid = product.isLiquid,
+        note = product.note,
+        source = product.source,
+        totalWeight = product.totalWeight,
+        servingWeight = product.servingWeight,
     )
 
     override fun weight(measurement: Measurement): Double? =
