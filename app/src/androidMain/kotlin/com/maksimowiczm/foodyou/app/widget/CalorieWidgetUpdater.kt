@@ -44,17 +44,6 @@ internal class CalorieWidgetUpdater(
         }
     }
 
-    suspend fun updateValues(context: Context, appWidgetIds: IntArray) {
-        if (appWidgetIds.isEmpty()) return
-
-        val manager = AppWidgetManager.getInstance(context)
-        val model = loadModel()
-        val views = createValueRemoteViews(context, model)
-        appWidgetIds.forEach { appWidgetId ->
-            manager.partiallyUpdateAppWidget(appWidgetId, views)
-        }
-    }
-
     private suspend fun loadModel(): CalorieWidgetModel {
         val settings = settingsRepository.observe().first()
         val today = dateProvider.now().date
@@ -101,11 +90,6 @@ internal class CalorieWidgetUpdater(
             setValues(context, model)
         }
     }
-
-    private fun createValueRemoteViews(context: Context, model: CalorieWidgetModel): RemoteViews =
-        RemoteViews(context.packageName, R.layout.widget_calories_medium).apply {
-            setValues(context, model)
-        }
 
     private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
         setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
