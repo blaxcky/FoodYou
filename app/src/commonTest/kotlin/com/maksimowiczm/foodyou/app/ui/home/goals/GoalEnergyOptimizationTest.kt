@@ -6,18 +6,32 @@ import kotlinx.datetime.LocalDate
 
 class GoalEnergyOptimizationTest {
     @Test
-    fun weeklyRemainingMatchesDailyRemainingWithFractionalActivityCalories() {
-        val goal = 2000
-        val netEnergy = roundedNetEnergyKcal(consumedEnergy = 2185.7, burnedEnergy = 216.9)
+    fun weeklyRemainingUsesConsumedEnergyAndActivityAdjustedGoal() {
+        val eaten = roundedEnergyKcal(2185.7)
+        val goal = roundedEnergyKcal(1999.6) + roundedEnergyKcal(216.9)
         val weeklyDay =
             WeekDaySummaryModel(
                 date = LocalDate(2026, 5, 25),
-                energy = netEnergy,
+                energy = eaten,
                 goal = goal,
             )
 
-        assertEquals(31, goal - netEnergy)
-        assertEquals(goal - netEnergy, weeklyDay.goal - weeklyDay.energy)
+        assertEquals(31, goal - eaten)
+        assertEquals(goal - eaten, weeklyDay.goal - weeklyDay.energy)
+    }
+
+    @Test
+    fun weeklyActivityIncreasesGoalWithoutReducingConsumedEnergy() {
+        val weeklyDay =
+            WeekDaySummaryModel(
+                date = LocalDate(2026, 5, 25),
+                energy = roundedEnergyKcal(0.0),
+                goal = roundedEnergyKcal(2100.0) + roundedEnergyKcal(300.4),
+            )
+
+        assertEquals(0, weeklyDay.energy)
+        assertEquals(2400, weeklyDay.goal)
+        assertEquals(2400, weeklyDay.goal - weeklyDay.energy)
     }
 
     @Test

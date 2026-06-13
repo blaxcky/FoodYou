@@ -207,14 +207,12 @@ internal class GoalsViewModel(
                         ) { facts, goal, activity ->
                             val consumedEnergy = facts.energy.value ?: 0.0
                             val baseGoal = goal[NutritionFactsField.Energy]
+                            val burnedEnergy = activity.totalEnergyKcal
                             WeekDaySummaryModel(
                                 date = date,
-                                energy =
-                                    roundedNetEnergyKcal(
-                                        consumedEnergy = consumedEnergy,
-                                        burnedEnergy = activity.totalEnergyKcal,
-                                    ),
-                                goal = roundedEnergyKcal(baseGoal),
+                                energy = roundedEnergyKcal(consumedEnergy),
+                                goal =
+                                    roundedEnergyKcal(baseGoal) + roundedEnergyKcal(burnedEnergy),
                             )
                         }
                     }
