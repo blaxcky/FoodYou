@@ -21,6 +21,13 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
+    fun roundedRemainingEnergyUsesDisplayRoundedGoalAndNetEnergy() {
+        val netEnergy = roundedNetEnergyKcal(consumedEnergy = 824.2, burnedEnergy = 0.0)
+
+        assertEquals(1176, roundedRemainingEnergyKcal(energyGoalKcal = 1999.6, netEnergy))
+    }
+
+    @Test
     fun mondaySurplusReducesTuesdayGoalAcrossRemainingWeek() {
         val goal =
             optimizedEnergyGoalKcal(

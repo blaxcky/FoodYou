@@ -3,7 +3,9 @@ package com.maksimowiczm.foodyou.app.widget
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalEnergyOptimizationDay
 import com.maksimowiczm.foodyou.app.ui.home.goals.adjustedEnergyGoalKcal
 import com.maksimowiczm.foodyou.app.ui.home.goals.optimizedEnergyGoalKcal
-import kotlin.math.roundToInt
+import com.maksimowiczm.foodyou.app.ui.home.goals.roundedEnergyKcal
+import com.maksimowiczm.foodyou.app.ui.home.goals.roundedNetEnergyKcal
+import com.maksimowiczm.foodyou.app.ui.home.goals.roundedRemainingEnergyKcal
 import kotlinx.datetime.LocalDate
 
 internal data class CalorieWidgetModel(
@@ -23,7 +25,7 @@ internal fun calorieWidgetModel(
     dietEnergyDeficitKcal: Double?,
     previousDays: List<GoalEnergyOptimizationDay>,
 ): CalorieWidgetModel {
-    val netEnergy = eatenKcal - burnedKcal
+    val netEnergyKcal = roundedNetEnergyKcal(eatenKcal, burnedKcal)
     val optimizedGoal =
         optimizedEnergyGoalKcal(
             selectedDate = today,
@@ -43,15 +45,15 @@ internal fun calorieWidgetModel(
             )
         }
 
-    val normalLeftKcal = (baseGoalKcal - netEnergy).roundToInt()
-    val optimizedLeftKcal = (optimizedGoal - netEnergy).roundToInt()
+    val normalLeftKcal = roundedRemainingEnergyKcal(baseGoalKcal, netEnergyKcal)
+    val optimizedLeftKcal = roundedRemainingEnergyKcal(optimizedGoal, netEnergyKcal)
 
     return CalorieWidgetModel(
         date = today,
-        eatenKcal = eatenKcal.roundToInt(),
-        burnedKcal = burnedKcal.roundToInt(),
+        eatenKcal = roundedEnergyKcal(eatenKcal),
+        burnedKcal = roundedEnergyKcal(burnedKcal),
         normalLeftKcal = normalLeftKcal,
         optimizedLeftKcal = optimizedLeftKcal.takeIf { it != normalLeftKcal },
-        dietLeftKcal = dietGoal?.let { (it - netEnergy).roundToInt() },
+        dietLeftKcal = dietGoal?.let { roundedRemainingEnergyKcal(it, netEnergyKcal) },
     )
 }

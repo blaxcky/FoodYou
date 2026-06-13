@@ -3,7 +3,6 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
-import com.maksimowiczm.foodyou.activity.domain.usecase.calculateNetEnergyKcal
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
@@ -215,7 +214,7 @@ internal class GoalsViewModel(
                                         consumedEnergy = consumedEnergy,
                                         burnedEnergy = activity.totalEnergyKcal,
                                     ),
-                                goal = baseGoal.roundToInt(),
+                                goal = roundedEnergyKcal(baseGoal),
                             )
                         }
                     }
@@ -263,14 +262,11 @@ private data class SelectedGoalDay(
     val fatsGoal: Int,
 )
 
-internal fun roundedNetEnergyKcal(consumedEnergy: Double, burnedEnergy: Double): Int =
-    calculateNetEnergyKcal(consumedEnergy, burnedEnergy).roundToInt()
-
 internal fun percentageEnergyGoalKcal(energyGoalKcal: Double, baseEnergyGoalKcal: Double): Int =
     if (energyGoalKcal > 0.0) {
-        energyGoalKcal.roundToInt()
+        roundedEnergyKcal(energyGoalKcal)
     } else {
-        baseEnergyGoalKcal.roundToInt()
+        roundedEnergyKcal(baseEnergyGoalKcal)
     }
 
 private fun GoalDisplayMode.summary(
@@ -311,7 +307,7 @@ private fun GoalDisplayMode.summary(
 
     return GoalDisplaySummaryModel(
         mode = this,
-        energyGoal = energyGoal.roundToInt(),
+        energyGoal = roundedEnergyKcal(energyGoal),
         showEnergyGoalValue = showEnergyGoalValue,
         percentageEnergyGoal =
             percentageEnergyGoalKcal(

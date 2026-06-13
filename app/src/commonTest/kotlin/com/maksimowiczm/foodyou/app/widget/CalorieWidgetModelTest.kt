@@ -38,6 +38,59 @@ class CalorieWidgetModelTest {
     }
 
     @Test
+    fun normalRemainingEnergyUsesRoundedGoalAndRoundedNetEnergy() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 20),
+                eatenKcal = 1520.6,
+                burnedKcal = 120.2,
+                baseGoalKcal = 2000.6,
+                dietEnergyDeficitKcal = null,
+                previousDays = emptyList(),
+            )
+
+        assertEquals(601, model.normalLeftKcal)
+    }
+
+    @Test
+    fun hidesOptimizedRemainingEnergyWhenRoundedAdjustedGoalMatchesNormalGoal() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 20),
+                eatenKcal = 824.2,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2000.0,
+                dietEnergyDeficitKcal = null,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 2002.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1176, model.normalLeftKcal)
+        assertNull(model.optimizedLeftKcal)
+    }
+
+    @Test
+    fun dietRemainingEnergyUsesRoundedAdjustedGoalAndRoundedNetEnergy() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 18),
+                eatenKcal = 824.2,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2000.0,
+                dietEnergyDeficitKcal = 0.4,
+                previousDays = emptyList(),
+            )
+
+        assertEquals(1176, model.dietLeftKcal)
+    }
+
+    @Test
     fun hidesOptimizedRemainingEnergyWhenItMatchesNormalRemainingEnergy() {
         val model =
             calorieWidgetModel(
