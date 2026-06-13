@@ -1,58 +1,91 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.add
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.selectAll
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeExtendedFloatingActionButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.app.ui.common.form.FormField
+import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
+import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
 import com.maksimowiczm.foodyou.app.ui.food.component.LabeledMeasurementSuggestion
-import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
+import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerState
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
+import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePickerState
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsMealPicker
+import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsMealPickerState
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.FoodMeasurementFormState
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.Source
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberFoodMeasurementFormState
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
+import com.maksimowiczm.foodyou.common.domain.measurement.from
+import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
+import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
@@ -222,95 +255,123 @@ private fun AddEntryScreen(
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+    val cardShape = RoundedCornerShape(24.dp)
 
     val topBar =
         @Composable {
             MediumTopAppBar(
-                title = { Text(food.name) },
+                title = {},
                 navigationIcon = { ArrowBackIconButton(onBack) },
                 actions = { Menu(onEdit = { onEditFood(food.foodId) }, onDelete = onDelete) },
                 scrollBehavior = scrollBehavior,
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0f),
+                        scrolledContainerColor =
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
+                    ),
             )
         }
 
-    val fab =
-        @Composable {
-            Column(
-                modifier =
-                    Modifier.animateFloatingActionButton(
-                        visible =
-                            !animatedVisibilityScope.transition.isRunning &&
-                                state.isValid &&
-                                (food !is RecipeModel || food.isValid),
-                        alignment = Alignment.BottomEnd,
-                    ),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (food.canUnpack) {
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            if (state.isValid) {
-                                onUnpack()
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.CallSplit,
-                                contentDescription = null,
-                            )
-                        },
-                        text = { Text(stringResource(Res.string.action_unpack)) },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
-                LargeExtendedFloatingActionButton(
-                    onClick = {
-                        if (state.isValid) {
-                            onAdd()
-                        }
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = stringResource(Res.string.action_save),
-                            modifier = Modifier.size(FloatingActionButtonDefaults.LargeIconSize),
-                        )
-                    },
-                    text = { Text(stringResource(Res.string.action_save)) },
-                )
-            }
-        }
-
-    Scaffold(modifier = modifier, topBar = topBar, floatingActionButton = fab) { paddingValues ->
+    Scaffold(modifier = modifier, topBar = topBar) { paddingValues ->
         LazyColumn(
             modifier =
                 Modifier.fillMaxSize()
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f))
                     .imePadding()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding =
-                paddingValues.add(vertical = 8.dp).let {
-                    if (food.canUnpack) {
-                        it.add(bottom = 8.dp + 56.dp + 8.dp + 80.dp + 24.dp) // Double FAB
-                    } else {
-                        it.add(bottom = 80.dp + 24.dp) // FAB
-                    }
-                },
+                paddingValues
+                    .add(horizontal = 16.dp)
+                    .add(top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { HorizontalDivider(Modifier.padding(horizontal = 8.dp)) }
+            item {
+                AddEntryCard(shape = cardShape) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(contentPadding),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        Text(
+                            text = food.name,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+
+                        val note = food.note
+                        if (!note.isNullOrBlank()) {
+                            Text(
+                                text = note,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+
+                        MacroSummary(
+                            food = food,
+                            measurement = state.measurementState.measurement,
+                        )
+
+                        ReferenceMeasurementPicker(
+                            state = state.measurementState,
+                            servingUnit =
+                                if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
+                        )
+
+                        if (food.canUnpack) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (state.isValid) {
+                                        onUnpack()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                enabled = state.isValid,
+                                shape = RoundedCornerShape(28.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.CallSplit,
+                                    contentDescription = null,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(Res.string.action_unpack))
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                if (state.isValid) {
+                                    onAdd()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            enabled =
+                                !animatedVisibilityScope.transition.isRunning &&
+                                    state.isValid &&
+                                    (food !is RecipeModel || food.isValid),
+                            shape = RoundedCornerShape(28.dp),
+                            contentPadding = ButtonDefaults.ContentPadding,
+                        ) {
+                            Text(stringResource(Res.string.action_save))
+                        }
+                    }
+                }
+            }
 
             item {
-                ChipsDatePicker(state = state.dateState, modifier = Modifier.padding(8.dp))
-                HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                ChipsMealPicker(state = state.mealsState, modifier = Modifier.padding(8.dp))
-                HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                MeasurementPicker(
-                    state = state.measurementState,
-                    modifier = Modifier.padding(8.dp),
-                    servingUnit =
-                        if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
-                )
+                AddEntryCard(shape = cardShape) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(contentPadding),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ReferenceDatePicker(state = state.dateState)
+                        HorizontalDivider()
+                        ReferenceMealPicker(state = state.mealsState)
+                    }
+                }
             }
 
             if (food is RecipeModel) {
@@ -318,64 +379,317 @@ private fun AddEntryScreen(
                     val measurement = state.measurementState.measurement
                     val ingredients = food.unpack(food.weight(measurement))
 
-                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                    Ingredients(
-                        ingredients = ingredients,
-                        onIngredient = onIngredient,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                    AddEntryCard(shape = cardShape) {
+                        Ingredients(
+                            ingredients = ingredients,
+                            onIngredient = onIngredient,
+                            contentPadding = contentPadding,
+                        )
+                    }
                 }
             }
 
             item {
-                HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                NutrientList(
-                    food = food,
-                    measurement = state.measurementState.measurement,
-                    onEditFood = onEditFood,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
+                AddEntryCard(shape = cardShape) {
+                    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.headline_macronutrients),
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        NutrientList(
+                            food = food,
+                            measurement = state.measurementState.measurement,
+                            onEditFood = onEditFood,
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                        )
+                    }
+                }
             }
 
             val note = food.note
             if (note != null) {
                 item {
-                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(Res.string.headline_note),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(text = note, style = MaterialTheme.typography.bodyMedium)
+                    AddEntryCard(shape = cardShape) {
+                        Column(Modifier.padding(contentPadding)) {
+                            Text(
+                                text = stringResource(Res.string.headline_note),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(text = note, style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
             }
 
             if (food is ProductModel) {
                 item {
-                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(Res.string.headline_source),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Source(food.source)
+                    AddEntryCard(shape = cardShape) {
+                        Column(Modifier.padding(contentPadding)) {
+                            Text(
+                                text = stringResource(Res.string.headline_source),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Source(food.source)
+                        }
                     }
                 }
             }
 
             if (history.isNotEmpty()) {
                 item {
-                    HorizontalDivider(Modifier.padding(horizontal = 8.dp))
-                    FoodHistory(events = history, modifier = Modifier.padding(16.dp))
+                    AddEntryCard(shape = cardShape) {
+                        FoodHistory(events = history, modifier = Modifier.padding(contentPadding))
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun AddEntryCard(
+    shape: RoundedCornerShape,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        content = { content() },
+    )
+}
+
+@Composable
+private fun MacroSummary(food: FoodModel, measurement: Measurement, modifier: Modifier = Modifier) {
+    val energyFormatter = LocalEnergyFormatter.current
+    val weight = remember(food, measurement) { food.weight(measurement) }
+    val facts = remember(food, weight) { weight?.let { food.nutritionFacts * (it / 100) } }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        MacroSummaryItem(
+            value =
+                facts?.energy?.value?.let { energyFormatter.formatEnergy(it, "%.0f", false) }
+                    ?: "-",
+            label = energyFormatter.suffix(),
+            modifier = Modifier.weight(1f),
+        )
+        MacroSummaryItem(
+            value = facts?.fats?.value?.formatMacroValue() ?: "-",
+            label = stringResource(Res.string.nutriment_fats_short),
+            modifier = Modifier.weight(1f),
+        )
+        MacroSummaryItem(
+            value = facts?.carbohydrates?.value?.formatMacroValue() ?: "-",
+            label = stringResource(Res.string.nutriment_carbohydrates_short),
+            modifier = Modifier.weight(1f),
+        )
+        MacroSummaryItem(
+            value = facts?.proteins?.value?.formatMacroValue() ?: "-",
+            label = stringResource(Res.string.nutriment_proteins_short),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun MacroSummaryItem(value: String, label: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.heightIn(min = 68.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+private fun Double.formatMacroValue(): String = "${formatClipZeros("%.1f")}g"
+
+@Composable
+private fun ReferenceMeasurementPicker(
+    state: MeasurementPickerState,
+    servingUnit: ServingUnit,
+    modifier: Modifier = Modifier,
+) {
+    val latestState by rememberUpdatedState(state)
+    LaunchedEffect(state.inputField.value, state.type) {
+        val value = state.inputField.value ?: return@LaunchedEffect
+        latestState.measurement = Measurement.from(state.type, value.toDouble())
+    }
+
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ReferenceMeasurementInput(
+                formField = state.inputField,
+                modifier = Modifier.weight(1f),
+            )
+            ReferenceMeasurementTypePicker(
+                type = state.type,
+                types = state.possibleTypes,
+                servingUnit = servingUnit,
+                onSelect = { state.type = it },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.labelSuggestions.forEach { suggestion ->
+                SuggestionChip(
+                    onClick = {
+                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
+                            text = suggestion.measurement.rawValue.formatClipZeros()
+                        )
+                        state.type = suggestion.measurement.type
+                    },
+                    label = { Text(suggestion.label) },
+                )
+            }
+            state.suggestions.filter { it.type.isUserSelectable }.forEach { measurement ->
+                SuggestionChip(
+                    onClick = {
+                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
+                            text = measurement.rawValue.formatClipZeros()
+                        )
+                        state.type = measurement.type
+                    },
+                    label = { Text(measurement.stringResource(servingUnit)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReferenceMeasurementInput(
+    formField: FormField<Float?, String>,
+    modifier: Modifier = Modifier,
+) {
+    var inputFocused by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(inputFocused) {
+        if (inputFocused) {
+            withFrameNanos {}
+            formField.textFieldState.edit { selectAll() }
+        }
+    }
+
+    val borderColor by
+        animateColorAsState(
+            targetValue =
+                if (formField.error == null) {
+                    MaterialTheme.colorScheme.outline
+                } else {
+                    MaterialTheme.colorScheme.error
+                }
+        )
+
+    Surface(
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, borderColor),
+    ) {
+        BasicTextField(
+            state = formField.textFieldState,
+            modifier =
+                Modifier.fillMaxSize()
+                    .onFocusChanged { focusState -> inputFocused = focusState.isFocused }
+                    .padding(horizontal = 16.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            textStyle = LocalTextStyle.current.merge(LocalContentColor.current),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            cursorBrush = SolidColor(LocalContentColor.current),
+            decorator = { Box(contentAlignment = Alignment.CenterStart) { it() } },
+        )
+    }
+}
+
+@Composable
+private fun ReferenceMeasurementTypePicker(
+    type: MeasurementType,
+    types: List<MeasurementType>,
+    servingUnit: ServingUnit,
+    onSelect: (MeasurementType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    Surface(
+        onClick = { expanded = true },
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = type.stringResource(servingUnit),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                Icon(imageVector = Icons.Outlined.KeyboardArrowDown, contentDescription = null)
+
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    types.filter { it.isUserSelectable }.forEach {
+                        DropdownMenuItem(
+                            text = { Text(it.stringResource(servingUnit)) },
+                            onClick = {
+                                onSelect(it)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReferenceDatePicker(state: ChipsDatePickerState, modifier: Modifier = Modifier) {
+    ChipsDatePicker(state = state, modifier = modifier)
+}
+
+@Composable
+private fun ReferenceMealPicker(state: ChipsMealPickerState, modifier: Modifier = Modifier) {
+    ChipsMealPicker(state = state, modifier = modifier)
 }
 
 @Composable
