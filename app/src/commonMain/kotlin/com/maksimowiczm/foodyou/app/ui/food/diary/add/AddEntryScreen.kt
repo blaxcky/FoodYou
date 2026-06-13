@@ -487,17 +487,17 @@ private fun MacroSummary(food: FoodModel, measurement: Measurement, modifier: Mo
         )
         MacroSummaryItem(
             value = facts?.fats?.value?.formatMacroValue() ?: "-",
-            label = stringResource(Res.string.nutriment_fats_short),
+            label = "Fett",
             modifier = Modifier.weight(1f),
         )
         MacroSummaryItem(
             value = facts?.carbohydrates?.value?.formatMacroValue() ?: "-",
-            label = stringResource(Res.string.nutriment_carbohydrates_short),
+            label = "KH",
             modifier = Modifier.weight(1f),
         )
         MacroSummaryItem(
             value = facts?.proteins?.value?.formatMacroValue() ?: "-",
-            label = stringResource(Res.string.nutriment_proteins_short),
+            label = "Protein",
             modifier = Modifier.weight(1f),
         )
     }
