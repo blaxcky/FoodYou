@@ -24,6 +24,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryReposi
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CreateFoodDiaryEntryUseCase
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -137,7 +138,63 @@ class FddbDiarySyncUseCaseTest {
 
         val result = useCase.sync(LocalDate(2026, 5, 25))
 
-        assertEquals(FddbDiarySyncResult(imported = 0, skipped = 0, failed = 1), result)
+        assertEquals(0, result.imported)
+        assertEquals(0, result.skipped)
+        assertEquals(1, result.failed)
+        val errorMessage = result.errorMessage ?: error("Expected debug message")
+        assertContains(errorMessage, "Entry ID: 1")
+        assertContains(errorMessage, "Product URL: https://fddb.info/db/de/lebensmittel/broken_food/index.html")
+        assertContains(errorMessage, "Product: 100 g Food")
+        assertContains(errorMessage, "IllegalStateException")
+        assertContains(errorMessage, "Failed")
+        assertContains(errorMessage, "FakeFddbProductGateway.getProduct")
+    }
+
+    @Test
+    fun recordsFailedDiaryEntryCreation() = runBlocking {
+        val useCase =
+            useCase(
+                diaryGateway =
+                    FakeFddbDiaryGateway(
+                        listOf(
+                            diaryEntry(
+                                id = "1",
+                                slug = "package_food",
+                                productName = "Package Food",
+                                measurement = Measurement.Package(1.0),
+                            )
+                        )
+                    )
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(0, result.imported)
+        assertEquals(0, result.skipped)
+        assertEquals(1, result.failed)
+        val errorMessage = result.errorMessage ?: error("Expected debug message")
+        assertContains(errorMessage, "Entry ID: 1")
+        assertContains(errorMessage, "Product URL: https://fddb.info/db/de/lebensmittel/package_food/index.html")
+        assertContains(errorMessage, "Diary entry could not be created")
+        assertContains(errorMessage, "InvalidMeasurement")
+    }
+
+    @Test
+    fun recordsFailedMealMapping() = runBlocking {
+        val useCase =
+            useCase(
+                diaryGateway = FakeFddbDiaryGateway(listOf(diaryEntry("1", "remote_food"))),
+                mealRepository = EmptyMealRepository,
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(0, result.imported)
+        assertEquals(0, result.skipped)
+        assertEquals(1, result.failed)
+        val errorMessage = result.errorMessage ?: error("Expected debug message")
+        assertContains(errorMessage, "Entry ID: 1")
+        assertContains(errorMessage, "Meal could not be mapped")
     }
 
     private fun useCase(
@@ -146,6 +203,7 @@ class FddbDiarySyncUseCaseTest {
         productGateway: FddbProductGateway = FakeFddbProductGateway(),
         syncEntries: FakeFddbDiarySyncEntryRepository = FakeFddbDiarySyncEntryRepository(),
         foodEntryRepository: FakeFoodDiaryEntryRepository = FakeFoodDiaryEntryRepository(),
+        mealRepository: MealRepository = FakeMealRepository,
     ) =
         FddbDiarySyncUseCase(
             credentialsRepository = FakeFddbCredentialsRepository,
@@ -153,10 +211,10 @@ class FddbDiarySyncUseCaseTest {
             productGateway = productGateway,
             productRepository = productRepository,
             syncEntryRepository = syncEntries,
-            mealRepository = FakeMealRepository,
+            mealRepository = mealRepository,
             createFoodDiaryEntryUseCase =
                 CreateFoodDiaryEntryUseCase(
-                    mealRepository = FakeMealRepository,
+                    mealRepository = mealRepository,
                     entryRepository = foodEntryRepository,
                     transactionProvider = ImmediateTransactionProvider,
                     dateProvider = FixedDateProvider,
@@ -326,6 +384,20 @@ class FddbDiarySyncUseCaseTest {
         override suspend fun reorderMeals(order: List<Long>) = Unit
     }
 
+    private object EmptyMealRepository : MealRepository {
+        override fun observeMeal(mealId: Long): Flow<Meal?> = flowOf(null)
+
+        override fun observeMeals(): Flow<List<Meal>> = flowOf(emptyList())
+
+        override suspend fun insertMealWithLastRank(name: String, from: LocalTime, to: LocalTime) = Unit
+
+        override suspend fun deleteMeal(mealId: Long) = Unit
+
+        override suspend fun updateMeal(id: Long, name: String, from: LocalTime, to: LocalTime) = Unit
+
+        override suspend fun reorderMeals(order: List<Long>) = Unit
+    }
+
     private object FakeFddbCredentialsRepository : FddbCredentialsRepository {
         override suspend fun store(login: String, password: String) = Unit
 
@@ -364,14 +436,19 @@ class FddbDiarySyncUseCaseTest {
     }
 
     private companion object {
-        fun diaryEntry(id: String, slug: String, productName: String = "100 g Food") =
+        fun diaryEntry(
+            id: String,
+            slug: String,
+            productName: String = "100 g Food",
+            measurement: Measurement = Measurement.Gram(100.0),
+        ) =
             FddbDiaryEntry(
                 entryId = id,
                 date = LocalDate(2026, 5, 25),
                 mealName = "Morgens",
                 productName = productName,
                 productUrl = "https://fddb.info/db/de/lebensmittel/$slug/index.html",
-                measurement = Measurement.Gram(100.0),
+                measurement = measurement,
             )
 
         fun product(

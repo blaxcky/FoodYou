@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.food.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.common.result.isSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
 import com.maksimowiczm.foodyou.food.domain.entity.Product
@@ -41,6 +42,7 @@ class FddbDiarySyncUseCase(
         var imported = 0
         var skipped = 0
         var failed = 0
+        val errors = mutableListOf<String>()
 
         for (entry in diaryEntries) {
             try {
@@ -56,10 +58,12 @@ class FddbDiarySyncUseCase(
 
                 val product = resolveProduct(entry) ?: run {
                     failed += 1
+                    errors += entry.debugMessage("Product could not be resolved")
                     continue
                 }
                 val meal = meals.matchFddbMeal(entry.mealName) ?: run {
                     failed += 1
+                    errors += entry.debugMessage("Meal could not be mapped")
                     continue
                 }
                 val measurement = entry.measurement.forProduct(product)
@@ -76,13 +80,23 @@ class FddbDiarySyncUseCase(
                     imported += 1
                 } else {
                     failed += 1
+                    errors +=
+                        entry.debugMessage(
+                            "Diary entry could not be created: ${(result as Result.Error).error}"
+                        )
                 }
-            } catch (_: Throwable) {
+            } catch (throwable: Throwable) {
                 failed += 1
+                errors += entry.debugMessage(throwable)
             }
         }
 
-        return FddbDiarySyncResult(imported = imported, skipped = skipped, failed = failed)
+        return FddbDiarySyncResult(
+            imported = imported,
+            skipped = skipped,
+            failed = failed,
+            errorMessage = errors.joinToString(separator = "\n\n").ifBlank { null },
+        )
     }
 
     private suspend fun resolveProduct(entry: FddbDiaryEntry): Product? {
@@ -99,7 +113,12 @@ class FddbDiarySyncUseCase(
         dateProvider.nowInstant().toLocalDateTime(TimeZone.currentSystemDefault()).date
 }
 
-data class FddbDiarySyncResult(val imported: Int, val skipped: Int, val failed: Int)
+data class FddbDiarySyncResult(
+    val imported: Int,
+    val skipped: Int,
+    val failed: Int,
+    val errorMessage: String? = null,
+)
 
 private fun FddbDiaryEntry.isDummy(): Boolean =
     productName.contains("dummy", ignoreCase = true) || productUrl.contains("dummy", ignoreCase = true)
@@ -136,3 +155,27 @@ private fun Product.toDiaryProduct(): DiaryFoodProduct =
         source = source,
         note = note,
     )
+
+private fun FddbDiaryEntry.debugMessage(reason: String): String =
+    buildString {
+        appendDebugHeader(this@debugMessage)
+        appendLine("Reason: $reason")
+    }
+
+private fun FddbDiaryEntry.debugMessage(throwable: Throwable): String =
+    buildString {
+        appendDebugHeader(this@debugMessage)
+        appendLine("Exception: ${throwable::class.qualifiedName ?: throwable::class.simpleName}")
+        appendLine("Message: ${throwable.message}")
+        appendLine()
+        appendLine(throwable.stackTraceToString())
+    }
+
+private fun StringBuilder.appendDebugHeader(entry: FddbDiaryEntry) {
+    appendLine("FDDB diary entry failed")
+    appendLine("Entry ID: ${entry.entryId}")
+    appendLine("Product: ${entry.productName}")
+    appendLine("Product URL: ${entry.productUrl}")
+    appendLine("Meal: ${entry.mealName}")
+    appendLine("Date: ${entry.date}")
+}

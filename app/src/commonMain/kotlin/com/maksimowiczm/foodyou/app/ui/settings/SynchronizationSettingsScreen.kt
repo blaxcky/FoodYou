@@ -1,13 +1,17 @@
 package com.maksimowiczm.foodyou.app.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -16,9 +20,11 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.home.master.FddbLoginDialog
+import com.maksimowiczm.foodyou.common.compose.utility.LocalClipboardManager
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -62,6 +68,7 @@ private fun SynchronizationSettingsContent(
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val clipboardManager = LocalClipboardManager.current
 
     Scaffold(
         modifier = modifier,
@@ -123,11 +130,39 @@ private fun SynchronizationSettingsContent(
             }
 
             item {
+                val errorMessage = model?.fddbDiarySyncStatus?.errorMessage
                 ListItem(
                     headlineContent = {
                         Text(stringResource(Res.string.headline_fddb_sync_status))
                     },
-                    supportingContent = { Text(model.fddbSyncStatusText()) },
+                    supportingContent = {
+                        Column {
+                            Text(model.fddbSyncStatusText())
+                            errorMessage?.let { debugText ->
+                                Text(
+                                    text = debugText,
+                                    style =
+                                        MaterialTheme.typography.bodySmall.copy(
+                                            fontFamily = FontFamily.Monospace
+                                        ),
+                                )
+                                IconButton(
+                                    onClick = {
+                                        clipboardManager.copy(
+                                            label = "FDDB sync debug",
+                                            text = debugText,
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ContentCopy,
+                                        contentDescription =
+                                            stringResource(Res.string.action_copy),
+                                    )
+                                }
+                            }
+                        }
+                    },
                     trailingContent = {
                         FilledTonalButton(
                             onClick = onFddbSync,
@@ -158,8 +193,13 @@ private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {
     val status = this?.fddbDiarySyncStatus
         ?: return stringResource(Res.string.neutral_fddb_sync_never_run)
 
-    status.errorMessage?.let { message ->
-        return stringResource(Res.string.neutral_fddb_sync_failed_with_message, message)
+    if (status.errorMessage != null) {
+        return stringResource(
+            Res.string.neutral_fddb_import_summary,
+            status.imported,
+            status.skipped,
+            status.failed,
+        )
     }
 
     return stringResource(

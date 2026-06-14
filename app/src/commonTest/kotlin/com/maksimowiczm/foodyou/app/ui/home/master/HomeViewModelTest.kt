@@ -17,6 +17,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -276,10 +277,18 @@ class HomeViewModelTest {
             settingsRepository = settingsRepository,
             syncHealthConnect = {},
             hasFddbCredentials = { true },
-            syncFddbDiary = { FddbDiarySyncResult(imported = 0, skipped = 0, failed = 1) },
+            syncFddbDiary = {
+                FddbDiarySyncResult(
+                    imported = 0,
+                    skipped = 0,
+                    failed = 1,
+                    errorMessage = "FDDB debug details",
+                )
+            },
         )
 
         assertEquals(1, settingsRepository.value.fddbDiarySyncLastFailed)
+        assertEquals("FDDB debug details", settingsRepository.value.fddbDiarySyncLastErrorMessage)
     }
 
     @Test
@@ -324,7 +333,10 @@ class HomeViewModelTest {
         )
 
         assertEquals(1, settingsRepository.value.fddbDiarySyncLastFailed)
-        assertEquals("Network down", settingsRepository.value.fddbDiarySyncLastErrorMessage)
+        val errorMessage = settingsRepository.value.fddbDiarySyncLastErrorMessage ?: error("Expected stacktrace")
+        assertContains(errorMessage, "IllegalStateException")
+        assertContains(errorMessage, "Network down")
+        assertContains(errorMessage, "HomeViewModelTest")
     }
 
     @Test

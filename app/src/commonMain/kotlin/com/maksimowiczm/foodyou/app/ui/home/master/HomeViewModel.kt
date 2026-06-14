@@ -356,7 +356,7 @@ private suspend fun UserPreferencesRepository<Settings>.recordFddbDiarySyncResul
             fddbDiarySyncLastImported = result.imported,
             fddbDiarySyncLastSkipped = result.skipped,
             fddbDiarySyncLastFailed = result.failed,
-            fddbDiarySyncLastErrorMessage = null,
+            fddbDiarySyncLastErrorMessage = result.errorMessage,
             fddbDiarySyncLastAttemptEpochSeconds = now,
         )
     }
@@ -371,7 +371,7 @@ private suspend fun UserPreferencesRepository<Settings>.recordFddbDiarySyncFailu
             fddbDiarySyncLastImported = 0,
             fddbDiarySyncLastSkipped = 0,
             fddbDiarySyncLastFailed = 1,
-            fddbDiarySyncLastErrorMessage = throwable.message,
+            fddbDiarySyncLastErrorMessage = throwable.stackTraceToString(),
             fddbDiarySyncLastAttemptEpochSeconds = now,
         )
     }
