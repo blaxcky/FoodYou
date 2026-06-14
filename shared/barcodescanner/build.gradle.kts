@@ -17,12 +17,6 @@ kotlin {
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
     }
 
-    val xcfName = "barcodescannerKit"
-
-    iosArm64 { binaries.framework { baseName = xcfName } }
-
-    iosSimulatorArm64 { binaries.framework { baseName = xcfName } }
-
     sourceSets {
         commonMain.dependencies {
             implementation(libs.jetbrains.compose.runtime)

@@ -45,13 +45,6 @@ kotlin {
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
     }
 
-    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "App"
-            isStatic = true
-        }
-    }
-
     sourceSets {
         commonMain.dependencies {
             implementation(projects.shared.resources)
@@ -134,8 +127,6 @@ kotlin {
             implementation(libs.roborazzi.compose)
             implementation(libs.roborazzi.junit.rule)
         }
-
-        iosMain.dependencies { implementation(libs.ktor.client.darwin) }
     }
 }
 
@@ -201,7 +192,7 @@ roborazzi { outputDir.set(file("src/test/screenshots")) }
 dependencies {
     debugImplementation(libs.jetbrains.compose.ui.tooling)
 
-    listOf("kspCommonMainMetadata", "kspAndroid", "kspIosArm64", "kspIosSimulatorArm64").forEach {
+    listOf("kspCommonMainMetadata", "kspAndroid").forEach {
         add(it, libs.androidx.room.compiler)
     }
 }
