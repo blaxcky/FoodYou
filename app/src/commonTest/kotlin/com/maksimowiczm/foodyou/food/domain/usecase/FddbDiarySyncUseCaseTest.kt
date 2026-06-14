@@ -110,6 +110,36 @@ class FddbDiarySyncUseCaseTest {
     }
 
     @Test
+    fun ignoresDuplicatePortionLabelsWhenSyncingProduct() = runBlocking {
+        val source = "https://fddb.info/db/de/lebensmittel/local_food/index.html"
+        val productRepository = FakeProductRepository(existing = listOf(product(id = 1, sourceUrl = source)))
+        val portions =
+            listOf(
+                FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram),
+                FddbPortion(" stück ", 20.0, FddbPortion.Unit.Gram),
+                FddbPortion("Portion", 100.0, FddbPortion.Unit.Gram),
+            )
+        val useCase =
+            useCase(
+                productRepository = productRepository,
+                diaryGateway = FakeFddbDiaryGateway(listOf(diaryEntry("1", "local_food"))),
+                productGateway = FakeFddbProductGateway(portions = portions),
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(1, result.imported)
+        assertEquals(0, result.failed)
+        assertEquals(
+            listOf(
+                FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram),
+                FddbPortion("Portion", 100.0, FddbPortion.Unit.Gram),
+            ),
+            productRepository.products.single().portions,
+        )
+    }
+
+    @Test
     fun importsMissingProductAndCreatesDiaryEntry() = runBlocking {
         val productRepository = FakeProductRepository()
         val foodEntries = FakeFoodDiaryEntryRepository()

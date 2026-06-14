@@ -10,6 +10,8 @@ import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.distinctByNormalizedLabel
+import com.maksimowiczm.foodyou.food.domain.entity.normalizedLabel
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductDao
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
@@ -126,10 +128,11 @@ internal class RoomProductRepository(
         portions: List<FddbPortion>,
     ) {
         val sourceTypeEntity = sourceType.toEntity()
+        val distinctPortions = portions.distinctByNormalizedLabel()
         productPortionDao.deleteProductPortions(productId.id, sourceTypeEntity)
-        if (portions.isNotEmpty()) {
+        if (distinctPortions.isNotEmpty()) {
             productPortionDao.insertProductPortions(
-                portions.map { it.toEntity(productId.id, sourceTypeEntity) }
+                distinctPortions.map { it.toEntity(productId.id, sourceTypeEntity) }
             )
         }
     }
@@ -181,7 +184,7 @@ private fun FddbPortion.toEntity(
         productId = productId,
         sourceType = sourceType,
         label = label,
-        normalizedLabel = label.normalizePortionLabel(),
+        normalizedLabel = normalizedLabel(),
         amount = amount,
         unit =
             when (unit) {
@@ -200,6 +203,3 @@ private fun ProductPortionEntity.toModel(): FddbPortion? {
 
     return FddbPortion(label = label, amount = amount, unit = unit)
 }
-
-private fun String.normalizePortionLabel(): String =
-    trim().lowercase().replace(Regex("""\s+"""), " ")

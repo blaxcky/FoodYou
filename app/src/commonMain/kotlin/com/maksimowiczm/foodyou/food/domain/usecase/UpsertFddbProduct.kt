@@ -3,12 +3,14 @@ package com.maksimowiczm.foodyou.food.domain.usecase
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.distinctByNormalizedLabel
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 
 internal suspend fun ProductRepository.upsertFddbProduct(
     url: String,
     fddbProduct: FddbProduct,
 ): FddbProductUpsertResult {
+    val portions = fddbProduct.portions.distinctByNormalizedLabel()
     val existingProduct =
         getProductBySource(FoodSource.Type.FDDB, url)
             ?: fddbProduct.barcode?.let { getProductByBarcode(it) }
@@ -21,11 +23,11 @@ internal suspend fun ProductRepository.upsertFddbProduct(
         replaceProductPortions(
             productId = product.id,
             sourceType = FoodSource.Type.FDDB,
-            portions = fddbProduct.portions,
+            portions = portions,
         )
         return FddbProductUpsertResult.Updated(
-            product = product.copy(portions = fddbProduct.portions),
-            changed = product != existingProduct || fddbProduct.portions.isNotEmpty(),
+            product = product.copy(portions = portions),
+            changed = product != existingProduct || portions.isNotEmpty(),
         )
     }
 
@@ -44,7 +46,7 @@ internal suspend fun ProductRepository.upsertFddbProduct(
     replaceProductPortions(
         productId = id,
         sourceType = FoodSource.Type.FDDB,
-        portions = fddbProduct.portions,
+        portions = portions,
     )
 
     return FddbProductUpsertResult.Inserted(
@@ -57,7 +59,7 @@ internal suspend fun ProductRepository.upsertFddbProduct(
             isLiquid = fddbProduct.isLiquid,
             packageWeight = fddbProduct.packageWeight,
             servingWeight = fddbProduct.servingWeight,
-            portions = fddbProduct.portions,
+            portions = portions,
             source = FoodSource(type = FoodSource.Type.FDDB, url = url),
             nutritionFacts = fddbProduct.nutritionFacts,
         )

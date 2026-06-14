@@ -10,3 +10,9 @@ data class FddbPortion(
         Milliliter,
     }
 }
+
+internal fun List<FddbPortion>.distinctByNormalizedLabel(): List<FddbPortion> =
+    distinctBy { it.normalizedLabel() }
+
+internal fun FddbPortion.normalizedLabel(): String =
+    label.trim().lowercase().replace(Regex("""\s+"""), " ")
