@@ -26,10 +26,18 @@ internal fun FoodYouHomeCard(
     color: Color = FoodYouHomeCardDefaults.color,
     shape: Shape = MaterialTheme.shapes.medium,
     onLongClick: (() -> Unit)? = null,
+    onDoubleClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Surface(modifier = modifier, color = color, shape = shape) {
-        Box(modifier = Modifier.combinedClickable(onLongClick = onLongClick, onClick = onClick)) {
+        Box(
+            modifier =
+                Modifier.combinedClickable(
+                    onLongClick = onLongClick,
+                    onDoubleClick = onDoubleClick,
+                    onClick = onClick,
+                )
+        ) {
             content()
         }
     }

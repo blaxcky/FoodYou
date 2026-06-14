@@ -143,6 +143,7 @@ internal fun GoalsCard(
     burnedEnergyDelta: Int? = null,
     onClick: (epochDay: Long) -> Unit,
     onLongClick: () -> Unit,
+    onDoubleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
@@ -154,6 +155,7 @@ internal fun GoalsCard(
         GoalsCardSkeleton(
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
+            onDoubleClick = onDoubleClick,
             modifier = modifier,
         )
     } else {
@@ -175,6 +177,7 @@ internal fun GoalsCard(
             fatsGoal = model.fatsGoal,
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
+            onDoubleClick = onDoubleClick,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             modifier = modifier,
         )
@@ -209,6 +212,7 @@ internal fun GoalOverviewCard(
     homeState: HomeState,
     onClick: (epochDay: Long) -> Unit,
     onLongClick: () -> Unit,
+    onDoubleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
@@ -255,6 +259,7 @@ internal fun GoalOverviewCard(
             dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
+            onDoubleClick = onDoubleClick,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -286,6 +291,7 @@ internal fun GoalsCard(
     fatsGoal: Int,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onDoubleClick: (() -> Unit)? = null,
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -354,6 +360,7 @@ internal fun GoalsCard(
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
             onClick = onClick,
             onLongClick = onLongClick,
+            onDoubleClick = onDoubleClick,
             modifier = Modifier.fillMaxWidth(),
         ) {
             MacroGoalsFooter(
@@ -873,6 +880,7 @@ private fun CaloriesOverview(
     dietGoalDisplayModeEnabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onDoubleClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -907,6 +915,7 @@ private fun CaloriesOverview(
                     dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
                     onClick = onClick,
                     onLongClick = onLongClick,
+                    onDoubleClick = onDoubleClick,
                     modifier = Modifier.fillMaxWidth(),
                     footer = footer,
                 )
@@ -919,6 +928,7 @@ private fun CaloriesOverview(
                     summary = currentSummary,
                     onClick = onClick,
                     onLongClick = onLongClick,
+                    onDoubleClick = onDoubleClick,
                     modifier = Modifier.fillMaxWidth(),
                     footer = footer,
                 )
@@ -934,6 +944,7 @@ private fun GoalComparisonOverviewCard(
     dietGoalDisplayModeEnabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onDoubleClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -943,6 +954,7 @@ private fun GoalComparisonOverviewCard(
         shape = GoalsCardShape,
         onClick = onClick,
         onLongClick = onLongClick,
+        onDoubleClick = onDoubleClick,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
@@ -1213,6 +1225,7 @@ private fun CaloriesOverviewPageCard(
     summary: GoalDisplaySummaryModel,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onDoubleClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1222,6 +1235,7 @@ private fun CaloriesOverviewPageCard(
         shape = GoalsCardShape,
         onClick = onClick,
         onLongClick = onLongClick,
+        onDoubleClick = onDoubleClick,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
@@ -2169,6 +2183,7 @@ private fun MacroProgressBar(
 private fun GoalsCardSkeleton(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onDoubleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val shimmer = rememberShimmer(shimmerBounds = ShimmerBounds.Window)
@@ -2179,6 +2194,7 @@ private fun GoalsCardSkeleton(
         shape = GoalsCardShape,
         onClick = onClick,
         onLongClick = onLongClick,
+        onDoubleClick = onDoubleClick,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp

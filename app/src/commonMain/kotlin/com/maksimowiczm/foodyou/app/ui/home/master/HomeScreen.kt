@@ -34,6 +34,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,6 +96,7 @@ fun HomeScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showFddbLoginDialog by remember { mutableStateOf(false) }
+    var showGoalOverviewInGoalSlot by rememberSaveable { mutableStateOf(false) }
     var pullRefreshActive by remember { mutableStateOf(false) }
     var pullRefreshSyncStarted by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
@@ -229,15 +231,37 @@ fun HomeScreen(
                             }
 
                         HomeCard.Goals ->
-                            item(key = HomeCard.Goals, contentType = HomeCard.Goals) {
-                                GoalsCard(
-                                    homeState = homeState,
-                                    burnedEnergyDelta = burnedEnergyDelta,
-                                    onClick = {},
-                                    onLongClick = onGoalsCardLongClick,
-                                    modifier =
-                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                                )
+                            item(
+                                key = HomeCard.Goals,
+                                contentType =
+                                    if (showGoalOverviewInGoalSlot) {
+                                        "goal-overview"
+                                    } else {
+                                        HomeCard.Goals
+                                    },
+                            ) {
+                                if (showGoalOverviewInGoalSlot) {
+                                    GoalOverviewCard(
+                                        homeState = homeState,
+                                        onClick = {},
+                                        onLongClick = onGoalsCardLongClick,
+                                        onDoubleClick = { showGoalOverviewInGoalSlot = false },
+                                        modifier =
+                                            Modifier.padding(horizontal = 8.dp)
+                                                .padding(bottom = 8.dp),
+                                    )
+                                } else {
+                                    GoalsCard(
+                                        homeState = homeState,
+                                        burnedEnergyDelta = burnedEnergyDelta,
+                                        onClick = {},
+                                        onLongClick = onGoalsCardLongClick,
+                                        onDoubleClick = { showGoalOverviewInGoalSlot = true },
+                                        modifier =
+                                            Modifier.padding(horizontal = 8.dp)
+                                                .padding(bottom = 8.dp),
+                                    )
+                                }
                             }
 
                         HomeCard.Meals -> {
@@ -270,14 +294,6 @@ fun HomeScreen(
                     )
                 }
 
-                item(key = "goal-overview", contentType = "goal-overview") {
-                    GoalOverviewCard(
-                        homeState = homeState,
-                        onClick = {},
-                        onLongClick = onGoalsCardLongClick,
-                        modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                    )
-                }
             }
         }
     }

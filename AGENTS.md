@@ -20,3 +20,13 @@ project's Gradle/Kotlin setup before compilation.
 ```bash
 JAVA_HOME=/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr ./gradlew :app:compileDebugKotlinAndroid
 ```
+
+Set `GRADLE_USER_HOME` to the workspace cache for Gradle commands. This keeps Gradle wrapper locks
+and dependency cache writes inside the writable repository instead of `~/.gradle`, avoiding sandbox
+approval prompts for the host Gradle cache path.
+
+```bash
+GRADLE_USER_HOME=/home/markus/GitHub/FoodYou/.gradle \
+JAVA_HOME=/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr \
+./gradlew :app:compileDebugKotlinAndroid
+```
