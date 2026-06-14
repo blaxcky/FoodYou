@@ -265,11 +265,13 @@ fun HomeScreen(
                             }
 
                         HomeCard.Meals -> {
-                            mealsCards(
-                                state = mealsCardsState,
-                                contentPadding = PaddingValues(horizontal = 8.dp),
-                                modifier = Modifier.padding(bottom = 8.dp),
-                            )
+                            if (!showGoalOverviewInGoalSlot) {
+                                mealsCards(
+                                    state = mealsCardsState,
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                            }
                         }
 
                         HomeCard.Activities ->
@@ -286,12 +288,14 @@ fun HomeScreen(
                     }
                 }
 
-                item(key = "weekly-goals", contentType = "weekly-goals") {
-                    WeeklyGoalsCard(
-                        homeState = homeState,
-                        onWeightClick = onWeightReportClick,
-                        modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
-                    )
+                if (!showGoalOverviewInGoalSlot) {
+                    item(key = "weekly-goals", contentType = "weekly-goals") {
+                        WeeklyGoalsCard(
+                            homeState = homeState,
+                            onWeightClick = onWeightReportClick,
+                            modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                        )
+                    }
                 }
 
             }
