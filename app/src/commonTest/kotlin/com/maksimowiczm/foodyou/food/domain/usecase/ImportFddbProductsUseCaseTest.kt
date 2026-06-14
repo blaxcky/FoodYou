@@ -20,6 +20,7 @@ import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -115,6 +116,7 @@ class ImportFddbProductsUseCaseTest {
         val imported = assertIs<FddbImportResult.Imported>(result)
         assertEquals(Url(1), imported.link)
         assertEquals(portions, repository.products.single().portions)
+        assertNull(repository.products.single().servingWeight)
     }
 
     @Test
@@ -130,6 +132,7 @@ class ImportFddbProductsUseCaseTest {
         val skipped = assertIs<FddbImportResult.Skipped>(result)
         assertEquals(FddbSkipReason.UpdatedWeights, skipped.reason)
         assertEquals(portions, repository.products.single().portions)
+        assertNull(repository.products.single().servingWeight)
     }
 
     @Test

@@ -36,7 +36,7 @@ class FddbProductParserTest {
         assertEquals("Clever Mini Salami Sticks", product.name)
         assertEquals("Clever", product.brand)
         assertEquals(200.0, product.packageWeight)
-        assertEquals(12.0, product.servingWeight)
+        assertNull(product.servingWeight)
         assertEquals(
             listOf(
                 FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram),
@@ -70,6 +70,7 @@ class FddbProductParserTest {
             ),
             product.portions,
         )
+        assertNull(product.servingWeight)
     }
 
     @Test
@@ -79,7 +80,7 @@ class FddbProductParserTest {
         assertEquals("Protein Riegel, Schoko Orange", product.name)
         assertEquals("Rühls Bestes", product.brand)
         assertEquals("714824380957", product.barcode)
-        assertEquals(55.0, product.servingWeight)
+        assertNull(product.servingWeight)
         assertEquals(390.0, product.nutritionFacts.energy.value)
         assertEquals(33.0, product.nutritionFacts.proteins.value)
         assertEquals(33.0, product.nutritionFacts.carbohydrates.value)

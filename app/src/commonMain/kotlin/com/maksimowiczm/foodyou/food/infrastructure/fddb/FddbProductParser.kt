@@ -18,7 +18,7 @@ class FddbProductParser {
             barcode = lines.findBarcode(),
             isLiquid = servingUnit == "ml",
             packageWeight = portions.findPackageWeight(),
-            servingWeight = portions.findServingWeight(),
+            servingWeight = null,
             portions = portions,
             nutritionFacts =
                 NutritionFacts(
@@ -202,12 +202,6 @@ private fun List<FddbPortion>.findPackageWeight(): Double? =
             PackageLabels.any { portion.label.contains(it, ignoreCase = true) }
     }?.amount
 
-private fun List<FddbPortion>.findServingWeight(): Double? =
-    firstOrNull { portion ->
-        portion.unit == FddbPortion.Unit.Gram &&
-            ServingLabels.any { portion.label.contains(it, ignoreCase = true) }
-    }?.amount
-
 private fun List<FddbNutrientRow>.nutrient(vararg labels: String): NutrientValue {
     val value =
         firstNotNullOfOrNull { row ->
@@ -270,23 +264,4 @@ private val PackageLabels =
         "beutel",
         "sack",
         "karton",
-    )
-
-private val ServingLabels =
-    listOf(
-        "stück",
-        "stueck",
-        "portion",
-        "scheibe",
-        "riegel",
-        "stick",
-        "sticks",
-        "kugel",
-        "tasse",
-        "löffel",
-        "loeffel",
-        "teelöffel",
-        "teeloeffel",
-        "esslöffel",
-        "essloeffel",
     )

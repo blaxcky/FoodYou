@@ -160,7 +160,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 40
+        const val VERSION = 41
 
         private val migrations: List<Migration> =
             listOf(
@@ -186,6 +186,7 @@ abstract class FoodYouDatabase :
                 FddbDiarySyncEntryMigration,
                 ProductPortionMigration,
                 DailyWeightEntryMigration,
+                FddbPortionServingWeightMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -195,6 +196,28 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object FddbPortionServingWeightMigration : Migration(40, 41) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            UPDATE `Product`
+            SET `servingWeight` = NULL
+            WHERE `sourceType` = 4
+                AND `servingWeight` IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM `ProductPortion`
+                    WHERE `ProductPortion`.`productId` = `Product`.`id`
+                        AND `ProductPortion`.`sourceType` = 4
+                        AND `ProductPortion`.`unit` = 'g'
+                        AND ABS(`ProductPortion`.`amount` - `Product`.`servingWeight`) < 0.000001
+                )
+            """
+                .trimIndent()
+        )
     }
 }
 
