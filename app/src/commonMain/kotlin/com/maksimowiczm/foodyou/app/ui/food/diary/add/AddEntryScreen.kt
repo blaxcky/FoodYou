@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.selectAll
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.Delete
@@ -546,9 +545,6 @@ internal fun ReferenceMeasurementPicker(
                 servingUnit = servingUnit,
                 onSelect = {
                     state.selectOption(it)
-                    if (it.selectsUnitQuantity) {
-                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd("1")
-                    }
                 },
                 modifier = Modifier.weight(1f),
             )
@@ -558,10 +554,10 @@ internal fun ReferenceMeasurementPicker(
             state.labelSuggestions.forEach { suggestion ->
                 SuggestionChip(
                     onClick = {
-                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
-                            text = suggestion.inputValue.formatClipZeros()
+                        state.selectOption(
+                            option = suggestion.option,
+                            inputTextOverride = suggestion.inputValue.formatClipZeros(),
                         )
-                        state.selectOption(suggestion.option)
                     },
                     label = { Text(suggestion.label) },
                 )
@@ -569,10 +565,10 @@ internal fun ReferenceMeasurementPicker(
             state.suggestions.filter { it.type.isUserSelectable }.forEach { measurement ->
                 SuggestionChip(
                     onClick = {
-                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
-                            text = measurement.rawValue.formatClipZeros()
+                        state.selectOption(
+                            option = MeasurementPickerOption.Standard(measurement.type),
+                            inputTextOverride = measurement.rawValue.formatClipZeros(),
                         )
-                        state.selectOption(MeasurementPickerOption.Standard(measurement.type))
                     },
                     label = { Text(measurement.stringResource(servingUnit)) },
                 )

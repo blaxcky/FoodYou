@@ -96,10 +96,10 @@ fun MeasurementPicker(
             state.labelSuggestions.forEach { suggestion ->
                 SuggestionChip(
                     onClick = {
-                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
-                            text = suggestion.inputValue.formatClipZeros()
+                        state.selectOption(
+                            option = suggestion.option,
+                            inputTextOverride = suggestion.inputValue.formatClipZeros(),
                         )
-                        state.selectOption(suggestion.option)
                     },
                     label = { Text(suggestion.label) },
                 )
@@ -107,10 +107,10 @@ fun MeasurementPicker(
             state.suggestions.filter { it.type.isUserSelectable }.forEach { measurement ->
                 SuggestionChip(
                     onClick = {
-                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
-                            text = measurement.rawValue.formatClipZeros()
+                        state.selectOption(
+                            option = MeasurementPickerOption.Standard(measurement.type),
+                            inputTextOverride = measurement.rawValue.formatClipZeros(),
                         )
-                        state.selectOption(MeasurementPickerOption.Standard(measurement.type))
                     },
                     label = { Text(measurement.stringResource(servingUnit)) },
                 )
@@ -214,9 +214,6 @@ private fun Input(
                                 text = { Text(it.label(servingUnit)) },
                                 onClick = {
                                     onSelect(it)
-                                    if (it.selectsUnitQuantity) {
-                                        formField.textFieldState.setTextAndPlaceCursorAtEnd("1")
-                                    }
                                     expanded = false
                                 },
                             )
@@ -254,8 +251,10 @@ fun rememberMeasurementPickerState(
         rememberSaveable(selectedMeasurement, stateSaver = Measurement.Saver) {
             mutableStateOf(selectedMeasurement)
         }
+    val inputMemory = remember { MeasurementPickerInputMemory() }
 
     LaunchedEffect(selectedMeasurement) {
+        inputMemory.reset()
         inputField.textFieldState.setTextAndPlaceCursorAtEnd(
             selectedMeasurement.rawValue.formatClipZeros()
         )
@@ -272,6 +271,7 @@ fun rememberMeasurementPickerState(
         typeState,
         selectedOptionState,
         measurementState,
+        inputMemory,
     ) {
         MeasurementPickerState(
             suggestions = suggestions,
@@ -281,6 +281,7 @@ fun rememberMeasurementPickerState(
             measurementState = measurementState,
             typeState = typeState,
             selectedOptionState = selectedOptionState,
+            inputMemory = inputMemory,
         )
     }
 }
@@ -293,6 +294,7 @@ class MeasurementPickerState(
     measurementState: MutableState<Measurement>,
     typeState: MutableState<MeasurementType>,
     selectedOptionState: MutableState<MeasurementPickerOption>,
+    private val inputMemory: MeasurementPickerInputMemory,
 ) {
     var measurement by measurementState
     var type by typeState
@@ -313,10 +315,62 @@ class MeasurementPickerState(
             )
         }
 
-    fun selectOption(option: MeasurementPickerOption) {
+    fun selectOption(option: MeasurementPickerOption, inputTextOverride: String? = null) {
+        val inputText =
+            inputMemory.select(
+                previousOption = selectedOption,
+                selectedOption = option,
+                currentInput = inputField.textFieldState.text.toString(),
+                inputTextOverride = inputTextOverride,
+            )
         selectedOption = option
         type = option.type
+
+        if (inputField.textFieldState.text.toString() != inputText) {
+            inputField.textFieldState.setTextAndPlaceCursorAtEnd(inputText)
+        }
     }
+}
+
+class MeasurementPickerInputMemory {
+    private val inputs = mutableMapOf<MeasurementPickerOptionKey, String>()
+
+    fun select(
+        previousOption: MeasurementPickerOption,
+        selectedOption: MeasurementPickerOption,
+        currentInput: String,
+        inputTextOverride: String? = null,
+    ): String {
+        inputs[previousOption.memoryKey] = currentInput
+
+        return inputTextOverride
+            ?: inputs[selectedOption.memoryKey]
+            ?: selectedOption.defaultInput(currentInput)
+    }
+
+    fun reset() {
+        inputs.clear()
+    }
+}
+
+private fun MeasurementPickerOption.defaultInput(currentInput: String): String =
+    if (selectsUnitQuantity) "1" else currentInput
+
+private val MeasurementPickerOption.memoryKey: MeasurementPickerOptionKey
+    get() =
+        when (this) {
+            is MeasurementPickerOption.Standard -> MeasurementPickerOptionKey.Standard(type)
+            is MeasurementPickerOption.Portion ->
+                MeasurementPickerOptionKey.Portion(displayLabel, unitMeasurement)
+        }
+
+private sealed interface MeasurementPickerOptionKey {
+    data class Standard(val type: MeasurementType) : MeasurementPickerOptionKey
+
+    data class Portion(
+        val displayLabel: String,
+        val unitMeasurement: Measurement.ImmutableMeasurement,
+    ) : MeasurementPickerOptionKey
 }
 
 @Immutable
