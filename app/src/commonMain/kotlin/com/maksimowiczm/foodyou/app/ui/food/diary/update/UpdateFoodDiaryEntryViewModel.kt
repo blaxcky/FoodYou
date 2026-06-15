@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -85,12 +86,7 @@ internal class UpdateFoodDiaryEntryViewModel(
         entry
             .filterNotNull()
             .flatMapLatest { entry ->
-                val product = entry.food as? DiaryFoodProduct
-                if (product == null) {
-                    flowOf(emptyList())
-                } else {
-                    productRepository.observeProduct(product.id).map { it?.portions.orEmpty() }
-                }
+                flow { emit(entry.food.editablePortions(productRepository)) }
             }
             .stateIn(
                 scope = viewModelScope,
@@ -136,6 +132,14 @@ internal class UpdateFoodDiaryEntryViewModel(
             _uiEvents.send(UpdateEntryEvent.Saved)
         }
     }
+}
+
+internal suspend fun DiaryFood.editablePortions(
+    productRepository: ProductRepository
+): List<FddbPortion> {
+    val product = this as? DiaryFoodProduct ?: return emptyList()
+    val sourceUrl = product.source.url?.takeIf { it.isNotBlank() } ?: return emptyList()
+    return productRepository.getProductBySource(product.source.type, sourceUrl)?.portions.orEmpty()
 }
 
 // These extensions will probably be moved into business when user would be able to choose between
