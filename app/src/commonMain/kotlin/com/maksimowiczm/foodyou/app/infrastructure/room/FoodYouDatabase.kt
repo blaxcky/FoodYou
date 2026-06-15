@@ -160,7 +160,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 41
+        const val VERSION = 42
 
         private val migrations: List<Migration> =
             listOf(
@@ -187,6 +187,7 @@ abstract class FoodYouDatabase :
                 ProductPortionMigration,
                 DailyWeightEntryMigration,
                 FddbPortionServingWeightMigration,
+                FddbServingWeightCleanupMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -196,6 +197,19 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object FddbServingWeightCleanupMigration : Migration(41, 42) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            UPDATE `Product`
+            SET `servingWeight` = NULL
+            WHERE `sourceType` = 4
+            """
+                .trimIndent()
+        )
     }
 }
 

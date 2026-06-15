@@ -4,6 +4,7 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import com.maksimowiczm.foodyou.app.infrastructure.room.FddbPortionServingWeightMigration
+import com.maksimowiczm.foodyou.app.infrastructure.room.FddbServingWeightCleanupMigration
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -36,12 +37,16 @@ abstract class AbstractFddbPortionServingWeightMigrationTest {
         }
 
         helper
-            .runMigrationsAndValidate(41, listOf(FddbPortionServingWeightMigration))
+            .runMigrationsAndValidate(
+                42,
+                listOf(FddbPortionServingWeightMigration, FddbServingWeightCleanupMigration),
+            )
             .use { connection ->
                 assertNull(connection.servingWeight(productId = 1))
-                assertEquals(12.0, connection.servingWeight(productId = 2))
+                assertNull(connection.servingWeight(productId = 2))
                 assertEquals(12.0, connection.servingWeight(productId = 3))
-                assertEquals(200.0, connection.servingWeight(productId = 4))
+                assertNull(connection.servingWeight(productId = 4))
+                assertEquals(4, connection.portionCount())
             }
     }
 
@@ -86,6 +91,12 @@ abstract class AbstractFddbPortionServingWeightMigrationTest {
         prepare("SELECT `servingWeight` FROM `Product` WHERE `id` = $productId").use { statement ->
             statement.step()
             if (statement.isNull(0)) null else statement.getDouble(0)
+        }
+
+    private fun SQLiteConnection.portionCount(): Int =
+        prepare("SELECT COUNT(*) FROM `ProductPortion`").use { statement ->
+            statement.step()
+            statement.getLong(0).toInt()
         }
 
     private companion object {

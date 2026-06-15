@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.infrastructure.fddb
 
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
+import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryPortionMeasurement
 import kotlinx.datetime.LocalDate
 
 class FddbDiaryParser {
@@ -46,12 +47,20 @@ private fun String.parseDiaryRow(date: LocalDate, meal: String): FddbDiaryEntry?
     val linkText = linkMatch.groupValues[2].stripTags().decodeFddbHtml().replace(WhitespaceRegex, " ").trim()
     val amountMatch = AmountRegex.find(linkText) ?: return null
     val value = amountMatch.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return null
-    val unit = amountMatch.groupValues[2].lowercase()
+    val rest = linkText.removePrefix(amountMatch.value).trim()
+    val unitMatch = UnitRegex.find(rest)
+    val unit = unitMatch?.groupValues?.get(1)?.lowercase()
     val measurement =
         when (unit) {
             "g" -> Measurement.Gram(value)
             "ml" -> Measurement.Milliliter(value)
-            else -> return null
+            else -> null
+        }
+    val portionMeasurement =
+        if (measurement == null) {
+            FddbDiaryPortionMeasurement(quantity = value, labelAndProductName = rest)
+        } else {
+            null
         }
     val entryId =
         TrIdRegex.find(this)?.groupValues?.get(1)
@@ -62,9 +71,12 @@ private fun String.parseDiaryRow(date: LocalDate, meal: String): FddbDiaryEntry?
         entryId = entryId,
         date = date,
         mealName = meal,
-        productName = linkText.removePrefix(amountMatch.value).trim().ifBlank { linkText },
+        productName =
+            if (measurement == null) rest.ifBlank { linkText }
+            else rest.removePrefix(unitMatch?.value.orEmpty()).trim().ifBlank { linkText },
         productUrl = productUrl,
         measurement = measurement,
+        portionMeasurement = portionMeasurement,
     )
 }
 
@@ -125,7 +137,8 @@ private val ProductLinkRegex =
     )
 private val TrIdRegex = Regex("""<tr\b[^>]*\bid\s*=\s*["']np(\d+)["']""", RegexOption.IGNORE_CASE)
 private val QueryIdRegex = Regex("""[?&]q=(\d+)""", RegexOption.IGNORE_CASE)
-private val AmountRegex = Regex("""^\s*([-+]?\d+(?:[,.]\d+)?)\s*(g|ml)\b""", RegexOption.IGNORE_CASE)
+private val AmountRegex = Regex("""^\s*([-+]?\d+(?:[,.]\d+)?)\s*""", RegexOption.IGNORE_CASE)
+private val UnitRegex = Regex("""^(g|ml)\b\s*""", RegexOption.IGNORE_CASE)
 private val DateRegex =
     Regex("""(?:^|\s)(\d{1,2})\.\s*([A-Za-zÄÖÜäöüß]+)\.?""", RegexOption.IGNORE_CASE)
 private val WhitespaceRegex = Regex("""\s+""")

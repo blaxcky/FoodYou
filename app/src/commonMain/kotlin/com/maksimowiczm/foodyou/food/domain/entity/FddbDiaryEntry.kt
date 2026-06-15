@@ -9,5 +9,11 @@ data class FddbDiaryEntry(
     val mealName: String,
     val productName: String,
     val productUrl: String,
-    val measurement: Measurement,
+    val measurement: Measurement?,
+    val portionMeasurement: FddbDiaryPortionMeasurement? = null,
+)
+
+data class FddbDiaryPortionMeasurement(
+    val quantity: Double,
+    val labelAndProductName: String,
 )

@@ -77,5 +77,10 @@ internal sealed interface FddbProductUpsertResult {
 private fun Product.withMissingFddbWeights(product: FddbProduct): Product =
     copy(
         packageWeight = packageWeight ?: product.packageWeight,
-        servingWeight = servingWeight ?: product.servingWeight,
+        servingWeight =
+            if (source.type == FoodSource.Type.FDDB) {
+                product.servingWeight
+            } else {
+                servingWeight ?: product.servingWeight
+            },
     )

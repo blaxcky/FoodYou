@@ -6,7 +6,10 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.common.result.isSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
+import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryPortionMeasurement
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.normalizedLabel
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiaryGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiarySyncEntryRepository
@@ -66,7 +69,11 @@ class FddbDiarySyncUseCase(
                     errors += entry.debugMessage("Meal could not be mapped")
                     continue
                 }
-                val measurement = entry.measurement.forProduct(product)
+                val measurement = entry.resolveMeasurement(product) ?: run {
+                    failed += 1
+                    errors += entry.debugMessage("FDDB portion could not be mapped")
+                    continue
+                }
 
                 val result =
                     createFoodDiaryEntryUseCase.createDiaryEntry(
@@ -137,12 +144,35 @@ private fun List<com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal>.matchFdd
         }
         ?: firstOrNull()
 
+private fun FddbDiaryEntry.resolveMeasurement(product: Product): Measurement? =
+    measurement?.forProduct(product) ?: portionMeasurement?.forProduct(product)
+
 private fun Measurement.forProduct(product: Product): Measurement =
     when (this) {
         is Measurement.Gram -> if (product.isLiquid) Measurement.Milliliter(value) else this
         is Measurement.Milliliter -> if (product.isLiquid) this else Measurement.Gram(value)
         else -> this
     }
+
+private fun FddbDiaryPortionMeasurement.forProduct(product: Product): Measurement? {
+    val portion = product.portions.matchingPrefix(labelAndProductName) ?: return null
+    val amount = quantity * portion.amount
+    return when (portion.unit) {
+        FddbPortion.Unit.Gram -> Measurement.Gram(amount)
+        FddbPortion.Unit.Milliliter -> Measurement.Milliliter(amount)
+    }
+}
+
+private fun List<FddbPortion>.matchingPrefix(text: String): FddbPortion? {
+    val normalizedText = text.normalizedFddbPortionText()
+    return sortedByDescending { it.normalizedLabel().length }
+        .firstOrNull { portion ->
+            val label = portion.normalizedLabel()
+            normalizedText == label || normalizedText.startsWith("$label ")
+        }
+}
+
+private fun String.normalizedFddbPortionText(): String = trim().lowercase().replace(Regex("""\s+"""), " ")
 
 private fun Product.toDiaryProduct(): DiaryFoodProduct =
     DiaryFoodProduct(
@@ -178,4 +208,7 @@ private fun StringBuilder.appendDebugHeader(entry: FddbDiaryEntry) {
     appendLine("Product URL: ${entry.productUrl}")
     appendLine("Meal: ${entry.mealName}")
     appendLine("Date: ${entry.date}")
+    entry.portionMeasurement?.let {
+        appendLine("Portion: ${it.quantity} ${it.labelAndProductName}")
+    }
 }

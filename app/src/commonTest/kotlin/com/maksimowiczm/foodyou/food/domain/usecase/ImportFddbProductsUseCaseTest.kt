@@ -136,7 +136,7 @@ class ImportFddbProductsUseCaseTest {
     }
 
     @Test
-    fun doesNotOverwriteExistingWeightsForExistingBarcode() = runBlocking {
+    fun preservesExistingPackageWeightAndOverwritesServingWeightForExistingBarcode() = runBlocking {
         val gateway = FakeFddbProductGateway(packageWeight = 200.0, servingWeight = 12.0)
         val existing =
             product(
@@ -145,6 +145,28 @@ class ImportFddbProductsUseCaseTest {
                 packageWeight = 150.0,
                 servingWeight = 10.0,
         )
+        val repository = FakeProductRepository(existingProduct = existing)
+        val useCase = useCase(gateway, repository, FakeFddbImportQueueRepository())
+
+        val result = useCase.import(Url(1)).toList().last().results.single()
+
+        val skipped = assertIs<FddbImportResult.Skipped>(result)
+        assertEquals(FddbSkipReason.UpdatedWeights, skipped.reason)
+        assertEquals(150.0, repository.products.single().packageWeight)
+        assertEquals(12.0, repository.products.single().servingWeight)
+    }
+
+    @Test
+    fun preservesNonFddbServingWeightForExistingBarcode() = runBlocking {
+        val gateway = FakeFddbProductGateway(packageWeight = 200.0, servingWeight = null)
+        val existing =
+            product(
+                id = 1,
+                barcode = "1234567890123",
+                packageWeight = 150.0,
+                servingWeight = 10.0,
+                source = FoodSource(FoodSource.Type.User),
+            )
         val repository = FakeProductRepository(existingProduct = existing)
         val useCase = useCase(gateway, repository, FakeFddbImportQueueRepository())
 

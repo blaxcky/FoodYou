@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.food.infrastructure.fddb
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlinx.datetime.LocalDate
 
 class FddbDiaryParserTest {
@@ -71,6 +72,26 @@ class FddbDiaryParserTest {
         assertEquals("Apfel, frisch", entry.productName)
         assertEquals("https://fddb.info/db/de/lebensmittel/naturprodukt_apfel_frisch/index.html", entry.productUrl)
         assertEquals(Measurement.Gram(310.0), entry.measurement)
+    }
+
+    @Test
+    fun parsesNonMetricPortionMeasurementAsRawFddbPortion() {
+        val html =
+            """
+            <td class="notepaddate"><h3>Montag 25. Mai</h3></td>
+            <h4>Morgens</h4>
+            <tr id="np1">
+                <td><a href="/db/de/lebensmittel/apfel/index.html">1 Stück Apfel</a></td>
+            </tr>
+            """
+                .trimIndent()
+
+        val entry = parser.parse(html, LocalDate(2026, 5, 25)).single()
+
+        assertNull(entry.measurement)
+        assertEquals(1.0, entry.portionMeasurement?.quantity)
+        assertEquals("Stück Apfel", entry.portionMeasurement?.labelAndProductName)
+        assertEquals("Stück Apfel", entry.productName)
     }
 
     @Test

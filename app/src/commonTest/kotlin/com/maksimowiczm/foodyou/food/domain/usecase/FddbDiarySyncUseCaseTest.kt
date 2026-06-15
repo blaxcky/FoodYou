@@ -159,6 +159,127 @@ class FddbDiarySyncUseCaseTest {
     }
 
     @Test
+    fun mapsRawFddbGramPortionToMetricMeasurement() = runBlocking {
+        val portions = listOf(FddbPortion("Stück", 150.0, FddbPortion.Unit.Gram))
+        val foodEntries = FakeFoodDiaryEntryRepository()
+        val useCase =
+            useCase(
+                diaryGateway =
+                    FakeFddbDiaryGateway(
+                        listOf(
+                            diaryEntry(
+                                id = "1",
+                                slug = "apple",
+                                productName = "1 Stück Apfel",
+                                measurement = null,
+                                portionLabelAndProductName = "Stück Apfel",
+                            )
+                        )
+                    ),
+                productGateway = FakeFddbProductGateway(portions = portions),
+                foodEntryRepository = foodEntries,
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(1, result.imported)
+        assertEquals(Measurement.Gram(150.0), foodEntries.inserted.single().measurement)
+    }
+
+    @Test
+    fun mapsRawFddbPortionQuantityAndMilliliterUnit() = runBlocking {
+        val portions = listOf(FddbPortion("Glas", 200.0, FddbPortion.Unit.Milliliter))
+        val foodEntries = FakeFoodDiaryEntryRepository()
+        val useCase =
+            useCase(
+                diaryGateway =
+                    FakeFddbDiaryGateway(
+                        listOf(
+                            diaryEntry(
+                                id = "1",
+                                slug = "juice",
+                                productName = "2 Glas Saft",
+                                measurement = null,
+                                portionLabelAndProductName = "Glas Saft",
+                            )
+                        )
+                    ),
+                productGateway = FakeFddbProductGateway(isLiquid = true, portions = portions),
+                foodEntryRepository = foodEntries,
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(1, result.imported)
+        assertEquals(Measurement.Milliliter(400.0), foodEntries.inserted.single().measurement)
+    }
+
+    @Test
+    fun usesLongestRawFddbPortionLabelPrefix() = runBlocking {
+        val portions =
+            listOf(
+                FddbPortion("Dose", 50.0, FddbPortion.Unit.Gram),
+                FddbPortion("Dose klein", 120.0, FddbPortion.Unit.Gram),
+            )
+        val foodEntries = FakeFoodDiaryEntryRepository()
+        val useCase =
+            useCase(
+                diaryGateway =
+                    FakeFddbDiaryGateway(
+                        listOf(
+                            diaryEntry(
+                                id = "1",
+                                slug = "beans",
+                                productName = "1 Dose klein Bohnen",
+                                measurement = null,
+                                portionLabelAndProductName = "Dose klein Bohnen",
+                            )
+                        )
+                    ),
+                productGateway = FakeFddbProductGateway(portions = portions),
+                foodEntryRepository = foodEntries,
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(1, result.imported)
+        assertEquals(Measurement.Gram(120.0), foodEntries.inserted.single().measurement)
+    }
+
+    @Test
+    fun recordsFailedRawFddbPortionMappingAndContinues() = runBlocking {
+        val foodEntries = FakeFoodDiaryEntryRepository()
+        val useCase =
+            useCase(
+                diaryGateway =
+                    FakeFddbDiaryGateway(
+                        listOf(
+                            diaryEntry(
+                                id = "1",
+                                slug = "apple",
+                                productName = "1 Stück Apfel",
+                                measurement = null,
+                                portionLabelAndProductName = "Stück Apfel",
+                            ),
+                            diaryEntry(id = "2", slug = "banana"),
+                        )
+                    ),
+                productGateway = FakeFddbProductGateway(portions = emptyList()),
+                foodEntryRepository = foodEntries,
+            )
+
+        val result = useCase.sync(LocalDate(2026, 5, 25))
+
+        assertEquals(1, result.imported)
+        assertEquals(1, result.failed)
+        assertEquals(Measurement.Gram(100.0), foodEntries.inserted.single().measurement)
+        val errorMessage = result.errorMessage ?: error("Expected debug message")
+        assertContains(errorMessage, "Entry ID: 1")
+        assertContains(errorMessage, "FDDB portion could not be mapped")
+        assertContains(errorMessage, "Portion: 1.0 Stück Apfel")
+    }
+
+    @Test
     fun recordsFailedProductImports() = runBlocking {
         val useCase =
             useCase(
@@ -262,6 +383,7 @@ class FddbDiarySyncUseCaseTest {
 
     private class FakeFddbProductGateway(
         private val failingSlug: String? = null,
+        private val isLiquid: Boolean = false,
         private val portions: List<FddbPortion> = emptyList(),
     ) : FddbProductGateway {
         override suspend fun getProduct(url: String): FddbProduct {
@@ -271,7 +393,7 @@ class FddbDiarySyncUseCaseTest {
                 name = "Imported $slug",
                 brand = "FDDB",
                 barcode = "barcode-$slug",
-                isLiquid = false,
+                isLiquid = isLiquid,
                 packageWeight = null,
                 servingWeight = null,
                 portions = portions,
@@ -332,7 +454,11 @@ class FddbDiarySyncUseCaseTest {
                     name = name,
                     brand = brand,
                     barcode = barcode,
+                    isLiquid = isLiquid,
+                    packageWeight = packageWeight,
+                    servingWeight = servingWeight,
                     source = source,
+                    nutritionFacts = nutritionFacts,
                 )
             insertedNames += name
             return id
@@ -470,7 +596,8 @@ class FddbDiarySyncUseCaseTest {
             id: String,
             slug: String,
             productName: String = "100 g Food",
-            measurement: Measurement = Measurement.Gram(100.0),
+            measurement: Measurement? = Measurement.Gram(100.0),
+            portionLabelAndProductName: String? = null,
         ) =
             FddbDiaryEntry(
                 entryId = id,
@@ -479,6 +606,13 @@ class FddbDiarySyncUseCaseTest {
                 productName = productName,
                 productUrl = "https://fddb.info/db/de/lebensmittel/$slug/index.html",
                 measurement = measurement,
+                portionMeasurement =
+                    portionLabelAndProductName?.let {
+                        com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryPortionMeasurement(
+                            quantity = productName.substringBefore(' ').toDouble(),
+                            labelAndProductName = it,
+                        )
+                    },
             )
 
         fun product(
@@ -486,8 +620,12 @@ class FddbDiarySyncUseCaseTest {
             name: String = "Local Food",
             brand: String? = "Brand",
             barcode: String? = null,
+            isLiquid: Boolean = false,
+            packageWeight: Double? = null,
+            servingWeight: Double? = null,
             sourceUrl: String? = null,
             source: FoodSource = FoodSource(FoodSource.Type.FDDB, sourceUrl),
+            nutritionFacts: NutritionFacts = NutritionFacts.Empty,
         ) =
             Product(
                 id = FoodId.Product(id),
@@ -495,11 +633,11 @@ class FddbDiarySyncUseCaseTest {
                 brand = brand,
                 barcode = barcode,
                 note = null,
-                isLiquid = false,
-                packageWeight = null,
-                servingWeight = null,
+                isLiquid = isLiquid,
+                packageWeight = packageWeight,
+                servingWeight = servingWeight,
                 source = source,
-                nutritionFacts = NutritionFacts.Empty,
+                nutritionFacts = nutritionFacts,
             )
     }
 }

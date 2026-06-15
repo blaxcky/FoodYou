@@ -49,6 +49,21 @@ class ResyncFddbProductUseCaseTest {
     }
 
     @Test
+    fun clearsFddbServingWeightWhenRemoteProductHasNoServingWeight() = runBlocking {
+        val repository = FakeProductRepository(product(sourceUrl = Url, servingWeight = 10.0))
+        val useCase =
+            useCase(
+                repository = repository,
+                gateway = FakeFddbProductGateway(fddbProduct(servingWeight = null)),
+            )
+
+        val result = useCase.resync(ProductId)
+
+        assertIs<Result.Success<Unit, ResyncFddbProductError>>(result)
+        assertEquals(null, repository.product(ProductId).servingWeight)
+    }
+
+    @Test
     fun preservesLocalIdentityFieldsAndSource() = runBlocking {
         val source = FoodSource(type = FoodSource.Type.FDDB, url = Url)
         val original =
