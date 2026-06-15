@@ -53,6 +53,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
 
@@ -63,10 +64,9 @@ fun MeasurementPicker(
     servingUnit: ServingUnit = ServingUnit.Serving,
 ) {
     val latestState by rememberUpdatedState(state)
-    LaunchedEffect(state.inputField.value, state.type) {
+    LaunchedEffect(state.inputField.value, state.selectedOption) {
         val value = state.inputField.value ?: return@LaunchedEffect
-        val measurement = Measurement.from(state.type, value.toDouble())
-        latestState.measurement = measurement
+        latestState.measurement = state.selectedOption.measurementForInput(value.toDouble())
     }
 
     Column(modifier) {
@@ -79,10 +79,10 @@ fun MeasurementPicker(
 
             Input(
                 formField = state.inputField,
-                type = state.type,
-                types = state.possibleTypes,
+                selectedOption = state.selectedOption,
+                options = state.options,
                 servingUnit = servingUnit,
-                onSelect = { state.type = it },
+                onSelect = { state.selectOption(it) },
                 modifier = Modifier.weight(1f).padding(end = 8.dp),
             )
         }
@@ -97,9 +97,9 @@ fun MeasurementPicker(
                 SuggestionChip(
                     onClick = {
                         state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
-                            text = suggestion.measurement.rawValue.formatClipZeros()
+                            text = suggestion.inputValue.formatClipZeros()
                         )
-                        state.type = suggestion.measurement.type
+                        state.selectOption(suggestion.option)
                     },
                     label = { Text(suggestion.label) },
                 )
@@ -110,7 +110,7 @@ fun MeasurementPicker(
                         state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
                             text = measurement.rawValue.formatClipZeros()
                         )
-                        state.type = measurement.type
+                        state.selectOption(MeasurementPickerOption.Standard(measurement.type))
                     },
                     label = { Text(measurement.stringResource(servingUnit)) },
                 )
@@ -122,10 +122,10 @@ fun MeasurementPicker(
 @Composable
 private fun Input(
     formField: FormField<Float?, String>,
-    type: MeasurementType,
-    types: List<MeasurementType>,
+    selectedOption: MeasurementPickerOption,
+    options: List<MeasurementPickerOption>,
     servingUnit: ServingUnit,
-    onSelect: (MeasurementType) -> Unit,
+    onSelect: (MeasurementPickerOption) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -201,7 +201,7 @@ private fun Input(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = type.stringResource(servingUnit),
+                    text = selectedOption.label(servingUnit),
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                 )
@@ -209,11 +209,14 @@ private fun Input(
                     Icon(imageVector = Icons.Outlined.KeyboardArrowDown, contentDescription = null)
 
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        types.filter { it.isUserSelectable }.forEach {
+                        options.forEach {
                             DropdownMenuItem(
-                                text = { Text(it.stringResource(servingUnit)) },
+                                text = { Text(it.label(servingUnit)) },
                                 onClick = {
                                     onSelect(it)
+                                    if (it.selectsUnitQuantity) {
+                                        formField.textFieldState.setTextAndPlaceCursorAtEnd("1")
+                                    }
                                     expanded = false
                                 },
                             )
@@ -228,7 +231,7 @@ private fun Input(
 @Composable
 fun rememberMeasurementPickerState(
     suggestions: List<Measurement>,
-    labelSuggestions: List<LabeledMeasurementSuggestion> = emptyList(),
+    portionOptions: List<MeasurementPickerOption.Portion> = emptyList(),
     possibleTypes: List<MeasurementType>,
     selectedMeasurement: Measurement,
 ): MeasurementPickerState {
@@ -245,6 +248,8 @@ fun rememberMeasurementPickerState(
             validateFirst = true,
         )
     val typeState = rememberSaveable { mutableStateOf(selectedMeasurement.type) }
+    val selectedOptionState =
+        remember { mutableStateOf<MeasurementPickerOption>(MeasurementPickerOption.Standard(selectedMeasurement.type)) }
     val measurementState =
         rememberSaveable(selectedMeasurement, stateSaver = Measurement.Saver) {
             mutableStateOf(selectedMeasurement)
@@ -255,42 +260,133 @@ fun rememberMeasurementPickerState(
             selectedMeasurement.rawValue.formatClipZeros()
         )
         typeState.value = selectedMeasurement.type
+        selectedOptionState.value = MeasurementPickerOption.Standard(selectedMeasurement.type)
         measurementState.value = selectedMeasurement
     }
 
     return remember(
         suggestions,
-        labelSuggestions,
+        portionOptions,
         possibleTypes,
         inputField,
         typeState,
+        selectedOptionState,
         measurementState,
     ) {
         MeasurementPickerState(
             suggestions = suggestions,
-            labelSuggestions = labelSuggestions,
+            portionOptions = portionOptions,
             possibleTypes = possibleTypes,
             inputField = inputField,
             measurementState = measurementState,
             typeState = typeState,
+            selectedOptionState = selectedOptionState,
         )
     }
 }
 
 class MeasurementPickerState(
     val suggestions: List<Measurement>,
-    val labelSuggestions: List<LabeledMeasurementSuggestion>,
+    val portionOptions: List<MeasurementPickerOption.Portion>,
     val possibleTypes: List<MeasurementType>,
     val inputField: FormField<Float?, String>,
     measurementState: MutableState<Measurement>,
     typeState: MutableState<MeasurementType>,
+    selectedOptionState: MutableState<MeasurementPickerOption>,
 ) {
     var measurement by measurementState
     var type by typeState
+        private set
+    var selectedOption by selectedOptionState
+        private set
+
+    val options: List<MeasurementPickerOption> =
+        possibleTypes.filter { it.isUserSelectable }.map { MeasurementPickerOption.Standard(it) } +
+            portionOptions.filter { it.type in possibleTypes }
+
+    val labelSuggestions: List<LabeledMeasurementSuggestion> =
+        portionOptions.map { option ->
+            LabeledMeasurementSuggestion(
+                label = option.displayLabel,
+                inputValue = 1.0,
+                option = option,
+            )
+        }
+
+    fun selectOption(option: MeasurementPickerOption) {
+        selectedOption = option
+        type = option.type
+    }
 }
 
 @Immutable
 data class LabeledMeasurementSuggestion(
     val label: String,
-    val measurement: Measurement,
+    val inputValue: Double,
+    val option: MeasurementPickerOption,
 )
+
+@Immutable
+sealed interface MeasurementPickerOption {
+    val type: MeasurementType
+    val selectsUnitQuantity: Boolean
+        get() = false
+
+    @Composable
+    fun label(servingUnit: ServingUnit): String
+
+    fun measurementForInput(value: Double): Measurement
+
+    @Immutable
+    data class Standard(override val type: MeasurementType) : MeasurementPickerOption {
+        @Composable
+        override fun label(servingUnit: ServingUnit): String = type.stringResource(servingUnit)
+
+        override fun measurementForInput(value: Double): Measurement = Measurement.from(type, value)
+    }
+
+    @Immutable
+    data class Portion(
+        val displayLabel: String,
+        val unitMeasurement: Measurement.ImmutableMeasurement,
+    ) :
+        MeasurementPickerOption {
+        override val type: MeasurementType = unitMeasurement.type
+
+        override val selectsUnitQuantity: Boolean = true
+
+        @Composable
+        override fun label(servingUnit: ServingUnit): String = displayLabel
+
+        override fun measurementForInput(value: Double): Measurement = unitMeasurement * value
+    }
+}
+
+fun FddbPortion.toMeasurementPickerOption(isLiquid: Boolean): MeasurementPickerOption.Portion? {
+    val measurement =
+        when (unit) {
+            FddbPortion.Unit.Gram -> {
+                if (isLiquid) return null
+                Measurement.Gram(amount)
+            }
+            FddbPortion.Unit.Milliliter -> {
+                if (!isLiquid) return null
+                Measurement.Milliliter(amount)
+            }
+        }
+    return MeasurementPickerOption.Portion(
+        displayLabel = "1 $label (${amount.formatClipZeros()} ${unit.label})",
+        unitMeasurement = measurement,
+    )
+}
+
+fun List<FddbPortion>.toMeasurementPickerOptions(
+    isLiquid: Boolean
+): List<MeasurementPickerOption.Portion> = mapNotNull { it.toMeasurementPickerOption(isLiquid) }
+
+private val FddbPortion.Unit.label: String
+    get() =
+        when (this) {
+            FddbPortion.Unit.Gram -> "g"
+            FddbPortion.Unit.Milliliter -> "ml"
+        }

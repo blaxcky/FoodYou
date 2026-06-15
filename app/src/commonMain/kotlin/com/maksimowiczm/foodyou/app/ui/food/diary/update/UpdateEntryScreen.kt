@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maksimowiczm.foodyou.app.ui.food.component.toMeasurementPickerOptions
 import com.maksimowiczm.foodyou.app.ui.food.diary.add.FoodEntryForm
 import com.maksimowiczm.foodyou.app.ui.food.diary.add.FoodModel
 import com.maksimowiczm.foodyou.app.ui.food.diary.add.ProductModel
@@ -45,9 +46,10 @@ fun UpdateEntryScreen(
     val entry = viewModel.entry.collectAsStateWithLifecycle().value
     val possibleTypes = viewModel.possibleMeasurementTypes.collectAsStateWithLifecycle().value
     val suggestions = viewModel.suggestions.collectAsStateWithLifecycle().value
+    val portions = viewModel.portions.collectAsStateWithLifecycle().value
     val today by viewModel.today.collectAsStateWithLifecycle()
 
-    if (entry == null || suggestions == null || possibleTypes == null) {
+    if (entry == null || suggestions == null || possibleTypes == null || portions == null) {
         // TODO loading state
     } else {
 
@@ -76,6 +78,10 @@ fun UpdateEntryScreen(
                 selectedMeal =
                     remember(meals, entry) { meals.firstOrNull { it.id == entry.mealId }?.name },
                 suggestions = suggestions,
+                portionOptions =
+                    remember(portions, entry.food) {
+                        portions.toMeasurementPickerOptions(entry.food.isLiquid)
+                    },
                 possibleTypes = possibleTypes,
                 selectedMeasurement = selectedMeasurement,
             )

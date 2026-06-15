@@ -69,8 +69,9 @@ import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
-import com.maksimowiczm.foodyou.app.ui.food.component.LabeledMeasurementSuggestion
+import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerOption
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerState
+import com.maksimowiczm.foodyou.app.ui.food.component.toMeasurementPickerOptions
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePickerState
@@ -83,13 +84,11 @@ import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLife
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
-import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
@@ -172,9 +171,11 @@ fun AddEntryScreen(
                         }
                         ?.name,
                 suggestions = suggestions,
-                labelSuggestions =
+                portionOptions =
                     remember(food) {
-                        (food as? ProductModel)?.portions?.map { it.toMeasurementSuggestion() }
+                        (food as? ProductModel)
+                            ?.portions
+                            ?.toMeasurementPickerOptions(food.isLiquid)
                             .orEmpty()
                     },
                 possibleTypes = possibleTypes,
@@ -222,23 +223,6 @@ fun AddEntryScreen(
         )
     }
 }
-
-private fun FddbPortion.toMeasurementSuggestion(): LabeledMeasurementSuggestion =
-    LabeledMeasurementSuggestion(
-        label = "1 $label (${amount.formatClipZeros()} ${unit.label})",
-        measurement =
-            when (unit) {
-                FddbPortion.Unit.Gram -> Measurement.Gram(amount)
-                FddbPortion.Unit.Milliliter -> Measurement.Milliliter(amount)
-            },
-    )
-
-private val FddbPortion.Unit.label: String
-    get() =
-        when (this) {
-            FddbPortion.Unit.Gram -> "g"
-            FddbPortion.Unit.Milliliter -> "ml"
-        }
 
 @Composable
 internal fun FoodEntryForm(
@@ -542,9 +526,9 @@ internal fun ReferenceMeasurementPicker(
     modifier: Modifier = Modifier,
 ) {
     val latestState by rememberUpdatedState(state)
-    LaunchedEffect(state.inputField.value, state.type) {
+    LaunchedEffect(state.inputField.value, state.selectedOption) {
         val value = state.inputField.value ?: return@LaunchedEffect
-        latestState.measurement = Measurement.from(state.type, value.toDouble())
+        latestState.measurement = state.selectedOption.measurementForInput(value.toDouble())
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -557,10 +541,15 @@ internal fun ReferenceMeasurementPicker(
                 modifier = Modifier.weight(1f),
             )
             ReferenceMeasurementTypePicker(
-                type = state.type,
-                types = state.possibleTypes,
+                selectedOption = state.selectedOption,
+                options = state.options,
                 servingUnit = servingUnit,
-                onSelect = { state.type = it },
+                onSelect = {
+                    state.selectOption(it)
+                    if (it.selectsUnitQuantity) {
+                        state.inputField.textFieldState.setTextAndPlaceCursorAtEnd("1")
+                    }
+                },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -570,9 +559,9 @@ internal fun ReferenceMeasurementPicker(
                 SuggestionChip(
                     onClick = {
                         state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
-                            text = suggestion.measurement.rawValue.formatClipZeros()
+                            text = suggestion.inputValue.formatClipZeros()
                         )
-                        state.type = suggestion.measurement.type
+                        state.selectOption(suggestion.option)
                     },
                     label = { Text(suggestion.label) },
                 )
@@ -583,7 +572,7 @@ internal fun ReferenceMeasurementPicker(
                         state.inputField.textFieldState.setTextAndPlaceCursorAtEnd(
                             text = measurement.rawValue.formatClipZeros()
                         )
-                        state.type = measurement.type
+                        state.selectOption(MeasurementPickerOption.Standard(measurement.type))
                     },
                     label = { Text(measurement.stringResource(servingUnit)) },
                 )
@@ -640,10 +629,10 @@ private fun ReferenceMeasurementInput(
 
 @Composable
 private fun ReferenceMeasurementTypePicker(
-    type: MeasurementType,
-    types: List<MeasurementType>,
+    selectedOption: MeasurementPickerOption,
+    options: List<MeasurementPickerOption>,
     servingUnit: ServingUnit,
-    onSelect: (MeasurementType) -> Unit,
+    onSelect: (MeasurementPickerOption) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -661,7 +650,7 @@ private fun ReferenceMeasurementTypePicker(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = type.stringResource(servingUnit),
+                text = selectedOption.label(servingUnit),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
             )
@@ -669,9 +658,9 @@ private fun ReferenceMeasurementTypePicker(
                 Icon(imageVector = Icons.Outlined.KeyboardArrowDown, contentDescription = null)
 
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    types.filter { it.isUserSelectable }.forEach {
+                    options.forEach {
                         DropdownMenuItem(
-                            text = { Text(it.stringResource(servingUnit)) },
+                            text = { Text(it.label(servingUnit)) },
                             onClick = {
                                 onSelect(it)
                                 expanded = false

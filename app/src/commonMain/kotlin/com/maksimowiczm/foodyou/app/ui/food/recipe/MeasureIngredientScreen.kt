@@ -33,6 +33,7 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.app.ui.food.component.EnergyProgressIndicator
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
 import com.maksimowiczm.foodyou.app.ui.food.component.rememberMeasurementPickerState
+import com.maksimowiczm.foodyou.app.ui.food.component.toMeasurementPickerOptions
 import com.maksimowiczm.foodyou.app.ui.food.shared.component.NutrientList
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.domain.food.isComplete
@@ -72,6 +73,11 @@ internal fun MeasureIngredientScreen(
     val measurementPickerState =
         rememberMeasurementPickerState(
             suggestions = suggestions,
+            portionOptions =
+                remember(food) {
+                    (food as? Product)?.portions?.toMeasurementPickerOptions(food.isLiquid)
+                        .orEmpty()
+                },
             possibleTypes = possibleMeasurements,
             selectedMeasurement = selectedMeasurement,
         )

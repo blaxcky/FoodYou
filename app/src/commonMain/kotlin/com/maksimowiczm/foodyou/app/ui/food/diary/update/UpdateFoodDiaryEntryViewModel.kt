@@ -9,7 +9,10 @@ import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
+import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
@@ -34,6 +37,7 @@ internal class UpdateFoodDiaryEntryViewModel(
     private val unpackDiaryEntryError: UnpackFoodDiaryEntryUseCase,
     entryRepository: FoodDiaryEntryRepository,
     mealRepository: MealRepository,
+    productRepository: ProductRepository,
     dateProvider: DateProvider,
 ) : ViewModel() {
 
@@ -70,6 +74,23 @@ internal class UpdateFoodDiaryEntryViewModel(
             .filterNotNull()
             .flatMapLatest { entry ->
                 entry.food.suggestions.map { (listOf(entry.measurement) + it).distinct() }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(2_000),
+                initialValue = null,
+            )
+
+    val portions: StateFlow<List<FddbPortion>?> =
+        entry
+            .filterNotNull()
+            .flatMapLatest { entry ->
+                val product = entry.food as? DiaryFoodProduct
+                if (product == null) {
+                    flowOf(emptyList())
+                } else {
+                    productRepository.observeProduct(product.id).map { it?.portions.orEmpty() }
+                }
             }
             .stateIn(
                 scope = viewModelScope,
