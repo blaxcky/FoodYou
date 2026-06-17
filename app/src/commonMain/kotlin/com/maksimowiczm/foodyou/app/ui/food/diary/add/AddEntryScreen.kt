@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.material.icons.Icons
@@ -43,13 +45,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -241,13 +243,13 @@ internal fun FoodEntryForm(
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
     val cardShape = RoundedCornerShape(24.dp)
 
     val topBar =
         @Composable {
-            MediumTopAppBar(
+            TopAppBar(
                 title = {},
                 navigationIcon = { ArrowBackIconButton(onBack) },
                 actions = {
@@ -273,7 +275,7 @@ internal fun FoodEntryForm(
             contentPadding =
                 paddingValues
                     .add(horizontal = 16.dp)
-                    .add(top = 8.dp, bottom = 24.dp),
+                    .add(top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
@@ -541,7 +543,7 @@ internal fun ReferenceMeasurementPicker(
         ) {
             ReferenceMeasurementInput(
                 formField = state.inputField,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.width(104.dp),
             )
             ReferenceMeasurementTypePicker(
                 selectedOption = state.selectedOption,
@@ -645,6 +647,7 @@ private fun ReferenceMeasurementTypePicker(
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val contentColor = MaterialTheme.colorScheme.onSurface
 
     Surface(
         onClick = { expanded = true },
@@ -658,10 +661,19 @@ private fun ReferenceMeasurementTypePicker(
             modifier = Modifier.fillMaxSize().padding(start = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
+            BasicText(
                 text = selectedOption.label(servingUnit),
                 modifier = Modifier.weight(1f),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                autoSize =
+                    TextAutoSize.StepBased(
+                        minFontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        maxFontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    ),
                 style = MaterialTheme.typography.bodyLarge,
+                color = { contentColor },
             )
             Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 Icon(imageVector = Icons.Outlined.KeyboardArrowDown, contentDescription = null)
