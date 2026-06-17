@@ -8,6 +8,13 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import kotlinx.datetime.LocalTime
 
 @Immutable
+internal sealed interface MealEntrySelectionKey {
+    @Immutable data class Food(val id: FoodDiaryEntryId) : MealEntrySelectionKey
+
+    @Immutable data class Manual(val id: ManualDiaryEntryId) : MealEntrySelectionKey
+}
+
+@Immutable
 internal data class MealModel(
     val id: Long,
     val name: String,
@@ -23,6 +30,8 @@ internal data class MealModel(
 
 @Immutable
 internal sealed interface MealEntryModel {
+    val mealId: Long
+    val selectionKey: MealEntrySelectionKey
     val name: String
     val energy: Int?
     val proteins: Double?
@@ -33,6 +42,7 @@ internal sealed interface MealEntryModel {
 @Immutable
 internal data class FoodMealEntryModel(
     val id: FoodDiaryEntryId,
+    override val mealId: Long,
     val editableProductId: FoodId.Product?,
     override val name: String,
     override val energy: Int?,
@@ -45,14 +55,19 @@ internal data class FoodMealEntryModel(
     val isRecipe: Boolean,
     val servingWeight: Double?,
     val totalWeight: Double?,
-) : MealEntryModel
+) : MealEntryModel {
+    override val selectionKey: MealEntrySelectionKey = MealEntrySelectionKey.Food(id)
+}
 
 @Immutable
 internal data class ManualMealEntryModel(
     val id: ManualDiaryEntryId,
+    override val mealId: Long,
     override val name: String,
     override val energy: Int?,
     override val proteins: Double?,
     override val carbohydrates: Double?,
     override val fats: Double?,
-) : MealEntryModel
+) : MealEntryModel {
+    override val selectionKey: MealEntrySelectionKey = MealEntrySelectionKey.Manual(id)
+}

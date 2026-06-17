@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.from
@@ -19,6 +20,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
+import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import kotlin.math.roundToInt
@@ -40,17 +42,26 @@ internal class MealsCardsViewModel(
     private val observeDiaryMealsUseCase: ObserveDiaryMealsUseCase,
     private val foodEntryRepository: FoodDiaryEntryRepository,
     private val manualEntryRepository: ManualDiaryEntryRepository,
+    private val mealRepository: MealRepository,
+    private val transactionProvider: TransactionProvider,
     private val dateProvider: DateProvider,
     private val productRepository: ProductRepository,
     mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
+    private val _selectedEntries = MutableStateFlow<Set<MealEntrySelectionKey>>(emptySet())
+    val selectedEntries: StateFlow<Set<MealEntrySelectionKey>> = _selectedEntries
 
     val diaryMeals: StateFlow<List<MealModel>?> =
         dateState
             .filterNotNull()
             .flatMapLatest { date -> observeDiaryMealsUseCase.observe(date) }
             .map { list -> list.map { it.toMealModel(productRepository) } }
+            .map { meals ->
+                val visibleKeys = meals.flatMap { meal -> meal.foods }.map { it.selectionKey }.toSet()
+                _selectedEntries.value = _selectedEntries.value.intersect(visibleKeys)
+                meals
+            }
             .distinctUntilChanged()
             .stateIn(
                 scope = viewModelScope,
@@ -67,7 +78,81 @@ internal class MealsCardsViewModel(
         )
 
     fun setDate(date: LocalDate) {
-        viewModelScope.launch { dateState.value = date }
+        viewModelScope.launch {
+            if (dateState.value != date) {
+                clearSelection()
+            }
+            dateState.value = date
+        }
+    }
+
+    fun enterSelection(model: MealEntryModel) {
+        _selectedEntries.value = setOf(model.selectionKey)
+    }
+
+    fun toggleSelection(model: MealEntryModel) {
+        val key = model.selectionKey
+        _selectedEntries.value =
+            if (key in _selectedEntries.value) {
+                _selectedEntries.value - key
+            } else {
+                _selectedEntries.value + key
+            }
+    }
+
+    fun clearSelection() {
+        _selectedEntries.value = emptySet()
+    }
+
+    fun deleteSelectedEntries() {
+        val selected = _selectedEntries.value
+        if (selected.isEmpty()) return
+
+        viewModelScope.launch {
+            transactionProvider.withTransaction {
+                selected.forEach { key ->
+                    when (key) {
+                        is MealEntrySelectionKey.Food -> foodEntryRepository.delete(key.id)
+                        is MealEntrySelectionKey.Manual -> manualEntryRepository.delete(key.id)
+                    }
+                }
+            }
+            clearSelection()
+        }
+    }
+
+    fun moveSelectedEntries(targetMealId: Long) {
+        val selected = _selectedEntries.value
+        if (selected.isEmpty()) return
+
+        viewModelScope.launch {
+            val targetMeal = mealRepository.observeMeal(targetMealId).firstOrNull() ?: return@launch
+            val now = dateProvider.now()
+            transactionProvider.withTransaction {
+                selected.forEach { key ->
+                    when (key) {
+                        is MealEntrySelectionKey.Food -> {
+                            val entry = foodEntryRepository.observe(key.id).firstOrNull()
+                            if (entry != null) {
+                                foodEntryRepository.update(
+                                    entry.copy(mealId = targetMeal.id, updatedAt = now)
+                                )
+                            }
+                        }
+
+                        is MealEntrySelectionKey.Manual -> {
+                            val entry = manualEntryRepository.observe(key.id).firstOrNull()
+                            if (entry != null) {
+                                manualEntryRepository.update(
+                                    entry.copy(mealId = targetMeal.id, updatedAt = now)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            clearSelection()
+        }
     }
 
     fun onDeleteEntry(model: MealEntryModel) {
@@ -133,6 +218,7 @@ private suspend fun DiaryEntry.toMealEntryModel(
         is FoodDiaryEntry ->
             FoodMealEntryModel(
                 id = id,
+                mealId = mealId,
                 editableProductId =
                     (food as? DiaryFoodProduct)?.editableProductId(productRepository),
                 name = food.name,
@@ -151,6 +237,7 @@ private suspend fun DiaryEntry.toMealEntryModel(
         is ManualDiaryEntry ->
             ManualMealEntryModel(
                 id = id,
+                mealId = mealId,
                 name = name,
                 energy = nutritionFacts.energy.value?.roundToInt(),
                 proteins = nutritionFacts.proteins.value,

@@ -1,6 +1,8 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -65,6 +68,10 @@ internal fun MealCard(
     onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
+    selectedEntries: Set<MealEntrySelectionKey>,
+    isSelectionMode: Boolean,
+    onEnterSelection: (MealEntryModel) -> Unit,
+    onToggleSelection: (MealEntryModel) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -88,7 +95,7 @@ internal fun MealCard(
     FoodYouHomeCard(
         modifier = modifier,
         color = Color.White,
-        onClick = onAddFood,
+        onClick = if (isSelectionMode) ({}) else onAddFood,
         onLongClick = onLongClick,
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -149,6 +156,10 @@ internal fun MealCard(
                 onEditFood = onEditFood,
                 onAddToEntry = onAddToEntry,
                 onDeleteEntry = onDeleteEntry,
+                selectedEntries = selectedEntries,
+                isSelectionMode = isSelectionMode,
+                onEnterSelection = onEnterSelection,
+                onToggleSelection = onToggleSelection,
                 modifier =
                     Modifier.fillMaxWidth()
                         .padding(top = 16.dp)
@@ -240,6 +251,10 @@ private fun FoodContainer(
     onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
+    selectedEntries: Set<MealEntrySelectionKey>,
+    isSelectionMode: Boolean,
+    onEnterSelection: (MealEntryModel) -> Unit,
+    onToggleSelection: (MealEntryModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -260,6 +275,10 @@ private fun FoodContainer(
                     onEditFood = onEditFood,
                     onAddToEntry = onAddToEntry,
                     onDeleteEntry = onDeleteEntry,
+                    selected = entry.selectionKey in selectedEntries,
+                    isSelectionMode = isSelectionMode,
+                    onEnterSelection = onEnterSelection,
+                    onToggleSelection = onToggleSelection,
                     shape = foodItemShape(index = i, lastIndex = foods.lastIndex),
                 )
             }
@@ -284,6 +303,10 @@ private fun FoodContainerItem(
     onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
+    selected: Boolean,
+    isSelectionMode: Boolean,
+    onEnterSelection: (MealEntryModel) -> Unit,
+    onToggleSelection: (MealEntryModel) -> Unit,
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
@@ -328,13 +351,53 @@ private fun FoodContainerItem(
         }
     }
 
-    MealFoodListItem(
+    SelectableMealFoodListItem(
         entry = entry,
-        color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        selected = selected,
+        isSelectionMode = isSelectionMode,
+        onClick = {
+            if (isSelectionMode) {
+                onToggleSelection(entry)
+            } else {
+                showBottomSheet = true
+            }
+        },
+        onLongClick = { onEnterSelection(entry) },
         shape = shape,
-        modifier = modifier.clickable { showBottomSheet = true },
+        modifier = modifier,
     )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SelectableMealFoodListItem(
+    entry: MealEntryModel,
+    selected: Boolean,
+    isSelectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    shape: Shape,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = if (isSelectionMode) null else onLongClick,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isSelectionMode) {
+            Checkbox(checked = selected, onCheckedChange = { onClick() })
+        }
+        MealFoodListItem(
+            entry = entry,
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = shape,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 @Composable

@@ -195,6 +195,7 @@
     <string name="error_fddb_resync_failed">Food sync failed.</string>
     <string name="action_add_to_entry">Add more</string>
     <string name="action_delete_entry">Delete entry</string>
+    <string name="action_move_selected_entries">Move</string>
     <string name="action_close">Close</string>
     <string name="action_discard">Discard</string>
     <string name="action_translate">Translate</string>
@@ -294,6 +295,7 @@
     <string name="description_delete_food">Food will be deleted permanently</string>
     <string name="description_delete_activity_entry">This activity entry will be deleted permanently.</string>
     <string name="description_delete_product_entry" description="Tell user that this entry will be deleted only from diary and won't affect the product itself. Product won't be deleted from the database.">This entry will be deleted from your diary. You can add it again anytime.</string>
+    <string name="description_delete_selected_entries">Delete %1$d selected entries from your diary?</string>
     <string name="description_about_setting">Learn more about the app</string>
     <string name="description_time_based_meals_sorting">When enabled, meals that are currently happening will be displayed first</string>
     <string name="description_action_ignore_all_day_meals">All-day meals will be displayed at the end of the list</string>
@@ -520,6 +522,9 @@
     <string name="headline_manual_energy_input">Manual energy input</string>
 
     <string name="headline_quick_add">Quick add</string>
+    <string name="headline_delete_selected_entries">Delete selected entries</string>
+    <string name="headline_select_target_meal">Select target meal</string>
+    <string name="label_selected_entries_count">%1$d selected</string>
     <string name="description_quick_add">Quick Add lets you log without searching for specific foods. It's a fast way to record meals when you already know the calorie count or want a simple estimate.</string>
     <string name="headline_quick_add_csv">CSV import</string>
     <string name="description_quick_add_csv">Paste header and one data row: name,energy,proteins,carbohydrates,fats</string>

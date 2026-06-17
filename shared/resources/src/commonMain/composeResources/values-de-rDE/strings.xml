@@ -131,6 +131,9 @@
     <string name="description_sponsor_short_2">Unterstütze die Entwicklung der App</string>
 
     <string name="headline_quick_add">Schnelles Hinzufügen</string>
+    <string name="headline_delete_selected_entries">Ausgewählte Einträge löschen</string>
+    <string name="headline_select_target_meal">Ziel-Mahlzeit auswählen</string>
+    <string name="label_selected_entries_count">%1$d ausgewählt</string>
     <string name="description_quick_add">Dies ist eine Möglichkeit schnell Nahrungsmittel oder Gerichte zu notieren, deren Kalorienwerte du bereits kennst bzw. für die du eine Schätzung haben möchtest.</string>
 
     <string name="headline_note">Notiz</string>
@@ -292,6 +295,7 @@
     <string name="error_fddb_resync_failed">Lebensmittel konnte nicht synchronisiert werden.</string>
     <string name="action_add_to_entry">Ergänzen</string>
     <string name="action_delete_entry">Eintrag löschen</string>
+    <string name="action_move_selected_entries">Verschieben</string>
     <string name="action_close">Schließen</string>
     <string name="action_discard">Verwerfen</string>
     <string name="action_translate">Übersetzen</string>
@@ -385,6 +389,7 @@
     <string name="description_delete_food">Lebensmittel werden unwiderruflich gelöscht</string>
     <string name="description_delete_activity_entry">Dieser Aktivitätseintrag wird unwiderruflich gelöscht.</string>
     <string name="description_delete_product_entry" description="Tell user that this entry will be deleted only from diary and won't affect the product itself. Product won't be deleted from the database.">Dieser Eintrag wird aus Deinem Tagebuch gelöscht. Du kannst ihn jederzeit wieder hinzufügen.</string>
+    <string name="description_delete_selected_entries">%1$d ausgewählte Einträge aus Deinem Tagebuch löschen?</string>
     <string name="description_about_setting">Mehr über die App erfahren</string>
     <string name="description_time_based_meals_sorting">Wenn aktiviert, werden aktuell laufende Mahlzeiten zuerst angezeigt</string>
     <string name="description_action_ignore_all_day_meals">Ganztägige Mahlzeiten am Ende der Liste anzeigen</string>

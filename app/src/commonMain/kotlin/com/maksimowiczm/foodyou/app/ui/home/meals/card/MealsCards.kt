@@ -24,12 +24,14 @@ internal fun rememberMealsCardsState(
     val viewModel: MealsCardsViewModel = koinViewModel()
     val diaryMeals = viewModel.diaryMeals.collectAsStateWithLifecycle().value
     val layout by viewModel.layout.collectAsStateWithLifecycle()
+    val selectedEntries by viewModel.selectedEntries.collectAsStateWithLifecycle()
 
     LaunchedEffect(homeState.selectedDate, viewModel) { viewModel.setDate(homeState.selectedDate) }
 
     return MealsCardsState(
         meals = diaryMeals,
         layout = layout,
+        selectedEntries = selectedEntries,
         onAdd = { mealId -> onAdd(homeState.selectedDate.toEpochDays(), mealId) },
         onQuickAdd = { mealId -> onQuickAdd(homeState.selectedDate.toEpochDays(), mealId) },
         onEditEntry = { model ->
@@ -40,6 +42,11 @@ internal fun rememberMealsCardsState(
         onEditFood = onEditFood,
         onAddToEntry = viewModel::onAddToEntry,
         onDeleteEntry = viewModel::onDeleteEntry,
+        onEnterSelection = viewModel::enterSelection,
+        onToggleSelection = viewModel::toggleSelection,
+        onClearSelection = viewModel::clearSelection,
+        onDeleteSelectedEntries = viewModel::deleteSelectedEntries,
+        onMoveSelectedEntries = viewModel::moveSelectedEntries,
         onLongClick = onLongClick,
     )
 }
@@ -47,14 +54,23 @@ internal fun rememberMealsCardsState(
 internal class MealsCardsState(
     val meals: List<MealModel>?,
     val layout: MealsCardsLayout,
+    val selectedEntries: Set<MealEntrySelectionKey>,
     val onAdd: (mealId: Long) -> Unit,
     val onQuickAdd: (mealId: Long) -> Unit,
     val onEditEntry: (MealEntryModel) -> Unit,
     val onEditFood: (FoodId.Product) -> Unit,
     val onAddToEntry: (MealEntryModel, Double) -> Unit,
     val onDeleteEntry: (MealEntryModel) -> Unit,
+    val onEnterSelection: (MealEntryModel) -> Unit,
+    val onToggleSelection: (MealEntryModel) -> Unit,
+    val onClearSelection: () -> Unit,
+    val onDeleteSelectedEntries: () -> Unit,
+    val onMoveSelectedEntries: (mealId: Long) -> Unit,
     val onLongClick: (mealId: Long) -> Unit,
-)
+) {
+    val isSelectionMode: Boolean
+        get() = selectedEntries.isNotEmpty()
+}
 
 internal fun LazyListScope.mealsCards(
     state: MealsCardsState,
@@ -72,6 +88,10 @@ internal fun LazyListScope.mealsCards(
                     onEditFood = state.onEditFood,
                     onAddToEntry = state.onAddToEntry,
                     onDeleteEntry = state.onDeleteEntry,
+                    selectedEntries = state.selectedEntries,
+                    isSelectionMode = state.isSelectionMode,
+                    onEnterSelection = state.onEnterSelection,
+                    onToggleSelection = state.onToggleSelection,
                     onLongClick = state.onLongClick,
                     contentPadding = contentPadding,
                     modifier = modifier,
@@ -107,6 +127,10 @@ internal fun LazyListScope.mealsCards(
                         onEditFood = state.onEditFood,
                         onAddToEntry = state.onAddToEntry,
                         onDeleteEntry = state.onDeleteEntry,
+                        selectedEntries = state.selectedEntries,
+                        isSelectionMode = state.isSelectionMode,
+                        onEnterSelection = state.onEnterSelection,
+                        onToggleSelection = state.onToggleSelection,
                         onLongClick = { state.onLongClick(meal.id) },
                         modifier = modifier.padding(contentPadding),
                     )

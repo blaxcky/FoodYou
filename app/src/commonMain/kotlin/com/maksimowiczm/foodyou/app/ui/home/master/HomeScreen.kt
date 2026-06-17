@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.home.master
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,31 +9,44 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -97,6 +111,8 @@ fun HomeScreen(
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showFddbLoginDialog by remember { mutableStateOf(false) }
     var showGoalOverviewInGoalSlot by rememberSaveable { mutableStateOf(false) }
+    var showDeleteSelectedEntriesDialog by rememberSaveable { mutableStateOf(false) }
+    var showMoveSelectedEntriesSheet by rememberSaveable { mutableStateOf(false) }
     var pullRefreshActive by remember { mutableStateOf(false) }
     var pullRefreshSyncStarted by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
@@ -143,6 +159,8 @@ fun HomeScreen(
             }
         }
     }
+
+    BackHandler(enabled = mealsCardsState.isSelectionMode) { mealsCardsState.onClearSelection() }
 
     Scaffold(
         modifier = modifier,
@@ -191,9 +209,38 @@ fun HomeScreen(
                 scrollBehavior = scrollBehavior,
             )
         },
+        bottomBar = {
+            if (mealsCardsState.isSelectionMode) {
+                SelectedMealEntriesBottomBar(
+                    selectedCount = mealsCardsState.selectedEntries.size,
+                    onDelete = { showDeleteSelectedEntriesDialog = true },
+                    onMove = { showMoveSelectedEntriesSheet = true },
+                )
+            }
+        },
     ) { paddingValues ->
         if (showFddbLoginDialog) {
             FddbLoginDialog(onDismissRequest = { showFddbLoginDialog = false })
+        }
+        if (showDeleteSelectedEntriesDialog) {
+            DeleteSelectedMealEntriesDialog(
+                selectedCount = mealsCardsState.selectedEntries.size,
+                onDismissRequest = { showDeleteSelectedEntriesDialog = false },
+                onConfirm = {
+                    mealsCardsState.onDeleteSelectedEntries()
+                    showDeleteSelectedEntriesDialog = false
+                },
+            )
+        }
+        if (showMoveSelectedEntriesSheet) {
+            MoveSelectedMealEntriesSheet(
+                meals = mealsCardsState.meals.orEmpty(),
+                onDismissRequest = { showMoveSelectedEntriesSheet = false },
+                onMealClick = { mealId ->
+                    mealsCardsState.onMoveSelectedEntries(mealId)
+                    showMoveSelectedEntriesSheet = false
+                },
+            )
         }
         PullToRefreshBox(
             isRefreshing = pullRefreshActive,
@@ -304,6 +351,100 @@ fun HomeScreen(
 }
 
 private const val PULL_REFRESH_NO_SYNC_FALLBACK_MILLIS = 1_200L
+
+@Composable
+private fun SelectedMealEntriesBottomBar(
+    selectedCount: Int,
+    onDelete: () -> Unit,
+    onMove: () -> Unit,
+) {
+    BottomAppBar {
+        Text(
+            text = stringResource(Res.string.label_selected_entries_count, selectedCount),
+            modifier = Modifier.weight(1f).padding(start = 16.dp),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        TextButton(onClick = onMove) {
+            Icon(imageVector = Icons.Filled.SwapHoriz, contentDescription = null)
+            Text(
+                text = stringResource(Res.string.action_move_selected_entries),
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+        TextButton(
+            onClick = onDelete,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        ) {
+            Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
+            Text(
+                text = stringResource(Res.string.action_delete),
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeleteSelectedMealEntriesDialog(
+    selectedCount: Int,
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors =
+                    ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(Res.string.action_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(Res.string.action_cancel))
+            }
+        },
+        title = { Text(stringResource(Res.string.headline_delete_selected_entries)) },
+        text = {
+            Text(stringResource(Res.string.description_delete_selected_entries, selectedCount))
+        },
+    )
+}
+
+@Composable
+private fun MoveSelectedMealEntriesSheet(
+    meals: List<com.maksimowiczm.foodyou.app.ui.home.meals.card.MealModel>,
+    onDismissRequest: () -> Unit,
+    onMealClick: (mealId: Long) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+
+    ModalBottomSheet(onDismissRequest = onDismissRequest, sheetState = sheetState) {
+        Text(
+            text = stringResource(Res.string.headline_select_target_meal),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            items(count = meals.size, key = { meals[it].id }) { index ->
+                val meal = meals[index]
+                ListItem(
+                    headlineContent = { Text(meal.name) },
+                    modifier = Modifier.clickable { onMealClick(meal.id) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+                if (index != meals.lastIndex) {
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun HomeSyncButton(state: HomeSyncState, onClick: () -> Unit) {
