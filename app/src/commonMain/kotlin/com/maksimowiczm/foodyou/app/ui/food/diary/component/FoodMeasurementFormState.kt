@@ -18,6 +18,9 @@ fun rememberFoodMeasurementFormState(
     selectedMeal: String?,
     suggestions: List<Measurement>,
     portionOptions: List<MeasurementPickerOption.Portion> = emptyList(),
+    totalWeight: Double? = null,
+    servingWeight: Double? = null,
+    isLiquid: Boolean = false,
     possibleTypes: List<MeasurementType>,
     selectedMeasurement: Measurement,
 ): FoodMeasurementFormState {
@@ -33,6 +36,9 @@ fun rememberFoodMeasurementFormState(
         rememberMeasurementPickerState(
             suggestions = suggestions,
             portionOptions = portionOptions,
+            totalWeight = totalWeight,
+            servingWeight = servingWeight,
+            isLiquid = isLiquid,
             possibleTypes = possibleTypes,
             selectedMeasurement = selectedMeasurement,
         )

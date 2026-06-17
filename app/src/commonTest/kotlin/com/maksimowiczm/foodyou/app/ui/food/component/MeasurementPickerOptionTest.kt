@@ -56,4 +56,79 @@ class MeasurementPickerOptionTest {
                 .toMeasurementPickerOption(isLiquid = true)
         )
     }
+
+    @Test
+    fun standardPackageLabelShowsSolidPackageWeight() {
+        assertEquals(
+            "Packung (100 g)",
+            formatMeasurementPickerLabel(
+                label = "Packung",
+                type = MeasurementType.Package,
+                totalWeight = 100.0,
+                servingWeight = null,
+                isLiquid = false,
+            ),
+        )
+    }
+
+    @Test
+    fun standardPackageLabelShowsLiquidPackageVolume() {
+        assertEquals(
+            "Packung (500 ml)",
+            formatMeasurementPickerLabel(
+                label = "Packung",
+                type = MeasurementType.Package,
+                totalWeight = 500.0,
+                servingWeight = null,
+                isLiquid = true,
+            ),
+        )
+    }
+
+    @Test
+    fun standardServingLabelShowsServingWeight() {
+        assertEquals(
+            "Stück (30 g)",
+            formatMeasurementPickerLabel(
+                label = "Stück",
+                type = MeasurementType.Serving,
+                totalWeight = null,
+                servingWeight = 30.0,
+                isLiquid = false,
+            ),
+        )
+    }
+
+    @Test
+    fun standardPackageAndServingLabelsStayUnchangedWithoutReferenceWeight() {
+        assertEquals(
+            "Packung",
+            formatMeasurementPickerLabel(
+                label = "Packung",
+                type = MeasurementType.Package,
+                totalWeight = null,
+                servingWeight = null,
+                isLiquid = false,
+            ),
+        )
+        assertEquals(
+            "Stück",
+            formatMeasurementPickerLabel(
+                label = "Stück",
+                type = MeasurementType.Serving,
+                totalWeight = null,
+                servingWeight = null,
+                isLiquid = false,
+            ),
+        )
+    }
+
+    @Test
+    fun fddbPortionLabelStaysUnchanged() {
+        val option =
+            FddbPortion("Packung", 400.0, FddbPortion.Unit.Gram)
+                .toMeasurementPickerOption(isLiquid = false)
+
+        assertEquals("1 Packung (400 g)", option?.displayLabel)
+    }
 }

@@ -68,6 +68,7 @@ import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
+import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerOption
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerState
 import com.maksimowiczm.foodyou.app.ui.food.component.toMeasurementPickerOptions
@@ -177,6 +178,9 @@ fun AddEntryScreen(
                             ?.toMeasurementPickerOptions(food.isLiquid)
                             .orEmpty()
                     },
+                totalWeight = food.totalWeight,
+                servingWeight = food.servingWeight,
+                isLiquid = food.isLiquid,
                 possibleTypes = possibleTypes,
                 selectedMeasurement = selectedMeasurement,
             )
@@ -566,11 +570,20 @@ internal fun ReferenceMeasurementPicker(
                 SuggestionChip(
                     onClick = {
                         state.selectOption(
-                            option = MeasurementPickerOption.Standard(measurement.type),
+                            option = state.standardOption(measurement.type),
                             inputTextOverride = measurement.rawValue.formatClipZeros(),
                         )
                     },
-                    label = { Text(measurement.stringResource(servingUnit)) },
+                    label = {
+                        Text(
+                            measurement.stringResourceWithWeight(
+                                totalWeight = state.totalWeight,
+                                servingWeight = state.servingWeight,
+                                isLiquid = state.isLiquid,
+                                servingUnit = servingUnit,
+                            ) ?: measurement.stringResource(servingUnit)
+                        )
+                    },
                 )
             }
         }

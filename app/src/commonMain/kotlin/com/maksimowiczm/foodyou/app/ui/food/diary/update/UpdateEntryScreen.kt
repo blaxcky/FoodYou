@@ -82,6 +82,9 @@ fun UpdateEntryScreen(
                     remember(portions, entry.food) {
                         portions.toMeasurementPickerOptions(entry.food.isLiquid)
                     },
+                totalWeight = entry.food.totalWeight,
+                servingWeight = entry.food.servingWeight,
+                isLiquid = entry.food.isLiquid,
                 possibleTypes = possibleTypes,
                 selectedMeasurement = selectedMeasurement,
             )

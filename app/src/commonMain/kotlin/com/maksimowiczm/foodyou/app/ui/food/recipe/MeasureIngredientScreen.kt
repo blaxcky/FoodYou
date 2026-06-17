@@ -78,6 +78,9 @@ internal fun MeasureIngredientScreen(
                     (food as? Product)?.portions?.toMeasurementPickerOptions(food.isLiquid)
                         .orEmpty()
                 },
+            totalWeight = food.totalWeight,
+            servingWeight = food.servingWeight,
+            isLiquid = food.isLiquid,
             possibleTypes = possibleMeasurements,
             selectedMeasurement = selectedMeasurement,
         )
