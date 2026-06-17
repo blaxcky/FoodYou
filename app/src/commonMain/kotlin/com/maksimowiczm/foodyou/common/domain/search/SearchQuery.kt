@@ -16,9 +16,12 @@ sealed interface SearchQuery {
     data class Text(override val query: String) : NotBlank
 }
 
-fun searchQuery(query: String?): SearchQuery =
-    when {
-        query.isNullOrBlank() -> SearchQuery.Blank
-        query.all(Char::isDigit) -> SearchQuery.Barcode(query)
-        else -> SearchQuery.Text(query)
+fun searchQuery(query: String?): SearchQuery {
+    val normalizedQuery = query?.trim()?.replace(Regex("\\s+"), " ")
+
+    return when {
+        normalizedQuery.isNullOrBlank() -> SearchQuery.Blank
+        normalizedQuery.all(Char::isDigit) -> SearchQuery.Barcode(normalizedQuery)
+        else -> SearchQuery.Text(normalizedQuery)
     }
+}
