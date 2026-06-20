@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -53,6 +55,8 @@ import com.maksimowiczm.foodyou.app.ui.food.component.stringResource
 import com.maksimowiczm.foodyou.common.compose.component.unorderedList
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
@@ -64,6 +68,7 @@ internal fun ProductForm(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     sourceContent: @Composable (() -> Unit)? = null,
+    showPortions: Boolean = false,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val horizontalPadding =
@@ -84,6 +89,8 @@ internal fun ProductForm(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         General(state = state, horizontalPadding = horizontalPadding, sourceContent = sourceContent)
+
+        if (showPortions) QuickPortions(state, horizontalPadding)
 
         Text(
             text = stringResource(Res.string.headline_macronutrients),
@@ -139,6 +146,49 @@ internal fun ProductForm(
             }
         }
     }
+}
+
+@Composable
+private fun QuickPortions(state: ProductFormState, horizontalPadding: PaddingValues) {
+    Text(
+        text = "Schnelleinträge",
+        modifier = Modifier.padding(horizontalPadding).fillMaxWidth(),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+    )
+    state.portions.forEachIndexed { index, portion ->
+        Row(
+            modifier = Modifier.padding(horizontalPadding).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = portion.label,
+                onValueChange = { state.portions[index] = portion.copy(label = it) },
+                modifier = Modifier.weight(1f),
+                label = { Text("Bezeichnung") },
+                isError = portion.label.isBlank() || state.portions.count { it.label.trim().equals(portion.label.trim(), true) } > 1,
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = portion.amount.formatClipZeros(),
+                onValueChange = { it.toDoubleOrNull()?.let { value -> state.portions[index] = portion.copy(amount = value) } },
+                modifier = Modifier.padding(start = 8.dp).weight(.7f),
+                label = { Text(if (state.isLiquid) "ml" else "g") },
+                isError = portion.amount <= 0.0,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            )
+            IconButton(onClick = { state.portions.removeAt(index) }) {
+                Icon(Icons.Outlined.Delete, contentDescription = "Löschen")
+            }
+        }
+    }
+    FilledTonalIconButton(
+        onClick = {
+            state.portions += ProductPortion("", 1.0, if (state.isLiquid) ProductPortion.Unit.Milliliter else ProductPortion.Unit.Gram)
+        },
+        modifier = Modifier.padding(horizontalPadding),
+    ) { Icon(Icons.Outlined.Add, contentDescription = "Schnelleintrag hinzufügen") }
 }
 
 @Composable

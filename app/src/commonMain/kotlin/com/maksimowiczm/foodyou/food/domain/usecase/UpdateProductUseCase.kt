@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.common.log.logAndReturnFailure
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import kotlinx.coroutines.flow.first
@@ -37,6 +38,7 @@ class UpdateProductUseCase(
         note: String?,
         source: FoodSource,
         isLiquid: Boolean,
+        portions: List<ProductPortion>,
     ): Result<Unit, UpdateProductError> {
         if (name.isBlank()) {
             return logger.logAndReturnFailure(
@@ -72,6 +74,7 @@ class UpdateProductUseCase(
                 )
 
             productRepository.updateProduct(updatedProduct)
+            productRepository.updateProductPortions(id, portions)
 
             if (
                 product.servingWeight != null &&

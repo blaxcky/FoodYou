@@ -36,6 +36,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.PendingProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductFts
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionOverrideEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeFts
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeIngredientEntity
@@ -83,6 +84,7 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntit
             FddbImportQueueItemEntity::class,
             FddbDiarySyncEntryEntity::class,
             ProductPortionEntity::class,
+            ProductPortionOverrideEntity::class,
             DailyWeightEntryEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
@@ -160,7 +162,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 42
+        const val VERSION = 43
 
         private val migrations: List<Migration> =
             listOf(
@@ -188,6 +190,7 @@ abstract class FoodYouDatabase :
                 DailyWeightEntryMigration,
                 FddbPortionServingWeightMigration,
                 FddbServingWeightCleanupMigration,
+                ProductPortionOverrideMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -197,6 +200,13 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object ProductPortionOverrideMigration : Migration(42, 43) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("""CREATE TABLE IF NOT EXISTS `ProductPortionOverride` (`productId` INTEGER NOT NULL, `normalizedLabel` TEXT NOT NULL, `label` TEXT NOT NULL, `amount` REAL NOT NULL, `unit` TEXT NOT NULL, `isDeleted` INTEGER NOT NULL, PRIMARY KEY(`productId`, `normalizedLabel`), FOREIGN KEY(`productId`) REFERENCES `Product`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_ProductPortionOverride_productId` ON `ProductPortionOverride` (`productId`)")
     }
 }
 

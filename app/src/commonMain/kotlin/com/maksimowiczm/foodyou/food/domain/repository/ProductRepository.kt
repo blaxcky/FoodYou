@@ -5,6 +5,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import kotlinx.coroutines.flow.Flow
 
 interface ProductRepository {
@@ -69,6 +70,9 @@ interface ProductRepository {
         sourceType: FoodSource.Type,
         portions: List<FddbPortion>,
     )
+
+    /** Stores the user-managed effective portions without changing imported source portions. */
+    suspend fun updateProductPortions(productId: FoodId.Product, portions: List<ProductPortion>) = Unit
 
     suspend fun deleteProduct(product: Product)
 

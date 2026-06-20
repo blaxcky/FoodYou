@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.distinctByNormalizedLabel
 import com.maksimowiczm.foodyou.food.domain.entity.normalizedLabel
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
@@ -17,6 +18,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.ProductDao
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionDao
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionOverrideEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -35,8 +37,9 @@ internal class RoomProductRepository(
         combine(
             productDao.observeProduct(id.id),
             productPortionDao.observeProductPortions(id.id),
-        ) { product, portions ->
-            product?.toModel(portions)
+            productPortionDao.observeOverrides(id.id),
+        ) { product, portions, overrides ->
+            product?.toModel(portions, overrides)
         }
 
     override fun observeProductByBarcode(barcode: String): Flow<Product?> =
@@ -44,12 +47,12 @@ internal class RoomProductRepository(
 
     override suspend fun getProductByBarcode(barcode: String): Product? =
         productDao.getProductByBarcode(barcode)?.let { product ->
-            product.toModel(productPortionDao.getProductPortions(product.id))
+            product.toModel(productPortionDao.getProductPortions(product.id), productPortionDao.getOverrides(product.id))
         }
 
     override suspend fun getProductBySource(type: FoodSource.Type, url: String): Product? =
         productDao.getProductBySource(type.toEntity(), url)?.let { product ->
-            product.toModel(productPortionDao.getProductPortions(product.id))
+            product.toModel(productPortionDao.getProductPortions(product.id), productPortionDao.getOverrides(product.id))
         }
 
     override suspend fun deleteProduct(product: Product) {
@@ -136,9 +139,33 @@ internal class RoomProductRepository(
             )
         }
     }
+
+    override suspend fun updateProductPortions(productId: FoodId.Product, portions: List<ProductPortion>) {
+        val desired = portions.distinctByNormalizedLabel()
+        val imported = productPortionDao.getProductPortions(productId.id).mapNotNull { it.toModel() }
+        val importedByLabel = imported.associateBy { it.normalizedLabel() }
+        val desiredByLabel = desired.associateBy { it.normalizedLabel() }
+        val overrides = buildList {
+            imported.forEach { base ->
+                val desiredPortion = desiredByLabel[base.normalizedLabel()]
+                when {
+                    desiredPortion == null -> add(ProductPortionOverrideEntity(productId.id, base.normalizedLabel(), base.label, base.amount, base.unit.toStorageUnit(), true))
+                    desiredPortion != base -> add(desiredPortion.toOverrideEntity(productId.id, false))
+                }
+            }
+            desired.filter { it.normalizedLabel() !in importedByLabel }.forEach {
+                add(it.toOverrideEntity(productId.id, false))
+            }
+        }
+        productPortionDao.deleteOverrides(productId.id)
+        if (overrides.isNotEmpty()) productPortionDao.insertOverrides(overrides)
+    }
 }
 
-private fun ProductEntity.toModel(portions: List<ProductPortionEntity> = emptyList()): Product =
+private fun ProductEntity.toModel(
+    portions: List<ProductPortionEntity> = emptyList(),
+    overrides: List<ProductPortionOverrideEntity> = emptyList(),
+): Product =
     Product(
         id = FoodId.Product(this.id),
         name = this.name,
@@ -148,7 +175,7 @@ private fun ProductEntity.toModel(portions: List<ProductPortionEntity> = emptyLi
         isLiquid = this.isLiquid,
         packageWeight = this.packageWeight,
         servingWeight = this.servingWeight,
-        portions = portions.mapNotNull { it.toModel() },
+        portions = portions.effectivePortions(overrides),
         source = FoodSource(type = this.sourceType.toDomain(), url = this.sourceUrl),
         nutritionFacts = this.toNutritionFacts(),
     )
@@ -188,18 +215,52 @@ private fun FddbPortion.toEntity(
         amount = amount,
         unit =
             when (unit) {
-                FddbPortion.Unit.Gram -> "g"
-                FddbPortion.Unit.Milliliter -> "ml"
+                ProductPortion.Unit.Gram -> "g"
+                ProductPortion.Unit.Milliliter -> "ml"
             },
     )
 
 private fun ProductPortionEntity.toModel(): FddbPortion? {
     val unit =
         when (unit) {
-            "g" -> FddbPortion.Unit.Gram
-            "ml" -> FddbPortion.Unit.Milliliter
+            "g" -> ProductPortion.Unit.Gram
+            "ml" -> ProductPortion.Unit.Milliliter
             else -> return null
         }
 
     return FddbPortion(label = label, amount = amount, unit = unit)
+}
+
+private fun List<ProductPortionEntity>.effectivePortions(
+    overrides: List<ProductPortionOverrideEntity>
+): List<ProductPortion> {
+    val byLabel = overrides.associateBy { it.normalizedLabel }
+    val result = mapNotNull { base ->
+        val override = byLabel[base.normalizedLabel]
+        when {
+            override?.isDeleted == true -> null
+            override != null -> override.toModel()
+            else -> base.toModel()
+        }
+    }.toMutableList()
+    val importedLabels = map { it.normalizedLabel }.toSet()
+    overrides.filter { !it.isDeleted && it.normalizedLabel !in importedLabels }.forEach { override ->
+        override.toModel()?.let(result::add)
+    }
+    return result.distinctByNormalizedLabel()
+}
+
+private fun ProductPortionOverrideEntity.toModel(): ProductPortion? =
+    when (unit) {
+        "g" -> ProductPortion(label, amount, ProductPortion.Unit.Gram)
+        "ml" -> ProductPortion(label, amount, ProductPortion.Unit.Milliliter)
+        else -> null
+    }
+
+private fun ProductPortion.toOverrideEntity(productId: Long, isDeleted: Boolean) =
+    ProductPortionOverrideEntity(productId, normalizedLabel(), label, amount, unit.toStorageUnit(), isDeleted)
+
+private fun ProductPortion.Unit.toStorageUnit() = when (this) {
+    ProductPortion.Unit.Gram -> "g"
+    ProductPortion.Unit.Milliliter -> "ml"
 }

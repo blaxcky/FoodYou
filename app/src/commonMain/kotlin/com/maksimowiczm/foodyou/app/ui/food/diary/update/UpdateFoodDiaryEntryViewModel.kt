@@ -11,6 +11,7 @@ import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct

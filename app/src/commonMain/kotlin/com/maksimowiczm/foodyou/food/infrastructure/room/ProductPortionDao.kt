@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.food.infrastructure.room
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Delete
 import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
 import kotlinx.coroutines.flow.Flow
 
@@ -37,4 +38,15 @@ interface ProductPortionDao {
     suspend fun deleteProductPortions(productId: Long, sourceType: FoodSourceType)
 
     @Insert suspend fun insertProductPortions(portions: List<ProductPortionEntity>)
+
+    @Query("SELECT * FROM ProductPortionOverride WHERE productId = :productId")
+    suspend fun getOverrides(productId: Long): List<ProductPortionOverrideEntity>
+
+    @Query("SELECT * FROM ProductPortionOverride WHERE productId = :productId")
+    fun observeOverrides(productId: Long): Flow<List<ProductPortionOverrideEntity>>
+
+    @Query("DELETE FROM ProductPortionOverride WHERE productId = :productId")
+    suspend fun deleteOverrides(productId: Long)
+
+    @Insert suspend fun insertOverrides(overrides: List<ProductPortionOverrideEntity>)
 }

@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.food.domain.entity.FddbImportQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
@@ -106,7 +107,7 @@ class ImportFddbProductsUseCaseTest {
 
     @Test
     fun storesPortionsForImportedProduct() = runBlocking {
-        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val portions = listOf(FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram))
         val gateway = FakeFddbProductGateway(portions = portions)
         val repository = FakeProductRepository()
         val useCase = useCase(gateway, repository, FakeFddbImportQueueRepository())
@@ -121,7 +122,7 @@ class ImportFddbProductsUseCaseTest {
 
     @Test
     fun addsPortionsForExistingBarcode() = runBlocking {
-        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val portions = listOf(FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram))
         val gateway = FakeFddbProductGateway(portions = portions)
         val existing = product(id = 1, barcode = "1234567890123")
         val repository = FakeProductRepository(existingProduct = existing)

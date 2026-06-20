@@ -135,6 +135,7 @@ internal fun UpdateProductScreen(
                     ProductForm(
                         state = productForm,
                         contentPadding = PaddingValues(horizontal = 16.dp),
+                        showPortions = true,
                         sourceContent =
                             if (showFddbResync) {
                                 {

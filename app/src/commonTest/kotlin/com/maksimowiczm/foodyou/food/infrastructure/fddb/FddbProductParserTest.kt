@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.infrastructure.fddb
 
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -39,8 +40,8 @@ class FddbProductParserTest {
         assertNull(product.servingWeight)
         assertEquals(
             listOf(
-                FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram),
-                FddbPortion("Packung", 200.0, FddbPortion.Unit.Gram),
+                FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram),
+                FddbPortion("Packung", 200.0, ProductPortion.Unit.Gram),
             ),
             product.portions,
         )
@@ -64,9 +65,9 @@ class FddbProductParserTest {
 
         assertEquals(
             listOf(
-                FddbPortion("Scheibe", 30.0, FddbPortion.Unit.Gram),
-                FddbPortion("Riegel", 25.5, FddbPortion.Unit.Gram),
-                FddbPortion("Glas", 200.0, FddbPortion.Unit.Milliliter),
+                FddbPortion("Scheibe", 30.0, ProductPortion.Unit.Gram),
+                FddbPortion("Riegel", 25.5, ProductPortion.Unit.Gram),
+                FddbPortion("Glas", 200.0, ProductPortion.Unit.Milliliter),
             ),
             product.portions,
         )

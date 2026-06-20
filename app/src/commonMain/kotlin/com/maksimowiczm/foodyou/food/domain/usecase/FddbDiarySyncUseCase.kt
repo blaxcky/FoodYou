@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.common.result.isSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryPortionMeasurement
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.normalizedLabel
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
@@ -158,8 +159,8 @@ private fun FddbDiaryPortionMeasurement.forProduct(product: Product): Measuremen
     val portion = product.portions.matchingPrefix(labelAndProductName) ?: return null
     val amount = quantity * portion.amount
     return when (portion.unit) {
-        FddbPortion.Unit.Gram -> Measurement.Gram(amount)
-        FddbPortion.Unit.Milliliter -> Measurement.Milliliter(amount)
+        ProductPortion.Unit.Gram -> Measurement.Gram(amount)
+        ProductPortion.Unit.Milliliter -> Measurement.Milliliter(amount)
     }
 }
 

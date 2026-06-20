@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.food.infrastructure.fddb
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 
 class FddbProductParser {
@@ -183,8 +184,8 @@ private fun List<String>.findPortions(): List<FddbPortion> =
                     ?: return@mapNotNull null
             val unit =
                 when (match.groupValues[3].lowercase()) {
-                    "g" -> FddbPortion.Unit.Gram
-                    "ml" -> FddbPortion.Unit.Milliliter
+                    "g" -> ProductPortion.Unit.Gram
+                    "ml" -> ProductPortion.Unit.Milliliter
                     else -> return@mapNotNull null
                 }
 
@@ -198,7 +199,7 @@ private fun List<String>.findPortions(): List<FddbPortion> =
 
 private fun List<FddbPortion>.findPackageWeight(): Double? =
     firstOrNull { portion ->
-        portion.unit == FddbPortion.Unit.Gram &&
+        portion.unit == ProductPortion.Unit.Gram &&
             PackageLabels.any { portion.label.contains(it, ignoreCase = true) }
     }?.amount
 

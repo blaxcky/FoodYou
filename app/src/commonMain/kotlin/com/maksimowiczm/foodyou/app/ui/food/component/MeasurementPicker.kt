@@ -55,6 +55,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
 
@@ -476,11 +477,11 @@ sealed interface MeasurementPickerOption {
 fun FddbPortion.toMeasurementPickerOption(isLiquid: Boolean): MeasurementPickerOption.Portion? {
     val measurement =
         when (unit) {
-            FddbPortion.Unit.Gram -> {
+            ProductPortion.Unit.Gram -> {
                 if (isLiquid) return null
                 Measurement.Gram(amount)
             }
-            FddbPortion.Unit.Milliliter -> {
+            ProductPortion.Unit.Milliliter -> {
                 if (!isLiquid) return null
                 Measurement.Milliliter(amount)
             }
@@ -495,11 +496,11 @@ fun List<FddbPortion>.toMeasurementPickerOptions(
     isLiquid: Boolean
 ): List<MeasurementPickerOption.Portion> = mapNotNull { it.toMeasurementPickerOption(isLiquid) }
 
-private val FddbPortion.Unit.label: String
+private val ProductPortion.Unit.label: String
     get() =
         when (this) {
-            FddbPortion.Unit.Gram -> "g"
-            FddbPortion.Unit.Milliliter -> "ml"
+            ProductPortion.Unit.Gram -> "g"
+            ProductPortion.Unit.Milliliter -> "ml"
         }
 
 internal fun formatMeasurementPickerLabel(

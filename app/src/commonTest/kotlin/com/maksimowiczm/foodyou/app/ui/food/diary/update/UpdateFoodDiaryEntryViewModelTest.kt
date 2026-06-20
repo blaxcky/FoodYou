@@ -4,6 +4,7 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
@@ -22,8 +23,8 @@ class UpdateFoodDiaryEntryViewModelTest {
     fun editablePortionsUsesOriginalProductMatchedBySource() = runTest {
         val portions =
             listOf(
-                FddbPortion(label = "1 Piece", amount = 10.0, unit = FddbPortion.Unit.Gram),
-                FddbPortion(label = "1 Portion", amount = 250.0, unit = FddbPortion.Unit.Gram),
+                FddbPortion(label = "1 Piece", amount = 10.0, unit = ProductPortion.Unit.Gram),
+                FddbPortion(label = "1 Portion", amount = 250.0, unit = ProductPortion.Unit.Gram),
             )
         val repository =
             FakeProductRepository(

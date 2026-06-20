@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.form.ParseResult
 import com.maksimowiczm.foodyou.app.ui.common.form.nonBlankStringValidator
@@ -23,6 +24,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutrientsHelper
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.RemoteProduct
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -318,12 +320,14 @@ internal fun rememberProductFormState(
             textFieldState = rememberTextFieldState(product?.source?.url ?: ""),
         )
     val isLiquid = rememberSaveable(product) { mutableStateOf(product?.isLiquid ?: false) }
+    val portions = remember(product) { mutableStateListOf<ProductPortion>().apply { addAll(product?.portions.orEmpty()) } }
 
     val isModified =
         remember(product) {
             if (product != null) {
                 derivedStateOf {
                     name.value != product.name ||
+                        portions != product.portions ||
                         brand.value != product.brand ||
                         barcode.value != product.barcode ||
                         note.value != product.note ||
@@ -414,7 +418,8 @@ internal fun rememberProductFormState(
                 }
             } else {
                 derivedStateOf {
-                    name.value.isNotEmpty() ||
+                        name.value.isNotEmpty() ||
+                        portions.isNotEmpty() ||
                         brand.value != null ||
                         barcode.value != null ||
                         note.value != null ||
@@ -478,6 +483,7 @@ internal fun rememberProductFormState(
         sourceType,
         sourceUrl,
         isLiquid,
+        portions,
         measurement,
         packageWeight,
         servingWeight,
@@ -534,6 +540,7 @@ internal fun rememberProductFormState(
             sourceTypeState = sourceType,
             sourceUrl = sourceUrl,
             isLiquidState = isLiquid,
+            portions = portions,
             measurementState = measurement,
             packageWeight = packageWeight,
             servingWeight = servingWeight,
@@ -1076,6 +1083,7 @@ internal class ProductFormState(
     sourceTypeState: MutableState<FoodSource.Type>,
     val sourceUrl: FormField<String?, Nothing>,
     isLiquidState: MutableState<Boolean>,
+    val portions: SnapshotStateList<ProductPortion> = mutableStateListOf(),
     // Weight
     measurementState: MutableState<Measurement>,
     val packageWeight: FormField<Float?, ProductFormFieldError>,
@@ -1183,6 +1191,8 @@ internal class ProductFormState(
                 seleniumMicro.error == null &&
                 iodineMicro.error == null &&
                 chromiumMicro.error == null
+                && portions.all { it.label.isNotBlank() && it.amount > 0.0 }
+                && portions.map { it.normalizedLabelForForm() }.distinct().size == portions.size
 
     var sourceType: FoodSource.Type by sourceTypeState
     var isLiquid: Boolean by isLiquidState
@@ -1190,6 +1200,9 @@ internal class ProductFormState(
     val isModified: Boolean by isModifiedState
     var autoCalculateEnergy: Boolean by autoCalculateEnergyState
 }
+
+private fun ProductPortion.normalizedLabelForForm(): String =
+    label.trim().lowercase().replace(Regex("""\s+"""), " ")
 
 internal fun ProductFormState.nutritionFacts(multiplier: Float) =
     NutritionFacts(

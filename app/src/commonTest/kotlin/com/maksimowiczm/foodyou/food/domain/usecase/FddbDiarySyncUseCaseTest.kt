@@ -9,6 +9,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
@@ -75,7 +76,7 @@ class FddbDiarySyncUseCaseTest {
     @Test
     fun addsPortionsForExistingProductByFddbSourceUrl() = runBlocking {
         val source = "https://fddb.info/db/de/lebensmittel/local_food/index.html"
-        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val portions = listOf(FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram))
         val productRepository = FakeProductRepository(existing = listOf(product(id = 1, sourceUrl = source)))
         val useCase =
             useCase(
@@ -92,7 +93,7 @@ class FddbDiarySyncUseCaseTest {
 
     @Test
     fun addsPortionsForExistingProductByBarcode() = runBlocking {
-        val portions = listOf(FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram))
+        val portions = listOf(FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram))
         val productRepository =
             FakeProductRepository(existing = listOf(product(id = 1, barcode = "barcode-remote_food")))
         val useCase =
@@ -115,9 +116,9 @@ class FddbDiarySyncUseCaseTest {
         val productRepository = FakeProductRepository(existing = listOf(product(id = 1, sourceUrl = source)))
         val portions =
             listOf(
-                FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram),
-                FddbPortion(" stück ", 20.0, FddbPortion.Unit.Gram),
-                FddbPortion("Portion", 100.0, FddbPortion.Unit.Gram),
+                FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram),
+                FddbPortion(" stück ", 20.0, ProductPortion.Unit.Gram),
+                FddbPortion("Portion", 100.0, ProductPortion.Unit.Gram),
             )
         val useCase =
             useCase(
@@ -132,8 +133,8 @@ class FddbDiarySyncUseCaseTest {
         assertEquals(0, result.failed)
         assertEquals(
             listOf(
-                FddbPortion("Stück", 12.0, FddbPortion.Unit.Gram),
-                FddbPortion("Portion", 100.0, FddbPortion.Unit.Gram),
+                FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram),
+                FddbPortion("Portion", 100.0, ProductPortion.Unit.Gram),
             ),
             productRepository.products.single().portions,
         )
@@ -160,7 +161,7 @@ class FddbDiarySyncUseCaseTest {
 
     @Test
     fun mapsRawFddbGramPortionToMetricMeasurement() = runBlocking {
-        val portions = listOf(FddbPortion("Stück", 150.0, FddbPortion.Unit.Gram))
+        val portions = listOf(FddbPortion("Stück", 150.0, ProductPortion.Unit.Gram))
         val foodEntries = FakeFoodDiaryEntryRepository()
         val useCase =
             useCase(
@@ -188,7 +189,7 @@ class FddbDiarySyncUseCaseTest {
 
     @Test
     fun mapsRawFddbPortionQuantityAndMilliliterUnit() = runBlocking {
-        val portions = listOf(FddbPortion("Glas", 200.0, FddbPortion.Unit.Milliliter))
+        val portions = listOf(FddbPortion("Glas", 200.0, ProductPortion.Unit.Milliliter))
         val foodEntries = FakeFoodDiaryEntryRepository()
         val useCase =
             useCase(
@@ -218,8 +219,8 @@ class FddbDiarySyncUseCaseTest {
     fun usesLongestRawFddbPortionLabelPrefix() = runBlocking {
         val portions =
             listOf(
-                FddbPortion("Dose", 50.0, FddbPortion.Unit.Gram),
-                FddbPortion("Dose klein", 120.0, FddbPortion.Unit.Gram),
+                FddbPortion("Dose", 50.0, ProductPortion.Unit.Gram),
+                FddbPortion("Dose klein", 120.0, ProductPortion.Unit.Gram),
             )
         val foodEntries = FakeFoodDiaryEntryRepository()
         val useCase =

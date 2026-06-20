@@ -8,6 +8,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
@@ -25,7 +26,7 @@ import kotlinx.coroutines.runBlocking
 class ResyncFddbProductUseCaseTest {
     @Test
     fun overwritesFddbNutritionWeightsLiquidFlagAndPortions() = runBlocking {
-        val portions = listOf(FddbPortion("Piece", 42.0, FddbPortion.Unit.Gram))
+        val portions = listOf(FddbPortion("Piece", 42.0, ProductPortion.Unit.Gram))
         val remoteProduct =
             fddbProduct(
                 nutritionFacts = nutrition(energy = 222.0),

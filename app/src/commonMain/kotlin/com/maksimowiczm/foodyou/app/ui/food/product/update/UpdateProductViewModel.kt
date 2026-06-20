@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductError
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
@@ -72,6 +73,17 @@ internal class UpdateProductViewModel(
                     note = form.note.value,
                     source = FoodSource(type = form.sourceType, url = form.sourceUrl.value),
                     isLiquid = form.isLiquid,
+                    portions =
+                        form.portions.map {
+                            it.copy(
+                                unit =
+                                    if (form.isLiquid) {
+                                        ProductPortion.Unit.Milliliter
+                                    } else {
+                                        ProductPortion.Unit.Gram
+                                    }
+                            )
+                        },
                 )
                 .onSuccess { eventBus.send(UpdateProductEvent.Updated) }
                 .onError {

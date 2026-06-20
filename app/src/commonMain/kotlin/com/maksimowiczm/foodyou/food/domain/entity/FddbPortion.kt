@@ -1,18 +1,5 @@
 package com.maksimowiczm.foodyou.food.domain.entity
 
-data class FddbPortion(
-    val label: String,
-    val amount: Double,
-    val unit: Unit,
-) {
-    enum class Unit {
-        Gram,
-        Milliliter,
-    }
-}
-
-internal fun List<FddbPortion>.distinctByNormalizedLabel(): List<FddbPortion> =
-    distinctBy { it.normalizedLabel() }
-
-internal fun FddbPortion.normalizedLabel(): String =
-    label.trim().lowercase().replace(Regex("""\s+"""), " ")
+/** @deprecated FDDB data is mapped to the source-independent [ProductPortion]. */
+@Deprecated("Use ProductPortion")
+typealias FddbPortion = ProductPortion
