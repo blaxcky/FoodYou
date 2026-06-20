@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.card
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
+import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.from
@@ -117,6 +118,7 @@ internal class MealsCardsViewModel(
                     }
                 }
             }
+            updateCalorieWidgetValues()
             clearSelection()
         }
     }
@@ -161,6 +163,7 @@ internal class MealsCardsViewModel(
                 is FoodMealEntryModel -> foodEntryRepository.delete(model.id)
                 is ManualMealEntryModel -> manualEntryRepository.delete(model.id)
             }
+            updateCalorieWidgetValues()
         }
     }
 
@@ -193,6 +196,7 @@ internal class MealsCardsViewModel(
                     )
                 }
             }
+            updateCalorieWidgetValues()
         }
     }
 }

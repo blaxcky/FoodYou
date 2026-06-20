@@ -153,4 +153,28 @@ class CalorieWidgetModelTest {
 
         assertEquals(today, model.date)
     }
+
+    @Test
+    fun plannedSurplusUsesTheSameOptimizedAndDietBudgetAsTheHomeScreen() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 18),
+                eatenKcal = 0.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2000.0,
+                dietEnergyDeficitKcal = 500.0,
+                previousDays = emptyList(),
+                plannedFutureDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 3000.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1833, model.optimizedLeftKcal)
+        assertEquals(1250, model.dietLeftKcal)
+    }
 }

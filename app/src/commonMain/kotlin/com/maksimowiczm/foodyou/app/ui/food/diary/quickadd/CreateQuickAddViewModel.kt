@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.food.diary.quickadd
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
@@ -43,6 +44,7 @@ internal class CreateQuickAddViewModel(
                 createdAt = dateProvider.now(),
             )
 
+            updateCalorieWidgetValues()
             eventChannel.send(QuickAddUiEvent.Saved)
         }
     }

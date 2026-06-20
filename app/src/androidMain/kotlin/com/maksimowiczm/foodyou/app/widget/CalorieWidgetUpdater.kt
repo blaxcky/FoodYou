@@ -69,6 +69,21 @@ internal class CalorieWidgetUpdater(
                     burnedEnergyKcal = previousActivity.totalEnergyKcal,
                 )
             }
+        val plannedFutureDays =
+            futureWeekDates(today).map { date ->
+                val futureFacts = observeDiaryMealsUseCase.observeNutritionFacts(date).first()
+                val futureGoal = goalsRepository.observeDailyGoals(date).first()
+                val futureActivity =
+                    activityRepository
+                        .observeDailySummary(date, settings.stepsCaloriesPerStepKcal)
+                        .first()
+
+                GoalEnergyOptimizationDay(
+                    consumedEnergyKcal = futureFacts.energy.value ?: 0.0,
+                    baseEnergyGoalKcal = futureGoal[NutritionFactsField.Energy],
+                    burnedEnergyKcal = futureActivity.totalEnergyKcal,
+                )
+            }
 
         return calorieWidgetModel(
             today = today,
@@ -77,6 +92,7 @@ internal class CalorieWidgetUpdater(
             baseGoalKcal = goal[NutritionFactsField.Energy],
             dietEnergyDeficitKcal = settings.dietEnergyDeficitKcal,
             previousDays = previousDays,
+            plannedFutureDays = plannedFutureDays,
         )
     }
 
@@ -201,6 +217,13 @@ internal class CalorieWidgetUpdater(
 private fun previousWeekDates(today: LocalDate): List<LocalDate> {
     val weekStart = today.startOfWeek()
     return List(today.dayOfWeek.ordinal) { weekStart.plus(it, DateTimeUnit.DAY) }
+}
+
+private fun futureWeekDates(today: LocalDate): List<LocalDate> {
+    val weekStart = today.startOfWeek()
+    return List(6 - today.dayOfWeek.ordinal) {
+        weekStart.plus(today.dayOfWeek.ordinal + it + 1, DateTimeUnit.DAY)
+    }
 }
 
 private fun Context.number(value: Int): String = NumberFormat.getIntegerInstance().format(value)

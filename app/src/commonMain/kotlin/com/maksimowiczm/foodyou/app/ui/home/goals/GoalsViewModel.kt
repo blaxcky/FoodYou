@@ -118,8 +118,18 @@ internal class GoalsViewModel(
                     }
                 val previousDays =
                     if (availableGoalDisplayModes.any { it != GoalDisplayMode.Normal }) {
-                        val weekStart = date.startOfWeek()
-                        List(date.dayOfWeek.isoDayNumber - 1) { weekStart.plus(it, DateTimeUnit.DAY) }
+                        val weekStart = today.startOfWeek()
+                        List(today.dayOfWeek.isoDayNumber - 1) {
+                            weekStart.plus(it, DateTimeUnit.DAY)
+                        }
+                    } else {
+                        emptyList()
+                    }
+                val plannedFutureDays =
+                    if (availableGoalDisplayModes.any { it != GoalDisplayMode.Normal }) {
+                        List(7 - today.dayOfWeek.isoDayNumber) {
+                            today.plus(it + 1, DateTimeUnit.DAY)
+                        }
                     } else {
                         emptyList()
                     }
@@ -149,7 +159,34 @@ internal class GoalsViewModel(
                         }
                     }
 
-                combine(selectedDay, previousDaySummaries) { day, previous ->
+                val plannedFutureDaySummaries =
+                    if (plannedFutureDays.isEmpty()) {
+                        flowOf(emptyList())
+                    } else {
+                        combine(
+                            plannedFutureDays.map { futureDate ->
+                                combine(
+                                    observeDiaryMealsUseCase.observeNutritionFacts(futureDate),
+                                    goalsRepository.observeDailyGoals(futureDate),
+                                    activityRepository.observeDailySummary(
+                                        futureDate,
+                                        settings.stepsCaloriesPerStepKcal,
+                                    ),
+                                ) { facts, goal, activity ->
+                                    GoalEnergyOptimizationDay(
+                                        consumedEnergyKcal = facts.energy.value ?: 0.0,
+                                        baseEnergyGoalKcal = goal[NutritionFactsField.Energy],
+                                        burnedEnergyKcal = activity.totalEnergyKcal,
+                                    )
+                                }
+                            }
+                        ) { it.toList() }
+                    }
+
+                combine(selectedDay, previousDaySummaries, plannedFutureDaySummaries) {
+                        day,
+                        previous,
+                        plannedFuture ->
                     val goalDisplaySummaries =
                         availableGoalDisplayModes.map { mode ->
                             mode.summary(
@@ -158,6 +195,7 @@ internal class GoalsViewModel(
                                 baseEnergyGoalKcal = day.baseEnergyGoal,
                                 dietEnergyDeficitKcal = dietEnergyDeficitKcal,
                                 previousDays = previous,
+                                plannedFutureDays = plannedFuture,
                             )
                         }
                     val selectedGoalDisplaySummary =
@@ -197,7 +235,7 @@ internal class GoalsViewModel(
                 Triple(selectedDate, today, settings.stepsCaloriesPerStepKcal)
             }
             .flatMapLatest { (selectedDate, today, kcalPerStep) ->
-                val dates = selectedDate.weekDates(today)
+                val dates = selectedDate.weekDates()
                 val dayFlows =
                     dates.map { date ->
                         combine(
@@ -235,17 +273,9 @@ internal class GoalsViewModel(
             )
 }
 
-private fun LocalDate.weekDates(today: LocalDate): List<LocalDate> {
+private fun LocalDate.weekDates(): List<LocalDate> {
     val weekStart = startOfWeek()
-    val currentWeekStart = today.startOfWeek()
-    val dayCount =
-        if (weekStart == currentWeekStart) {
-            today.dayOfWeek.isoDayNumber
-        } else {
-            7
-        }
-
-    return List(dayCount) { weekStart.plus(it, DateTimeUnit.DAY) }
+    return List(7) { weekStart.plus(it, DateTimeUnit.DAY) }
 }
 
 private data class SelectedGoalDay(
@@ -273,6 +303,7 @@ private fun GoalDisplayMode.summary(
     baseEnergyGoalKcal: Double,
     dietEnergyDeficitKcal: Double?,
     previousDays: List<GoalEnergyOptimizationDay>,
+    plannedFutureDays: List<GoalEnergyOptimizationDay>,
 ): GoalDisplaySummaryModel {
     val energyGoal =
         if (this != GoalDisplayMode.Normal) {
@@ -287,6 +318,7 @@ private fun GoalDisplayMode.summary(
                         0.0
                     },
                 previousDays = previousDays,
+                plannedFutureDays = plannedFutureDays,
             )
         } else {
             baseEnergyGoalKcal

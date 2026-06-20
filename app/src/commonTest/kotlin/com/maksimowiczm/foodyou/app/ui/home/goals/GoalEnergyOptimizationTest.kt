@@ -82,6 +82,70 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
+    fun plannedSaturdaySurplusIsSharedAcrossCurrentAndUnplannedDays() {
+        val goal =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 18),
+                today = LocalDate(2026, 5, 18),
+                baseEnergyGoalKcal = 2000.0,
+                previousDays = emptyList(),
+                plannedFutureDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 3000.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(2000.0 - 1000.0 / 6.0, goal)
+    }
+
+    @Test
+    fun plannedSurplusIsAddedToDietDeficitAcrossUnplannedDays() {
+        val goal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 18),
+                today = LocalDate(2026, 5, 18),
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = emptyList(),
+                plannedFutureDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 3000.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1500.0 - 1500.0 / 6.0, goal)
+    }
+
+    @Test
+    fun plannedEnergyBelowDailyTargetDoesNotChangeGoal() {
+        val goal =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 18),
+                today = LocalDate(2026, 5, 18),
+                baseEnergyGoalKcal = 2000.0,
+                previousDays = emptyList(),
+                plannedFutureDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 500.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(2000.0, goal)
+    }
+
+    @Test
     fun adjustedGoalDoesNotDifferWhenRoundedValueMatchesBaseGoal() {
         assertEquals(
             false,

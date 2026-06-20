@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
+import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
@@ -168,6 +169,7 @@ internal class AddEntryViewModel(
                             measurement = measurement,
                         )
                     )
+                    updateCalorieWidgetValues()
                     _uiEventBus.send(AddEntryEvent.EntryAdded)
                 }
                 .onError {
@@ -201,6 +203,7 @@ internal class AddEntryViewModel(
                     }
             }
 
+            updateCalorieWidgetValues()
             _uiEventBus.send(AddEntryEvent.EntryAdded)
         }
     }

@@ -9,6 +9,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
+import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
@@ -110,7 +111,10 @@ internal class UpdateFoodDiaryEntryViewModel(
         viewModelScope.launch {
             updateFoodDiaryEntryUseCase
                 .update(id = entryId, measurement = measurement, mealId = mealId, date = date)
-                .onSuccess { _uiEvents.send(UpdateEntryEvent.Saved) }
+                .onSuccess {
+                    updateCalorieWidgetValues()
+                    _uiEvents.send(UpdateEntryEvent.Saved)
+                }
                 .onError {
                     // Explode
                     error("Failed to update diary entry with id $entryId, $it")
@@ -124,6 +128,7 @@ internal class UpdateFoodDiaryEntryViewModel(
         viewModelScope.launch {
             unpackDiaryEntryError
                 .unpack(id = entryId, measurement = measurement, mealId = mealId, date = date)
+                .onSuccess { updateCalorieWidgetValues() }
                 .onError {
                     // Explode
                     error("Failed to unpack diary entry with id $entryId, $it")
