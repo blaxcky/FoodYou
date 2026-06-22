@@ -1,7 +1,6 @@
 package com.maksimowiczm.foodyou.app.infrastructure.backup
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
 import androidx.room.execSQL
 import androidx.room.useWriterConnection
 import com.maksimowiczm.foodyou.app.infrastructure.room.DATABASE_NAME
@@ -91,6 +90,7 @@ internal class FullBackupManager(
         copyRecursively(files, File(rollback, "files"))
         copyRecursively(preferences, File(rollback, "shared_prefs"))
         try {
+            deleteDatabaseSidecars(databaseFile)
             replace(File(root, "database/$DATABASE_NAME"), databaseFile)
             replaceDirectory(File(root, "files"), files)
             replaceDirectory(File(root, "shared_prefs"), preferences)
@@ -106,11 +106,6 @@ internal class FullBackupManager(
         require(File(root, SENSITIVE_FILE).isFile) { "Die Sicherung enthält keinen sensiblen Zustand." }
         val db = File(root, "database/$DATABASE_NAME")
         require(db.isFile) { "Die Sicherung enthält keine Datenbank." }
-        SQLiteDatabase.openDatabase(db.path, null, SQLiteDatabase.OPEN_READONLY).use {
-            require(it.rawQuery("PRAGMA integrity_check", null).use { cursor -> cursor.moveToFirst() && cursor.getString(0) == "ok" }) {
-                "Die Datenbank in der Sicherung ist beschädigt."
-            }
-        }
     }
 
     private fun writeArchive(root: File, target: File) {
@@ -174,6 +169,7 @@ internal class FullBackupManager(
     private fun isSafePath(path: String) = path.isNotEmpty() && !path.startsWith('/') && !path.contains("\\") && path.split('/').none { it == "." || it == ".." || it.isEmpty() }
     private fun copyRecursively(from: File, to: File) { if (from.exists()) from.copyRecursively(to, overwrite = true) }
     private fun replace(from: File, to: File) { to.parentFile?.mkdirs(); val tmp = File(to.parentFile, "${to.name}.restore"); from.copyTo(tmp, true); if (to.exists()) to.delete(); require(tmp.renameTo(to)) }
+    private fun deleteDatabaseSidecars(database: File) { File(database.parentFile, "${database.name}-wal").delete(); File(database.parentFile, "${database.name}-shm").delete() }
     private fun replaceDirectory(from: File, to: File) { if (!from.exists()) return; if (to.exists() && !to.deleteRecursively()) error("Lokaler Zustand konnte nicht ersetzt werden."); if (!from.copyRecursively(to, true)) error("Sicherung konnte nicht wiederhergestellt werden.") }
     private companion object { const val MAGIC = "FYBACKUP"; const val FORMAT_VERSION = 1; const val MANIFEST = "manifest.tsv"; const val SENSITIVE_FILE = "sensitive.json" }
 }
