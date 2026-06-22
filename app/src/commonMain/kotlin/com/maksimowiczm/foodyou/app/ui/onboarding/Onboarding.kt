@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun Onboarding(onFinish: () -> Unit, modifier: Modifier = Modifier) {
+fun Onboarding(onFinish: () -> Unit, onRestoreBackup: () -> Unit = {}, modifier: Modifier = Modifier) {
     val navController: NavHostController = rememberNavController()
     val state: OnboardingState = rememberOnboardingState()
     val viewModel: OnboardingViewModel = koinViewModel()
@@ -26,7 +26,8 @@ fun Onboarding(onFinish: () -> Unit, modifier: Modifier = Modifier) {
     NavHost(navController = navController, startDestination = BeforeYouStart, modifier = modifier) {
         forwardBackwardComposable<BeforeYouStart> {
             BeforeYouStartScreen(
-                onContinue = { navController.navigate(FoodDatabase) { launchSingleTop = true } }
+                onContinue = { navController.navigate(FoodDatabase) { launchSingleTop = true } },
+                onRestoreBackup = onRestoreBackup,
             )
         }
         forwardBackwardComposable<FoodDatabase> {

@@ -8,4 +8,7 @@ interface OpenFoodFactsCredentialsRepository {
     suspend fun clear()
 
     fun hasCredentials(): Flow<Boolean>
+
+    /** Used only by the encrypted full-backup implementation. */
+    suspend fun loadCredentials(): Pair<String, String>?
 }

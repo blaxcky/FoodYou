@@ -15,6 +15,7 @@ import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
@@ -32,12 +33,17 @@ import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun BeforeYouStartScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
+fun BeforeYouStartScreen(
+    onContinue: () -> Unit,
+    onRestoreBackup: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val appConfig = LocalAppConfig.current
     val uriHandler = LocalUriHandler.current
 
     BeforeYouStartScreen(
         onContinue = onContinue,
+        onRestoreBackup = onRestoreBackup,
         onPrivacyPolicy = { uriHandler.openUri(appConfig.privacyPolicyUri) },
         modifier = modifier,
     )
@@ -46,6 +52,7 @@ fun BeforeYouStartScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) 
 @Composable
 private fun BeforeYouStartScreen(
     onContinue: () -> Unit,
+    onRestoreBackup: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -101,6 +108,11 @@ private fun BeforeYouStartScreen(
                         text = stringResource(Res.string.app_name),
                         style = brandTypography.brandName,
                     )
+                }
+            }
+            item {
+                TextButton(onClick = onRestoreBackup, modifier = Modifier.fillMaxWidth()) {
+                    Text("Sicherung wiederherstellen")
                 }
             }
 

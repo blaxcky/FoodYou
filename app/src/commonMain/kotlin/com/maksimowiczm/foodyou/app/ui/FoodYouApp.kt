@@ -32,7 +32,7 @@ fun FoodYouApp(onDatabaseBackup: () -> Unit) {
                         AppUpdateChangelogModalBottomSheet()
                     }
                 } else {
-                    Onboarding(onFinish = viewModel::finishOnboarding)
+                    Onboarding(onFinish = viewModel::finishOnboarding, onRestoreBackup = onDatabaseBackup)
                 }
             }
         }

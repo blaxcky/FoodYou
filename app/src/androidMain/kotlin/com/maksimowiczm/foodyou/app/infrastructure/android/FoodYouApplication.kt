@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import android.os.Build
 import com.maksimowiczm.foodyou.app.BuildConfig
+import com.maksimowiczm.foodyou.app.infrastructure.backup.BackupBootstrap
 import com.maksimowiczm.foodyou.app.di.initKoin
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetUpdater
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
@@ -15,8 +16,10 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
 
 class FoodYouApplication : Application() {
@@ -42,6 +45,16 @@ class FoodYouApplication : Application() {
                         )
                     }
                 }
+            )
+        }
+        // Must run before launch events or UI consumers observe the restored DataStore.
+        runBlocking {
+            BackupBootstrap.finalize(
+                context = this@FoodYouApplication,
+                crypto = GlobalContext.get().get(),
+                sessions = GlobalContext.get().get(),
+                fddb = GlobalContext.get().get(),
+                openFoodFacts = GlobalContext.get().get(),
             )
         }
         publishLaunchEvent()

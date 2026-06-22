@@ -31,7 +31,7 @@ internal class OpenFoodFactsCredentialsRepositoryImpl(
     override fun hasCredentials(): Flow<Boolean> =
         dataStore.data.map { loginKey in it && passwordKey in it }
 
-    suspend fun loadCredentials(): Pair<String, String>? {
+    override suspend fun loadCredentials(): Pair<String, String>? {
         val preferences = dataStore.data.first()
 
         return if (loginKey in preferences && passwordKey in preferences) {
