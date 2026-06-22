@@ -4,7 +4,7 @@ on:
   push:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -30,3 +30,14 @@ jobs:
           name: FoodYou-devRelease-${{ github.sha }}
           path: app/build/outputs/apk/devRelease/app-devRelease.apk
           retention-days: 14
+
+      - name: Publish prerelease APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "devRelease-${GITHUB_SHA}" \
+            app/build/outputs/apk/devRelease/app-devRelease.apk \
+            --target "${GITHUB_SHA}" \
+            --title "Development APK (${GITHUB_SHA::7})" \
+            --notes "Automatisch erstellt aus Commit ${GITHUB_SHA}." \
+            --prerelease
