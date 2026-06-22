@@ -481,19 +481,24 @@ private fun WeeklyGoalsContent(
         }
 
         FoodYouHomeCard(color = GoalsCardColor, shape = GoalsCardShape) {
-            Column(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                WeeklyGoalsHeader(model)
-                WeeklyGoalsChart(days = model.days, today = model.today)
-                WeeklyDetailsToggle(expanded = expanded, onClick = { onExpandedChange(!expanded) })
-                if (expanded) {
-                    WeeklyDetailsTable(model.days)
-                    HorizontalDivider(color = GoalsTrackColor)
-                    WeeklySummaryFooter(model, onWeightClick = onWeightClick)
+            if (model.days.isNotEmpty()) {
+                Column(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    WeeklyGoalsHeader(model)
+                    WeeklyGoalsChart(days = model.days, today = model.today)
+                    WeeklyDetailsToggle(
+                        expanded = expanded,
+                        onClick = { onExpandedChange(!expanded) },
+                    )
+                    if (expanded) {
+                        WeeklyDetailsTable(model.days)
+                        HorizontalDivider(color = GoalsTrackColor)
+                        WeeklySummaryFooter(model, onWeightClick = onWeightClick)
+                    }
                 }
             }
         }

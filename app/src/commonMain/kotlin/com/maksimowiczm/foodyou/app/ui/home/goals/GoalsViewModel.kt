@@ -235,7 +235,17 @@ internal class GoalsViewModel(
                 Triple(selectedDate, today, settings.stepsCaloriesPerStepKcal)
             }
             .flatMapLatest { (selectedDate, today, kcalPerStep) ->
-                val dates = selectedDate.weekDates()
+                val dates = selectedDate.weekDatesUntil(today)
+                if (dates.isEmpty()) {
+                    return@flatMapLatest flowOf(
+                        WeekSummaryModel(
+                            days = emptyList(),
+                            totalEnergy = 0,
+                            totalGoal = 0,
+                            today = today,
+                        )
+                    )
+                }
                 val dayFlows =
                     dates.map { date ->
                         combine(
@@ -273,9 +283,9 @@ internal class GoalsViewModel(
             )
 }
 
-private fun LocalDate.weekDates(): List<LocalDate> {
+internal fun LocalDate.weekDatesUntil(today: LocalDate): List<LocalDate> {
     val weekStart = startOfWeek()
-    return List(7) { weekStart.plus(it, DateTimeUnit.DAY) }
+    return List(7) { weekStart.plus(it, DateTimeUnit.DAY) }.takeWhile { it <= today }
 }
 
 private data class SelectedGoalDay(
