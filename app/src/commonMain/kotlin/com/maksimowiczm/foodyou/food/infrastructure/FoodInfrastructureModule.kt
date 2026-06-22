@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.infrastructure
 
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiarySyncEntryRepository
+import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbImportQueueRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
@@ -12,6 +13,7 @@ import com.maksimowiczm.foodyou.food.domain.repository.RemoteProductRequestFacto
 import com.maksimowiczm.foodyou.food.infrastructure.fddb.FddbCredentialsRepositoryImpl
 import com.maksimowiczm.foodyou.food.infrastructure.network.RemoteProductMapper
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFddbDiarySyncEntryRepository
+import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.infrastructure.network.RemoteProductRequestFactoryImpl
 import com.maksimowiczm.foodyou.food.infrastructure.openfoodfacts.openFoodFactsModule
 import com.maksimowiczm.foodyou.food.infrastructure.fddb.fddbModule
@@ -31,6 +33,7 @@ import org.koin.dsl.bind
 fun Module.foodInfrastructureModule() {
     factory { database.fddbDiarySyncEntryDao }
     factory { database.fddbImportQueueDao }
+    factory { database.fddbProductSyncStatusDao }
     factory { database.foodEventDao }
     factory { database.measurementSuggestionDao }
     factory { database.pendingProductDao }
@@ -39,6 +42,7 @@ fun Module.foodInfrastructureModule() {
     factory { database.recipeDao }
 
     factoryOf(::RoomFddbDiarySyncEntryRepository).bind<FddbDiarySyncEntryRepository>()
+    factoryOf(::RoomFddbProductSyncStatusRepository).bind<FddbProductSyncStatusRepository>()
     factoryOf(::RoomFoodHistoryRepository).bind<FoodHistoryRepository>()
     factoryOf(::RoomFddbImportQueueRepository).bind<FddbImportQueueRepository>()
     factoryOf(::RoomFoodMeasurementSuggestionRepository).bind<FoodMeasurementSuggestionRepository>()

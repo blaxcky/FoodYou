@@ -29,6 +29,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.FoodDatabase
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbDiarySyncEntryEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbImportQueueItemEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.FddbProductSyncStatusEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventTypeConverter
 import com.maksimowiczm.foodyou.food.infrastructure.room.LatestMeasurementSuggestion
 import com.maksimowiczm.foodyou.food.infrastructure.room.MeasurementSuggestionEntity
@@ -83,6 +84,7 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntit
             RecipeFts::class,
             FddbImportQueueItemEntity::class,
             FddbDiarySyncEntryEntity::class,
+            FddbProductSyncStatusEntity::class,
             ProductPortionEntity::class,
             ProductPortionOverrideEntity::class,
             DailyWeightEntryEntity::class,
@@ -162,7 +164,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 43
+        const val VERSION = 44
 
         private val migrations: List<Migration> =
             listOf(
@@ -191,6 +193,7 @@ abstract class FoodYouDatabase :
                 FddbPortionServingWeightMigration,
                 FddbServingWeightCleanupMigration,
                 ProductPortionOverrideMigration,
+                FddbProductSyncStatusMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -200,6 +203,27 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object FddbProductSyncStatusMigration : Migration(43, 44) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `FddbProductSyncStatus` (
+                `productId` INTEGER NOT NULL,
+                `lastSyncedAt` INTEGER,
+                `lastAttemptAt` INTEGER,
+                `lastError` TEXT,
+                PRIMARY KEY(`productId`),
+                FOREIGN KEY(`productId`) REFERENCES `Product`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """
+                .trimIndent()
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_FddbProductSyncStatus_productId` ON `FddbProductSyncStatus` (`productId`)"
+        )
     }
 }
 

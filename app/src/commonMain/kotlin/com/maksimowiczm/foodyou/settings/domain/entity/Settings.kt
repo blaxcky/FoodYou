@@ -27,6 +27,7 @@ data class Settings(
     val fddbDiarySyncLastFailed: Int? = null,
     val fddbDiarySyncLastErrorMessage: String? = null,
     val fddbDiarySyncLastAttemptEpochSeconds: Long? = null,
+    val fddbProductSyncManualCount: Int = 0,
     val pendingProductPhotoQuality: PendingProductPhotoQuality = PendingProductPhotoQuality.Balanced,
 ) : UserPreferences
 

@@ -7,9 +7,10 @@ import com.maksimowiczm.foodyou.activity.HealthConnectSyncResult
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncResult
-import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ManualFddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbDiarySyncStatus
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
@@ -85,7 +86,7 @@ internal class HomeViewModel(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val healthConnectActivitySync: HealthConnectActivitySync,
     private val activityRepository: ActivityRepository,
-    private val fddbDiarySyncUseCase: FddbDiarySyncUseCase,
+    private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     private val fddbCredentialsRepository: FddbCredentialsRepository,
 ) : ViewModel() {
 
@@ -244,14 +245,14 @@ internal class HomeViewModel(
                             }
                         }
                     },
-                    hasFddbCredentials = fddbDiarySyncUseCase::hasCredentials,
+                    hasFddbCredentials = manualFddbDiarySyncUseCase::hasCredentials,
                     syncFddbDiary = { selectedDate ->
                         if (fddbSyncInProgress.value) {
-                            FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0)
+                            Result.Success(FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0))
                         } else {
                             fddbSyncInProgress.value = true
                             try {
-                                fddbDiarySyncUseCase.sync(selectedDate)
+                                manualFddbDiarySyncUseCase.sync(selectedDate)
                             } finally {
                                 fddbSyncInProgress.value = false
                             }
@@ -268,16 +269,15 @@ internal class HomeViewModel(
         if (fddbSyncInProgress.value) return
 
         viewModelScope.launch {
-            if (!fddbDiarySyncUseCase.hasCredentials()) {
+            if (!manualFddbDiarySyncUseCase.hasCredentials()) {
                 return@launch
             }
             fddbSyncInProgress.value = true
             try {
-                val result = fddbDiarySyncUseCase.sync(date)
-                settingsRepository.recordFddbDiarySyncResult(result)
-                updateCalorieWidgetValues()
-            } catch (throwable: Throwable) {
-                settingsRepository.recordFddbDiarySyncFailure(throwable)
+                when (manualFddbDiarySyncUseCase.sync(date)) {
+                    is Result.Success -> updateCalorieWidgetValues()
+                    is Result.Error -> Unit
+                }
             } finally {
                 fddbSyncInProgress.value = false
             }
@@ -316,7 +316,7 @@ internal suspend fun syncConfiguredHomeSync(
     settingsRepository: UserPreferencesRepository<Settings>,
     syncHealthConnect: suspend () -> Unit,
     hasFddbCredentials: suspend () -> Boolean,
-    syncFddbDiary: suspend (LocalDate) -> FddbDiarySyncResult,
+    syncFddbDiary: suspend (LocalDate) -> Result<FddbDiarySyncResult, Throwable>,
 ): HomeConfiguredSyncResult {
     var healthConnectSynced = false
     var fddbDiarySynced = false
@@ -329,11 +329,9 @@ internal suspend fun syncConfiguredHomeSync(
 
     if (settings.homeSyncFddbDiaryEnabled) {
         if (hasFddbCredentials()) {
-            try {
-                settingsRepository.recordFddbDiarySyncResult(syncFddbDiary(date))
-                fddbDiarySynced = true
-            } catch (throwable: Throwable) {
-                settingsRepository.recordFddbDiarySyncFailure(throwable)
+            when (syncFddbDiary(date)) {
+                is Result.Success -> fddbDiarySynced = true
+                is Result.Error -> Unit
             }
         } else {
             fddbMissingCredentials = true
@@ -345,36 +343,6 @@ internal suspend fun syncConfiguredHomeSync(
         fddbDiarySynced = fddbDiarySynced,
         fddbMissingCredentials = fddbMissingCredentials,
     )
-}
-
-private suspend fun UserPreferencesRepository<Settings>.recordFddbDiarySyncResult(
-    result: FddbDiarySyncResult
-) {
-    val now = Clock.System.now().epochSeconds
-    update {
-        copy(
-            fddbDiarySyncLastImported = result.imported,
-            fddbDiarySyncLastSkipped = result.skipped,
-            fddbDiarySyncLastFailed = result.failed,
-            fddbDiarySyncLastErrorMessage = result.errorMessage,
-            fddbDiarySyncLastAttemptEpochSeconds = now,
-        )
-    }
-}
-
-private suspend fun UserPreferencesRepository<Settings>.recordFddbDiarySyncFailure(
-    throwable: Throwable
-) {
-    val now = Clock.System.now().epochSeconds
-    update {
-        copy(
-            fddbDiarySyncLastImported = 0,
-            fddbDiarySyncLastSkipped = 0,
-            fddbDiarySyncLastFailed = 1,
-            fddbDiarySyncLastErrorMessage = throwable.stackTraceToString(),
-            fddbDiarySyncLastAttemptEpochSeconds = now,
-        )
-    }
 }
 
 

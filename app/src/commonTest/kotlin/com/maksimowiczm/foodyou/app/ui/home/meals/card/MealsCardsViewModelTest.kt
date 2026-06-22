@@ -355,6 +355,12 @@ class MealsCardsViewModelTest {
         override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
             flowOf(emptyList())
 
+        override fun observeProductsBySource(
+            type: FoodSource.Type,
+            limit: Int,
+            offset: Int,
+        ): Flow<List<Product>> = flowOf(emptyList())
+
         override fun observeProductCountBySource(type: FoodSource.Type): Flow<Int> = flowOf(0)
 
         override suspend fun insertProduct(

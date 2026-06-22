@@ -9,7 +9,11 @@ import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntryId
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.common.result.Err
+import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncResult
+import com.maksimowiczm.foodyou.food.domain.usecase.recordFddbDiarySyncFailure
+import com.maksimowiczm.foodyou.food.domain.usecase.recordFddbDiarySyncResult
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
@@ -228,7 +232,7 @@ class HomeViewModelTest {
                 hasFddbCredentials = { true },
                 syncFddbDiary = {
                     fddbSyncs += 1
-                    FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0)
+                    Ok(FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0))
                 },
             )
 
@@ -253,7 +257,9 @@ class HomeViewModelTest {
                 hasFddbCredentials = { true },
                 syncFddbDiary = {
                     fddbSyncs += 1
-                    FddbDiarySyncResult(imported = 2, skipped = 1, failed = 0)
+                    val result = FddbDiarySyncResult(imported = 2, skipped = 1, failed = 0)
+                    settingsRepository.recordFddbDiarySyncResult(result)
+                    Ok(result)
                 },
             )
 
@@ -278,12 +284,14 @@ class HomeViewModelTest {
             syncHealthConnect = {},
             hasFddbCredentials = { true },
             syncFddbDiary = {
-                FddbDiarySyncResult(
+                val result = FddbDiarySyncResult(
                     imported = 0,
                     skipped = 0,
                     failed = 1,
                     errorMessage = "FDDB debug details",
                 )
+                settingsRepository.recordFddbDiarySyncResult(result)
+                Ok(result)
             },
         )
 
@@ -311,7 +319,11 @@ class HomeViewModelTest {
             settingsRepository = settingsRepository,
             syncHealthConnect = {},
             hasFddbCredentials = { true },
-            syncFddbDiary = { FddbDiarySyncResult(imported = 1, skipped = 0, failed = 0) },
+            syncFddbDiary = {
+                val result = FddbDiarySyncResult(imported = 1, skipped = 0, failed = 0)
+                settingsRepository.recordFddbDiarySyncResult(result)
+                Ok(result)
+            },
         )
 
         assertEquals(0, settingsRepository.value.fddbDiarySyncLastFailed)
@@ -329,7 +341,11 @@ class HomeViewModelTest {
             settingsRepository = settingsRepository,
             syncHealthConnect = {},
             hasFddbCredentials = { true },
-            syncFddbDiary = { error("Network down") },
+            syncFddbDiary = {
+                val throwable = IllegalStateException("Network down")
+                settingsRepository.recordFddbDiarySyncFailure(throwable)
+                Err(throwable)
+            },
         )
 
         assertEquals(1, settingsRepository.value.fddbDiarySyncLastFailed)
@@ -355,7 +371,7 @@ class HomeViewModelTest {
                 hasFddbCredentials = { false },
                 syncFddbDiary = {
                     fddbSyncs += 1
-                    FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0)
+                    Ok(FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0))
                 },
             )
 

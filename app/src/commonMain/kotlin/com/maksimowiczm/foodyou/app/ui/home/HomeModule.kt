@@ -18,7 +18,7 @@ fun Module.home() {
             settingsRepository = userPreferencesRepository(),
             healthConnectActivitySync = get(),
             activityRepository = get(),
-            fddbDiarySyncUseCase = get(),
+            manualFddbDiarySyncUseCase = get(),
             fddbCredentialsRepository = get<FddbCredentialsRepository>(),
         )
     }

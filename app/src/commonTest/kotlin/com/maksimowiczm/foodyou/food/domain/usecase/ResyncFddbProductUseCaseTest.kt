@@ -203,6 +203,15 @@ class ResyncFddbProductUseCaseTest {
         override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
             products.map { it.drop(offset).take(limit) }
 
+        override fun observeProductsBySource(
+            type: FoodSource.Type,
+            limit: Int,
+            offset: Int,
+        ): Flow<List<Product>> =
+            products.map { products ->
+                products.filter { it.source.type == type }.drop(offset).take(limit)
+            }
+
         override fun observeProductCountBySource(type: FoodSource.Type): Flow<Int> =
             products.map { products -> products.count { it.source.type == type } }
 

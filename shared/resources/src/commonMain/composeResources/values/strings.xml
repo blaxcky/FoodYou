@@ -500,6 +500,14 @@
     <string name="neutral_fddb_sync_failed">FDDB diary sync failed</string>
     <string name="neutral_fddb_sync_failed_with_message">FDDB diary sync failed: %1$s</string>
     <string name="neutral_fddb_sync_never_run">FDDB diary sync has not run yet</string>
+    <string name="headline_fddb_product_sync_queue">FDDB product sync queue</string>
+    <string name="neutral_fddb_product_sync_progress">%1$d/3 until the next product sync</string>
+    <string name="neutral_fddb_product_sync_empty">No FDDB products with source URL found</string>
+    <string name="neutral_fddb_product_sync_next">Next two</string>
+    <string name="neutral_fddb_product_sync_never">Last successful sync: never</string>
+    <string name="neutral_fddb_product_sync_last_success">Last successful sync: %1$s</string>
+    <string name="neutral_fddb_product_sync_last_attempt">Last attempt: %1$s</string>
+    <string name="neutral_fddb_product_sync_error">Error: %1$s</string>
     <string name="neutral_home_sync_settings">Choose what the sync button on the home screen runs.</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>

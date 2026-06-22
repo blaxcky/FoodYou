@@ -41,6 +41,7 @@ import com.maksimowiczm.foodyou.app.ui.meal.MealSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizationScreen
 import com.maksimowiczm.foodyou.app.ui.personalization.PersonalizeNutritionFactsScreen
 import com.maksimowiczm.foodyou.app.ui.settings.SettingsScreen
+import com.maksimowiczm.foodyou.app.ui.settings.FddbProductSyncQueueScreen
 import com.maksimowiczm.foodyou.app.ui.settings.SynchronizationSettingsScreen
 import com.maksimowiczm.foodyou.app.ui.sponsor.SponsorScreen
 import com.maksimowiczm.foodyou.app.ui.theme.ThemeScreen
@@ -180,7 +181,13 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
         }
         forwardBackwardComposable<SynchronizationSettings> {
             SynchronizationSettingsScreen(
-                onBack = { navController.popBackStackInclusive<SynchronizationSettings>() }
+                onBack = { navController.popBackStackInclusive<SynchronizationSettings>() },
+                onFddbProductSyncQueue = { navController.navigateSingleTop(FddbProductSyncQueue) },
+            )
+        }
+        forwardBackwardComposable<FddbProductSyncQueue> {
+            FddbProductSyncQueueScreen(
+                onBack = { navController.popBackStackInclusive<FddbProductSyncQueue>() }
             )
         }
         forwardBackwardComposable<ActivitySettings> {
@@ -506,6 +513,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object GoalsSetup
 
 @Serializable private object SynchronizationSettings
+
+@Serializable private object FddbProductSyncQueue
 
 @Serializable private object ActivitySettings
 

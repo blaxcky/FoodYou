@@ -42,6 +42,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 internal fun SynchronizationSettingsScreen(
     onBack: () -> Unit,
+    onFddbProductSyncQueue: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SynchronizationSettingsViewModel = koinViewModel(),
 ) {
@@ -60,6 +61,7 @@ internal fun SynchronizationSettingsScreen(
                 showFddbLoginDialog = true
             }
         },
+        onFddbProductSyncQueue = onFddbProductSyncQueue,
         modifier = modifier,
     )
 
@@ -75,6 +77,7 @@ private fun SynchronizationSettingsContent(
     onHomeSyncHealthConnectEnabledChange: (Boolean) -> Unit,
     onHomeSyncFddbDiaryEnabledChange: (Boolean) -> Unit,
     onFddbSync: () -> Unit,
+    onFddbProductSyncQueue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -205,6 +208,23 @@ private fun SynchronizationSettingsContent(
                         }
                     },
                     modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(Res.string.headline_fddb_product_sync_queue))
+                    },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                Res.string.neutral_fddb_product_sync_progress,
+                                model?.fddbProductSyncProgress ?: 0,
+                            )
+                        )
+                    },
+                    modifier = Modifier.clickable(onClick = onFddbProductSyncQueue),
                 )
             }
         }

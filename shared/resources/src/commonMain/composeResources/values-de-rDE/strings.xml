@@ -116,6 +116,14 @@
     <string name="neutral_fddb_sync_failed">FDDB-Tagebuch-Sync fehlgeschlagen</string>
     <string name="neutral_fddb_sync_failed_with_message">FDDB-Tagebuch-Sync fehlgeschlagen: %1$s</string>
     <string name="neutral_fddb_sync_never_run">FDDB-Tagebuch-Sync wurde noch nicht ausgeführt</string>
+    <string name="headline_fddb_product_sync_queue">FDDB-Produktabgleich-Warteschlange</string>
+    <string name="neutral_fddb_product_sync_progress">%1$d/3 bis zum nächsten Produktabgleich</string>
+    <string name="neutral_fddb_product_sync_empty">Keine FDDB-Produkte mit Quell-URL gefunden</string>
+    <string name="neutral_fddb_product_sync_next">Nächste zwei</string>
+    <string name="neutral_fddb_product_sync_never">Letzter erfolgreicher Abgleich: noch nie</string>
+    <string name="neutral_fddb_product_sync_last_success">Letzter erfolgreicher Abgleich: %1$s</string>
+    <string name="neutral_fddb_product_sync_last_attempt">Letzter Versuch: %1$s</string>
+    <string name="neutral_fddb_product_sync_error">Fehler: %1$s</string>
     <string name="neutral_home_sync_settings">Wähle aus, was der Sync-Button auf der Startseite ausführt.</string>
     <string name="action_export_csv_food_products">Export in CSV-Datei</string>
     <string name="description_export_csv_food_products">Lebensmittel in CSV-Datei exportieren</string>

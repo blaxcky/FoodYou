@@ -434,6 +434,13 @@ class FddbDiarySyncUseCaseTest {
         override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
             flowOf(products.drop(offset).take(limit))
 
+        override fun observeProductsBySource(
+            type: FoodSource.Type,
+            limit: Int,
+            offset: Int,
+        ): Flow<List<Product>> =
+            flowOf(products.filter { it.source.type == type }.drop(offset).take(limit))
+
         override fun observeProductCountBySource(type: FoodSource.Type): Flow<Int> =
             flowOf(products.count { it.source.type == type })
 

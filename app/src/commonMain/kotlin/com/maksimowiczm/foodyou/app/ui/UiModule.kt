@@ -11,6 +11,7 @@ import com.maksimowiczm.foodyou.app.ui.language.language
 import com.maksimowiczm.foodyou.app.ui.meal.meal
 import com.maksimowiczm.foodyou.app.ui.onboarding.onboarding
 import com.maksimowiczm.foodyou.app.ui.personalization.personalization
+import com.maksimowiczm.foodyou.app.ui.settings.FddbProductSyncQueueViewModel
 import com.maksimowiczm.foodyou.app.ui.settings.SynchronizationSettingsViewModel
 import com.maksimowiczm.foodyou.app.ui.sponsor.sponsor
 import com.maksimowiczm.foodyou.app.ui.theme.theme
@@ -25,8 +26,14 @@ val uiModule = module {
     viewModel {
         SynchronizationSettingsViewModel(
             settingsRepository = userPreferencesRepository(),
-            fddbDiarySyncUseCase = get(),
+            manualFddbDiarySyncUseCase = get(),
             fddbCredentialsRepository = get<FddbCredentialsRepository>(),
+        )
+    }
+    viewModel {
+        FddbProductSyncQueueViewModel(
+            statusRepository = get(),
+            settingsRepository = userPreferencesRepository(),
         )
     }
 

@@ -55,6 +55,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 this[SettingsPreferencesKeys.fddbDiarySyncLastErrorMessage],
             fddbDiarySyncLastAttemptEpochSeconds =
                 this[SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds],
+            fddbProductSyncManualCount =
+                this[SettingsPreferencesKeys.fddbProductSyncManualCount] ?: 0,
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
         )
 
@@ -104,6 +106,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds,
             updated.fddbDiarySyncLastAttemptEpochSeconds,
         )
+        this[SettingsPreferencesKeys.fddbProductSyncManualCount] =
+            updated.fddbProductSyncManualCount
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
     }
 }
@@ -252,6 +256,7 @@ private object SettingsPreferencesKeys {
         stringPreferencesKey("settings:fddbDiarySyncLastErrorMessage")
     val fddbDiarySyncLastAttemptEpochSeconds =
         longPreferencesKey("settings:fddbDiarySyncLastAttemptEpochSeconds")
+    val fddbProductSyncManualCount = intPreferencesKey("settings:fddbProductSyncManualCount")
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
