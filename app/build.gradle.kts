@@ -146,6 +146,14 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    providers.environmentVariable("ANDROID_DEBUG_KEYSTORE").orNull?.let { keystorePath ->
+        signingConfigs.getByName("debug") {
+            storeFile = file(keystorePath)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
     testOptions {
         unitTests {

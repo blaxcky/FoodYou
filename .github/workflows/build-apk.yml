@@ -21,7 +21,16 @@ jobs:
           java-version: "21"
           cache: gradle
 
+      - name: Restore Android signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || { echo "Missing ANDROID_DEBUG_KEYSTORE_BASE64 repository secret."; exit 1; }
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/food-you-debug.keystore"
+
       - name: Build devRelease APK
+        env:
+          ANDROID_DEBUG_KEYSTORE: ${{ runner.temp }}/food-you-debug.keystore
         run: ./gradlew :app:assembleDevRelease
 
       - name: Upload APK
