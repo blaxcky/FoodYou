@@ -1,0 +1,32 @@
+name: Build devRelease APK
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Build devRelease APK
+        run: ./gradlew :app:assembleDevRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodYou-devRelease-${{ github.sha }}
+          path: app/build/outputs/apk/devRelease/app-devRelease.apk
+          retention-days: 14
