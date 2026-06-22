@@ -59,6 +59,9 @@ abstract class ProductDao {
     )
     abstract fun observeProducts(limit: Int, offset: Int): Flow<List<ProductEntity>>
 
+    @Query("SELECT * FROM Product WHERE sourceType = :sourceType LIMIT :limit OFFSET :offset")
+    abstract fun observeProductsBySource(sourceType: FoodSourceType, limit: Int, offset: Int): Flow<List<ProductEntity>>
+
     @Query(
         """
         SELECT COUNT(*)

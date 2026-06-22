@@ -15,11 +15,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.SomethingWentWrongScreen
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalAppConfig
+import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import java.time.LocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-actual fun ExportCsvProductsScreen(onBack: () -> Unit, onFinish: () -> Unit, modifier: Modifier) {
+actual fun ExportCsvProductsScreen(onBack: () -> Unit, onFinish: () -> Unit, source: FoodSource.Type?, modifier: Modifier) {
     val viewModel: ExportProductsViewModel = koinViewModel()
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
 
@@ -31,13 +32,13 @@ actual fun ExportCsvProductsScreen(onBack: () -> Unit, onFinish: () -> Unit, mod
             if (uri == null) {
                 onBack()
             } else {
-                viewModel.handleCsv(uri, context)
+                viewModel.handleCsv(uri, context, source)
             }
         }
 
     val appConfig = LocalAppConfig.current
     val fileName = remember {
-        "Food You ${appConfig.versionName}-products-${LocalDateTime.now()}.csv"
+        "Food You ${appConfig.versionName}-${if (source == FoodSource.Type.FDDB) "fddb-products" else "products"}-${LocalDateTime.now()}.csv"
     }
     LaunchedEffect(uiState) {
         when (uiState) {

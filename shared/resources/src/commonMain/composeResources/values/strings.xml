@@ -479,6 +479,8 @@
     <string name="description_import_csv_food_products_hint_2">All nutrient values must be given in grams or kcal per 100 g</string>
 
     <string name="action_import_fddb_products">Import FDDB products</string>
+    <string name="action_export_fddb_csv_food_products">Export FDDB products as CSV</string>
+    <string name="description_export_fddb_csv_food_products">Exports only products imported from FDDB.</string>
     <string name="description_import_fddb_products_short">Import products from pasted FDDB links</string>
     <string name="description_import_fddb_products">Paste one or more FDDB product links. FoodYou imports them one by one and skips products that already exist.</string>
     <string name="label_fddb_links">FDDB links</string>

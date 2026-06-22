@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.app.ui.activity.ActivitySettingsScreen
 import com.maksimowiczm.foodyou.app.ui.activity.ManualActivityScreen
 import com.maksimowiczm.foodyou.app.ui.about.AboutScreen
@@ -203,6 +204,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onImportFddbProducts = { navController.navigateSingleTop(ImportFddbProducts) },
                 onImportCsvProducts = { navController.navigateSingleTop(ImportCsvProducts) },
                 onExportCsvProducts = { navController.navigateSingleTop(ExportCsvProducts) },
+                onExportFddbCsvProducts = { navController.navigateSingleTop(ExportFddbCsvProducts) },
                 onDatabaseBackup = onDatabaseBackup,
             )
         }
@@ -234,6 +236,13 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             ExportCsvProductsScreen(
                 onBack = { navController.popBackStackInclusive<ExportCsvProducts>() },
                 onFinish = { navController.popBackStackInclusive<ExportCsvProducts>() },
+            )
+        }
+        forwardBackwardComposable<ExportFddbCsvProducts> {
+            ExportCsvProductsScreen(
+                onBack = { navController.popBackStackInclusive<ExportFddbCsvProducts>() },
+                onFinish = { navController.popBackStackInclusive<ExportFddbCsvProducts>() },
+                source = FoodSource.Type.FDDB,
             )
         }
         dialog<UsdaApiKey> {
@@ -517,6 +526,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object ImportFddbProducts
 
 @Serializable private object ExportCsvProducts
+@Serializable private object ExportFddbCsvProducts
 
 @Serializable private data class FoodDiaryCreateQuickAdd(val epochDay: Long, val mealId: Long)
 

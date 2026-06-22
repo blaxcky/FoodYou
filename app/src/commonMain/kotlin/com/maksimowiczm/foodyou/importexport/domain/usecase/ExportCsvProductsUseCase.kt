@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.importexport.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
+import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.importexport.domain.entity.ProductField
@@ -16,14 +17,14 @@ fun interface ExportCsvProductsUseCase {
      * @param fields List of [ProductField] to include in the export.
      * @return A [Flow] emitting lines of the CSV as [String].
      */
-    suspend fun export(fields: List<ProductField>): Flow<String>
+    suspend fun export(fields: List<ProductField>, source: FoodSource.Type?): Flow<String>
 }
 
 internal class ExportCsvProductsUseCaseImpl(
     private val productRepository: ProductRepository,
     private val transactionProvider: TransactionProvider,
 ) : ExportCsvProductsUseCase {
-    override suspend fun export(fields: List<ProductField>): Flow<String> = channelFlow {
+    override suspend fun export(fields: List<ProductField>, source: FoodSource.Type?): Flow<String> = channelFlow {
         val csvWriter = CsvWriter()
 
         val header =
@@ -35,7 +36,8 @@ internal class ExportCsvProductsUseCaseImpl(
         transactionProvider.withTransaction {
             var offset = 0
             while (true) {
-                val products = productRepository.observeProducts(PAGE_SIZE, offset).first()
+                val products = (source?.let { productRepository.observeProductsBySource(it, PAGE_SIZE, offset) }
+                    ?: productRepository.observeProducts(PAGE_SIZE, offset)).first()
                 if (products.isEmpty()) break
 
                 for (product in products) {

@@ -30,6 +30,9 @@ internal class RoomProductRepository(
     override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
         productDao.observeProducts(limit, offset).map { list -> list.map { it.toModel() } }
 
+    override fun observeProductsBySource(type: FoodSource.Type, limit: Int, offset: Int): Flow<List<Product>> =
+        productDao.observeProductsBySource(type.toEntity(), limit, offset).map { list -> list.map { it.toModel() } }
+
     override fun observeProductCountBySource(type: FoodSource.Type): Flow<Int> =
         productDao.observeProductCountBySource(type.toEntity())
 

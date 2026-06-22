@@ -95,6 +95,8 @@
     <string name="description_import_csv_food_products_hint">Wir müssen nur wissen, was was ist. Zeige uns, welche Spalte in deiner Datei der Produktname, die Marke usw. ist.</string>
     <string name="description_import_csv_food_products_hint_2">Alle Nährwerte müssen in Gramm oder Kcal pro 100 g angegeben werden</string>
     <string name="action_import_fddb_products">FDDB importieren</string>
+    <string name="action_export_fddb_csv_food_products">FDDB-Lebensmittel als CSV exportieren</string>
+    <string name="description_export_fddb_csv_food_products">Exportiert nur von FDDB importierte Lebensmittel.</string>
     <string name="description_import_fddb_products_short">Produkte aus eingefügten FDDB-Links importieren</string>
     <string name="description_import_fddb_products">Füge einen oder mehrere FDDB-Produktlinks ein. FoodYou importiert sie nacheinander und überspringt bereits vorhandene Produkte.</string>
     <string name="label_fddb_links">FDDB-Links</string>

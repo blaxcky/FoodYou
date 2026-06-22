@@ -19,6 +19,8 @@ interface ProductRepository {
 
     fun observeProducts(limit: Int, offset: Int): Flow<List<Product>>
 
+    fun observeProductsBySource(type: FoodSource.Type, limit: Int, offset: Int): Flow<List<Product>>
+
     fun observeProductCountBySource(type: FoodSource.Type): Flow<Int>
 
     /**

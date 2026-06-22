@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.importexport.domain.entity.ProductField
+import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.importexport.domain.usecase.ExportCsvProductsUseCase
 import java.io.BufferedWriter
 import kotlinx.coroutines.CancellationException
@@ -25,7 +26,7 @@ internal class ExportProductsViewModel(
     private val _uiState = MutableStateFlow<UiState>(UiState.WaitingForFile)
     val uiState = _uiState.asStateFlow()
 
-    fun handleCsv(uri: Uri, context: Context) {
+    fun handleCsv(uri: Uri, context: Context, source: FoodSource.Type? = null) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
@@ -41,7 +42,7 @@ internal class ExportProductsViewModel(
 
                     addCloseable(stream)
 
-                    stream.bufferedWriter().use { handleWriter(it) }
+                    stream.bufferedWriter().use { handleWriter(it, source) }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -51,9 +52,9 @@ internal class ExportProductsViewModel(
         }
     }
 
-    private suspend fun handleWriter(writer: BufferedWriter) {
+    private suspend fun handleWriter(writer: BufferedWriter, source: FoodSource.Type?) {
         flow {
-                val lines = exportCsvProductsUseCase.export(ProductField.entries)
+                val lines = exportCsvProductsUseCase.export(ProductField.entries, source)
                 var count = 0
                 lines.collect { line ->
                     writer.appendLine(line)

@@ -28,6 +28,7 @@ fun DatabaseSettingsScreen(
     onImportFddbProducts: () -> Unit,
     onImportCsvProducts: () -> Unit,
     onExportCsvProducts: () -> Unit,
+    onExportFddbCsvProducts: () -> Unit,
     onDatabaseBackup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -51,6 +52,7 @@ fun DatabaseSettingsScreen(
             item { ImportFddbProductsSettingsListItem(onImportFddbProducts) }
             item { ImportCsvProductsSettingsListItem(onImportCsvProducts) }
             item { ExportCsvProductsSettingsListItem(onExportCsvProducts) }
+            item { ExportFddbCsvProductsSettingsListItem(onExportFddbCsvProducts) }
             item { DatabaseBackup(onDatabaseBackup) }
         }
     }
@@ -99,6 +101,17 @@ private fun ExportCsvProductsSettingsListItem(onClick: () -> Unit, modifier: Mod
         supportingContent = {
             Text(stringResource(Res.string.description_export_csv_food_products))
         },
+        onClick = onClick,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun ExportFddbCsvProductsSettingsListItem(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    SettingsListItem(
+        icon = { Icon(painterResource(Res.drawable.ic_file_export), null) },
+        label = { Text(stringResource(Res.string.action_export_fddb_csv_food_products)) },
+        supportingContent = { Text(stringResource(Res.string.description_export_fddb_csv_food_products)) },
         onClick = onClick,
         modifier = modifier,
     )
