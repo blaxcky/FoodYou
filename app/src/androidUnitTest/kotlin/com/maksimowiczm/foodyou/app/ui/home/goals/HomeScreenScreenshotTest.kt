@@ -87,7 +87,7 @@ class HomeScreenScreenshotTest {
                         Column(modifier = Modifier.fillMaxSize()) {
                             FixtureCalendarCard(
                                 modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp)
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 16.dp)
                             )
                             GoalsCard(
                                 energy = 0,
@@ -104,20 +104,24 @@ class HomeScreenScreenshotTest {
                                 onClick = {},
                                 onLongClick = {},
                                 modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp)
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 24.dp)
                                         .fillMaxWidth(),
                             )
                             FixtureMealCard(
                                 name = "Fruehstueck",
                                 time = "07:00 - 11:00",
                                 modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp)
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 16.dp)
                             )
                             FixtureMealCard(
                                 name = "Mittagessen",
                                 time = "11:00 - 15:00",
                                 modifier =
-                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp)
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 24.dp)
+                            )
+                            FixtureActivitiesCard(
+                                modifier =
+                                    Modifier.padding(horizontal = 8.dp).padding(bottom = 16.dp)
                             )
                         }
                     }
@@ -245,6 +249,21 @@ class HomeScreenScreenshotTest {
                 FilledIconButton(onClick = {}) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun FixtureActivitiesCard(modifier: Modifier = Modifier) {
+        FoodYouHomeCard(modifier = modifier) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(text = "Aktivitaeten", style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Keine Aktivitaeten erfasst",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
     }

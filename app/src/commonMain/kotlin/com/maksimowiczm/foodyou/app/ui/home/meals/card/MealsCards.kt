@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -75,6 +77,7 @@ internal class MealsCardsState(
 internal fun LazyListScope.mealsCards(
     state: MealsCardsState,
     contentPadding: PaddingValues,
+    bottomSpacing: Dp,
     modifier: Modifier = Modifier,
 ) {
     when (state.layout) {
@@ -94,7 +97,7 @@ internal fun LazyListScope.mealsCards(
                     onToggleSelection = state.onToggleSelection,
                     onLongClick = state.onLongClick,
                     contentPadding = contentPadding,
-                    modifier = modifier,
+                    modifier = modifier.padding(bottom = bottomSpacing),
                 )
             }
 
@@ -104,12 +107,18 @@ internal fun LazyListScope.mealsCards(
                     count = 4,
                     key = { index -> "meal-skeleton-$index" },
                     contentType = { "meal-skeleton" },
-                ) {
-                    MealCardSkeleton(modifier = modifier.padding(contentPadding))
+                ) { index ->
+                    MealCardSkeleton(
+                        modifier =
+                            modifier.padding(contentPadding).padding(
+                                bottom = if (index == 3) bottomSpacing else DefaultMealCardSpacing
+                            )
+                    )
                 }
             } else {
+                val meals = requireNotNull(state.meals)
                 items(
-                    items = state.meals,
+                    items = meals,
                     key = { meal -> "meal-${meal.id}" },
                     contentType = { meal ->
                         if (meal.foods.isEmpty()) {
@@ -132,9 +141,16 @@ internal fun LazyListScope.mealsCards(
                         onEnterSelection = state.onEnterSelection,
                         onToggleSelection = state.onToggleSelection,
                         onLongClick = { state.onLongClick(meal.id) },
-                        modifier = modifier.padding(contentPadding),
+                        modifier =
+                            modifier.padding(contentPadding).padding(
+                                bottom =
+                                    if (meal == meals.last()) bottomSpacing
+                                    else DefaultMealCardSpacing
+                            ),
                     )
                 }
             }
     }
 }
+
+private val DefaultMealCardSpacing = 16.dp

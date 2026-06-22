@@ -73,6 +73,9 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
+private val DefaultHomeCardSpacing = 16.dp
+private val RelatedHomeSectionSpacing = 24.dp
+
 @Composable
 fun HomeScreen(
     onSettings: () -> Unit,
@@ -116,6 +119,18 @@ fun HomeScreen(
     var pullRefreshActive by remember { mutableStateOf(false) }
     var pullRefreshSyncStarted by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
+    val goalBottomSpacing =
+        if (!showGoalOverviewInGoalSlot && order.hasAdjacentCards(HomeCard.Goals, HomeCard.Meals)) {
+            RelatedHomeSectionSpacing
+        } else {
+            DefaultHomeCardSpacing
+        }
+    val mealsBottomSpacing =
+        if (order.hasAdjacentCards(HomeCard.Meals, HomeCard.Activities)) {
+            RelatedHomeSectionSpacing
+        } else {
+            DefaultHomeCardSpacing
+        }
 
     fun showFddbLoginDialogIfNeeded() {
         if (
@@ -263,7 +278,11 @@ fun HomeScreen(
                 contentPadding = paddingValues,
             ) {
                 item(key = "polls", contentType = "polls") {
-                    PollsCard(modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp))
+                    PollsCard(
+                        modifier =
+                            Modifier.padding(horizontal = 8.dp)
+                                .padding(bottom = DefaultHomeCardSpacing)
+                    )
                 }
 
                 order.forEach { homeCard ->
@@ -273,7 +292,8 @@ fun HomeScreen(
                                 CalendarCard(
                                     homeState = homeState,
                                     modifier =
-                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                                        Modifier.padding(horizontal = 8.dp)
+                                            .padding(bottom = DefaultHomeCardSpacing),
                                 )
                             }
 
@@ -295,7 +315,7 @@ fun HomeScreen(
                                         onDoubleClick = { showGoalOverviewInGoalSlot = false },
                                         modifier =
                                             Modifier.padding(horizontal = 8.dp)
-                                                .padding(bottom = 8.dp),
+                                                .padding(bottom = goalBottomSpacing),
                                     )
                                 } else {
                                     GoalsCard(
@@ -306,7 +326,7 @@ fun HomeScreen(
                                         onDoubleClick = { showGoalOverviewInGoalSlot = true },
                                         modifier =
                                             Modifier.padding(horizontal = 8.dp)
-                                                .padding(bottom = 8.dp),
+                                                .padding(bottom = goalBottomSpacing),
                                     )
                                 }
                             }
@@ -316,7 +336,7 @@ fun HomeScreen(
                                 mealsCards(
                                     state = mealsCardsState,
                                     contentPadding = PaddingValues(horizontal = 8.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp),
+                                    bottomSpacing = mealsBottomSpacing,
                                 )
                             }
                         }
@@ -329,7 +349,8 @@ fun HomeScreen(
                                     onEdit = onEditActivityClick,
                                     onLongClick = onActivityCardLongClick,
                                     modifier =
-                                        Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                                        Modifier.padding(horizontal = 8.dp)
+                                            .padding(bottom = DefaultHomeCardSpacing),
                                 )
                             }
                     }
@@ -340,7 +361,9 @@ fun HomeScreen(
                         WeeklyGoalsCard(
                             homeState = homeState,
                             onWeightClick = onWeightReportClick,
-                            modifier = Modifier.padding(horizontal = 8.dp).padding(bottom = 8.dp),
+                            modifier =
+                                Modifier.padding(horizontal = 8.dp)
+                                    .padding(bottom = DefaultHomeCardSpacing),
                         )
                     }
                 }
@@ -349,6 +372,9 @@ fun HomeScreen(
         }
     }
 }
+
+private fun List<HomeCard>.hasAdjacentCards(first: HomeCard, second: HomeCard): Boolean =
+    zipWithNext().any { (current, next) -> current == first && next == second }
 
 private const val PULL_REFRESH_NO_SYNC_FALLBACK_MILLIS = 1_200L
 
