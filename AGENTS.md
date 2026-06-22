@@ -2,9 +2,8 @@
 
 ## Git Workflow
 
-After each larger cohesive change, run the relevant verification, create a commit for that
-change, and synchronize it with GitHub using the GitHub CLI (`gh`) before moving on to the next
-larger task.
+After each larger cohesive change, run the relevant verification and create a local commit before
+moving on to the next larger task.
 
 ## Local JDK 21
 
