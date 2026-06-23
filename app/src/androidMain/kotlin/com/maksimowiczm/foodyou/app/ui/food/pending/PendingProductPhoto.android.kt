@@ -84,10 +84,11 @@ internal actual fun PendingProductPhoto(
     photoPath: String,
     modifier: Modifier,
     rotationDegrees: Float,
+    photoDirectory: String,
 ) {
     val context = LocalContext.current
     val file = remember(photoPath) {
-        context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY).resolve(photoPath)
+        context.filesDir.resolve(photoDirectory).resolve(photoPath)
     }
     val bitmap by rememberPendingProductImageBitmap(file = file, maxSizePx = 900)
 
@@ -105,7 +106,11 @@ internal actual fun PendingProductPhoto(
 }
 
 @Composable
-internal actual fun PendingProductPhotoPager(photoPaths: List<String>, modifier: Modifier) {
+internal actual fun PendingProductPhotoPager(
+    photoPaths: List<String>,
+    modifier: Modifier,
+    photoDirectory: String,
+) {
     val pagerState = rememberPagerState(pageCount = { photoPaths.size })
     var rotation by rememberSaveable(photoPaths) { mutableIntStateOf(0) }
 
@@ -114,6 +119,7 @@ internal actual fun PendingProductPhotoPager(photoPaths: List<String>, modifier:
             ZoomablePendingProductPhoto(
                 photoPath = photoPaths[page],
                 rotationDegrees = rotation.toFloat(),
+                photoDirectory = photoDirectory,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -159,11 +165,12 @@ internal actual fun PendingProductPhotoPager(photoPaths: List<String>, modifier:
 private fun ZoomablePendingProductPhoto(
     photoPath: String,
     rotationDegrees: Float,
+    photoDirectory: String,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val file = remember(photoPath) {
-        context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY).resolve(photoPath)
+        context.filesDir.resolve(photoDirectory).resolve(photoPath)
     }
     val bitmap by rememberPendingProductImageBitmap(file = file, maxSizePx = 2200)
     var scale by remember(photoPath) { mutableFloatStateOf(1f) }
@@ -385,6 +392,7 @@ internal actual fun PendingProductPhotoCapture(
     photoCount: Int,
     onPhotoTaken: (String) -> Unit,
     modifier: Modifier,
+    photoDirectory: String,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -527,6 +535,7 @@ internal actual fun PendingProductPhotoCapture(
                 photoSaveError = false
                 capture.takePendingProductPhoto(
                     context = context,
+                    photoDirectory = photoDirectory,
                     onSaved = {
                         photoSaving = false
                         latestOnPhotoTaken(it)
@@ -568,10 +577,11 @@ internal actual fun PendingProductPhotoCapture(
 
 private fun ImageCapture.takePendingProductPhoto(
     context: android.content.Context,
+    photoDirectory: String,
     onSaved: (String) -> Unit,
     onError: () -> Unit,
 ) {
-    val directory = context.filesDir.resolve(PENDING_PRODUCT_PHOTO_DIRECTORY)
+    val directory = context.filesDir.resolve(photoDirectory)
     directory.mkdirs()
     val file = directory.resolve("${UUID.randomUUID()}.jpg")
     val outputOptions = ImageCapture.OutputFileOptions.Builder(file).build()

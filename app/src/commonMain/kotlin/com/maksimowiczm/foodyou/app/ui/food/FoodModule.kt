@@ -7,8 +7,10 @@ import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesReposi
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
+import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapInboxViewModel
 
 fun Module.food() {
+    viewModel { FoodSnapInboxViewModel(observeEntries = get(), capturePhoto = get()) }
     viewModel { (excluded: FoodId.Recipe?) ->
         FoodSearchViewModel(
             excludedRecipeId = excluded,

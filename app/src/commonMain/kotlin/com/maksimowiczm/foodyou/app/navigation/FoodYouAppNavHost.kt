@@ -26,6 +26,7 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.update.UpdateEntryScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.CompletePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.CreatePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductsScreen
+import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapInboxScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.CreateProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.UpdateProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.recipe.CreateRecipeScreen
@@ -64,6 +65,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             HomeScreen(
                 onSettings = { navController.navigateSingleTop(Settings) },
                 onPendingProducts = { navController.navigateSingleTop(PendingProducts) },
+                onFoodSnap = { navController.navigateSingleTop(FoodSnapInbox) },
                 onTitle = { navController.navigateSingleTop(About) },
                 onMealCardLongClick = { navController.navigateSingleTop(MealsPersonalization) },
                 onMealCardAddClick = { epochDay, mealId ->
@@ -127,6 +129,9 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onCreate = { navController.navigateSingleTop(CreatePendingProduct) },
                 onPendingProduct = { navController.navigateSingleTop(CompletePendingProduct(it)) },
             )
+        }
+        forwardBackwardComposable<FoodSnapInbox> {
+            FoodSnapInboxScreen(onBack = { navController.popBackStackInclusive<FoodSnapInbox>() })
         }
         forwardBackwardComposable<CreatePendingProduct> {
             CreatePendingProductScreen(
@@ -493,6 +498,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object WeightReport
 
 @Serializable private object PendingProducts
+
+@Serializable private object FoodSnapInbox
 
 @Serializable private object CreatePendingProduct
 

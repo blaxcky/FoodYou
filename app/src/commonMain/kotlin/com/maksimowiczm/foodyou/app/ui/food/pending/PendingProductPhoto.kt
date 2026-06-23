@@ -8,12 +8,14 @@ internal expect fun PendingProductPhoto(
     photoPath: String,
     modifier: Modifier = Modifier,
     rotationDegrees: Float = 0f,
+    photoDirectory: String = "pending-product-photos",
 )
 
 @Composable
 internal expect fun PendingProductPhotoPager(
     photoPaths: List<String>,
     modifier: Modifier = Modifier,
+    photoDirectory: String = "pending-product-photos",
 )
 
 @Composable
@@ -36,4 +38,5 @@ internal expect fun PendingProductPhotoCapture(
     photoCount: Int,
     onPhotoTaken: (String) -> Unit,
     modifier: Modifier = Modifier,
+    photoDirectory: String = "pending-product-photos",
 )
