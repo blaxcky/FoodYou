@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.food.snap
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +42,11 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun FoodSnapInboxScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun FoodSnapInboxScreen(
+    onBack: () -> Unit,
+    onEntry: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val viewModel: FoodSnapInboxViewModel = koinViewModel()
     val entries = viewModel.entries.collectAsStateWithLifecycle().value
     val cameraOpen = viewModel.cameraOpen.collectAsStateWithLifecycle().value
@@ -88,7 +93,7 @@ fun FoodSnapInboxScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 88.dp),
             ) {
                 items(entries, key = { it.id }) { entry ->
-                    Surface(modifier = Modifier.fillMaxWidth()) {
+                    Surface(modifier = Modifier.fillMaxWidth().clickable { onEntry(entry.id) }) {
                         ListItem(
                             headlineContent = { Text(entry.foodName ?: "Noch nicht verarbeitet") },
                             supportingContent = { Text(entry.weightInGrams?.let { "$it g" } ?: "Lebensmittel und Gewicht auswählen") },

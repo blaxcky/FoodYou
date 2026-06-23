@@ -26,6 +26,7 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.update.UpdateEntryScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.CompletePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.CreatePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductsScreen
+import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapEntryScreen
 import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapInboxScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.CreateProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.UpdateProductScreen
@@ -131,7 +132,22 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             )
         }
         forwardBackwardComposable<FoodSnapInbox> {
-            FoodSnapInboxScreen(onBack = { navController.popBackStackInclusive<FoodSnapInbox>() })
+            FoodSnapInboxScreen(
+                onBack = { navController.popBackStackInclusive<FoodSnapInbox>() },
+                onEntry = { navController.navigate(FoodSnapEntry(it)) },
+            )
+        }
+        forwardBackwardComposable<FoodSnapEntry> {
+            val (entryId) = it.toRoute<FoodSnapEntry>()
+            FoodSnapEntryScreen(
+                entryId = entryId,
+                onBack = { navController.popBackStackInclusive<FoodSnapEntry>() },
+                onCompleted = { navController.popBackStackInclusive<FoodSnapEntry>() },
+                onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
+                onUpdateOpenFoodFactsCredentials = {
+                    navController.navigateSingleTop(OpenFoodFactsLogin)
+                },
+            )
         }
         forwardBackwardComposable<CreatePendingProduct> {
             CreatePendingProductScreen(
@@ -500,6 +516,8 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 @Serializable private object PendingProducts
 
 @Serializable private object FoodSnapInbox
+
+@Serializable private data class FoodSnapEntry(val entryId: Long)
 
 @Serializable private object CreatePendingProduct
 
