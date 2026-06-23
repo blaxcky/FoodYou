@@ -59,6 +59,7 @@ fun Module.foodInfrastructureModule() {
     factoryOf(::RemoteProductMapper)
 
     pendingProductPhotoStorageModule()
+    foodSnapPhotoStorageModule()
     USDAModule()
     openFoodFactsModule()
     fddbModule()

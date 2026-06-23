@@ -6,10 +6,13 @@ import com.maksimowiczm.foodyou.food.domain.usecase.AddPendingProductPhotoUseCas
 import com.maksimowiczm.foodyou.food.domain.usecase.AddFddbLinksToQueueUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CompletePendingProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.CompleteFoodSnapUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.CaptureFoodSnapPhotoUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreatePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreateRecipeUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFddbImportQueueItemUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeletePendingProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodSnapEntryUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DownloadProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncUseCase
@@ -20,6 +23,8 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductsUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodSnapEntriesUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ProcessFoodSnapEntryUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncDueFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
@@ -32,10 +37,13 @@ fun Module.foodDomainModule() {
     factoryOf(::AddFddbLinksToQueueUseCase)
     factoryOf(::AddPendingProductPhotoUseCase)
     factoryOf(::CompletePendingProductUseCase)
+    factoryOf(::CompleteFoodSnapUseCase)
+    factoryOf(::CaptureFoodSnapPhotoUseCase)
     factoryOf(::CreatePendingProductUseCase)
     factoryOf(::CreateProductUseCase)
     factoryOf(::CreateRecipeUseCase)
     factoryOf(::DeletePendingProductUseCase)
+    factoryOf(::DeleteFoodSnapEntryUseCase)
     factoryOf(::DeleteFoodUseCase)
     factoryOf(::DeleteFddbImportQueueItemUseCase)
     factoryOf(::DownloadProductUseCase)
@@ -62,6 +70,8 @@ fun Module.foodDomainModule() {
     factoryOf(::ObserveMeasurementSuggestionsUseCase)
     factoryOf(::ObservePendingProductUseCase)
     factoryOf(::ObservePendingProductsUseCase)
+    factoryOf(::ObserveFoodSnapEntriesUseCase)
+    factoryOf(::ProcessFoodSnapEntryUseCase)
     factoryOf(::ResyncFddbProductUseCase)
     factoryOf(::SyncDueFddbProductsUseCase)
     factoryOf(::UpdateProductUseCase)
