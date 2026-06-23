@@ -6,6 +6,7 @@ interface FoodDatabase {
     val fddbProductSyncStatusDao: FddbProductSyncStatusDao
     val productDao: ProductDao
     val pendingProductDao: PendingProductDao
+    val foodSnapEntryDao: FoodSnapEntryDao
     val recipeDao: RecipeDao
     val foodEventDao: FoodEventDao
     val measurementSuggestionDao: MeasurementSuggestionDao

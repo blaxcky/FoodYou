@@ -31,6 +31,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.FddbDiarySyncEntryEntit
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbImportQueueItemEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbProductSyncStatusEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventTypeConverter
+import com.maksimowiczm.foodyou.food.infrastructure.room.FoodSnapEntryEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.LatestMeasurementSuggestion
 import com.maksimowiczm.foodyou.food.infrastructure.room.MeasurementSuggestionEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.PendingProductEntity
@@ -80,6 +81,7 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntit
             ManualActivityEntryEntity::class,
             DailyStepSummaryEntity::class,
             PendingProductEntity::class,
+            FoodSnapEntryEntity::class,
             ProductFts::class,
             RecipeFts::class,
             FddbImportQueueItemEntity::class,
@@ -164,7 +166,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 44
+        const val VERSION = 45
 
         private val migrations: List<Migration> =
             listOf(
@@ -194,6 +196,7 @@ abstract class FoodYouDatabase :
                 FddbServingWeightCleanupMigration,
                 ProductPortionOverrideMigration,
                 FddbProductSyncStatusMigration,
+                FoodSnapMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -203,6 +206,24 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object FoodSnapMigration : Migration(44, 45) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `FoodSnapEntry` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `photoPath` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `foodType` INTEGER,
+                `foodId` INTEGER,
+                `foodName` TEXT,
+                `weightInGrams` REAL
+            )
+            """.trimIndent()
+        )
     }
 }
 

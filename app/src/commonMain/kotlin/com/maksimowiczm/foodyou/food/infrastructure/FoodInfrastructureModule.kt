@@ -4,6 +4,7 @@ import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiarySyncEntryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
+import com.maksimowiczm.foodyou.food.domain.repository.FoodSnapRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbImportQueueRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
 import com.maksimowiczm.foodyou.food.domain.repository.PendingProductRepository
@@ -18,6 +19,7 @@ import com.maksimowiczm.foodyou.food.infrastructure.network.RemoteProductRequest
 import com.maksimowiczm.foodyou.food.infrastructure.openfoodfacts.openFoodFactsModule
 import com.maksimowiczm.foodyou.food.infrastructure.fddb.fddbModule
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFoodHistoryRepository
+import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFoodSnapRepository
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFddbImportQueueRepository
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFoodMeasurementSuggestionRepository
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomPendingProductRepository
@@ -37,6 +39,7 @@ fun Module.foodInfrastructureModule() {
     factory { database.foodEventDao }
     factory { database.measurementSuggestionDao }
     factory { database.pendingProductDao }
+    factory { database.foodSnapEntryDao }
     factory { database.productDao }
     factory { database.productPortionDao }
     factory { database.recipeDao }
@@ -44,6 +47,7 @@ fun Module.foodInfrastructureModule() {
     factoryOf(::RoomFddbDiarySyncEntryRepository).bind<FddbDiarySyncEntryRepository>()
     factoryOf(::RoomFddbProductSyncStatusRepository).bind<FddbProductSyncStatusRepository>()
     factoryOf(::RoomFoodHistoryRepository).bind<FoodHistoryRepository>()
+    factoryOf(::RoomFoodSnapRepository).bind<FoodSnapRepository>()
     factoryOf(::RoomFddbImportQueueRepository).bind<FddbImportQueueRepository>()
     factoryOf(::RoomFoodMeasurementSuggestionRepository).bind<FoodMeasurementSuggestionRepository>()
     factoryOf(::RoomPendingProductRepository).bind<PendingProductRepository>()
