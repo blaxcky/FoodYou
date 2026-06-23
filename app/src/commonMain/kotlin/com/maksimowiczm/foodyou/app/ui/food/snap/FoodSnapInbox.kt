@@ -52,7 +52,9 @@ fun FoodSnapInboxScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         topBar = {
             TopAppBar(
                 title = { Text("FoodSnap") },
-                navigationIcon = { ArrowBackIconButton(onBack) },
+                navigationIcon = {
+                    ArrowBackIconButton(if (cameraOpen) viewModel::closeCamera else onBack)
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -113,6 +115,8 @@ internal class FoodSnapInboxViewModel(
     val cameraOpen = kotlinx.coroutines.flow.MutableStateFlow(false)
 
     fun openCamera() { cameraOpen.value = true }
+
+    fun closeCamera() { cameraOpen.value = false }
 
     fun onPhotoTaken(photoPath: String) {
         viewModelScope.launch { capturePhoto.capture(photoPath) }
