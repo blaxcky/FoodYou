@@ -518,4 +518,123 @@ class GoalEnergyOptimizationTest {
 
         assertEquals(2000.0, goal)
     }
+
+    @Test
+    fun dietGoalUsesTheSameOpenWeekDaysForEveryUnplannedFutureDate() {
+        val today = LocalDate(2026, 5, 19)
+        val previousDays =
+            listOf(
+                GoalEnergyOptimizationDay(
+                    date = LocalDate(2026, 5, 18),
+                    consumedEnergyKcal = 2600.0,
+                    baseEnergyGoalKcal = 2000.0,
+                    burnedEnergyKcal = 0.0,
+                )
+            )
+
+        val wednesdayGoal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 20),
+                today = today,
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = previousDays,
+            )
+        val sundayGoal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 24),
+                today = today,
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = previousDays,
+            )
+
+        assertEquals(1316.666666, wednesdayGoal, 0.000001)
+        assertEquals(wednesdayGoal, sundayGoal)
+    }
+
+    @Test
+    fun plannedFutureSurplusKeepsItsOwnTargetAndAdjustsOtherOpenDays() {
+        val today = LocalDate(2026, 5, 18)
+        val wednesday = LocalDate(2026, 5, 20)
+        val plannedFutureDays =
+            listOf(
+                GoalEnergyOptimizationDay(
+                    date = wednesday,
+                    consumedEnergyKcal = 3000.0,
+                    baseEnergyGoalKcal = 2000.0,
+                    burnedEnergyKcal = 0.0,
+                )
+            )
+
+        val optimizedTuesday =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 19),
+                today = today,
+                baseEnergyGoalKcal = 2000.0,
+                previousDays = emptyList(),
+                plannedFutureDays = plannedFutureDays,
+            )
+        val optimizedWednesday =
+            optimizedEnergyGoalKcal(
+                selectedDate = wednesday,
+                today = today,
+                baseEnergyGoalKcal = 2000.0,
+                previousDays = emptyList(),
+                plannedFutureDays = plannedFutureDays,
+            )
+        val dietTuesday =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 19),
+                today = today,
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = emptyList(),
+                plannedFutureDays = plannedFutureDays,
+            )
+        val dietWednesday =
+            adjustedEnergyGoalKcal(
+                selectedDate = wednesday,
+                today = today,
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = emptyList(),
+                plannedFutureDays = plannedFutureDays,
+            )
+
+        assertEquals(2000.0 - 1000.0 / 6.0, optimizedTuesday)
+        assertEquals(2000.0, optimizedWednesday)
+        assertEquals(1500.0 - 1500.0 / 6.0, dietTuesday)
+        assertEquals(1500.0, dietWednesday)
+    }
+
+    @Test
+    fun optimizedGoalOnlyUsesTodayDeficitAfterTheDayIsCompleted() {
+        val today = LocalDate(2026, 5, 19)
+        val currentDayGoal =
+            optimizedEnergyGoalKcal(
+                selectedDate = today,
+                today = today,
+                baseEnergyGoalKcal = 2000.0,
+                previousDays = emptyList(),
+            )
+        val nextDayGoal =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 20),
+                today = LocalDate(2026, 5, 20),
+                baseEnergyGoalKcal = 2000.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = today,
+                            consumedEnergyKcal = 1500.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(2000.0, currentDayGoal)
+        assertEquals(2000.0, nextDayGoal)
+    }
 }

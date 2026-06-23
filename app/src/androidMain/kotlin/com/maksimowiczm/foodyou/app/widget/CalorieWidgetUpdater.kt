@@ -64,6 +64,7 @@ internal class CalorieWidgetUpdater(
                         .first()
 
                 GoalEnergyOptimizationDay(
+                    date = date,
                     consumedEnergyKcal = previousFacts.energy.value ?: 0.0,
                     baseEnergyGoalKcal = previousGoal[NutritionFactsField.Energy],
                     burnedEnergyKcal = previousActivity.totalEnergyKcal,
@@ -79,6 +80,7 @@ internal class CalorieWidgetUpdater(
                         .first()
 
                 GoalEnergyOptimizationDay(
+                    date = date,
                     consumedEnergyKcal = futureFacts.energy.value ?: 0.0,
                     baseEnergyGoalKcal = futureGoal[NutritionFactsField.Energy],
                     burnedEnergyKcal = futureActivity.totalEnergyKcal,

@@ -148,6 +148,7 @@ internal class GoalsViewModel(
                                     ),
                                 ) { facts, goal, activity ->
                                     GoalEnergyOptimizationDay(
+                                        date = previousDate,
                                         consumedEnergyKcal = facts.energy.value ?: 0.0,
                                         baseEnergyGoalKcal = goal[NutritionFactsField.Energy],
                                         burnedEnergyKcal = activity.totalEnergyKcal,
@@ -174,6 +175,7 @@ internal class GoalsViewModel(
                                     ),
                                 ) { facts, goal, activity ->
                                     GoalEnergyOptimizationDay(
+                                        date = futureDate,
                                         consumedEnergyKcal = facts.energy.value ?: 0.0,
                                         baseEnergyGoalKcal = goal[NutritionFactsField.Energy],
                                         burnedEnergyKcal = activity.totalEnergyKcal,

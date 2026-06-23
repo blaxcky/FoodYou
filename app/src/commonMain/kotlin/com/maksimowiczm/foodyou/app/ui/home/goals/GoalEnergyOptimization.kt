@@ -8,6 +8,7 @@ import kotlinx.datetime.minus
 import kotlin.math.roundToInt
 
 internal data class GoalEnergyOptimizationDay(
+    val date: LocalDate? = null,
     val consumedEnergyKcal: Double,
     val baseEnergyGoalKcal: Double,
     val burnedEnergyKcal: Double,
@@ -95,11 +96,22 @@ private fun adjustedEnergyGoalKcal(
             day.consumedEnergyKcal >
                 day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal
         }
-    val remainingDays =
-        (8 - selectedDate.dayOfWeek.isoDayNumber - plannedSurplusDays).coerceAtLeast(1)
-    val dailyAdjustment = adjustmentBalance / remainingDays
+    val unplannedOpenDays =
+        (8 - today.dayOfWeek.isoDayNumber - plannedSurplusDays).coerceAtLeast(1)
+    val dailyAdjustment = adjustmentBalance / unplannedOpenDays
 
-    return (dailyTarget - dailyAdjustment).coerceAtMost(baseEnergyGoalKcal)
+    val selectedDayIsOverplanned =
+        plannedFutureDays.any { day ->
+            day.date == selectedDate &&
+                day.consumedEnergyKcal >
+                    day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal
+        }
+
+    return if (selectedDayIsOverplanned) {
+        dailyTarget
+    } else {
+        (dailyTarget - dailyAdjustment).coerceAtMost(baseEnergyGoalKcal)
+    }
 }
 
 internal fun LocalDate.startOfWeek(): LocalDate =
