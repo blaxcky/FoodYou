@@ -44,6 +44,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun FoodSnapInboxScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val viewModel: FoodSnapInboxViewModel = koinViewModel()
     val entries = viewModel.entries.collectAsStateWithLifecycle().value
+    val cameraOpen = viewModel.cameraOpen.collectAsStateWithLifecycle().value
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
@@ -56,12 +57,14 @@ fun FoodSnapInboxScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = viewModel::openCamera) {
-                Icon(Icons.Outlined.PhotoCamera, contentDescription = "Foto aufnehmen")
+            if (!cameraOpen) {
+                FloatingActionButton(onClick = viewModel::openCamera) {
+                    Icon(Icons.Outlined.PhotoCamera, contentDescription = "Foto aufnehmen")
+                }
             }
         },
     ) { padding ->
-        if (viewModel.cameraOpen.collectAsStateWithLifecycle().value) {
+        if (cameraOpen) {
             PendingProductPhotoCapture(
                 photoCount = entries.size,
                 photoDirectory = "food-snap-photos",
