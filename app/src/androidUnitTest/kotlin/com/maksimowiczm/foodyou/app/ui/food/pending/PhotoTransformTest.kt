@@ -1,6 +1,8 @@
 package com.maksimowiczm.foodyou.app.ui.food.pending
 
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import org.junit.Test
 
 class PhotoTransformTest {
@@ -82,6 +84,27 @@ class PhotoTransformTest {
         assertOffsetEquals(
             PhotoTransformOffset(x = 0f, y = 0f),
             PhotoTransform.clampOffset(PhotoTransformOffset(x = 100f, y = -100f), bounds),
+        )
+    }
+
+    @Test
+    fun `pan is enabled only when the current zoom creates image overhang`() {
+        val displayedImageSize = PhotoTransformSize(width = 600f, height = 900f)
+        val containerSize = PhotoTransformSize(width = 1000f, height = 900f)
+
+        assertFalse(
+            PhotoTransform.canPan(
+                displayedImageSize = displayedImageSize,
+                containerSize = containerSize,
+                scale = 1f,
+            )
+        )
+        assertTrue(
+            PhotoTransform.canPan(
+                displayedImageSize = displayedImageSize,
+                containerSize = containerSize,
+                scale = 2f,
+            )
         )
     }
 

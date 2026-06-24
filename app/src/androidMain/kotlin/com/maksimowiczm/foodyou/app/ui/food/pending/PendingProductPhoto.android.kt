@@ -239,7 +239,16 @@ private fun ZoomablePendingProductPhoto(
                             do {
                                 val event = awaitPointerEvent(PointerEventPass.Main)
                                 val pressed = event.changes.filter { it.pressed }
-                                val canPan = translationBounds.maxX > 0f || translationBounds.maxY > 0f
+                                val canPan =
+                                    PhotoTransform.canPan(
+                                        displayedImageSize = layout.displayedImageSize,
+                                        containerSize =
+                                            PhotoTransformSize(
+                                                containerSize.width.toFloat(),
+                                                containerSize.height.toFloat(),
+                                            ),
+                                        scale = scale,
+                                    )
                                 val shouldHandleZoom = pressed.size > 1 || (scale > 1f && canPan)
                                 if (shouldHandleZoom) {
                                     val newScale = (scale * event.calculateZoom()).coerceIn(1f, 5f)

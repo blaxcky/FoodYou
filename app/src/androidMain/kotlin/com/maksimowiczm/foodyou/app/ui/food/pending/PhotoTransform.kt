@@ -71,6 +71,15 @@ internal object PhotoTransform {
             maxY = ((displayedImageSize.height * scale - containerSize.height) / 2f).coerceAtLeast(0f),
         )
 
+    fun canPan(
+        displayedImageSize: PhotoTransformSize,
+        containerSize: PhotoTransformSize,
+        scale: Float,
+    ): Boolean {
+        val bounds = translationBounds(displayedImageSize, containerSize, scale)
+        return bounds.maxX > 0f || bounds.maxY > 0f
+    }
+
     fun clampOffset(
         offset: PhotoTransformOffset,
         bounds: PhotoTranslationBounds,
