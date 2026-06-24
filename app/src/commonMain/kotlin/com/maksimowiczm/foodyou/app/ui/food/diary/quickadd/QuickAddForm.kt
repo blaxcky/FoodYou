@@ -3,7 +3,9 @@ package com.maksimowiczm.foodyou.app.ui.food.diary.quickadd
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -25,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
@@ -41,28 +44,6 @@ internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifie
 
     Column(modifier = modifier) {
         OutlinedTextField(
-            state = state.csvTextFieldState,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(Res.string.headline_quick_add_csv)) },
-            supportingText = {
-                val error = state.csvError
-                if (error == null) {
-                    Text(stringResource(Res.string.description_quick_add_csv))
-                } else {
-                    Text(error.stringResource())
-                }
-            },
-            isError = state.csvError != null,
-            lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 6),
-        )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            FilledTonalButton(onClick = { coroutineScope.launch { state.applyCsv() } }) {
-                Icon(imageVector = Icons.Outlined.Check, contentDescription = null)
-                Text(stringResource(Res.string.action_apply))
-            }
-        }
-
-        OutlinedTextField(
             state = state.name.textFieldState,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(Res.string.product_name)) },
@@ -70,27 +51,6 @@ internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifie
             isError = state.name.error != null,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         )
-
-        LocalNutrientsOrder.current.forEach {
-            when (it) {
-                NutrientsOrder.Proteins ->
-                    state.proteins.TextField(
-                        label = stringResource(Res.string.nutriment_proteins),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                NutrientsOrder.Fats ->
-                    state.fats.TextField(
-                        label = stringResource(Res.string.nutriment_fats),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                NutrientsOrder.Carbohydrates ->
-                    state.carbohydrates.TextField(
-                        label = stringResource(Res.string.nutriment_carbohydrates),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                else -> Unit
-            }
-        }
 
         OutlinedTextField(
             state = state.energy.textFieldState,
@@ -140,6 +100,51 @@ internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifie
             keyboardOptions =
                 KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
         )
+
+        OutlinedTextField(
+            state = state.csvTextFieldState,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(Res.string.headline_quick_add_csv)) },
+            supportingText = {
+                val error = state.csvError
+                if (error == null) {
+                    Text(stringResource(Res.string.description_quick_add_csv))
+                } else {
+                    Text(error.stringResource())
+                }
+            },
+            isError = state.csvError != null,
+            lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2, maxHeightInLines = 6),
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            FilledTonalButton(onClick = { coroutineScope.launch { state.applyCsv() } }) {
+                Icon(imageVector = Icons.Outlined.Check, contentDescription = null)
+                Text(stringResource(Res.string.action_apply))
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        LocalNutrientsOrder.current.forEach {
+            when (it) {
+                NutrientsOrder.Proteins ->
+                    state.proteins.TextField(
+                        label = stringResource(Res.string.nutriment_proteins),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                NutrientsOrder.Fats ->
+                    state.fats.TextField(
+                        label = stringResource(Res.string.nutriment_fats),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                NutrientsOrder.Carbohydrates ->
+                    state.carbohydrates.TextField(
+                        label = stringResource(Res.string.nutriment_carbohydrates),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                else -> Unit
+            }
+        }
 
         Text(
             text = stringResource(Res.string.description_calories_are_calculated),
