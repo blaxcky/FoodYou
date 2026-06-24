@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -140,7 +141,12 @@ internal fun FoodSearchApp(
         inputField = searchInputField,
     )
 
-    Scaffold(modifier) { scaffoldPadding ->
+    Scaffold(
+        modifier = modifier,
+        contentWindowInsets =
+            if (layout == FoodSearchLayout.Stacked) WindowInsets(0)
+            else ScaffoldDefaults.contentWindowInsets,
+    ) { scaffoldPadding ->
         // Fix for searchbar issues on Android SDK 27 and below
         Box(Modifier.focusable().size(1.dp))
 

@@ -2,7 +2,10 @@ package com.maksimowiczm.foodyou.app.ui.food.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -49,11 +52,18 @@ class FoodSearchAppScreenshotTest {
                     .build(),
         ) {
             MaterialTheme {
-                Box(
+                Column(
                     modifier =
                         Modifier.requiredSize(width = 390.dp, height = 562.dp)
                             .background(Color(0xFFEEF5FA))
                 ) {
+                    Box(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .height(180.dp)
+                                .background(Color(0xFF8AA2B2))
+                    )
+
                     FoodSearchApp(
                         uiState = SearchUiState,
                         onSearch = {},
@@ -61,7 +71,7 @@ class FoodSearchAppScreenshotTest {
                         onFoodClick = { _, _ -> },
                         onUpdateUsdaApiKey = {},
                         onUpdateOpenFoodFactsCredentials = {},
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                         layout = FoodSearchLayout.Stacked,
                     )
                 }
