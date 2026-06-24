@@ -17,7 +17,9 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipeIngredient
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CreateFoodDiaryEntryError
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CreateFoodDiaryEntryUseCase
+import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
@@ -68,6 +70,59 @@ class DeleteFoodSnapEntryUseCase(
     suspend fun delete(entry: FoodSnapEntry) = transactionProvider.withTransaction {
         repository.delete(entry)
         photoStorage.delete(entry.photoPath)
+    }
+}
+
+sealed interface CompleteFoodSnapEntryResult {
+    data object MissingEntry : CompleteFoodSnapEntryResult
+    data object InvalidWeight : CompleteFoodSnapEntryResult
+    data object MissingFood : CompleteFoodSnapEntryResult
+    data object MissingMeal : CompleteFoodSnapEntryResult
+    data object DiaryEntryFailed : CompleteFoodSnapEntryResult
+    data object Completed : CompleteFoodSnapEntryResult
+}
+
+class CompleteFoodSnapEntryUseCase(
+    private val repository: FoodSnapRepository,
+    private val mealRepository: MealRepository,
+    private val createFoodDiaryEntry: CreateFoodDiaryEntryUseCase,
+    private val photoStorage: FoodSnapPhotoStorage,
+    private val transactionProvider: TransactionProvider,
+) {
+    suspend fun complete(
+        entry: FoodSnapEntry,
+        food: Food?,
+        weight: Double,
+        mealId: Long,
+        date: LocalDate,
+    ): CompleteFoodSnapEntryResult {
+        val currentEntry = repository.observeEntry(entry.id).first()
+            ?: return CompleteFoodSnapEntryResult.MissingEntry
+        if (!weight.isFinite() || weight <= 0.0) {
+            return CompleteFoodSnapEntryResult.InvalidWeight
+        }
+        if (food == null) return CompleteFoodSnapEntryResult.MissingFood
+        if (mealRepository.observeMeal(mealId).first() == null) {
+            return CompleteFoodSnapEntryResult.MissingMeal
+        }
+
+        val measurement =
+            if (food.isLiquid) Measurement.Milliliter(weight) else Measurement.Gram(weight)
+
+        when (val result = createFoodDiaryEntry.createDiaryEntry(measurement, mealId, date, food.toDiaryFood())) {
+            is Success -> Unit
+            is Error ->
+                return when (result.error) {
+                    CreateFoodDiaryEntryError.MealNotFound -> CompleteFoodSnapEntryResult.MissingMeal
+                    CreateFoodDiaryEntryError.InvalidMeasurement -> CompleteFoodSnapEntryResult.DiaryEntryFailed
+                }
+        }
+
+        transactionProvider.withTransaction {
+            repository.delete(currentEntry)
+            photoStorage.delete(currentEntry.photoPath)
+        }
+        return CompleteFoodSnapEntryResult.Completed
     }
 }
 

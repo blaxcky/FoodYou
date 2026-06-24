@@ -6,6 +6,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.AddPendingProductPhotoUseCas
 import com.maksimowiczm.foodyou.food.domain.usecase.AddFddbLinksToQueueUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CompletePendingProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.CompleteFoodSnapEntryUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CompleteFoodSnapUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CaptureFoodSnapPhotoUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreatePendingProductUseCase
@@ -37,6 +38,7 @@ fun Module.foodDomainModule() {
     factoryOf(::AddFddbLinksToQueueUseCase)
     factoryOf(::AddPendingProductPhotoUseCase)
     factoryOf(::CompletePendingProductUseCase)
+    factoryOf(::CompleteFoodSnapEntryUseCase)
     factoryOf(::CompleteFoodSnapUseCase)
     factoryOf(::CaptureFoodSnapPhotoUseCase)
     factoryOf(::CreatePendingProductUseCase)

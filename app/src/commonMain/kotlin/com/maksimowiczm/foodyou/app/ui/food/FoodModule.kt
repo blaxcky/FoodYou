@@ -17,7 +17,10 @@ fun Module.food() {
             entryId = entryId,
             observeEntries = get(),
             observeFood = get(),
-            processEntry = get(),
+            mealRepository = get(),
+            dateProvider = get(),
+            completeEntry = get(),
+            deleteEntry = get(),
         )
     }
     viewModel { (excluded: FoodId.Recipe?) ->
