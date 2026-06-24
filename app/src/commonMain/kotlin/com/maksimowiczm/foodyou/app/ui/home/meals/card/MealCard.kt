@@ -37,11 +37,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -533,9 +537,20 @@ private fun AddToEntryDialog(
                 is ManualMealEntryModel -> "1"
             }
         }
-    var amountText by rememberSaveable(initialAmount) { mutableStateOf(initialAmount) }
-    val amount = remember(amountText) { amountText.replace(',', '.').toDoubleOrNull() }
-    val isError = amountText.isNotBlank() && (amount == null || amount <= 0.0)
+    var amountText by
+        rememberSaveable(initialAmount, stateSaver = TextFieldValue.Saver) {
+            mutableStateOf(
+                TextFieldValue(
+                    text = initialAmount,
+                    selection = TextRange(0, initialAmount.length),
+                )
+            )
+        }
+    val amount = remember(amountText.text) { amountText.text.replace(',', '.').toDoubleOrNull() }
+    val isError = amountText.text.isNotBlank() && (amount == null || amount <= 0.0)
+    val amountFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { amountFocusRequester.requestFocus() }
 
     val suffix =
         when (entry) {
@@ -576,6 +591,7 @@ private fun AddToEntryDialog(
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
+                modifier = Modifier.focusRequester(amountFocusRequester),
             )
         },
     )
