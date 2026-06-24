@@ -22,7 +22,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -117,7 +120,18 @@ private fun FoodSnapEntryForm(
     onSave: (Double) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var weightText by remember { mutableStateOf(initialWeight.formatWeight()) }
+    val initialWeightText = initialWeight.formatWeight()
+    var weightFieldValue by
+        remember {
+            mutableStateOf(
+                TextFieldValue(
+                    text = initialWeightText,
+                    selection = TextRange(0, initialWeightText.length),
+                )
+            )
+        }
+    var weightFieldFocused by remember { mutableStateOf(false) }
+    val weightText = weightFieldValue.text
     val weight = weightText.replace(',', '.').toDoubleOrNull()
     val validWeight = weight?.isFinite() == true && weight > 0.0
 
@@ -125,9 +139,16 @@ private fun FoodSnapEntryForm(
         Text(food.headline)
         TextButton(onClick = onSearchAgain) { Text("Anderes Lebensmittel suchen") }
         OutlinedTextField(
-            value = weightText,
-            onValueChange = { weightText = it },
-            modifier = Modifier.fillMaxWidth(),
+            value = weightFieldValue,
+            onValueChange = { weightFieldValue = it },
+            modifier =
+                Modifier.fillMaxWidth().onFocusChanged { focusState ->
+                    if (focusState.isFocused && !weightFieldFocused) {
+                        weightFieldValue =
+                            weightFieldValue.copy(selection = TextRange(0, weightText.length))
+                    }
+                    weightFieldFocused = focusState.isFocused
+                },
             label = { Text("Menge in Gramm") },
             suffix = { Text("g") },
             isError = weightText.isNotEmpty() && !validWeight,
