@@ -2,6 +2,8 @@ package com.maksimowiczm.foodyou.app.ui.food.search
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,7 +43,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItemSkeleton
 import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraBarcodeScanner
-import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.extension.error
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -174,6 +176,8 @@ internal fun FoodSearchApp(
         when (layout) {
             FoodSearchLayout.Overlay -> {
                 var topContentHeight by remember { mutableIntStateOf(0) }
+                val layoutDirection = LocalLayoutDirection.current
+                val topContentHeightDp = LocalDensity.current.run { topContentHeight.toDp() }
                 header(headerModifier.zIndex(10f).onSizeChanged { topContentHeight = it.height })
 
                 FoodSearchResults(
@@ -182,11 +186,12 @@ internal fun FoodSearchApp(
                     listState = appState.listStates.state(uiState.filter.source),
                     source = uiState.filter.source,
                     onFoodClick = onFoodClick,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(top = topContentHeightDp),
                     contentPadding =
-                        scaffoldPadding.add(
-                            top = LocalDensity.current.run { topContentHeight.toDp() },
-                            bottom = 56.dp + 32.dp,
+                        PaddingValues(
+                            start = scaffoldPadding.calculateStartPadding(layoutDirection),
+                            end = scaffoldPadding.calculateEndPadding(layoutDirection),
+                            bottom = scaffoldPadding.calculateBottomPadding() + 56.dp + 32.dp,
                         ),
                 )
             }

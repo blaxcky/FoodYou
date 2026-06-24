@@ -3,12 +3,12 @@ package com.maksimowiczm.foodyou.app.ui.food.search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -75,6 +75,36 @@ class FoodSearchAppScreenshotTest {
                         layout = FoodSearchLayout.Stacked,
                     )
                 }
+            }
+        }
+    }
+
+    @Test
+    fun overlaySearchKeepsScrolledResultsBelowHeader() {
+        captureRoboImage(
+            filePath = "FoodSearchAppScreenshotTest.overlay-scrolled-search.png",
+            roborazziComposeOptions =
+                RoborazziComposeOptions.Builder().size(widthDp = 390, heightDp = 562)
+                    .locale("de-rDE")
+                    .build(),
+        ) {
+            MaterialTheme {
+                val appState = rememberFoodSearchAppState()
+                LaunchedEffect(appState) { appState.listStates.all.scrollToItem(4, 24) }
+
+                FoodSearchApp(
+                    uiState = SearchUiState,
+                    onSearch = {},
+                    onSourceChange = {},
+                    onFoodClick = { _, _ -> },
+                    onUpdateUsdaApiKey = {},
+                    onUpdateOpenFoodFactsCredentials = {},
+                    modifier =
+                        Modifier.requiredSize(width = 390.dp, height = 562.dp)
+                            .background(Color(0xFFEEF5FA)),
+                    appState = appState,
+                    layout = FoodSearchLayout.Overlay,
+                )
             }
         }
     }
