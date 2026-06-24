@@ -58,7 +58,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -175,17 +178,54 @@ private fun ZoomablePendingProductPhoto(
     val bitmap by rememberPendingProductImageBitmap(file = file, maxSizePx = 2200)
     var scale by remember(photoPath) { mutableFloatStateOf(1f) }
     var offset by remember(photoPath) { mutableStateOf(Offset.Zero) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
 
     val imageBitmap = bitmap
     if (imageBitmap != null) {
-        Image(
-            bitmap = imageBitmap,
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
+        val layout =
+            PhotoTransform.layout(
+                photoSize =
+                    PhotoTransformSize(
+                        width = imageBitmap.width.toFloat(),
+                        height = imageBitmap.height.toFloat(),
+                    ),
+                containerSize =
+                    PhotoTransformSize(
+                        width = containerSize.width.toFloat(),
+                        height = containerSize.height.toFloat(),
+                    ),
+                rotationDegrees = rotationDegrees,
+            )
+        val translationBounds =
+            PhotoTransform.translationBounds(
+                displayedImageSize = layout.displayedImageSize,
+                containerSize =
+                    PhotoTransformSize(
+                        width = containerSize.width.toFloat(),
+                        height = containerSize.height.toFloat(),
+                    ),
+                scale = scale,
+            )
+
+        LaunchedEffect(rotationDegrees) {
+            scale = 1f
+            offset = Offset.Zero
+        }
+        LaunchedEffect(translationBounds, scale) {
+            offset =
+                PhotoTransform.clampOffset(
+                    offset = PhotoTransformOffset(offset.x, offset.y),
+                    bounds = translationBounds,
+                ).let { Offset(it.x, it.y) }
+        }
+
+        Box(
             modifier =
                 modifier
                     .clipToBounds()
-                    .pointerInput(photoPath) {
+                    .onSizeChanged { containerSize = it }
+                    .pointerInput(photoPath, containerSize, rotationDegrees) {
                         detectTapGestures(
                             onDoubleTap = {
                                 scale = 1f
@@ -193,35 +233,65 @@ private fun ZoomablePendingProductPhoto(
                             }
                         )
                     }
-                    .pointerInput(photoPath) {
+                    .pointerInput(photoPath, containerSize, rotationDegrees) {
                         awaitEachGesture {
                             awaitFirstDown(requireUnconsumed = false)
                             do {
                                 val event = awaitPointerEvent(PointerEventPass.Main)
                                 val pressed = event.changes.filter { it.pressed }
-                                val shouldHandleZoom = pressed.size > 1 || scale > 1f
+                                val canPan = translationBounds.maxX > 0f || translationBounds.maxY > 0f
+                                val shouldHandleZoom = pressed.size > 1 || (scale > 1f && canPan)
                                 if (shouldHandleZoom) {
                                     val newScale = (scale * event.calculateZoom()).coerceIn(1f, 5f)
+                                    val pan = event.calculatePan()
                                     scale = newScale
                                     offset =
                                         if (newScale == 1f) {
                                             Offset.Zero
                                         } else {
-                                            offset + event.calculatePan()
+                                            PhotoTransform.clampOffset(
+                                                offset =
+                                                    PhotoTransformOffset(
+                                                        x = offset.x + pan.x,
+                                                        y = offset.y + pan.y,
+                                                    ),
+                                                bounds =
+                                                    PhotoTransform.translationBounds(
+                                                        displayedImageSize = layout.displayedImageSize,
+                                                        containerSize =
+                                                            PhotoTransformSize(
+                                                                containerSize.width.toFloat(),
+                                                                containerSize.height.toFloat(),
+                                                            ),
+                                                        scale = newScale,
+                                                    ),
+                                            ).let { Offset(it.x, it.y) }
                                         }
                                     event.changes.forEach { if (it.pressed) it.consume() }
                                 }
                             } while (pressed.isNotEmpty())
                         }
-                    }
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = offset.x
-                        translationY = offset.y
-                        rotationZ = rotationDegrees
                     },
-        )
+        ) {
+            Image(
+                bitmap = imageBitmap,
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier =
+                    Modifier.align(Alignment.Center)
+                        .size(
+                            with(density) { layout.imageSizeBeforeRotation.width.toDp() },
+                            with(density) { layout.imageSizeBeforeRotation.height.toDp() },
+                        )
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            translationX = offset.x
+                            translationY = offset.y
+                            rotationZ = rotationDegrees
+                        },
+            )
+        }
     }
 }
 
