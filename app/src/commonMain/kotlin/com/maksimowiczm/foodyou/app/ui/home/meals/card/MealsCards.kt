@@ -158,4 +158,4 @@ internal fun LazyListScope.mealsCards(
     }
 }
 
-private val DefaultMealCardSpacing = 16.dp
+private val DefaultMealCardSpacing = 12.dp

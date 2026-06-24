@@ -20,10 +20,9 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -123,35 +122,27 @@ internal fun MealCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        FilledTonalIconButton(
+                        IconButton(
                             onClick = onQuickAdd,
-                            modifier = Modifier.size(20.dp),
-                            shapes =
-                                IconButtonDefaults.shapes(
-                                    MaterialTheme.shapes.small,
-                                    MaterialTheme.shapes.extraSmall,
-                                ),
+                            modifier = Modifier.size(32.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Bolt,
                                 contentDescription =
                                     stringResource(Res.string.headline_quick_add),
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        FilledTonalIconButton(
+                        IconButton(
                             onClick = onBarcodeScan,
-                            modifier = Modifier.size(20.dp),
-                            shapes =
-                                IconButtonDefaults.shapes(
-                                    MaterialTheme.shapes.small,
-                                    MaterialTheme.shapes.extraSmall,
-                                ),
+                            modifier = Modifier.size(32.dp),
                         ) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_barcode_scanner),
                                 contentDescription = stringResource(Res.string.action_scan_barcode),
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
