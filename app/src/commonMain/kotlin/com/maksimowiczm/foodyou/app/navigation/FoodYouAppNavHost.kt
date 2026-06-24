@@ -75,6 +75,11 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 onMealCardQuickAddClick = { epochDay, mealId ->
                     navController.navigateSingleTop(FoodDiaryCreateQuickAdd(epochDay, mealId))
                 },
+                onMealCardBarcodeScanClick = { epochDay, mealId ->
+                    navController.navigateSingleTop(
+                        FoodDiarySearch(date = epochDay, mealId = mealId, showBarcodeScanner = true)
+                    )
+                },
                 onGoalsCardLongClick = {},
                 onGoalsCardClick = { epochDate ->
                     navController.navigateSingleTop(Goals(epochDate))
@@ -306,7 +311,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
             )
         }
         forwardBackwardComposable<FoodDiarySearch> {
-            val (date, mealId) = it.toRoute<FoodDiarySearch>()
+            val (date, mealId, showBarcodeScanner) = it.toRoute<FoodDiarySearch>()
 
             DiaryFoodSearchScreen(
                 onBack = { navController.popBackStackInclusive<FoodDiarySearch>() },
@@ -332,6 +337,7 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
                 },
                 date = LocalDate.fromEpochDays(date),
                 mealId = mealId,
+                showBarcodeScanner = showBarcodeScanner,
                 animatedVisibilityScope = this,
             )
         }
@@ -566,7 +572,12 @@ fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifie
 
 @Serializable private data class UpdateQuickAdd(val quickAddId: Long)
 
-@Serializable private data class FoodDiarySearch(val date: Long, val mealId: Long)
+@Serializable
+private data class FoodDiarySearch(
+    val date: Long,
+    val mealId: Long,
+    val showBarcodeScanner: Boolean = false,
+)
 
 @Serializable private data class FoodDiaryCreateProduct(val date: Long, val mealId: Long)
 

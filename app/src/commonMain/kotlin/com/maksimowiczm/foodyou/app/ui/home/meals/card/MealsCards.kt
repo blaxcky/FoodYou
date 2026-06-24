@@ -19,6 +19,7 @@ internal fun rememberMealsCardsState(
     homeState: HomeState,
     onAdd: (epochDay: Long, mealId: Long) -> Unit,
     onQuickAdd: (epochDay: Long, mealId: Long) -> Unit,
+    onBarcodeScan: (epochDay: Long, mealId: Long) -> Unit,
     onEditEntry: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
     onLongClick: (mealId: Long) -> Unit,
@@ -36,6 +37,7 @@ internal fun rememberMealsCardsState(
         selectedEntries = selectedEntries,
         onAdd = { mealId -> onAdd(homeState.selectedDate.toEpochDays(), mealId) },
         onQuickAdd = { mealId -> onQuickAdd(homeState.selectedDate.toEpochDays(), mealId) },
+        onBarcodeScan = { mealId -> onBarcodeScan(homeState.selectedDate.toEpochDays(), mealId) },
         onEditEntry = { model ->
             val foodEntry = model as? FoodMealEntryModel
             val manualEntry = model as? ManualMealEntryModel
@@ -59,6 +61,7 @@ internal class MealsCardsState(
     val selectedEntries: Set<MealEntrySelectionKey>,
     val onAdd: (mealId: Long) -> Unit,
     val onQuickAdd: (mealId: Long) -> Unit,
+    val onBarcodeScan: (mealId: Long) -> Unit,
     val onEditEntry: (MealEntryModel) -> Unit,
     val onEditFood: (FoodId.Product) -> Unit,
     val onAddToEntry: (MealEntryModel, Double) -> Unit,
@@ -87,6 +90,7 @@ internal fun LazyListScope.mealsCards(
                     meals = state.meals,
                     onAdd = state.onAdd,
                     onQuickAdd = state.onQuickAdd,
+                    onBarcodeScan = state.onBarcodeScan,
                     onEditEntry = state.onEditEntry,
                     onEditFood = state.onEditFood,
                     onAddToEntry = state.onAddToEntry,
@@ -132,6 +136,7 @@ internal fun LazyListScope.mealsCards(
                         meal = meal,
                         onAddFood = { state.onAdd(meal.id) },
                         onQuickAdd = { state.onQuickAdd(meal.id) },
+                        onBarcodeScan = { state.onBarcodeScan(meal.id) },
                         onEditEntry = state.onEditEntry,
                         onEditFood = state.onEditFood,
                         onAddToEntry = state.onAddToEntry,

@@ -57,6 +57,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -64,6 +65,7 @@ internal fun MealCard(
     meal: MealModel,
     onAddFood: () -> Unit,
     onQuickAdd: () -> Unit,
+    onBarcodeScan: () -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, Double) -> Unit,
@@ -130,6 +132,21 @@ internal fun MealCard(
                                 imageVector = Icons.Outlined.Bolt,
                                 contentDescription =
                                     stringResource(Res.string.headline_quick_add),
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                        FilledTonalIconButton(
+                            onClick = onBarcodeScan,
+                            modifier = Modifier.size(20.dp),
+                            shapes =
+                                IconButtonDefaults.shapes(
+                                    MaterialTheme.shapes.small,
+                                    MaterialTheme.shapes.extraSmall,
+                                ),
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_barcode_scanner),
+                                contentDescription = stringResource(Res.string.action_scan_barcode),
                                 modifier = Modifier.size(16.dp),
                             )
                         }

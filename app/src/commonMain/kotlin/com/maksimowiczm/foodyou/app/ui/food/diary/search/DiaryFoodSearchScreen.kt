@@ -68,6 +68,7 @@ fun DiaryFoodSearchScreen(
     onUpdateOpenFoodFactsCredentials: () -> Unit,
     date: LocalDate,
     mealId: Long,
+    showBarcodeScanner: Boolean = false,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
@@ -126,6 +127,7 @@ fun DiaryFoodSearchScreen(
                 onFoodClick = { model, measurement -> onMeasure(model.id, measurement) },
                 onUpdateUsdaApiKey = onUpdateUsdaApiKey,
                 onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
+                showBarcodeScannerInitially = showBarcodeScanner,
                 modifier =
                     Modifier.padding(paddingValues)
                         .consumeWindowInsets(paddingValues)

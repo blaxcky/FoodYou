@@ -63,8 +63,11 @@ fun FoodSearchApp(
     modifier: Modifier = Modifier,
     excludedRecipe: FoodId.Recipe? = null,
     layout: FoodSearchLayout = FoodSearchLayout.Overlay,
+    showBarcodeScannerInitially: Boolean = false,
 ) {
     val viewModel: FoodSearchViewModel = koinViewModel { parametersOf(excludedRecipe) }
+    val appState =
+        rememberFoodSearchAppState(showBarcodeScanner = showBarcodeScannerInitially)
 
     FoodSearchApp(
         uiState = viewModel.uiState.collectAsStateWithLifecycle().value,
@@ -74,6 +77,7 @@ fun FoodSearchApp(
         onUpdateUsdaApiKey = onUpdateUsdaApiKey,
         onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
         modifier = modifier,
+        appState = appState,
         layout = layout,
     )
 }
