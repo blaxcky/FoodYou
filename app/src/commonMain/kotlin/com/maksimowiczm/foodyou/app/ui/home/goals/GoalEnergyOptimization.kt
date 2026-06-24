@@ -1,6 +1,5 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
-import com.maksimowiczm.foodyou.activity.domain.usecase.calculateNetEnergyKcal
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
@@ -56,8 +55,9 @@ internal fun energyGoalDiffersFromBase(
 
 internal fun roundedEnergyKcal(energyKcal: Double): Int = energyKcal.roundToInt()
 
+// Net energy always derives from the individually rounded values shown in the UI.
 internal fun roundedNetEnergyKcal(consumedEnergy: Double, burnedEnergy: Double): Int =
-    roundedEnergyKcal(calculateNetEnergyKcal(consumedEnergy, burnedEnergy))
+    roundedEnergyKcal(consumedEnergy) - roundedEnergyKcal(burnedEnergy)
 
 internal fun roundedRemainingEnergyKcal(energyGoalKcal: Double, netEnergyKcal: Int): Int =
     roundedEnergyKcal(energyGoalKcal) - netEnergyKcal

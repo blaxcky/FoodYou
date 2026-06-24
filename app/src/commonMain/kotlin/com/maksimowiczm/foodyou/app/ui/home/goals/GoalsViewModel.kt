@@ -205,8 +205,8 @@ internal class GoalsViewModel(
                             ?: goalDisplaySummaries.first()
 
                     DaySummaryModel(
-                        energy = day.consumedEnergy.roundToInt(),
-                        burnedEnergy = day.burnedEnergy.roundToInt(),
+                        energy = roundedEnergyKcal(day.consumedEnergy),
+                        burnedEnergy = roundedEnergyKcal(day.burnedEnergy),
                         netEnergy = roundedNetEnergyKcal(day.consumedEnergy, day.burnedEnergy),
                         energyGoal = selectedGoalDisplaySummary.energyGoal,
                         showEnergyGoalValue = selectedGoalDisplaySummary.showEnergyGoalValue,

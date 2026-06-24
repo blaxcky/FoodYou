@@ -9,6 +9,23 @@ import kotlinx.datetime.LocalDate
 class CalorieWidgetModelTest {
 
     @Test
+    fun netEnergyUsesTheIndividuallyRoundedDisplayedValues() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 20),
+                eatenKcal = 1999.49,
+                burnedKcal = 0.51,
+                baseGoalKcal = 1809.0,
+                dietEnergyDeficitKcal = null,
+                previousDays = emptyList(),
+            )
+
+        assertEquals(1999, model.eatenKcal)
+        assertEquals(1, model.burnedKcal)
+        assertEquals(-189, model.normalLeftKcal)
+    }
+
+    @Test
     fun calculatesAllRemainingEnergyModesFromSameNetEnergy() {
         val model =
             calorieWidgetModel(
