@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItemSkeleton
 import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraBarcodeScanner
@@ -43,8 +46,10 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.RemoteFoodException
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.valentinilk.shimmer.ShimmerBounds
+import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.rememberShimmer
 import foodyou.app.generated.resources.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -57,6 +62,7 @@ fun FoodSearchApp(
     onUpdateOpenFoodFactsCredentials: () -> Unit,
     modifier: Modifier = Modifier,
     excludedRecipe: FoodId.Recipe? = null,
+    layout: FoodSearchLayout = FoodSearchLayout.Overlay,
 ) {
     val viewModel: FoodSearchViewModel = koinViewModel { parametersOf(excludedRecipe) }
 
@@ -68,11 +74,17 @@ fun FoodSearchApp(
         onUpdateUsdaApiKey = onUpdateUsdaApiKey,
         onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
         modifier = modifier,
+        layout = layout,
     )
 }
 
+enum class FoodSearchLayout {
+    Overlay,
+    Stacked,
+}
+
 @Composable
-private fun FoodSearchApp(
+internal fun FoodSearchApp(
     uiState: FoodSearchUiState,
     onSearch: (String?) -> Unit,
     onSourceChange: (FoodFilter.Source) -> Unit,
@@ -81,6 +93,7 @@ private fun FoodSearchApp(
     onUpdateOpenFoodFactsCredentials: () -> Unit,
     modifier: Modifier = Modifier,
     appState: FoodSearchAppState = rememberFoodSearchAppState(),
+    layout: FoodSearchLayout = FoodSearchLayout.Overlay,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val onSearch: (String?) -> Unit =
@@ -123,102 +136,148 @@ private fun FoodSearchApp(
         inputField = searchInputField,
     )
 
-    Scaffold(modifier) { paddingValues ->
+    Scaffold(modifier) { scaffoldPadding ->
         // Fix for searchbar issues on Android SDK 27 and below
         Box(Modifier.focusable().size(1.dp))
 
-        var topContentHeight by remember { mutableIntStateOf(0) }
+        val headerModifier =
+            Modifier.fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                .padding(top = scaffoldPadding.calculateTopPadding())
+                .padding(vertical = 8.dp)
 
-        Column(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .zIndex(10f)
-                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                    .windowInsetsPadding(
-                        WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)
-                    )
-                    .padding(top = paddingValues.calculateTopPadding())
-                    .onSizeChanged { topContentHeight = it.height }
-                    .padding(vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            SearchBar(
-                state = appState.searchBarState,
-                inputField = searchInputField,
-                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                colors =
-                    SearchBarDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                    ),
-                shadowElevation = 2.dp,
+        val header: @Composable (Modifier) -> Unit = { headerModifier ->
+            FoodSearchHeader(
+                uiState = uiState,
+                pages = pages,
+                appState = appState,
+                onSourceChange = onSourceChange,
+                onUpdateUsdaApiKey = onUpdateUsdaApiKey,
+                onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
+                searchInputField = searchInputField,
+                coroutineScope = coroutineScope,
+                modifier = headerModifier,
             )
+        }
 
-            if (uiState.sources.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                FoodSearchFilters(
-                    uiState = uiState,
-                    onSource = {
-                        onSourceChange(it)
+        when (layout) {
+            FoodSearchLayout.Overlay -> {
+                var topContentHeight by remember { mutableIntStateOf(0) }
+                header(headerModifier.zIndex(10f).onSizeChanged { topContentHeight = it.height })
 
-                        if (it == uiState.filter.source) {
-                            val listState = appState.listStates.state(it)
-                            coroutineScope.launch { listState.animateScrollToItem(0) }
-                        }
-                    },
-                    modifier = Modifier.height(32.dp + 8.dp + 32.dp).fillMaxWidth(),
+                FoodSearchResults(
+                    pages = pages,
+                    shimmer = shimmer,
+                    listState = appState.listStates.state(uiState.filter.source),
+                    source = uiState.filter.source,
+                    onFoodClick = onFoodClick,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding =
+                        scaffoldPadding.add(
+                            top = LocalDensity.current.run { topContentHeight.toDp() },
+                            bottom = 56.dp + 32.dp,
+                        ),
                 )
             }
 
-            val error = pages?.loadState?.error as? RemoteFoodException
-
-            when (val ex = error) {
-                null -> Unit
-                else ->
-                    FoodSearchErrorCard(
-                        error = ex,
-                        onRetry = pages::retry,
-                        onUsdaApiKey = onUpdateUsdaApiKey,
-                        onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
-                        modifier =
-                            Modifier.fillMaxWidth().padding(top = 8.dp).padding(horizontal = 16.dp),
+            FoodSearchLayout.Stacked ->
+                Column(Modifier.fillMaxSize()) {
+                    header(headerModifier)
+                    FoodSearchResults(
+                        pages = pages,
+                        shimmer = shimmer,
+                        listState = appState.listStates.state(uiState.filter.source),
+                        source = uiState.filter.source,
+                        onFoodClick = onFoodClick,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentPadding = PaddingValues(bottom = 56.dp + 32.dp),
                     )
-            }
+                }
+        }
+    }
+}
+
+@Composable
+private fun FoodSearchHeader(
+    uiState: FoodSearchUiState,
+    pages: LazyPagingItems<FoodSearch>?,
+    appState: FoodSearchAppState,
+    onSourceChange: (FoodFilter.Source) -> Unit,
+    onUpdateUsdaApiKey: () -> Unit,
+    onUpdateOpenFoodFactsCredentials: () -> Unit,
+    searchInputField: @Composable () -> Unit,
+    coroutineScope: CoroutineScope,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        SearchBar(
+            state = appState.searchBarState,
+            inputField = searchInputField,
+            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+            colors =
+                SearchBarDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                ),
+            shadowElevation = 2.dp,
+        )
+
+        if (uiState.sources.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            FoodSearchFilters(
+                uiState = uiState,
+                onSource = {
+                    onSourceChange(it)
+
+                    if (it == uiState.filter.source) {
+                        val listState = appState.listStates.state(it)
+                        coroutineScope.launch { listState.animateScrollToItem(0) }
+                    }
+                },
+                modifier = Modifier.height(32.dp + 8.dp + 32.dp).fillMaxWidth(),
+            )
         }
 
-        val paddingValues =
-            paddingValues.add(
-                top = LocalDensity.current.run { topContentHeight.toDp() },
-                bottom = 56.dp + 32.dp,
+        val error = pages?.loadState?.error as? RemoteFoodException
+        if (error != null) {
+            FoodSearchErrorCard(
+                error = error,
+                onRetry = pages::retry,
+                onUsdaApiKey = onUpdateUsdaApiKey,
+                onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).padding(horizontal = 16.dp),
             )
+        }
+    }
+}
 
+@Composable
+private fun FoodSearchResults(
+    pages: LazyPagingItems<FoodSearch>?,
+    shimmer: Shimmer,
+    listState: LazyListState,
+    source: FoodFilter.Source,
+    onFoodClick: (FoodSearch, Measurement) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+) {
+    Box(modifier) {
         if (pages?.itemCount == 0 && pages.loadState.append !is LoadState.Loading) {
-            Box(Modifier.fillMaxSize()) {
-                Text(
-                    text = stringResource(Res.string.neutral_no_food_found),
-                    modifier = Modifier.safeContentPadding().align(Alignment.Center),
-                )
-            }
-        }
-
-        if (pages?.delayedLoadingState() == true) {
-            Box(Modifier.fillMaxSize().zIndex(20f)) {
-                ContainedLoadingIndicator(
-                    modifier =
-                        Modifier.align(Alignment.TopCenter)
-                            .padding(top = paddingValues.calculateTopPadding())
-                )
-            }
+            Text(
+                text = stringResource(Res.string.neutral_no_food_found),
+                modifier = Modifier.safeContentPadding().align(Alignment.Center),
+            )
         }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = paddingValues,
-            state = appState.listStates.state(uiState.filter.source),
+            contentPadding = contentPadding,
+            state = listState,
         ) {
             if (pages != null) {
                 items(
                     count = pages.itemCount,
-                    key = pages.itemKey { (it.id to uiState.filter.source).toString() },
+                    key = pages.itemKey { (it.id to source).toString() },
                 ) { i ->
                     val food = pages[i]
 
@@ -253,6 +312,12 @@ private fun FoodSearchApp(
             if (pages == null) {
                 items(10) { FoodListItemSkeleton(shimmer) }
             }
+        }
+
+        if (pages?.delayedLoadingState() == true) {
+            ContainedLoadingIndicator(
+                modifier = Modifier.align(Alignment.TopCenter).zIndex(20f)
+            )
         }
     }
 }

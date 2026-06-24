@@ -30,6 +30,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhotoPager
 import com.maksimowiczm.foodyou.app.ui.food.search.FoodSearchApp
+import com.maksimowiczm.foodyou.app.ui.food.search.FoodSearchLayout
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -79,7 +80,8 @@ fun FoodSnapEntryScreen(
                 PendingProductPhotoPager(
                     photoPaths = listOf(currentEntry.photoPath),
                     photoDirectory = "food-snap-photos",
-                    modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier.fillMaxWidth().weight(1f).padding(start = 16.dp, top = 8.dp, end = 16.dp),
                 )
 
                 key(selectedFood?.id) {
@@ -90,6 +92,7 @@ fun FoodSnapEntryScreen(
                             onUpdateUsdaApiKey = onUpdateUsdaApiKey,
                             onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
                             modifier = Modifier.fillMaxWidth().weight(2f),
+                            layout = FoodSearchLayout.Stacked,
                         )
                     } else {
                         FoodSnapEntryForm(

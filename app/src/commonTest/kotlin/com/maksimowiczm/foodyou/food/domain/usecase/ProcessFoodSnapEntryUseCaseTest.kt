@@ -1,9 +1,10 @@
 package com.maksimowiczm.foodyou.food.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
-import com.maksimowiczm.foodyou.food.domain.entity.Food
+import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.FoodSnapEntry
+import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.FoodSnapRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -62,14 +63,18 @@ class ProcessFoodSnapEntryUseCaseTest {
 
     private companion object {
         val food =
-            object : Food {
-                override val id = FoodId.Product(7)
-                override val headline = "Apple"
-                override val totalWeight: Double? = null
-                override val servingWeight: Double? = null
-                override val nutritionFacts = NutritionFacts()
-                override val isLiquid = false
-            }
+            Product(
+                id = FoodId.Product(7),
+                name = "Apple",
+                brand = null,
+                barcode = null,
+                note = null,
+                isLiquid = false,
+                packageWeight = null,
+                servingWeight = null,
+                source = FoodSource(FoodSource.Type.User),
+                nutritionFacts = NutritionFacts(),
+            )
 
         fun entry() =
             FoodSnapEntry(
