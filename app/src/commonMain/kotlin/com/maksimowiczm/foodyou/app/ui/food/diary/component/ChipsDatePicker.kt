@@ -1,11 +1,14 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.DatePicker
@@ -20,9 +23,11 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.extension.minus
@@ -75,31 +80,38 @@ fun ChipsDatePicker(state: ChipsDatePickerState, modifier: Modifier = Modifier) 
     val quickDates = remember(state.today) { listOf(yesterday, state.today, tomorrow) }
     val customDateSelected = state.selectedDate !in quickDates
 
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    ) {
         DateIconButton(
             selected = state.selectedDate == yesterday,
             onClick = { state.selectDate(yesterday) },
-            icon = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
             contentDescription = yesterday.stringResource(state.today),
-        )
+        ) {
+            CalendarOffsetIcon(offset = CalendarOffset.Yesterday)
+        }
         DateIconButton(
             selected = state.selectedDate == state.today,
             onClick = { state.selectDate(state.today) },
-            icon = Icons.Filled.Today,
             contentDescription = state.today.stringResource(state.today),
-        )
+        ) {
+            Icon(imageVector = Icons.Filled.Today, contentDescription = null)
+        }
         DateIconButton(
             selected = state.selectedDate == tomorrow,
             onClick = { state.selectDate(tomorrow) },
-            icon = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = tomorrow.stringResource(state.today),
-        )
+        ) {
+            CalendarOffsetIcon(offset = CalendarOffset.Tomorrow)
+        }
         DateIconButton(
             selected = customDateSelected,
             onClick = { showDatePicker = true },
-            icon = Icons.Filled.CalendarMonth,
             contentDescription = stringResource(Res.string.action_choose_other_date),
-        )
+        ) {
+            Icon(imageVector = Icons.Filled.CalendarMonth, contentDescription = null)
+        }
     }
 }
 
@@ -107,12 +119,13 @@ fun ChipsDatePicker(state: ChipsDatePickerState, modifier: Modifier = Modifier) 
 private fun DateIconButton(
     selected: Boolean,
     onClick: () -> Unit,
-    icon: ImageVector,
     contentDescription: String,
+    icon: @Composable () -> Unit,
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(48.dp),
+        modifier =
+            Modifier.size(48.dp).semantics { this.contentDescription = contentDescription },
         colors =
             IconButtonDefaults.iconButtonColors(
                 containerColor =
@@ -129,8 +142,43 @@ private fun DateIconButton(
                     },
             ),
     ) {
-        Icon(imageVector = icon, contentDescription = contentDescription)
+        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+            icon()
+        }
     }
+}
+
+@Composable
+private fun CalendarOffsetIcon(offset: CalendarOffset) {
+    Box(modifier = Modifier.size(24.dp)) {
+        Icon(
+            imageVector = Icons.Filled.CalendarMonth,
+            contentDescription = null,
+            modifier = Modifier.align(Alignment.Center).size(22.dp),
+        )
+        Icon(
+            imageVector =
+                when (offset) {
+                    CalendarOffset.Yesterday -> Icons.AutoMirrored.Filled.ArrowBack
+                    CalendarOffset.Tomorrow -> Icons.AutoMirrored.Filled.ArrowForward
+                },
+            contentDescription = null,
+            modifier =
+                Modifier.align(
+                        when (offset) {
+                            CalendarOffset.Yesterday -> Alignment.BottomStart
+                            CalendarOffset.Tomorrow -> Alignment.BottomEnd
+                        }
+                    )
+                    .offset(y = 2.dp)
+                    .size(13.dp),
+        )
+    }
+}
+
+private enum class CalendarOffset {
+    Yesterday,
+    Tomorrow,
 }
 
 @Composable

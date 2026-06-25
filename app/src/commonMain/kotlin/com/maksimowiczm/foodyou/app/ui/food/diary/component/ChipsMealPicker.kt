@@ -2,8 +2,11 @@ package com.maksimowiczm.foodyou.app.ui.food.diary.component
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DinnerDining
@@ -18,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,17 +29,20 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ChipsMealPicker(state: ChipsMealPickerState, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        state.meals.forEachIndexed { i, meal ->
-            MealIconButton(
-                selected = meal == state.selectedMeal,
-                onClick = { state.selectedMeal = meal },
-                icon = mealIcon(i),
-                contentDescription = meal,
-            )
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier.widthIn(min = maxWidth).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            state.meals.forEachIndexed { i, meal ->
+                MealIconButton(
+                    selected = meal == state.selectedMeal,
+                    onClick = { state.selectedMeal = meal },
+                    icon = mealIcon(i),
+                    contentDescription = meal,
+                )
+            }
         }
     }
 }
