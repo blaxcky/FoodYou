@@ -274,15 +274,11 @@ internal fun rememberDailyGoalsFormState(dailyGoal: DailyGoal? = null): DailyGoa
     LaunchedEffect(Unit) {
         combine(
                 snapshotFlow { inputType.value },
-                snapshotFlow {
-                    arrayOf(
-                        energyFormField.value,
-                        proteinsFormField.value,
-                        fatsFormField.value,
-                        carbsFormField.value,
-                    )
-                },
-            ) { inputType, (energy, proteins, fats, carbs) ->
+                snapshotFlow { energyFormField.value },
+                snapshotFlow { proteinsFormField.value },
+                snapshotFlow { fatsFormField.value },
+                snapshotFlow { carbsFormField.value },
+            ) { inputType, energy, proteins, fats, carbs ->
                 if (inputType != InputType.Weight) {
                     return@combine
                 }
@@ -300,8 +296,10 @@ internal fun rememberDailyGoalsFormState(dailyGoal: DailyGoal? = null): DailyGoa
         combine(
                 snapshotFlow { inputType.value },
                 snapshotFlow { energyFormField.value },
-                snapshotFlow { arrayOf(proteinsSlider.value, fatsSlider.value, carbsSlider.value) },
-            ) { inputType, energy, (proteins, fats, carbs) ->
+                snapshotFlow { proteinsSlider.value },
+                snapshotFlow { fatsSlider.value },
+                snapshotFlow { carbsSlider.value },
+            ) { inputType, energy, proteins, fats, carbs ->
                 if (inputType != InputType.Percentage) {
                     return@combine
                 }
