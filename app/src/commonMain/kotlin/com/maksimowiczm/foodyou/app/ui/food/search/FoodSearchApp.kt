@@ -28,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,7 +50,6 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.RemoteFoodException
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearch
 import com.valentinilk.shimmer.ShimmerBounds
-import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.rememberShimmer
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.CoroutineScope
@@ -113,8 +113,6 @@ internal fun FoodSearchApp(
         }
 
     val pages = uiState.currentSourceState?.collectAsLazyPagingItems()
-    val shimmer = rememberShimmer(ShimmerBounds.View)
-
     FullScreenCameraBarcodeScanner(
         visible = appState.showBarcodeScanner,
         onBarcodeScan = {
@@ -152,25 +150,31 @@ internal fun FoodSearchApp(
         // Fix for searchbar issues on Android SDK 27 and below
         Box(Modifier.focusable().size(1.dp))
 
-        val headerModifier =
+        val headerOuterModifier =
             Modifier.fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
                 .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                 .padding(top = scaffoldPadding.calculateTopPadding())
-                .padding(vertical = 8.dp)
+
+        val headerInnerModifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
 
         val header: @Composable (Modifier) -> Unit = { headerModifier ->
-            FoodSearchHeader(
-                uiState = uiState,
-                pages = pages,
-                appState = appState,
-                onSourceChange = onSourceChange,
-                onUpdateUsdaApiKey = onUpdateUsdaApiKey,
-                onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
-                searchInputField = searchInputField,
-                coroutineScope = coroutineScope,
+            Surface(
                 modifier = headerModifier,
-            )
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                FoodSearchHeader(
+                    uiState = uiState,
+                    pages = pages,
+                    appState = appState,
+                    onSourceChange = onSourceChange,
+                    onUpdateUsdaApiKey = onUpdateUsdaApiKey,
+                    onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
+                    searchInputField = searchInputField,
+                    coroutineScope = coroutineScope,
+                    modifier = headerInnerModifier,
+                )
+            }
         }
 
         when (layout) {
@@ -178,11 +182,12 @@ internal fun FoodSearchApp(
                 var topContentHeight by remember { mutableIntStateOf(0) }
                 val layoutDirection = LocalLayoutDirection.current
                 val topContentHeightDp = LocalDensity.current.run { topContentHeight.toDp() }
-                header(headerModifier.zIndex(10f).onSizeChanged { topContentHeight = it.height })
+                header(
+                    headerOuterModifier.zIndex(10f).onSizeChanged { topContentHeight = it.height }
+                )
 
                 FoodSearchResults(
                     pages = pages,
-                    shimmer = shimmer,
                     listState = appState.listStates.state(uiState.filter.source),
                     source = uiState.filter.source,
                     onFoodClick = onFoodClick,
@@ -198,10 +203,9 @@ internal fun FoodSearchApp(
 
             FoodSearchLayout.Stacked ->
                 Column(Modifier.fillMaxSize()) {
-                    header(headerModifier)
+                    header(headerOuterModifier)
                     FoodSearchResults(
                         pages = pages,
-                        shimmer = shimmer,
                         listState = appState.listStates.state(uiState.filter.source),
                         source = uiState.filter.source,
                         onFoodClick = onFoodClick,
@@ -269,7 +273,6 @@ private fun FoodSearchHeader(
 @Composable
 private fun FoodSearchResults(
     pages: LazyPagingItems<FoodSearch>?,
-    shimmer: Shimmer,
     listState: LazyListState,
     source: FoodFilter.Source,
     onFoodClick: (FoodSearch, Measurement) -> Unit,
@@ -297,7 +300,7 @@ private fun FoodSearchResults(
                     val food = pages[i]
 
                     when (food) {
-                        null -> FoodListItemSkeleton(shimmer)
+                        null -> FoodSearchListItemSkeleton()
                         is FoodSearch.Product -> {
                             val measurement = food.suggestedMeasurement
                             FoodSearchListItem(
@@ -313,19 +316,19 @@ private fun FoodSearchResults(
                                 food = food,
                                 measurement = measurement,
                                 onClick = { onFoodClick(food, measurement) },
-                                shimmer = shimmer,
+                                shimmer = rememberShimmer(ShimmerBounds.View),
                             )
                         }
                     }
                 }
 
                 if (pages.loadState.append is LoadState.Loading) {
-                    items(10) { FoodListItemSkeleton(shimmer) }
+                    items(10) { FoodSearchListItemSkeleton() }
                 }
             }
 
             if (pages == null) {
-                items(10) { FoodListItemSkeleton(shimmer) }
+                items(10) { FoodSearchListItemSkeleton() }
             }
         }
 
@@ -335,6 +338,11 @@ private fun FoodSearchResults(
             )
         }
     }
+}
+
+@Composable
+private fun FoodSearchListItemSkeleton() {
+    FoodListItemSkeleton(rememberShimmer(ShimmerBounds.View))
 }
 
 private fun ListStates.state(source: FoodFilter.Source) =

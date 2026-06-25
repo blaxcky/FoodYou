@@ -115,15 +115,24 @@ class FoodSearchAppScreenshotTest {
                 sources =
                     mapOf(
                         FoodFilter.Source.All to
-                            FoodSourceUiState(
-                                remoteEnabled = RemoteStatus.LocalOnly,
-                                pages = flowOf(PagingData.from((1..12).map(::food))),
-                                count = 12,
-                                alwaysShowFilter = true,
-                            )
+                            foodSourceState(count = 12, foods = (1..12).map(::food)),
+                        FoodFilter.Source.YourFood to
+                            foodSourceState(count = 4, foods = (13..16).map(::food)),
+                        FoodFilter.Source.Recent to
+                            foodSourceState(count = 3, foods = (17..19).map(::food)),
+                        FoodFilter.Source.FDDB to
+                            foodSourceState(count = 5, foods = (20..24).map(::food)),
                     ),
                 filter = FoodFilter(),
                 recentSearches = emptyList(),
+            )
+
+        fun foodSourceState(count: Int, foods: List<FoodSearch>) =
+            FoodSourceUiState(
+                remoteEnabled = RemoteStatus.LocalOnly,
+                pages = flowOf(PagingData.from(foods)),
+                count = count,
+                alwaysShowFilter = true,
             )
 
         fun food(id: Int) =
