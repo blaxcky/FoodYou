@@ -1,26 +1,28 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.component
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.InputChip
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.extension.minus
@@ -68,28 +70,66 @@ fun ChipsDatePicker(state: ChipsDatePickerState, modifier: Modifier = Modifier) 
         }
     }
 
-    Row(modifier) {
-        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-            Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null)
-        }
+    val yesterday = state.today.minus(1.days)
+    val tomorrow = state.today.plus(1.days)
+    val quickDates = remember(state.today) { listOf(yesterday, state.today, tomorrow) }
+    val customDateSelected = state.selectedDate !in quickDates
 
-        Spacer(Modifier.width(8.dp))
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        DateIconButton(
+            selected = state.selectedDate == yesterday,
+            onClick = { state.selectDate(yesterday) },
+            icon = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+            contentDescription = yesterday.stringResource(state.today),
+        )
+        DateIconButton(
+            selected = state.selectedDate == state.today,
+            onClick = { state.selectDate(state.today) },
+            icon = Icons.Filled.Today,
+            contentDescription = state.today.stringResource(state.today),
+        )
+        DateIconButton(
+            selected = state.selectedDate == tomorrow,
+            onClick = { state.selectDate(tomorrow) },
+            icon = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = tomorrow.stringResource(state.today),
+        )
+        DateIconButton(
+            selected = customDateSelected,
+            onClick = { showDatePicker = true },
+            icon = Icons.Filled.CalendarMonth,
+            contentDescription = stringResource(Res.string.action_choose_other_date),
+        )
+    }
+}
 
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.dates.forEach { date ->
-                InputChip(
-                    selected = state.selectedDate == date,
-                    onClick = { state.selectDate(date) },
-                    label = { Text(date.stringResource(state.today)) },
-                )
-            }
-
-            InputChip(
-                selected = false,
-                onClick = { showDatePicker = true },
-                label = { Text(stringResource(Res.string.action_choose_other_date)) },
-            )
-        }
+@Composable
+private fun DateIconButton(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    contentDescription: String,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(48.dp),
+        colors =
+            IconButtonDefaults.iconButtonColors(
+                containerColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                contentColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+            ),
+    ) {
+        Icon(imageVector = icon, contentDescription = contentDescription)
     }
 }
 

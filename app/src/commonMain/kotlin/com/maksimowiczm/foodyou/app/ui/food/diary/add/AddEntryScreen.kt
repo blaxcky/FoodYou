@@ -306,7 +306,30 @@ internal fun FoodEntryForm(
                             measurement = state.measurementState.measurement,
                         )
 
-                        ReferenceMeasurementPicker(
+                        ReferenceMeasurementPickerInput(
+                            state = state.measurementState,
+                            servingUnit =
+                                if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
+                        )
+
+                        Button(
+                            onClick = {
+                                if (state.isValid) {
+                                    onSave()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            enabled =
+                                !animatedVisibilityScope.transition.isRunning &&
+                                    state.isValid &&
+                                    (food !is RecipeModel || food.isValid),
+                            shape = RoundedCornerShape(28.dp),
+                            contentPadding = ButtonDefaults.ContentPadding,
+                        ) {
+                            Text(stringResource(Res.string.action_save))
+                        }
+
+                        ReferenceMeasurementPickerSuggestions(
                             state = state.measurementState,
                             servingUnit =
                                 if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
@@ -330,23 +353,6 @@ internal fun FoodEntryForm(
                                 Spacer(Modifier.width(8.dp))
                                 Text(stringResource(Res.string.action_unpack))
                             }
-                        }
-
-                        Button(
-                            onClick = {
-                                if (state.isValid) {
-                                    onSave()
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            enabled =
-                                !animatedVisibilityScope.transition.isRunning &&
-                                    state.isValid &&
-                                    (food !is RecipeModel || food.isValid),
-                            shape = RoundedCornerShape(28.dp),
-                            contentPadding = ButtonDefaults.ContentPadding,
-                        ) {
-                            Text(stringResource(Res.string.action_save))
                         }
                     }
                 }
@@ -496,29 +502,23 @@ internal fun MacroSummary(food: FoodModel, measurement: Measurement, modifier: M
 
 @Composable
 private fun MacroSummaryItem(value: String, label: String, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.heightIn(min = 68.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    Column(
+        modifier = modifier.heightIn(min = 52.dp).padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -530,64 +530,81 @@ internal fun ReferenceMeasurementPicker(
     servingUnit: ServingUnit,
     modifier: Modifier = Modifier,
 ) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ReferenceMeasurementPickerInput(state = state, servingUnit = servingUnit)
+        ReferenceMeasurementPickerSuggestions(state = state, servingUnit = servingUnit)
+    }
+}
+
+@Composable
+internal fun ReferenceMeasurementPickerInput(
+    state: MeasurementPickerState,
+    servingUnit: ServingUnit,
+    modifier: Modifier = Modifier,
+) {
     val latestState by rememberUpdatedState(state)
     LaunchedEffect(state.inputField.value, state.selectedOption) {
         val value = state.inputField.value ?: return@LaunchedEffect
         latestState.measurement = state.selectedOption.measurementForInput(value.toDouble())
     }
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ReferenceMeasurementInput(
-                formField = state.inputField,
-                modifier = Modifier.width(104.dp),
-            )
-            ReferenceMeasurementTypePicker(
-                selectedOption = state.selectedOption,
-                options = state.options,
-                servingUnit = servingUnit,
-                onSelect = {
-                    state.selectOption(it)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ReferenceMeasurementInput(
+            formField = state.inputField,
+            modifier = Modifier.width(104.dp),
+        )
+        ReferenceMeasurementTypePicker(
+            selectedOption = state.selectedOption,
+            options = state.options,
+            servingUnit = servingUnit,
+            onSelect = {
+                state.selectOption(it)
+            },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+internal fun ReferenceMeasurementPickerSuggestions(
+    state: MeasurementPickerState,
+    servingUnit: ServingUnit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        state.labelSuggestions.forEach { suggestion ->
+            SuggestionChip(
+                onClick = {
+                    state.selectOption(
+                        option = suggestion.option,
+                        inputTextOverride = suggestion.inputValue.formatClipZeros(),
+                    )
                 },
-                modifier = Modifier.weight(1f),
+                label = { Text(suggestion.label) },
             )
         }
-
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.labelSuggestions.forEach { suggestion ->
-                SuggestionChip(
-                    onClick = {
-                        state.selectOption(
-                            option = suggestion.option,
-                            inputTextOverride = suggestion.inputValue.formatClipZeros(),
-                        )
-                    },
-                    label = { Text(suggestion.label) },
-                )
-            }
-            state.suggestions.filter { it.type.isUserSelectable }.forEach { measurement ->
-                SuggestionChip(
-                    onClick = {
-                        state.selectOption(
-                            option = state.standardOption(measurement.type),
-                            inputTextOverride = measurement.rawValue.formatClipZeros(),
-                        )
-                    },
-                    label = {
-                        Text(
-                            measurement.stringResourceWithWeight(
-                                totalWeight = state.totalWeight,
-                                servingWeight = state.servingWeight,
-                                isLiquid = state.isLiquid,
-                                servingUnit = servingUnit,
-                            ) ?: measurement.stringResource(servingUnit)
-                        )
-                    },
-                )
-            }
+        state.suggestions.filter { it.type.isUserSelectable }.forEach { measurement ->
+            SuggestionChip(
+                onClick = {
+                    state.selectOption(
+                        option = state.standardOption(measurement.type),
+                        inputTextOverride = measurement.rawValue.formatClipZeros(),
+                    )
+                },
+                label = {
+                    Text(
+                        measurement.stringResourceWithWeight(
+                            totalWeight = state.totalWeight,
+                            servingWeight = state.servingWeight,
+                            isLiquid = state.isLiquid,
+                            servingUnit = servingUnit,
+                        ) ?: measurement.stringResource(servingUnit)
+                    )
+                },
+            )
         }
     }
 }
