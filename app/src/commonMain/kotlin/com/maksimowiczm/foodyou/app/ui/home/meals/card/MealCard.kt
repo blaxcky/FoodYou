@@ -128,6 +128,11 @@ internal fun MealCard(
                     )
                 }
 
+                MealNutritionSummary(
+                    meal = meal,
+                    modifier = Modifier.padding(top = 2.dp).widthIn(min = 150.dp),
+                )
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -155,11 +160,6 @@ internal fun MealCard(
                         )
                     }
                 }
-
-                MealNutritionSummary(
-                    meal = meal,
-                    modifier = Modifier.padding(top = 2.dp).widthIn(min = 150.dp),
-                )
             }
 
             FoodContainer(
