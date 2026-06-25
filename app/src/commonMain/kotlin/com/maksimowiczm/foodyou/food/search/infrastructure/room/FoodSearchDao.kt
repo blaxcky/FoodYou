@@ -46,11 +46,11 @@ interface FoodSearchDao {
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM ProductsSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM ProductsSearch p
         UNION ALL
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM RecipesSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM RecipesSearch p
         ORDER BY headline COLLATE NOCASE ASC
         """
     )
@@ -76,11 +76,11 @@ interface FoodSearchDao {
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM ProductsSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM ProductsSearch p
         UNION ALL
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM RecipesSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM RecipesSearch p
         ORDER BY headline COLLATE NOCASE ASC
         """
     )
@@ -168,11 +168,11 @@ interface FoodSearchDao {
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM ProductsSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM ProductsSearch p
         UNION ALL
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM RecipesSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM RecipesSearch p
         ORDER BY headline COLLATE NOCASE ASC
         """
     )
@@ -204,11 +204,11 @@ interface FoodSearchDao {
                     AND rai.ingredientId = :excludedRecipeId
                 ))
         )
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM ProductsSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM ProductsSearch p
         UNION ALL
-        SELECT *, NULL AS measurementType, NULL AS measurementValue
-        FROM RecipesSearch
+        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
+        FROM RecipesSearch p
         ORDER BY headline COLLATE NOCASE ASC
         """
     )
@@ -285,8 +285,8 @@ interface FoodSearchDao {
 
     @Query(
         """
-        SELECT ${PRODUCT_FOOD_SEARCH_SQL_SELECT}, NULL AS measurementType, NULL AS measurementValue
-        FROM Product p
+        SELECT ${PRODUCT_FOOD_SEARCH_SQL_SELECT}, s.type AS measurementType, s.value AS measurementValue
+        FROM Product p LEFT JOIN LatestMeasurementSuggestion s ON s.productId = p.id
         WHERE
             p.barcode LIKE '%' || :barcode || '%' AND
             (:source IS NULL OR p.sourceType = :source)
@@ -300,8 +300,8 @@ interface FoodSearchDao {
 
     @Query(
         """
-        SELECT ${PRODUCT_FOOD_SEARCH_SQL_SELECT}, NULL AS measurementType, NULL AS measurementValue
-        FROM Product p
+        SELECT ${PRODUCT_FOOD_SEARCH_SQL_SELECT}, s.type AS measurementType, s.value AS measurementValue
+        FROM Product p LEFT JOIN LatestMeasurementSuggestion s ON s.productId = p.id
         WHERE
             p.barcode LIKE '%' || :barcode || '%' AND
             p.sourceType IN (:sources)
@@ -493,7 +493,7 @@ interface FoodSearchDao {
 
     @Query(
         """
-        SELECT $PRODUCT_FOOD_SEARCH_SQL_SELECT, NULL AS measurementType, NULL AS measurementValue
+        SELECT $PRODUCT_FOOD_SEARCH_SQL_SELECT, s.type AS measurementType, s.value AS measurementValue
         FROM LatestMeasurementSuggestion s LEFT JOIN Product p ON s.productId = p.id
         WHERE
             s.productId IS NOT NULL AND
@@ -628,6 +628,12 @@ NULL AS iodineMicro,
 NULL AS chromiumMicro,
 NULL AS totalWeight,
 NULL AS servingWeight
+"""
+
+private const val LATEST_MEASUREMENT_SQL_SELECT =
+    """
+(SELECT s.type FROM LatestMeasurementSuggestion s WHERE s.productId = p.productId OR s.recipeId = p.recipeId) AS measurementType,
+(SELECT s.value FROM LatestMeasurementSuggestion s WHERE s.productId = p.productId OR s.recipeId = p.recipeId) AS measurementValue
 """
 
 private const val FOOD_SEARCH_SQL_SELECT =

@@ -15,7 +15,6 @@ import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
-import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
@@ -125,9 +124,8 @@ internal class AddEntryViewModel(
             )
 
     val suggestedMeasurement: StateFlow<Measurement?> =
-        domainFood
-            .filterNotNull()
-            .map { defaultEntryMeasurement(it.isLiquid) }
+        observeMeasurementSuggestionsUseCase
+            .observeLatestOrDefault(foodId)
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(2_000),

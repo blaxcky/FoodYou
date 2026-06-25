@@ -8,6 +8,8 @@ import androidx.paging.map
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.search.SearchQuery
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntity
 import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
@@ -60,7 +62,7 @@ internal class RoomFoodSearchRepository(private val foodSearchDao: FoodSearchDao
                 remoteMediator = remoteMediatorFactory?.create(),
             )
             .flow
-            .map { data -> data.map { it.toModel() } }
+            .map { data -> data.map { it.toFoodSearchModel() } }
 
     override fun search(
         query: SearchQuery,
@@ -99,7 +101,7 @@ internal class RoomFoodSearchRepository(private val foodSearchDao: FoodSearchDao
                 },
             )
             .flow
-            .map { data -> data.map { it.toModel() } }
+            .map { data -> data.map { it.toFoodSearchModel() } }
 
     override fun searchRecent(
         query: SearchQuery,
@@ -136,7 +138,7 @@ internal class RoomFoodSearchRepository(private val foodSearchDao: FoodSearchDao
                 },
             )
             .flow
-            .map { data -> data.map { it.toModel() } }
+            .map { data -> data.map { it.toFoodSearchModel() } }
 
     override fun searchFoodCount(
         query: SearchQuery,
@@ -223,7 +225,7 @@ internal class RoomFoodSearchRepository(private val foodSearchDao: FoodSearchDao
         }
 }
 
-private fun RoomFoodSearch.toModel(): FoodSearch =
+internal fun RoomFoodSearch.toFoodSearchModel(): FoodSearch =
     when (val foodId = foodId) {
         is FoodId.Product ->
             FoodSearch.Product(
@@ -297,4 +299,21 @@ private val RoomFoodSearch.foodId: FoodId
             ?: error("Food must have either productId or recipeId")
 
 private val RoomFoodSearch.suggestedMeasurement
-    get() = defaultEntryMeasurement(isLiquid)
+    get() =
+        defaultEntryMeasurement(
+            food = this,
+            latestMeasurement =
+                if (measurementType != null && measurementValue != null) {
+                    Measurement.from(measurementType, measurementValue)
+                } else {
+                    null
+                },
+        )
+
+private fun defaultEntryMeasurement(food: RoomFoodSearch, latestMeasurement: Measurement?) =
+    defaultEntryMeasurement(
+        isLiquid = food.isLiquid,
+        totalWeight = food.totalWeight,
+        servingWeight = food.servingWeight,
+        latestMeasurement = latestMeasurement,
+    )

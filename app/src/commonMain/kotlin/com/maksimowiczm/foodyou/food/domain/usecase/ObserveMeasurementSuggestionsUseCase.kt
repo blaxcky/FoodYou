@@ -4,9 +4,11 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.domain.measurement.type
+import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -23,6 +25,17 @@ class ObserveMeasurementSuggestionsUseCase(
             } else {
                 repository.observeByFoodId(foodId = foodId, limit = limit).map { list ->
                     list.fillMissingMeasurements(food)
+                }
+            }
+        }
+
+    fun observeLatestOrDefault(foodId: FoodId): Flow<Measurement> =
+        observeFoodUseCase.observe(foodId).flatMapLatest { food ->
+            if (food == null) {
+                emptyFlow()
+            } else {
+                repository.observeByFoodId(foodId = foodId, limit = 1).map { list ->
+                    defaultEntryMeasurement(food = food, latestMeasurement = list.firstOrNull())
                 }
             }
         }
