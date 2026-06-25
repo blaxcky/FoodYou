@@ -60,7 +60,7 @@ internal class ExportCsvProductsUseCaseImpl(
 }
 
 private class CsvWriter {
-    fun writeString(value: String): String = "\"$value\""
+    fun writeString(value: String): String = "\"${value.replace("\"", "\"\"")}\""
 
     fun writeDouble(value: Double): String = value.toString()
 
