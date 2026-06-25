@@ -11,7 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearchPreferences
 import foodyou.app.generated.resources.*
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.core.qualifier.named
@@ -22,6 +22,7 @@ fun UpdateUsdaApiKeyDialog(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
     val foodSearchPreferencesRepository: UserPreferencesRepository<FoodSearchPreferences> =
         koinInject(named(FoodSearchPreferences::class.qualifiedName!!))
     val foodSearchPreferences =
@@ -38,7 +39,7 @@ fun UpdateUsdaApiKeyDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    runBlocking {
+                    scope.launch {
                         val key = textFieldState.text.toString().takeIf { it.isNotBlank() }
                         foodSearchPreferencesRepository.update {
                             copy(usda = usda.copy(apiKey = key))
