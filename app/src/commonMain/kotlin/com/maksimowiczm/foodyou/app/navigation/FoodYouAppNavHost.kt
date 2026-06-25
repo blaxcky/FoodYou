@@ -23,6 +23,8 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.CreateQuickAddScreen
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.UpdateQuickAddScreen
 import com.maksimowiczm.foodyou.app.ui.food.diary.search.DiaryFoodSearchScreen
 import com.maksimowiczm.foodyou.app.ui.food.diary.update.UpdateEntryScreen
+import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchAction
+import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchRequest
 import com.maksimowiczm.foodyou.app.ui.food.pending.CompletePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.CreatePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductsScreen
@@ -53,13 +55,47 @@ import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
+import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.selectMealForBarcodeShortcut
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
 
 @Composable
-fun FoodYouAppNavHost(onDatabaseBackup: () -> Unit, modifier: Modifier = Modifier) {
+fun FoodYouAppNavHost(
+    onDatabaseBackup: () -> Unit,
+    modifier: Modifier = Modifier,
+    launchRequest: FoodYouLaunchRequest? = null,
+) {
     val navController = rememberNavController()
+    val dateProvider: DateProvider = koinInject()
+    val mealRepository: MealRepository = koinInject()
+
+    LaunchedEffect(launchRequest?.nonce) {
+        when (launchRequest?.action) {
+            FoodYouLaunchAction.ScanBarcode -> {
+                val now = dateProvider.now()
+                val meal =
+                    selectMealForBarcodeShortcut(
+                        meals = mealRepository.observeMeals().first(),
+                        time = now.time,
+                    ) ?: return@LaunchedEffect
+
+                navController.navigateSingleTop(
+                    FoodDiarySearch(
+                        date = now.date.toEpochDays(),
+                        mealId = meal.id,
+                        showBarcodeScanner = true,
+                    )
+                )
+            }
+
+            null -> Unit
+        }
+    }
 
     NavHost(modifier = modifier, navController = navController, startDestination = Home) {
         forwardBackwardComposable<Home> {

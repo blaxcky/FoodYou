@@ -13,4 +13,6 @@
     <string name="widget_calories_placeholder">--</string>
     <string name="widget_calories_kcal">%1$d kcal</string>
     <string name="widget_calories_no_value">-- kcal</string>
+    <string name="shortcut_scan_barcode_short">Barcode</string>
+    <string name="shortcut_scan_barcode_long">Barcode scannen</string>
 </resources>

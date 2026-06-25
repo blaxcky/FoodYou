@@ -14,7 +14,7 @@ import com.maksimowiczm.foodyou.app.ui.theme.FoodYouTheme
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun FoodYouApp(onDatabaseBackup: () -> Unit) {
+fun FoodYouApp(onDatabaseBackup: () -> Unit, launchRequest: FoodYouLaunchRequest? = null) {
     val viewModel: AppViewModel = koinViewModel()
     val nutrientsOrder by viewModel.nutrientsOrder.collectAsStateWithLifecycle()
     val onboardingFinished by viewModel.onboardingFinished.collectAsStateWithLifecycle()
@@ -28,7 +28,10 @@ fun FoodYouApp(onDatabaseBackup: () -> Unit) {
 
                 if (onboardingFinished) {
                     Surface {
-                        FoodYouAppNavHost(onDatabaseBackup)
+                        FoodYouAppNavHost(
+                            onDatabaseBackup = onDatabaseBackup,
+                            launchRequest = launchRequest,
+                        )
                         AppUpdateChangelogModalBottomSheet()
                     }
                 } else {
