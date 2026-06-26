@@ -30,3 +30,10 @@ GRADLE_USER_HOME=/home/markus/GitHub/FoodYou/.gradle \
 JAVA_HOME=/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr \
 ./gradlew :app:compileDebugKotlinAndroid
 ```
+
+## Formatting
+
+This project does not currently configure a Gradle formatter task such as `ktfmtFormat`.
+Do not run `./gradlew ktfmtFormat`; it will fail with "Task 'ktfmtFormat' not found".
+
+For formatting verification, run `git diff --check` and the relevant Gradle compile/test task.
