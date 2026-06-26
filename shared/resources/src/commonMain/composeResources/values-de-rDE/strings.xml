@@ -183,6 +183,8 @@
     <string name="unit_kilogram_short" translatable="false">kg</string>
     <string name="unit_centimeter_short" translatable="false">cm</string>
     <string name="label_burned_kcal">Verbrannte kcal</string>
+    <string name="label_discount_percent">Abschlag</string>
+    <string name="label_calculated_calories">Berechnete Kalorien</string>
     <string name="label_additional_amount">Zusätzliche Menge</string>
     <string name="unit_kilojoules">kJ</string>
     <plurals name="unit_gram">

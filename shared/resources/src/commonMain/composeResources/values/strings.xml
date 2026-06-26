@@ -63,6 +63,8 @@
     <string name="unit_kilogram_short" translatable="false">kg</string>
     <string name="unit_centimeter_short" translatable="false">cm</string>
     <string name="label_burned_kcal">Burned kcal</string>
+    <string name="label_discount_percent">Discount</string>
+    <string name="label_calculated_calories">Calculated calories</string>
     <string name="label_additional_amount">Additional amount</string>
     <string name="unit_kilojoules">kJ</string>
     <string name="unit_gram_short" translatable="false">g</string>

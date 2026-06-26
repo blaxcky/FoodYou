@@ -29,6 +29,7 @@ data class Settings(
     val fddbDiarySyncLastAttemptEpochSeconds: Long? = null,
     val fddbProductSyncManualCount: Int = 0,
     val pendingProductPhotoQuality: PendingProductPhotoQuality = PendingProductPhotoQuality.Balanced,
+    val crosstrainerCalorieDiscountPercent: Double = 0.0,
 ) : UserPreferences
 
 data class FddbDiarySyncStatus(

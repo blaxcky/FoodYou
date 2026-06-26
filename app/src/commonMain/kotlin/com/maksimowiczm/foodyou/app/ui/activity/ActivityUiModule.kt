@@ -5,7 +5,12 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 
 fun Module.activityUi() {
-    viewModel { ManualActivityViewModel(repository = get()) }
+    viewModel {
+        ManualActivityViewModel(
+            repository = get(),
+            settingsRepository = userPreferencesRepository(),
+        )
+    }
     viewModel {
         ActivitySettingsViewModel(
             settingsRepository = userPreferencesRepository(),

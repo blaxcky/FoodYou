@@ -7,9 +7,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -46,8 +50,13 @@ fun ManualActivityScreen(
         if (id != null) viewModel.load(id)
     }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var showPresetMenu by rememberSaveable { mutableStateOf(false) }
     val name = viewModel.name.collectAsStateWithLifecycle().value
     val energyKcal = viewModel.energyKcal.collectAsStateWithLifecycle().value
+    val preset = viewModel.preset.collectAsStateWithLifecycle().value
+    val discountPercent = viewModel.discountPercent.collectAsStateWithLifecycle().value
+    val calculatedEnergyKcal =
+        viewModel.calculatedEnergyKcal.collectAsStateWithLifecycle(null).value
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     if (showDeleteDialog && id != null) {
@@ -102,6 +111,31 @@ fun ManualActivityScreen(
                 value = name,
                 onValueChange = viewModel::setName,
                 label = { Text(stringResource(Res.string.product_name)) },
+                trailingIcon =
+                    if (id == null) {
+                        {
+                            IconButton(onClick = { showPresetMenu = !showPresetMenu }) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showPresetMenu,
+                                onDismissRequest = { showPresetMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(ManualActivityPreset.Crosstrainer.activityName) },
+                                    onClick = {
+                                        showPresetMenu = false
+                                        viewModel.selectPreset(ManualActivityPreset.Crosstrainer)
+                                    },
+                                )
+                            }
+                        }
+                    } else {
+                        null
+                    },
             )
             OutlinedTextField(
                 value = energyKcal,
@@ -109,6 +143,20 @@ fun ManualActivityScreen(
                 label = { Text(stringResource(Res.string.label_burned_kcal)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             )
+            if (id == null && preset == ManualActivityPreset.Crosstrainer) {
+                OutlinedTextField(
+                    value = discountPercent,
+                    onValueChange = viewModel::setDiscountPercent,
+                    label = { Text(stringResource(Res.string.label_discount_percent)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+                OutlinedTextField(
+                    value = calculatedEnergyKcal.orEmpty(),
+                    onValueChange = {},
+                    label = { Text(stringResource(Res.string.label_calculated_calories)) },
+                    readOnly = true,
+                )
+            }
             Button(onClick = { viewModel.save(date, id, onSave) }) {
                 Text(stringResource(Res.string.action_save))
             }

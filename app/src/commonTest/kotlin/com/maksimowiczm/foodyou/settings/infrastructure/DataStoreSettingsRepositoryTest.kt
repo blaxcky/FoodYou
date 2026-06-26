@@ -32,6 +32,24 @@ class DataStoreSettingsRepositoryTest {
             assertEquals(quality, repository.observe().first().pendingProductPhotoQuality)
         }
     }
+
+    @Test
+    fun crosstrainerCalorieDiscountPercentDefaultsToZero() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        val settings = repository.observe().first()
+
+        assertEquals(0.0, settings.crosstrainerCalorieDiscountPercent)
+    }
+
+    @Test
+    fun crosstrainerCalorieDiscountPercentRoundTripsThroughDataStore() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        repository.update { copy(crosstrainerCalorieDiscountPercent = 12.5) }
+
+        assertEquals(12.5, repository.observe().first().crosstrainerCalorieDiscountPercent)
+    }
 }
 
 private class InMemoryPreferencesDataStore(

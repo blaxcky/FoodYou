@@ -58,6 +58,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             fddbProductSyncManualCount =
                 this[SettingsPreferencesKeys.fddbProductSyncManualCount] ?: 0,
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
+            crosstrainerCalorieDiscountPercent =
+                this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: Settings) {
@@ -109,6 +111,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.fddbProductSyncManualCount] =
             updated.fddbProductSyncManualCount
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
+        this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
+            updated.crosstrainerCalorieDiscountPercent
     }
 }
 
@@ -258,6 +262,8 @@ private object SettingsPreferencesKeys {
         longPreferencesKey("settings:fddbDiarySyncLastAttemptEpochSeconds")
     val fddbProductSyncManualCount = intPreferencesKey("settings:fddbProductSyncManualCount")
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
+    val crosstrainerCalorieDiscountPercent =
+        doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
     val firstLaunchCurrentVersionEpoch = longPreferencesKey("first_launch_current_version_epoch")
