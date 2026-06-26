@@ -2,17 +2,23 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
+import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.event.EventBus
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.extension.now
+import com.maksimowiczm.foodyou.common.result.onError
+import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
+import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
@@ -20,9 +26,11 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryMeal
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
+import com.maksimowiczm.foodyou.fooddiary.domain.event.FoodDiaryEntryCreatedEvent
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CreateFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +41,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -47,10 +56,14 @@ internal class MealsCardsViewModel(
     private val transactionProvider: TransactionProvider,
     private val dateProvider: DateProvider,
     private val productRepository: ProductRepository,
+    private val observeMeasurementSuggestionsUseCase: ObserveMeasurementSuggestionsUseCase,
+    private val createFoodDiaryEntryUseCase: CreateFoodDiaryEntryUseCase,
+    private val eventBus: EventBus,
     mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
     private val _selectedEntries = MutableStateFlow<Set<MealEntrySelectionKey>>(emptySet())
+    private val selectedQuickCaptureProductId = MutableStateFlow<FoodId.Product?>(null)
     val selectedEntries: StateFlow<Set<MealEntrySelectionKey>> = _selectedEntries
 
     val diaryMeals: StateFlow<List<MealModel>?> =
@@ -77,6 +90,33 @@ internal class MealsCardsViewModel(
             started = SharingStarted.WhileSubscribed(2_000),
             initialValue = runBlocking { _layout.first() },
         )
+
+    val quickCaptureProducts: StateFlow<List<QuickCaptureProductModel>> =
+        productRepository
+            .observeQuickCaptureProducts()
+            .map { list -> list.map { it.toQuickCaptureProductModel() } }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(2_000),
+                initialValue = emptyList(),
+            )
+
+    val selectedQuickCaptureMeasurement: StateFlow<QuickCaptureMeasurementModel?> =
+        selectedQuickCaptureProductId
+            .flatMapLatest { id ->
+                if (id == null) {
+                    flowOf(null)
+                } else {
+                    observeMeasurementSuggestionsUseCase.observeLatestOrDefault(id).map {
+                        QuickCaptureMeasurementModel(productId = id, measurement = it)
+                    }
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(2_000),
+                initialValue = null,
+            )
 
     fun setDate(date: LocalDate) {
         viewModelScope.launch {
@@ -199,7 +239,96 @@ internal class MealsCardsViewModel(
             updateCalorieWidgetValues()
         }
     }
+
+    fun selectQuickCaptureProduct(product: QuickCaptureProductModel?) {
+        selectedQuickCaptureProductId.value = product?.id
+    }
+
+    fun createQuickCaptureEntry(
+        product: QuickCaptureProductModel,
+        measurement: Measurement,
+        mealId: Long,
+    ) {
+        val date = dateState.value ?: return
+        viewModelScope.launch {
+            createFoodDiaryEntryUseCase
+                .createDiaryEntry(
+                    measurement = measurement,
+                    mealId = mealId,
+                    date = date,
+                    food = product.toDiaryProduct(),
+                )
+                .onSuccess {
+                    eventBus.publish(
+                        FoodDiaryEntryCreatedEvent(
+                            foodId = product.id,
+                            timestamp = dateProvider.nowInstant(),
+                            measurement = measurement,
+                        )
+                    )
+                    updateCalorieWidgetValues()
+                }
+                .onError {
+                    error("Failed to create quick-capture diary entry for product ${product.id}")
+                }
+        }
+    }
 }
+
+internal data class QuickCaptureProductModel(
+    val id: FoodId.Product,
+    val name: String,
+    val brand: String?,
+    val isLiquid: Boolean,
+    val totalWeight: Double?,
+    val servingWeight: Double?,
+    val product: Product,
+) {
+    val headline: String = product.headline
+
+    val possibleMeasurementTypes: List<MeasurementType> =
+        buildList {
+            if (isLiquid) {
+                add(MeasurementType.Milliliter)
+            } else {
+                add(MeasurementType.Gram)
+            }
+            if (servingWeight != null) {
+                add(MeasurementType.Serving)
+            }
+            if (totalWeight != null) {
+                add(MeasurementType.Package)
+            }
+        }
+}
+
+internal data class QuickCaptureMeasurementModel(
+    val productId: FoodId.Product,
+    val measurement: Measurement,
+)
+
+private fun Product.toQuickCaptureProductModel(): QuickCaptureProductModel =
+    QuickCaptureProductModel(
+        id = id,
+        name = name,
+        brand = brand,
+        isLiquid = isLiquid,
+        totalWeight = totalWeight,
+        servingWeight = servingWeight,
+        product = this,
+    )
+
+private fun QuickCaptureProductModel.toDiaryProduct(): DiaryFoodProduct =
+    DiaryFoodProduct(
+        id = id,
+        name = headline,
+        nutritionFacts = product.nutritionFacts,
+        servingWeight = servingWeight,
+        totalWeight = totalWeight,
+        isLiquid = isLiquid,
+        source = product.source,
+        note = product.note,
+    )
 
 private suspend fun DiaryMeal.toMealModel(productRepository: ProductRepository): MealModel =
     MealModel(

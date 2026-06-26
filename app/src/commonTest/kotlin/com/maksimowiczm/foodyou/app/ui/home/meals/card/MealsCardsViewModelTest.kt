@@ -4,14 +4,24 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.database.TransactionScope
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.common.domain.event.EventBus
+import com.maksimowiczm.foodyou.common.domain.event.IntegrationEvent
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.Recipe
+import com.maksimowiczm.foodyou.food.domain.entity.RecipeIngredient
+import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
+import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
+import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
@@ -20,9 +30,11 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
+import com.maksimowiczm.foodyou.fooddiary.domain.event.FoodDiaryEntryCreatedEvent
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CreateFoodDiaryEntryUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +44,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -135,6 +148,49 @@ class MealsCardsViewModelTest {
         assertEquals(setOf(MealEntrySelectionKey.Food(food.id)), viewModel.selectedEntries.value)
     }
 
+    @Test
+    fun createQuickCaptureEntryCreatesEntryForSelectedMealAndDateAndPublishesEvent() =
+        runViewModelTest {
+            val foodEntries = FakeFoodDiaryEntryRepository()
+            val eventBus = RecordingEventBus()
+            val dateProvider = FixedDateProvider(LocalDateTime(2026, 6, 17, 8, 0))
+            val product =
+                product(
+                    id = 10,
+                    name = "Olive oil",
+                    isLiquid = true,
+                    packageWeight = 500.0,
+                    servingWeight = 15.0,
+                )
+            val viewModel =
+                createViewModel(
+                    foodEntryRepository = foodEntries,
+                    dateProvider = dateProvider,
+                    productRepository = FakeProductRepository(listOf(product)),
+                    eventBus = eventBus,
+                )
+            val measurement = Measurement.Milliliter(12.0)
+
+            viewModel.setDate(LocalDate(2026, 6, 18))
+            viewModel.createQuickCaptureEntry(
+                product = product.toQuickCaptureProductModel(),
+                measurement = measurement,
+                mealId = 2,
+            )
+            advanceUntilIdle()
+
+            val inserted = foodEntries.inserted.single()
+            assertEquals(measurement, inserted.measurement)
+            assertEquals(2, inserted.mealId)
+            assertEquals(LocalDate(2026, 6, 18), inserted.date)
+            assertEquals(product.id, (inserted.food as DiaryFoodProduct).id)
+
+            val event = eventBus.published.single() as FoodDiaryEntryCreatedEvent
+            assertEquals(product.id, event.foodId)
+            assertEquals(measurement, event.measurement)
+            assertEquals(dateProvider.nowInstant(), event.timestamp)
+        }
+
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
@@ -159,6 +215,8 @@ class MealsCardsViewModelTest {
                     )
             ),
         dateProvider: DateProvider = FixedDateProvider(LocalDateTime(2026, 6, 17, 8, 0)),
+        productRepository: ProductRepository = FakeProductRepository(),
+        eventBus: EventBus = RecordingEventBus(),
     ): MealsCardsViewModel {
         val preferencesRepository = FakeMealsPreferencesRepository()
         return MealsCardsViewModel(
@@ -175,10 +233,39 @@ class MealsCardsViewModelTest {
             mealRepository = mealRepository,
             transactionProvider = ImmediateTransactionProvider,
             dateProvider = dateProvider,
-            productRepository = EmptyProductRepository,
+            productRepository = productRepository,
+            observeMeasurementSuggestionsUseCase =
+                ObserveMeasurementSuggestionsUseCase(
+                    observeFoodUseCase =
+                        ObserveFoodUseCase(
+                            productRepository = productRepository,
+                            recipeRepository = EmptyRecipeRepository,
+                        ),
+                    repository = FakeFoodMeasurementSuggestionRepository(),
+                ),
+            createFoodDiaryEntryUseCase =
+                CreateFoodDiaryEntryUseCase(
+                    mealRepository = mealRepository,
+                    entryRepository = foodEntryRepository,
+                    transactionProvider = ImmediateTransactionProvider,
+                    dateProvider = dateProvider,
+                    logger = NoopLogger,
+                ),
+            eventBus = eventBus,
             mealsPreferencesRepository = preferencesRepository,
         ).also { viewModels += it }
     }
+
+    private fun Product.toQuickCaptureProductModel(): QuickCaptureProductModel =
+        QuickCaptureProductModel(
+            id = id,
+            name = name,
+            brand = brand,
+            isLiquid = isLiquid,
+            totalWeight = totalWeight,
+            servingWeight = servingWeight,
+            product = this,
+        )
 
     private fun foodModel(id: Long, mealId: Long = 1) =
         FoodMealEntryModel(
@@ -241,9 +328,39 @@ class MealsCardsViewModelTest {
             updatedAt = LocalDateTime(2026, 6, 17, 8, 0),
         )
 
+    private fun product(
+        id: Long,
+        name: String = "Product $id",
+        brand: String? = null,
+        isLiquid: Boolean = false,
+        packageWeight: Double? = null,
+        servingWeight: Double? = null,
+    ) =
+        Product(
+            id = FoodId.Product(id),
+            name = name,
+            brand = brand,
+            barcode = null,
+            note = null,
+            isLiquid = isLiquid,
+            packageWeight = packageWeight,
+            servingWeight = servingWeight,
+            source = FoodSource(FoodSource.Type.User),
+            nutritionFacts = NutritionFacts.Empty,
+        )
+
     private class FakeFoodDiaryEntryRepository : FoodDiaryEntryRepository {
+        data class Inserted(
+            val measurement: Measurement,
+            val mealId: Long,
+            val date: LocalDate,
+            val food: DiaryFood,
+            val createdAt: LocalDateTime,
+        )
+
         val entries = mutableMapOf<FoodDiaryEntryId, FoodDiaryEntry>()
         val deleted = mutableListOf<FoodDiaryEntryId>()
+        val inserted = mutableListOf<Inserted>()
 
         override fun observe(id: FoodDiaryEntryId): Flow<FoodDiaryEntry?> = flowOf(entries[id])
 
@@ -254,9 +371,12 @@ class MealsCardsViewModelTest {
             measurement: Measurement,
             mealId: Long,
             date: LocalDate,
-            food: com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood,
+            food: DiaryFood,
             createdAt: LocalDateTime,
-        ): FoodDiaryEntryId = error("Not used")
+        ): FoodDiaryEntryId {
+            inserted += Inserted(measurement, mealId, date, food, createdAt)
+            return FoodDiaryEntryId(inserted.size.toLong())
+        }
 
         override suspend fun update(entry: FoodDiaryEntry) {
             entries[entry.id] = entry
@@ -343,8 +463,11 @@ class MealsCardsViewModelTest {
             )
     }
 
-    private object EmptyProductRepository : ProductRepository {
-        override fun observeProduct(id: FoodId.Product): Flow<Product?> = flowOf(null)
+    private class FakeProductRepository(products: List<Product> = emptyList()) :
+        ProductRepository {
+        private val products = products.associateBy { it.id }
+
+        override fun observeProduct(id: FoodId.Product): Flow<Product?> = flowOf(products[id])
 
         override fun observeProductByBarcode(barcode: String): Flow<Product?> = flowOf(null)
 
@@ -353,7 +476,10 @@ class MealsCardsViewModelTest {
         override suspend fun getProductBySource(type: FoodSource.Type, url: String): Product? = null
 
         override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
-            flowOf(emptyList())
+            flowOf(products.values.toList().drop(offset).take(limit))
+
+        override fun observeQuickCaptureProducts(): Flow<List<Product>> =
+            flowOf(products.values.filter { it.isQuickCapture })
 
         override fun observeProductsBySource(
             type: FoodSource.Type,
@@ -398,5 +524,52 @@ class MealsCardsViewModelTest {
         override suspend fun deleteProduct(product: Product) = Unit
 
         override suspend fun deleteProductsBySource(type: FoodSource.Type): Int = 0
+    }
+
+    private object EmptyRecipeRepository : RecipeRepository {
+        override fun observeRecipe(recipeId: FoodId.Recipe): Flow<Recipe?> = flowOf(null)
+
+        override suspend fun insertRecipe(
+            name: String,
+            servings: Int,
+            note: String?,
+            isLiquid: Boolean,
+            ingredients: List<RecipeIngredient>,
+        ): FoodId.Recipe = error("Not used")
+
+        override suspend fun updateRecipe(recipe: Recipe) = Unit
+
+        override suspend fun deleteRecipe(recipe: Recipe) = Unit
+    }
+
+    private class FakeFoodMeasurementSuggestionRepository : FoodMeasurementSuggestionRepository {
+        override suspend fun insert(foodId: FoodId, measurement: Measurement) = Unit
+
+        override suspend fun findLatestByProductIdAndType(
+            productId: FoodId.Product,
+            type: com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType,
+        ): Measurement? = null
+
+        override fun observeByFoodId(foodId: FoodId, limit: Int): Flow<List<Measurement>> =
+            flowOf(emptyList())
+    }
+
+    private class RecordingEventBus : EventBus {
+        override val events: Flow<IntegrationEvent> = MutableSharedFlow()
+        val published = mutableListOf<IntegrationEvent>()
+
+        override fun publish(integrationEvent: IntegrationEvent) {
+            published += integrationEvent
+        }
+    }
+
+    private object NoopLogger : Logger {
+        override fun d(tag: String, throwable: Throwable?, message: () -> String) = Unit
+
+        override fun w(tag: String, throwable: Throwable?, message: () -> String) = Unit
+
+        override fun e(tag: String, throwable: Throwable?, message: () -> String) = Unit
+
+        override fun i(tag: String, throwable: Throwable?, message: () -> String) = Unit
     }
 }

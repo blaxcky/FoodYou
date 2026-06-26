@@ -82,7 +82,6 @@ fun HomeScreen(
     onPendingProducts: () -> Unit,
     onFoodSnap: () -> Unit,
     onTitle: () -> Unit,
-    onMealCardLongClick: (mealId: Long) -> Unit,
     onMealCardAddClick: (epochDay: Long, mealId: Long) -> Unit,
     onMealCardQuickAddClick: (epochDay: Long, mealId: Long) -> Unit,
     onMealCardBarcodeScanClick: (epochDay: Long, mealId: Long) -> Unit,
@@ -110,7 +109,6 @@ fun HomeScreen(
             onBarcodeScan = onMealCardBarcodeScanClick,
             onEditEntry = onEditDiaryEntryClick,
             onEditFood = onEditFoodClick,
-            onLongClick = onMealCardLongClick,
         )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

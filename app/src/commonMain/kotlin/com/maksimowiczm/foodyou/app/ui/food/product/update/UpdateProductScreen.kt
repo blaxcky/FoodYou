@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Sync
@@ -78,7 +80,10 @@ internal fun UpdateProductScreen(
         // TODO loading state
         return
     } else {
-        val productForm = key(product.copy(isFavorite = false)) { rememberProductFormState(product) }
+        val productForm =
+            key(product.copy(isFavorite = false, isQuickCapture = false)) {
+                rememberProductFormState(product)
+            }
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
         val showFddbResync =
             product.source.type == FoodSource.Type.FDDB && !product.source.url.isNullOrBlank()
@@ -130,6 +135,26 @@ internal fun UpdateProductScreen(
                                             Res.string.action_remove_from_favorites
                                         } else {
                                             Res.string.action_mark_as_favorite
+                                        }
+                                    ),
+                            )
+                        }
+                        IconButton(
+                            onClick = { viewModel.setQuickCapture(!product.isQuickCapture) }
+                        ) {
+                            Icon(
+                                imageVector =
+                                    if (product.isQuickCapture) {
+                                        Icons.Filled.FlashOn
+                                    } else {
+                                        Icons.Outlined.FlashOn
+                                    },
+                                contentDescription =
+                                    stringResource(
+                                        if (product.isQuickCapture) {
+                                            Res.string.action_remove_from_quick_capture
+                                        } else {
+                                            Res.string.action_add_to_quick_capture
                                         }
                                     ),
                             )

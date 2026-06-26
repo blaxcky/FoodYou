@@ -26,4 +26,6 @@ data class ProductEntity(
     val isLiquid: Boolean,
     @ColumnInfo(defaultValue = "0")
     val isFavorite: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isQuickCapture: Boolean = false,
 )

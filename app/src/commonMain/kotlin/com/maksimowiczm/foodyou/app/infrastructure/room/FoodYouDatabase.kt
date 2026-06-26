@@ -166,7 +166,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 46
+        const val VERSION = 47
 
         private val migrations: List<Migration> =
             listOf(
@@ -198,6 +198,7 @@ abstract class FoodYouDatabase :
                 FddbProductSyncStatusMigration,
                 FoodSnapMigration,
                 ProductFavoriteMigration,
+                ProductQuickCaptureMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -207,6 +208,12 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object ProductQuickCaptureMigration : Migration(46, 47) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `Product` ADD COLUMN `isQuickCapture` INTEGER NOT NULL DEFAULT 0")
     }
 }
 

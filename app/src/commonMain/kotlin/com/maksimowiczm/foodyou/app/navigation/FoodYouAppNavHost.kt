@@ -104,7 +104,6 @@ fun FoodYouAppNavHost(
                 onPendingProducts = { navController.navigateSingleTop(PendingProducts) },
                 onFoodSnap = { navController.navigateSingleTop(FoodSnapInbox) },
                 onTitle = { navController.navigateSingleTop(About) },
-                onMealCardLongClick = { navController.navigateSingleTop(MealsPersonalization) },
                 onMealCardAddClick = { epochDay, mealId ->
                     navController.navigateSingleTop(FoodDiarySearch(epochDay, mealId))
                 },

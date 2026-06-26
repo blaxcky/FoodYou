@@ -31,6 +31,9 @@ fun Module.home() {
             transactionProvider = get(),
             dateProvider = get(),
             productRepository = get(),
+            observeMeasurementSuggestionsUseCase = get(),
+            createFoodDiaryEntryUseCase = get(),
+            eventBus = get(),
             mealsPreferencesRepository = userPreferencesRepository(),
         )
     }

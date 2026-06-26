@@ -64,6 +64,16 @@ abstract class ProductDao {
 
     @Query(
         """
+        SELECT *
+        FROM Product
+        WHERE isQuickCapture = 1
+        ORDER BY name COLLATE NOCASE ASC, brand COLLATE NOCASE ASC
+        """
+    )
+    abstract fun observeQuickCaptureProducts(): Flow<List<ProductEntity>>
+
+    @Query(
+        """
         SELECT COUNT(*)
         FROM Product
         WHERE sourceType = :sourceType
@@ -83,6 +93,15 @@ abstract class ProductDao {
         """
     )
     abstract suspend fun setProductFavorite(id: Long, isFavorite: Boolean)
+
+    @Query(
+        """
+        UPDATE Product
+        SET isQuickCapture = :isQuickCapture
+        WHERE id = :id
+        """
+    )
+    abstract suspend fun setProductQuickCapture(id: Long, isQuickCapture: Boolean)
 
     @Delete abstract suspend fun deleteProduct(product: ProductEntity)
 

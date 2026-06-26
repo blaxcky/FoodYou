@@ -15,6 +15,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductError
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SetProductQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ internal class UpdateProductViewModel(
     private val updateProductUseCase: UpdateProductUseCase,
     private val resyncFddbProductUseCase: ResyncFddbProductUseCase,
     private val setProductFavoriteUseCase: SetProductFavoriteUseCase,
+    private val setProductQuickCaptureUseCase: SetProductQuickCaptureUseCase,
     private val productId: FoodId.Product,
 ) : ViewModel() {
 
@@ -115,6 +117,12 @@ internal class UpdateProductViewModel(
 
     fun setFavorite(isFavorite: Boolean) {
         viewModelScope.launch { setProductFavoriteUseCase.setFavorite(productId, isFavorite) }
+    }
+
+    fun setQuickCapture(isQuickCapture: Boolean) {
+        viewModelScope.launch {
+            setProductQuickCaptureUseCase.setQuickCapture(productId, isQuickCapture)
+        }
     }
 }
 

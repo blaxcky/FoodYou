@@ -37,6 +37,7 @@
     <string name="headline_goals_card">Goals card</string>
     <string name="headline_calendar">Calendar</string>
     <string name="headline_meals_settings">Meals settings</string>
+    <string name="headline_quick_capture">Quick capture</string>
     <string name="headline_horizontal">Horizontal</string>
     <string name="headline_vertical">Vertical</string>
     <string name="headline_values_per">Values per</string>
@@ -184,6 +185,8 @@
     <string name="action_delete">Delete</string>
     <string name="action_mark_as_favorite">Mark as favorite</string>
     <string name="action_remove_from_favorites">Remove from favorites</string>
+    <string name="action_add_to_quick_capture">Add to quick capture</string>
+    <string name="action_remove_from_quick_capture">Remove from quick capture</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_add_meal">Add meal</string>
     <string name="action_add_activity">Add activity</string>
@@ -538,6 +541,7 @@
     <string name="headline_quick_add">Quick add</string>
     <string name="headline_delete_selected_entries">Delete selected entries</string>
     <string name="headline_select_target_meal">Select target meal</string>
+    <string name="description_quick_capture_empty">Mark products for quick capture from the product edit screen.</string>
     <string name="label_selected_entries_count">%1$d selected</string>
     <string name="description_quick_add">Quick Add lets you log without searching for specific foods. It's a fast way to record meals when you already know the calorie count or want a simple estimate.</string>
     <string name="headline_quick_add_csv">CSV import</string>

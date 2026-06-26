@@ -16,6 +16,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
  * @param servingWeight Weight of a single serving of the product, if available.
  * @param source Source of the product.
  * @param isFavorite Whether the product is marked as a local favorite.
+ * @param isQuickCapture Whether the product is available from the meal card quick-capture menu.
  * @param nutritionFacts Nutrition facts of the product per 100g or 100ml, depending on whether the
  *   product is solid or liquid.
  */
@@ -31,6 +32,7 @@ data class Product(
     val portions: List<ProductPortion> = emptyList(),
     val source: FoodSource,
     val isFavorite: Boolean = false,
+    val isQuickCapture: Boolean = false,
     override val nutritionFacts: NutritionFacts,
 ) : Food {
     override val totalWeight: Double? = packageWeight

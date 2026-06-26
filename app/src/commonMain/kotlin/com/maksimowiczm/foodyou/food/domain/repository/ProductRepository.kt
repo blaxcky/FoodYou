@@ -21,6 +21,8 @@ interface ProductRepository {
 
     fun observeProductsBySource(type: FoodSource.Type, limit: Int, offset: Int): Flow<List<Product>>
 
+    fun observeQuickCaptureProducts(): Flow<List<Product>> = error("Not implemented")
+
     fun observeProductCountBySource(type: FoodSource.Type): Flow<Int>
 
     /**
@@ -68,6 +70,10 @@ interface ProductRepository {
     suspend fun updateProduct(product: Product)
 
     suspend fun setProductFavorite(id: FoodId.Product, isFavorite: Boolean) {
+        error("Not implemented")
+    }
+
+    suspend fun setProductQuickCapture(id: FoodId.Product, isQuickCapture: Boolean) {
         error("Not implemented")
     }
 

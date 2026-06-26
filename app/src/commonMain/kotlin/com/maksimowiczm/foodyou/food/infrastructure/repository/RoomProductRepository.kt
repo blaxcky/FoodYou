@@ -33,6 +33,9 @@ internal class RoomProductRepository(
     override fun observeProductsBySource(type: FoodSource.Type, limit: Int, offset: Int): Flow<List<Product>> =
         productDao.observeProductsBySource(type.toEntity(), limit, offset).map { list -> list.map { it.toModel() } }
 
+    override fun observeQuickCaptureProducts(): Flow<List<Product>> =
+        productDao.observeQuickCaptureProducts().map { list -> list.map { it.toModel() } }
+
     override fun observeProductCountBySource(type: FoodSource.Type): Flow<Int> =
         productDao.observeProductCountBySource(type.toEntity())
 
@@ -90,6 +93,7 @@ internal class RoomProductRepository(
                 portions = emptyList(),
                 source = source,
                 isFavorite = false,
+                isQuickCapture = false,
                 nutritionFacts = nutritionFacts,
             )
         val entity = product.toEntity()
@@ -121,6 +125,7 @@ internal class RoomProductRepository(
                 portions = emptyList(),
                 source = source,
                 isFavorite = false,
+                isQuickCapture = false,
                 nutritionFacts = nutritionFacts,
             )
         return productDao.insertUniqueProduct(product.toEntity())?.let(FoodId::Product)
@@ -132,6 +137,10 @@ internal class RoomProductRepository(
 
     override suspend fun setProductFavorite(id: FoodId.Product, isFavorite: Boolean) {
         productDao.setProductFavorite(id.id, isFavorite)
+    }
+
+    override suspend fun setProductQuickCapture(id: FoodId.Product, isQuickCapture: Boolean) {
+        productDao.setProductQuickCapture(id.id, isQuickCapture)
     }
 
     override suspend fun replaceProductPortions(
@@ -187,6 +196,7 @@ private fun ProductEntity.toModel(
         portions = portions.effectivePortions(overrides),
         source = FoodSource(type = this.sourceType.toDomain(), url = this.sourceUrl),
         isFavorite = this.isFavorite,
+        isQuickCapture = this.isQuickCapture,
         nutritionFacts = this.toNutritionFacts(),
     )
 
@@ -211,6 +221,7 @@ private fun Product.toEntity(): ProductEntity {
         sourceUrl = source.url,
         isLiquid = isLiquid,
         isFavorite = isFavorite,
+        isQuickCapture = isQuickCapture,
     )
 }
 
