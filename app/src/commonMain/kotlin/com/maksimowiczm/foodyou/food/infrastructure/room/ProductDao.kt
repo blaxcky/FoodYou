@@ -75,6 +75,15 @@ abstract class ProductDao {
 
     @Update abstract suspend fun updateProduct(product: ProductEntity)
 
+    @Query(
+        """
+        UPDATE Product
+        SET isFavorite = :isFavorite
+        WHERE id = :id
+        """
+    )
+    abstract suspend fun setProductFavorite(id: Long, isFavorite: Boolean)
+
     @Delete abstract suspend fun deleteProduct(product: ProductEntity)
 
     @Query(

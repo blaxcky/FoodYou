@@ -1,7 +1,14 @@
 package com.maksimowiczm.foodyou.app.ui.food.search
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodErrorListItem
@@ -27,6 +34,7 @@ internal fun FoodSearchListItem(
     food: FoodSearch.Product,
     measurement: Measurement,
     onClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val weight = food.weight(measurement)
@@ -78,6 +86,12 @@ internal fun FoodSearchListItem(
         measurement = { Text(measurementString) },
         isRecipe = false,
         onClick = onClick,
+        trailingContent = {
+            FavoriteIconButton(
+                isFavorite = food.isFavorite,
+                onClick = onFavoriteClick,
+            )
+        },
         modifier = modifier,
     )
 }
@@ -158,6 +172,7 @@ private fun FoodSearchListItem(
     isRecipe: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     val g = stringResource(Res.string.unit_gram_short)
 
@@ -180,5 +195,31 @@ private fun FoodSearchListItem(
         isRecipe = isRecipe,
         modifier = modifier,
         onClick = onClick,
+        trailingContent = trailingContent,
     )
+}
+
+@Composable
+private fun FavoriteIconButton(
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val contentDescription =
+        stringResource(
+            if (isFavorite) {
+                Res.string.action_remove_from_favorites
+            } else {
+                Res.string.action_mark_as_favorite
+            }
+        )
+
+    IconButton(onClick = onClick, modifier = modifier) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                contentDescription = contentDescription,
+            )
+        }
+    }
 }

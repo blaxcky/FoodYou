@@ -173,7 +173,7 @@ interface FoodSearchDao {
         UNION ALL
         SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
         FROM RecipesSearch p
-        ORDER BY headline COLLATE NOCASE ASC
+        ORDER BY isFavorite DESC, headline COLLATE NOCASE ASC
         """
     )
     fun observeFoodByQuery(
@@ -209,7 +209,7 @@ interface FoodSearchDao {
         UNION ALL
         SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
         FROM RecipesSearch p
-        ORDER BY headline COLLATE NOCASE ASC
+        ORDER BY isFavorite DESC, headline COLLATE NOCASE ASC
         """
     )
     fun observeFoodByQueryFromSources(
@@ -574,7 +574,8 @@ p.seleniumMicro,
 p.iodineMicro,
 p.chromiumMicro,
 p.packageWeight as totalWeight,
-p.servingWeight as servingWeight
+p.servingWeight as servingWeight,
+p.isFavorite
 """
 
 private const val RECIPE_FOOD_SEARCH_SQL_SELECT =
@@ -627,7 +628,8 @@ NULL AS seleniumMicro,
 NULL AS iodineMicro,
 NULL AS chromiumMicro,
 NULL AS totalWeight,
-NULL AS servingWeight
+NULL AS servingWeight,
+0 AS isFavorite
 """
 
 private const val LATEST_MEASUREMENT_SQL_SELECT =
@@ -687,6 +689,7 @@ iodineMicro,
 chromiumMicro,
 totalWeight,
 servingWeight,
+isFavorite,
 measurementType,
 measurementValue
 """

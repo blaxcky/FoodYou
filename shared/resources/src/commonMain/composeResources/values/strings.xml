@@ -182,6 +182,8 @@
     <string name="action_go_to_settings">Go to settings</string>
     <string name="action_save">Save</string>
     <string name="action_delete">Delete</string>
+    <string name="action_mark_as_favorite">Mark as favorite</string>
+    <string name="action_remove_from_favorites">Remove from favorites</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_add_meal">Add meal</string>
     <string name="action_add_activity">Add activity</string>

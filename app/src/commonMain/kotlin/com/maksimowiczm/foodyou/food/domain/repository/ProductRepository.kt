@@ -67,6 +67,10 @@ interface ProductRepository {
 
     suspend fun updateProduct(product: Product)
 
+    suspend fun setProductFavorite(id: FoodId.Product, isFavorite: Boolean) {
+        error("Not implemented")
+    }
+
     suspend fun replaceProductPortions(
         productId: FoodId.Product,
         sourceType: FoodSource.Type,

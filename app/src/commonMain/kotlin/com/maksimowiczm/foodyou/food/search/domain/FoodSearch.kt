@@ -18,6 +18,7 @@ sealed interface FoodSearch {
         val nutritionFacts: NutritionFacts,
         val totalWeight: Double?,
         val servingWeight: Double?,
+        val isFavorite: Boolean,
         override val suggestedMeasurement: Measurement,
     ) : FoodSearch {
         fun weight(measurement: Measurement): Double? =

@@ -34,8 +34,16 @@ class RoomFoodSearchRepositoryTest {
         )
     }
 
+    @Test
+    fun mapsFavoriteFlag() {
+        val food = foodSearch(isFavorite = true)
+
+        assertEquals(true, (food.toFoodSearchModel() as FoodSearch.Product).isFavorite)
+    }
+
     private fun foodSearch(
         totalWeight: Double? = null,
+        isFavorite: Boolean = false,
         measurementType: MeasurementType? = null,
         measurementValue: Double? = null,
     ) =
@@ -49,6 +57,7 @@ class RoomFoodSearchRepositoryTest {
             minerals = null,
             totalWeight = totalWeight,
             servingWeight = null,
+            isFavorite = isFavorite,
             measurementType = measurementType,
             measurementValue = measurementValue,
         )

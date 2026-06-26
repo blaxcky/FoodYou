@@ -166,7 +166,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 45
+        const val VERSION = 46
 
         private val migrations: List<Migration> =
             listOf(
@@ -197,6 +197,7 @@ abstract class FoodYouDatabase :
                 ProductPortionOverrideMigration,
                 FddbProductSyncStatusMigration,
                 FoodSnapMigration,
+                ProductFavoriteMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -206,6 +207,12 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object ProductFavoriteMigration : Migration(45, 46) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `Product` ADD COLUMN `isFavorite` INTEGER NOT NULL DEFAULT 0")
     }
 }
 

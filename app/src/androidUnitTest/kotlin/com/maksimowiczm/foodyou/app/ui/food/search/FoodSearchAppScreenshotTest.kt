@@ -68,6 +68,7 @@ class FoodSearchAppScreenshotTest {
                         uiState = SearchUiState,
                         onSearch = {},
                         onSourceChange = {},
+                        onProductFavoriteChange = { _, _ -> },
                         onFoodClick = { _, _ -> },
                         onUpdateUsdaApiKey = {},
                         onUpdateOpenFoodFactsCredentials = {},
@@ -96,6 +97,7 @@ class FoodSearchAppScreenshotTest {
                     uiState = SearchUiState,
                     onSearch = {},
                     onSourceChange = {},
+                    onProductFavoriteChange = { _, _ -> },
                     onFoodClick = { _, _ -> },
                     onUpdateUsdaApiKey = {},
                     onUpdateOpenFoodFactsCredentials = {},
@@ -143,6 +145,7 @@ class FoodSearchAppScreenshotTest {
                 nutritionFacts = NutritionFacts.Empty,
                 totalWeight = null,
                 servingWeight = null,
+                isFavorite = false,
                 suggestedMeasurement = Measurement.Gram(100.0),
             )
     }

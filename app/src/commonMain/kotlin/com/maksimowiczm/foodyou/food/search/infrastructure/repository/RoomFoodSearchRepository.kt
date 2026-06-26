@@ -280,6 +280,7 @@ internal fun RoomFoodSearch.toFoodSearchModel(): FoodSearch =
                     ),
                 totalWeight = totalWeight,
                 servingWeight = servingWeight,
+                isFavorite = isFavorite,
                 suggestedMeasurement = suggestedMeasurement,
             )
 

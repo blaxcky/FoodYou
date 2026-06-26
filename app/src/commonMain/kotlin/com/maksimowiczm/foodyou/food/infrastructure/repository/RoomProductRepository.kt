@@ -89,6 +89,7 @@ internal class RoomProductRepository(
                 servingWeight = servingWeight,
                 portions = emptyList(),
                 source = source,
+                isFavorite = false,
                 nutritionFacts = nutritionFacts,
             )
         val entity = product.toEntity()
@@ -119,6 +120,7 @@ internal class RoomProductRepository(
                 servingWeight = servingWeight,
                 portions = emptyList(),
                 source = source,
+                isFavorite = false,
                 nutritionFacts = nutritionFacts,
             )
         return productDao.insertUniqueProduct(product.toEntity())?.let(FoodId::Product)
@@ -126,6 +128,10 @@ internal class RoomProductRepository(
 
     override suspend fun updateProduct(product: Product) {
         productDao.updateProduct(product.toEntity())
+    }
+
+    override suspend fun setProductFavorite(id: FoodId.Product, isFavorite: Boolean) {
+        productDao.setProductFavorite(id.id, isFavorite)
     }
 
     override suspend fun replaceProductPortions(
@@ -180,6 +186,7 @@ private fun ProductEntity.toModel(
         servingWeight = this.servingWeight,
         portions = portions.effectivePortions(overrides),
         source = FoodSource(type = this.sourceType.toDomain(), url = this.sourceUrl),
+        isFavorite = this.isFavorite,
         nutritionFacts = this.toNutritionFacts(),
     )
 
@@ -203,6 +210,7 @@ private fun Product.toEntity(): ProductEntity {
         sourceType = source.type.toEntity(),
         sourceUrl = source.url,
         isLiquid = isLiquid,
+        isFavorite = isFavorite,
     )
 }
 

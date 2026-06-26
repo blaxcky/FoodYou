@@ -12,6 +12,7 @@ import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRep
 import com.maksimowiczm.foodyou.common.extension.combine
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FoodSearchHistoryRepository
+import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearchPreferences
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearchRepository
 import com.maksimowiczm.foodyou.food.search.domain.FoodSearchUseCase
@@ -40,6 +41,7 @@ internal class FoodSearchViewModel(
     searchHistoryRepository: FoodSearchHistoryRepository,
     private val foodSearchRepository: FoodSearchRepository,
     private val foodSearchUseCase: FoodSearchUseCase,
+    private val setProductFavoriteUseCase: SetProductFavoriteUseCase,
     private val dateProvider: DateProvider,
 ) : ViewModel() {
 
@@ -55,6 +57,10 @@ internal class FoodSearchViewModel(
 
     fun changeSource(source: FoodFilter.Source) {
         filter.update { it.copy(source = source) }
+    }
+
+    fun setProductFavorite(id: FoodId.Product, isFavorite: Boolean) {
+        viewModelScope.launch { setProductFavoriteUseCase.setFavorite(id, isFavorite) }
     }
 
     private val foodPreferences =

@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -75,7 +78,7 @@ internal fun UpdateProductScreen(
         // TODO loading state
         return
     } else {
-        val productForm = key(product) { rememberProductFormState(product) }
+        val productForm = key(product.copy(isFavorite = false)) { rememberProductFormState(product) }
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
         val showFddbResync =
             product.source.type == FoodSource.Type.FDDB && !product.source.url.isNullOrBlank()
@@ -113,6 +116,24 @@ internal fun UpdateProductScreen(
                     title = { Text(stringResource(Res.string.headline_edit_product)) },
                     navigationIcon = { ArrowBackIconButton(handleBack) },
                     actions = {
+                        IconButton(onClick = { viewModel.setFavorite(!product.isFavorite) }) {
+                            Icon(
+                                imageVector =
+                                    if (product.isFavorite) {
+                                        Icons.Filled.Star
+                                    } else {
+                                        Icons.Outlined.StarBorder
+                                    },
+                                contentDescription =
+                                    stringResource(
+                                        if (product.isFavorite) {
+                                            Res.string.action_remove_from_favorites
+                                        } else {
+                                            Res.string.action_mark_as_favorite
+                                        }
+                                    ),
+                            )
+                        }
                         FilledIconButton(
                             onClick = { viewModel.updateProduct(productForm) },
                             enabled = productForm.isValid,

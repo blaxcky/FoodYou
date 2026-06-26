@@ -30,6 +30,7 @@ fun Module.food() {
             searchHistoryRepository = get(),
             foodSearchRepository = get(),
             foodSearchUseCase = get(),
+            setProductFavoriteUseCase = get(),
             dateProvider = get(),
         )
     }

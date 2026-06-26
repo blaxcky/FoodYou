@@ -27,6 +27,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductsUseCas
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodSnapEntriesUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ProcessFoodSnapEntryUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncDueFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateRecipeUseCase
@@ -75,6 +76,7 @@ fun Module.foodDomainModule() {
     factoryOf(::ObserveFoodSnapEntriesUseCase)
     factoryOf(::ProcessFoodSnapEntryUseCase)
     factoryOf(::ResyncFddbProductUseCase)
+    factoryOf(::SetProductFavoriteUseCase)
     factoryOf(::SyncDueFddbProductsUseCase)
     factoryOf(::UpdateProductUseCase)
     factoryOf(::UpdateRecipeUseCase)

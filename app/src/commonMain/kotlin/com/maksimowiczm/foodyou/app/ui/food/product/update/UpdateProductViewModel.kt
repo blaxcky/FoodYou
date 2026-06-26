@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductError
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,7 @@ internal class UpdateProductViewModel(
     observeFoodUseCase: ObserveFoodUseCase,
     private val updateProductUseCase: UpdateProductUseCase,
     private val resyncFddbProductUseCase: ResyncFddbProductUseCase,
+    private val setProductFavoriteUseCase: SetProductFavoriteUseCase,
     private val productId: FoodId.Product,
 ) : ViewModel() {
 
@@ -109,6 +111,10 @@ internal class UpdateProductViewModel(
                 _isResyncing.value = false
             }
         }
+    }
+
+    fun setFavorite(isFavorite: Boolean) {
+        viewModelScope.launch { setProductFavoriteUseCase.setFavorite(productId, isFavorite) }
     }
 }
 

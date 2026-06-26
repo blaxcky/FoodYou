@@ -76,6 +76,7 @@ fun FoodSearchApp(
         uiState = viewModel.uiState.collectAsStateWithLifecycle().value,
         onSearch = viewModel::search,
         onSourceChange = viewModel::changeSource,
+        onProductFavoriteChange = viewModel::setProductFavorite,
         onFoodClick = onFoodClick,
         onUpdateUsdaApiKey = onUpdateUsdaApiKey,
         onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
@@ -95,6 +96,7 @@ internal fun FoodSearchApp(
     uiState: FoodSearchUiState,
     onSearch: (String?) -> Unit,
     onSourceChange: (FoodFilter.Source) -> Unit,
+    onProductFavoriteChange: (FoodId.Product, Boolean) -> Unit,
     onFoodClick: (FoodSearch, Measurement) -> Unit,
     onUpdateUsdaApiKey: () -> Unit,
     onUpdateOpenFoodFactsCredentials: () -> Unit,
@@ -190,6 +192,7 @@ internal fun FoodSearchApp(
                     pages = pages,
                     listState = appState.listStates.state(uiState.filter.source),
                     source = uiState.filter.source,
+                    onProductFavoriteChange = onProductFavoriteChange,
                     onFoodClick = onFoodClick,
                     modifier = Modifier.fillMaxSize().padding(top = topContentHeightDp),
                     contentPadding =
@@ -208,6 +211,7 @@ internal fun FoodSearchApp(
                         pages = pages,
                         listState = appState.listStates.state(uiState.filter.source),
                         source = uiState.filter.source,
+                        onProductFavoriteChange = onProductFavoriteChange,
                         onFoodClick = onFoodClick,
                         modifier = Modifier.fillMaxWidth().weight(1f),
                         contentPadding = PaddingValues(bottom = 56.dp + 32.dp),
@@ -275,6 +279,7 @@ private fun FoodSearchResults(
     pages: LazyPagingItems<FoodSearch>?,
     listState: LazyListState,
     source: FoodFilter.Source,
+    onProductFavoriteChange: (FoodId.Product, Boolean) -> Unit,
     onFoodClick: (FoodSearch, Measurement) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
@@ -307,6 +312,9 @@ private fun FoodSearchResults(
                                 food = food,
                                 measurement = measurement,
                                 onClick = { onFoodClick(food, measurement) },
+                                onFavoriteClick = {
+                                    onProductFavoriteChange(food.id, !food.isFavorite)
+                                },
                             )
                         }
 

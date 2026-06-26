@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.food.infrastructure.room
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -23,4 +24,6 @@ data class ProductEntity(
     val sourceType: FoodSourceType,
     val sourceUrl: String? = null,
     val isLiquid: Boolean,
+    @ColumnInfo(defaultValue = "0")
+    val isFavorite: Boolean = false,
 )

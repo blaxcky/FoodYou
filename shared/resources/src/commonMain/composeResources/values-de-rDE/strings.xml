@@ -292,6 +292,8 @@
     <string name="action_go_to_settings">Zu den Einstellungen</string>
     <string name="action_save">Speichern</string>
     <string name="action_delete">Löschen</string>
+    <string name="action_mark_as_favorite">Als Favorit markieren</string>
+    <string name="action_remove_from_favorites">Favorit entfernen</string>
     <string name="action_confirm">Bestätigen</string>
     <string name="action_add_meal">Mahlzeit hinzufügen</string>
     <string name="action_add_activity">Aktivität eintragen</string>

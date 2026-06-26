@@ -16,6 +16,7 @@ data class FoodSearch(
     @Embedded val minerals: Minerals?,
     val totalWeight: Double?,
     val servingWeight: Double?,
+    val isFavorite: Boolean,
     val measurementType: MeasurementType?,
     val measurementValue: Double?,
 )
