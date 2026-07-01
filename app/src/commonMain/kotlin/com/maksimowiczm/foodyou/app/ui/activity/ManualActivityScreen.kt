@@ -7,13 +7,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -107,36 +107,41 @@ fun ManualActivityScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = viewModel::setName,
-                label = { Text(stringResource(Res.string.product_name)) },
-                trailingIcon =
-                    if (id == null) {
-                        {
-                            IconButton(onClick = { showPresetMenu = !showPresetMenu }) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = null,
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showPresetMenu,
-                                onDismissRequest = { showPresetMenu = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(ManualActivityPreset.Crosstrainer.activityName) },
-                                    onClick = {
-                                        showPresetMenu = false
-                                        viewModel.selectPreset(ManualActivityPreset.Crosstrainer)
-                                    },
-                                )
-                            }
-                        }
-                    } else {
-                        null
-                    },
-            )
+            if (id == null) {
+                ExposedDropdownMenuBox(
+                    expanded = showPresetMenu,
+                    onExpandedChange = { showPresetMenu = it },
+                ) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = viewModel::setName,
+                        modifier =
+                            Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                        label = { Text(stringResource(Res.string.product_name)) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showPresetMenu)
+                        },
+                    )
+                    ExposedDropdownMenu(
+                        expanded = showPresetMenu,
+                        onDismissRequest = { showPresetMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(ManualActivityPreset.Crosstrainer.activityName) },
+                            onClick = {
+                                showPresetMenu = false
+                                viewModel.selectPreset(ManualActivityPreset.Crosstrainer)
+                            },
+                        )
+                    }
+                }
+            } else {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = viewModel::setName,
+                    label = { Text(stringResource(Res.string.product_name)) },
+                )
+            }
             OutlinedTextField(
                 value = energyKcal,
                 onValueChange = viewModel::setEnergyKcal,
