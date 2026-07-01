@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -535,7 +537,7 @@ private fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Modi
 }
 
 @Composable
-private fun WeeklyGoalsChart(
+internal fun WeeklyGoalsChart(
     days: List<WeekDaySummaryModel>,
     today: LocalDate,
     modifier: Modifier = Modifier,
@@ -617,14 +619,22 @@ private fun WeeklyBar(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom,
             ) {
-                Text(
+                BasicText(
                     text = day.energy.toString().groupDigits(),
-                    color = GoalsTextColor,
                     style =
                         MaterialTheme.typography.labelMedium.copy(
-                            fontFamily = interNumberFontFamily()
+                            color = GoalsTextColor,
+                            fontFamily = interNumberFontFamily(),
+                            textAlign = TextAlign.Center,
                         ),
                     maxLines = 1,
+                    softWrap = false,
+                    autoSize =
+                        TextAutoSize.StepBased(
+                            minFontSize = 9.sp,
+                            maxFontSize = MaterialTheme.typography.labelMedium.fontSize,
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(4.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(barMaxHeight * valueHeight)) {

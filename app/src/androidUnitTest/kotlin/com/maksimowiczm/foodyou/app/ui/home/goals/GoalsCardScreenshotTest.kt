@@ -18,6 +18,7 @@ import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatterProvider
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -121,6 +122,16 @@ class GoalsCardScreenshotTest {
             width = 414,
             height = 322,
         )
+    }
+
+    @Test
+    fun weeklyChartLargeValueNarrowPhone() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-chart-large-value-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 220),
+        ) {
+            WeeklyGoalsChartGolden()
+        }
     }
 
     @Test
@@ -254,6 +265,24 @@ class GoalsCardScreenshotTest {
         }
     }
 
+    @Composable
+    private fun WeeklyGoalsChartGolden() {
+        MaterialTheme {
+            Box(
+                modifier =
+                    Modifier.requiredSize(width = 320.dp, height = 220.dp)
+                        .background(Color(0xFFEEF5FA))
+                        .padding(horizontal = 12.dp, vertical = 18.dp)
+            ) {
+                WeeklyGoalsChart(
+                    days = WeeklyChartLargeValueFixture,
+                    today = WeeklyChartToday,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
     private data class GoalsCardFixture(
         val energy: Int,
         val burnedEnergy: Int,
@@ -290,6 +319,47 @@ class GoalsCardScreenshotTest {
                 carbohydratesGoal = 128,
                 fats = 0,
                 fatsGoal = 68,
+            )
+
+        val WeeklyChartToday = LocalDate.parse("2026-07-01")
+
+        val WeeklyChartLargeValueFixture =
+            listOf(
+                WeekDaySummaryModel(
+                    date = LocalDate.parse("2026-06-29"),
+                    energy = 1800,
+                    goal = 2100,
+                ),
+                WeekDaySummaryModel(
+                    date = LocalDate.parse("2026-06-30"),
+                    energy = 2400,
+                    goal = 2100,
+                ),
+                WeekDaySummaryModel(
+                    date = WeeklyChartToday,
+                    energy = 5000,
+                    goal = 2100,
+                ),
+                WeekDaySummaryModel(
+                    date = LocalDate.parse("2026-07-02"),
+                    energy = 0,
+                    goal = 2100,
+                ),
+                WeekDaySummaryModel(
+                    date = LocalDate.parse("2026-07-03"),
+                    energy = 2100,
+                    goal = 2100,
+                ),
+                WeekDaySummaryModel(
+                    date = LocalDate.parse("2026-07-04"),
+                    energy = 1650,
+                    goal = 2100,
+                ),
+                WeekDaySummaryModel(
+                    date = LocalDate.parse("2026-07-05"),
+                    energy = 1950,
+                    goal = 2100,
+                ),
             )
 
         fun defaultGoalDisplaySummaries(energyGoal: Int): List<GoalDisplaySummaryModel> =
