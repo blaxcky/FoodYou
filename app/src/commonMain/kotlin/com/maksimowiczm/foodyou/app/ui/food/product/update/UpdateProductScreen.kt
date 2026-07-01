@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -139,25 +140,30 @@ internal fun UpdateProductScreen(
                                     ),
                             )
                         }
-                        IconButton(
-                            onClick = { viewModel.setQuickCapture(!product.isQuickCapture) }
-                        ) {
-                            Icon(
-                                imageVector =
-                                    if (product.isQuickCapture) {
-                                        Icons.Filled.FlashOn
-                                    } else {
-                                        Icons.Outlined.FlashOn
-                                    },
-                                contentDescription =
-                                    stringResource(
-                                        if (product.isQuickCapture) {
-                                            Res.string.action_remove_from_quick_capture
-                                        } else {
-                                            Res.string.action_add_to_quick_capture
-                                        }
-                                    ),
+                        val quickCaptureContentDescription =
+                            stringResource(
+                                if (product.isQuickCapture) {
+                                    Res.string.action_remove_from_quick_capture
+                                } else {
+                                    Res.string.action_add_to_quick_capture
+                                }
                             )
+                        if (product.isQuickCapture) {
+                            FilledTonalIconButton(
+                                onClick = { viewModel.setQuickCapture(false) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.FlashOn,
+                                    contentDescription = quickCaptureContentDescription,
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = { viewModel.setQuickCapture(true) }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.FlashOn,
+                                    contentDescription = quickCaptureContentDescription,
+                                )
+                            }
                         }
                         FilledIconButton(
                             onClick = { viewModel.updateProduct(productForm) },

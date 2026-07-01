@@ -133,9 +133,8 @@ private fun QuickCaptureSheet(
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
-        modifier = Modifier.fillMaxHeight(2f / 3f),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(2f / 3f)) {
             Text(
                 text = stringResource(Res.string.headline_quick_capture),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
