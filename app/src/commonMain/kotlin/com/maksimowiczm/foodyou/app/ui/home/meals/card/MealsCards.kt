@@ -1,13 +1,15 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -126,39 +128,45 @@ private fun QuickCaptureSheet(
     onDismissRequest: () -> Unit,
     onProductClick: (QuickCaptureProductModel) -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(onDismissRequest = onDismissRequest, sheetState = sheetState) {
-        Text(
-            text = stringResource(Res.string.headline_quick_capture),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-            style = MaterialTheme.typography.titleLarge,
-        )
-        if (products.isEmpty()) {
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        modifier = Modifier.fillMaxHeight(2f / 3f),
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Text(
-                text = stringResource(Res.string.description_quick_capture_empty),
+                text = stringResource(Res.string.headline_quick_capture),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleLarge,
             )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
-                items(count = products.size, key = { products[it].id.id }) { index ->
-                    val product = products[index]
-                    ListItem(
-                        headlineContent = { Text(product.name) },
-                        supportingContent =
-                            product.brand?.takeIf { it.isNotBlank() }?.let { brand ->
-                                { Text(brand) }
-                            },
-                        modifier = Modifier.clickable { onProductClick(product) },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    )
-                    if (index != products.lastIndex) {
-                        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+            if (products.isEmpty()) {
+                Text(
+                    text = stringResource(Res.string.description_quick_capture_empty),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                ) {
+                    items(count = products.size, key = { products[it].id.id }) { index ->
+                        val product = products[index]
+                        ListItem(
+                            headlineContent = { Text(product.name) },
+                            supportingContent =
+                                product.brand?.takeIf { it.isNotBlank() }?.let { brand ->
+                                    { Text(brand) }
+                                },
+                            modifier = Modifier.clickable { onProductClick(product) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                        if (index != products.lastIndex) {
+                            HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                        }
                     }
                 }
             }
