@@ -555,17 +555,17 @@ class GoalEnergyOptimizationTest {
     }
 
     @Test
-    fun dietNonCurrentWeekKeepsBaseGoal() {
+    fun dietNonCurrentWeekUsesBaseGoalMinusDeficit() {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
                 today = LocalDate(2026, 5, 26),
                 baseEnergyGoalKcal = 2000.0,
-                dailyEnergyDeficitKcal = 500.0,
+                dailyEnergyDeficitKcal = 550.0,
                 previousDays = emptyList(),
             )
 
-        assertEquals(2000.0, goal)
+        assertEquals(1450.0, goal)
     }
 
     @Test

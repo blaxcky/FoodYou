@@ -1,9 +1,56 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class GoalsCardGoalDisplayModeTest {
+
+    @Test
+    fun nonCurrentWeekWithDeficitOffersNormalAndDiet() {
+        assertEquals(
+            listOf(GoalDisplayMode.Normal, GoalDisplayMode.Diet),
+            availableGoalDisplayModes(currentWeek = false, dietEnergyDeficitKcal = 550.0),
+        )
+    }
+
+    @Test
+    fun nonCurrentWeekKeepsStoredDietModeWhenDeficitApplies() {
+        assertEquals(
+            GoalDisplayMode.Diet,
+            SettingsGoalDisplayMode.Diet.selectedGoalDisplayMode(
+                currentWeek = false,
+                dietEnergyDeficitKcal = 550.0,
+            ),
+        )
+    }
+
+    @Test
+    fun nonCurrentWeekWithoutDeficitOffersOnlyNormal() {
+        assertEquals(
+            listOf(GoalDisplayMode.Normal),
+            availableGoalDisplayModes(currentWeek = false, dietEnergyDeficitKcal = null),
+        )
+    }
+
+    @Test
+    fun currentWeekWithDeficitOffersAllModes() {
+        assertEquals(
+            listOf(GoalDisplayMode.Normal, GoalDisplayMode.Optimized, GoalDisplayMode.Diet),
+            availableGoalDisplayModes(currentWeek = true, dietEnergyDeficitKcal = 550.0),
+        )
+    }
+
+    @Test
+    fun nonCurrentWeekFallsBackFromStoredOptimizedModeToNormal() {
+        assertEquals(
+            GoalDisplayMode.Normal,
+            SettingsGoalDisplayMode.Optimized.selectedGoalDisplayMode(
+                currentWeek = false,
+                dietEnergyDeficitKcal = 550.0,
+            ),
+        )
+    }
 
     @Test
     fun unavailableOptimizedIsSkippedWhenFindingNextMode() {

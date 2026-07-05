@@ -72,9 +72,9 @@ private fun adjustedEnergyGoalKcal(
     plannedFutureDays: List<GoalEnergyOptimizationDay>,
     includeExtraSavings: Boolean,
 ): Double {
-    if (selectedDate.startOfWeek() != today.startOfWeek()) return baseEnergyGoalKcal
-
     val dailyTarget = baseEnergyGoalKcal - dailyEnergyDeficitKcal
+    if (selectedDate.startOfWeek() != today.startOfWeek()) return dailyTarget
+
     val dietMode = dailyEnergyDeficitKcal > 0.0
     val actualBalance =
         previousDays.sumOf { day ->

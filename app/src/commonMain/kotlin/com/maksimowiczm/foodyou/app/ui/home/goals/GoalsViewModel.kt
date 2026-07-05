@@ -73,24 +73,15 @@ internal class GoalsViewModel(
                 val currentWeek = date.startOfWeek() == today.startOfWeek()
                 val dietEnergyDeficitKcal = settings.effectiveDietEnergyDeficitKcal(date)
                 val availableGoalDisplayModes =
-                    if (currentWeek) {
-                        if (dietEnergyDeficitKcal != null) {
-                            listOf(GoalDisplayMode.Normal, GoalDisplayMode.Optimized, GoalDisplayMode.Diet)
-                        } else {
-                            listOf(GoalDisplayMode.Normal, GoalDisplayMode.Optimized)
-                        }
-                    } else {
-                        listOf(GoalDisplayMode.Normal)
-                    }
+                    availableGoalDisplayModes(
+                        currentWeek = currentWeek,
+                        dietEnergyDeficitKcal = dietEnergyDeficitKcal,
+                    )
                 val goalDisplayMode =
-                    when {
-                        !currentWeek -> GoalDisplayMode.Normal
-                        settings.goalDisplayMode == SettingsGoalDisplayMode.Optimized ->
-                            GoalDisplayMode.Optimized
-                        settings.goalDisplayMode == SettingsGoalDisplayMode.Diet &&
-                            dietEnergyDeficitKcal != null -> GoalDisplayMode.Diet
-                        else -> GoalDisplayMode.Normal
-                    }
+                    settings.goalDisplayMode.selectedGoalDisplayMode(
+                        currentWeek = currentWeek,
+                        dietEnergyDeficitKcal = dietEnergyDeficitKcal,
+                    )
                 val selectedDay =
                     combine(
                         observeDiaryMealsUseCase.observeNutritionFacts(date),
@@ -117,8 +108,10 @@ internal class GoalsViewModel(
                             fatsGoal = goal[NutritionFactsField.Fats].roundToInt(),
                         )
                     }
+                val optimizeCurrentWeek =
+                    currentWeek && availableGoalDisplayModes.any { it != GoalDisplayMode.Normal }
                 val previousDays =
-                    if (availableGoalDisplayModes.any { it != GoalDisplayMode.Normal }) {
+                    if (optimizeCurrentWeek) {
                         val weekStart = today.startOfWeek()
                         List(today.dayOfWeek.isoDayNumber - 1) {
                             weekStart.plus(it, DateTimeUnit.DAY)
@@ -127,7 +120,7 @@ internal class GoalsViewModel(
                         emptyList()
                     }
                 val plannedFutureDays =
-                    if (availableGoalDisplayModes.any { it != GoalDisplayMode.Normal }) {
+                    if (optimizeCurrentWeek) {
                         List(7 - today.dayOfWeek.isoDayNumber) {
                             today.plus(it + 1, DateTimeUnit.DAY)
                         }
@@ -308,6 +301,27 @@ private data class SelectedGoalDay(
     val fats: Int,
     val fatsGoal: Int,
 )
+
+internal fun availableGoalDisplayModes(
+    currentWeek: Boolean,
+    dietEnergyDeficitKcal: Double?,
+): List<GoalDisplayMode> =
+    buildList {
+        add(GoalDisplayMode.Normal)
+        if (currentWeek) add(GoalDisplayMode.Optimized)
+        if (dietEnergyDeficitKcal != null) add(GoalDisplayMode.Diet)
+    }
+
+internal fun SettingsGoalDisplayMode.selectedGoalDisplayMode(
+    currentWeek: Boolean,
+    dietEnergyDeficitKcal: Double?,
+): GoalDisplayMode =
+    when {
+        this == SettingsGoalDisplayMode.Optimized && currentWeek -> GoalDisplayMode.Optimized
+        this == SettingsGoalDisplayMode.Diet && dietEnergyDeficitKcal != null ->
+            GoalDisplayMode.Diet
+        else -> GoalDisplayMode.Normal
+    }
 
 internal fun percentageEnergyGoalKcal(energyGoalKcal: Double, baseEnergyGoalKcal: Double): Int =
     if (energyGoalKcal > 0.0) {
