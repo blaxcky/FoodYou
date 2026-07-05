@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCas
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -70,7 +71,7 @@ internal class GoalsViewModel(
             }
             .flatMapLatest { (date, today, settings) ->
                 val currentWeek = date.startOfWeek() == today.startOfWeek()
-                val dietEnergyDeficitKcal = settings.dietEnergyDeficitKcal?.takeIf { it > 0.0 }
+                val dietEnergyDeficitKcal = settings.effectiveDietEnergyDeficitKcal(date)
                 val availableGoalDisplayModes =
                     if (currentWeek) {
                         if (dietEnergyDeficitKcal != null) {
@@ -152,6 +153,9 @@ internal class GoalsViewModel(
                                         consumedEnergyKcal = facts.energy.value ?: 0.0,
                                         baseEnergyGoalKcal = goal[NutritionFactsField.Energy],
                                         burnedEnergyKcal = activity.totalEnergyKcal,
+                                        dietEnergyDeficitKcal =
+                                            settings.effectiveDietEnergyDeficitKcal(previousDate)
+                                                ?: 0.0,
                                     )
                                 }
                             }
@@ -179,6 +183,9 @@ internal class GoalsViewModel(
                                         consumedEnergyKcal = facts.energy.value ?: 0.0,
                                         baseEnergyGoalKcal = goal[NutritionFactsField.Energy],
                                         burnedEnergyKcal = activity.totalEnergyKcal,
+                                        dietEnergyDeficitKcal =
+                                            settings.effectiveDietEnergyDeficitKcal(futureDate)
+                                                ?: 0.0,
                                     )
                                 }
                             }

@@ -11,6 +11,7 @@ internal data class GoalEnergyOptimizationDay(
     val consumedEnergyKcal: Double,
     val baseEnergyGoalKcal: Double,
     val burnedEnergyKcal: Double,
+    val dietEnergyDeficitKcal: Double? = null,
 )
 
 internal fun optimizedEnergyGoalKcal(
@@ -74,15 +75,20 @@ private fun adjustedEnergyGoalKcal(
     if (selectedDate.startOfWeek() != today.startOfWeek()) return baseEnergyGoalKcal
 
     val dailyTarget = baseEnergyGoalKcal - dailyEnergyDeficitKcal
+    val dietMode = dailyEnergyDeficitKcal > 0.0
     val actualBalance =
         previousDays.sumOf { day ->
+            val dayDeficit =
+                if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
             day.consumedEnergyKcal -
-                (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal)
+                (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit)
         }
     val plannedSurplus =
         plannedFutureDays.sumOf { day ->
+            val dayDeficit =
+                if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
             (day.consumedEnergyKcal -
-                    (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal))
+                    (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit))
                 .coerceAtLeast(0.0)
         }
     val adjustmentBalance =
@@ -93,8 +99,10 @@ private fun adjustedEnergyGoalKcal(
         }
     val plannedSurplusDays =
         plannedFutureDays.count { day ->
+            val dayDeficit =
+                if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
             day.consumedEnergyKcal >
-                day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal
+                day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit
         }
     val unplannedOpenDays =
         (8 - today.dayOfWeek.isoDayNumber - plannedSurplusDays).coerceAtLeast(1)
@@ -102,9 +110,11 @@ private fun adjustedEnergyGoalKcal(
 
     val selectedDayIsOverplanned =
         plannedFutureDays.any { day ->
+            val dayDeficit =
+                if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
             day.date == selectedDate &&
                 day.consumedEnergyKcal >
-                    day.baseEnergyGoalKcal + day.burnedEnergyKcal - dailyEnergyDeficitKcal
+                    day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit
         }
 
     return if (selectedDayIsOverplanned) {

@@ -49,9 +49,9 @@ class CalorieWidgetModelTest {
                     ),
             )
 
-        assertEquals(600, model.normalLeftKcal)
-        assertEquals(540, model.optimizedLeftKcal)
-        assertEquals(-160, model.dietLeftKcal)
+        assertEquals(599, model.normalLeftKcal)
+        assertEquals(539, model.optimizedLeftKcal)
+        assertEquals(-161, model.dietLeftKcal)
     }
 
     @Test
@@ -66,7 +66,7 @@ class CalorieWidgetModelTest {
                 previousDays = emptyList(),
             )
 
-        assertEquals(601, model.normalLeftKcal)
+        assertEquals(600, model.normalLeftKcal)
     }
 
     @Test

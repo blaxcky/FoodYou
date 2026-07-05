@@ -79,6 +79,7 @@ import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.goals.domain.entity.BiologicalSex
 import com.maksimowiczm.foodyou.goals.domain.usecase.calculateBasalMetabolicRateSuggestion
+import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
 import kotlin.math.roundToInt
@@ -110,7 +111,10 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
     val basalMetabolicRateProfileState =
         rememberBasalMetabolicRateProfileFormState(setupState.basalMetabolicRateProfile)
     val dietEnergyDeficitState =
-        rememberDietEnergyDeficitFormState(setupState.dietEnergyDeficitKcal)
+        rememberDietEnergyDeficitFormState(
+            initialValue = setupState.dietEnergyDeficitKcal,
+            initialOverride = setupState.dietEnergyDeficitOverride,
+        )
 
     DailyGoalsContent(
         weeklyState = weeklyState,
@@ -123,6 +127,7 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
                 basalMetabolicRateProfile =
                     basalMetabolicRateProfileState.intoProfile(),
                 dietEnergyDeficitKcal = dietEnergyDeficitState.value,
+                dietEnergyDeficitOverride = dietEnergyDeficitState.overrideValue,
             )
         },
         modifier = modifier,
@@ -253,30 +258,135 @@ internal fun DailyGoalsContent(
 internal class DietEnergyDeficitFormState(
     val textFieldState: TextFieldState,
     private val initialInput: String,
+    overrideState: TemporaryDietEnergyDeficitFormState,
 ) {
     private val input: String
         get() = textFieldState.text.toString()
+
+    val override: TemporaryDietEnergyDeficitFormState = overrideState
 
     val parsedValue: Double? by derivedStateOf { input.parseNonNegativeDeficit() }
 
     val value: Double? by derivedStateOf { parsedValue?.takeIf { it > 0.0 } }
 
-    val isValid: Boolean by derivedStateOf { input.isBlank() || parsedValue != null }
+    val overrideValue: DietEnergyDeficitOverride? by derivedStateOf { override.value }
 
-    val isModified: Boolean by derivedStateOf { input != initialInput }
+    val isValid: Boolean by derivedStateOf {
+        (input.isBlank() || parsedValue != null) && override.isValid
+    }
+
+    val isModified: Boolean by derivedStateOf { input != initialInput || override.isModified }
 }
 
 @Composable
 internal fun rememberDietEnergyDeficitFormState(
-    initialValue: Double?
+    initialValue: Double?,
+    initialOverride: DietEnergyDeficitOverride? = null,
 ): DietEnergyDeficitFormState {
     val sanitizedInitialValue = initialValue?.takeIf { it > 0.0 }
     val textFieldState = rememberTextFieldState(sanitizedInitialValue?.formatClipZeros().orEmpty())
+    val overrideState = rememberTemporaryDietEnergyDeficitFormState(initialOverride)
 
-    return remember(textFieldState, sanitizedInitialValue) {
+    return remember(textFieldState, sanitizedInitialValue, overrideState) {
         DietEnergyDeficitFormState(
             textFieldState = textFieldState,
             initialInput = sanitizedInitialValue?.formatClipZeros().orEmpty(),
+            overrideState = overrideState,
+        )
+    }
+}
+
+@Stable
+internal class TemporaryDietEnergyDeficitFormState(
+    val textFieldState: TextFieldState,
+    private val initialEnabled: Boolean,
+    private val initialInput: String,
+    private val initialStartEpochDay: Long,
+    private val initialEndEpochDay: Long,
+    enabledState: MutableState<Boolean>,
+    startEpochDayState: MutableState<Long>,
+    endEpochDayState: MutableState<Long>,
+) {
+    private val input: String
+        get() = textFieldState.text.toString()
+
+    var enabled by enabledState
+    var startEpochDay by startEpochDayState
+    var endEpochDay by endEpochDayState
+
+    var startDate: LocalDate
+        get() = LocalDate.fromEpochDays(startEpochDay.toInt())
+        set(value) {
+            startEpochDay = value.toEpochDays()
+        }
+
+    var endDate: LocalDate
+        get() = LocalDate.fromEpochDays(endEpochDay.toInt())
+        set(value) {
+            endEpochDay = value.toEpochDays()
+        }
+
+    val parsedValue: Double? by derivedStateOf { input.parsePositiveDeficit() }
+
+    val value: DietEnergyDeficitOverride? by derivedStateOf {
+        if (!enabled) {
+            null
+        } else {
+            parsedValue?.let {
+                DietEnergyDeficitOverride(
+                    energyDeficitKcal = it,
+                    startDate = startDate,
+                    endDate = endDate,
+                )
+            }
+        }
+    }
+
+    val isValid: Boolean by derivedStateOf {
+        !enabled || (parsedValue != null && endDate >= startDate)
+    }
+
+    val isModified: Boolean by derivedStateOf {
+        enabled != initialEnabled ||
+            input != initialInput ||
+            startEpochDay != initialStartEpochDay ||
+            endEpochDay != initialEndEpochDay
+    }
+}
+
+@Composable
+internal fun rememberTemporaryDietEnergyDeficitFormState(
+    initialOverride: DietEnergyDeficitOverride?
+): TemporaryDietEnergyDeficitFormState {
+    val today = LocalDate.now()
+    val sanitizedInitialOverride =
+        initialOverride?.takeIf { it.energyDeficitKcal > 0.0 && it.endDate >= it.startDate }
+    val initialInput = sanitizedInitialOverride?.energyDeficitKcal?.formatClipZeros().orEmpty()
+    val initialStartEpochDay = sanitizedInitialOverride?.startDate ?: today
+    val initialEndEpochDay = sanitizedInitialOverride?.endDate ?: today
+    val textFieldState = rememberTextFieldState(initialInput)
+    val enabledState = rememberSaveable { mutableStateOf(sanitizedInitialOverride != null) }
+    val startEpochDayState = rememberSaveable {
+        mutableStateOf(initialStartEpochDay.toEpochDays())
+    }
+    val endEpochDayState = rememberSaveable { mutableStateOf(initialEndEpochDay.toEpochDays()) }
+
+    return remember(
+        textFieldState,
+        sanitizedInitialOverride,
+        enabledState,
+        startEpochDayState,
+        endEpochDayState,
+    ) {
+        TemporaryDietEnergyDeficitFormState(
+            textFieldState = textFieldState,
+            initialEnabled = sanitizedInitialOverride != null,
+            initialInput = initialInput,
+            initialStartEpochDay = initialStartEpochDay.toEpochDays(),
+            initialEndEpochDay = initialEndEpochDay.toEpochDays(),
+            enabledState = enabledState,
+            startEpochDayState = startEpochDayState,
+            endEpochDayState = endEpochDayState,
         )
     }
 }
@@ -286,19 +396,92 @@ private fun DietEnergyDeficitForm(
     state: DietEnergyDeficitFormState,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedTextField(
-        state = state.textFieldState,
-        modifier = modifier,
-        label = { Text(stringResource(Res.string.label_daily_calorie_deficit)) },
-        supportingText = { Text(stringResource(Res.string.neutral_daily_calorie_deficit)) },
-        suffix = { Text(stringResource(Res.string.unit_kcal)) },
-        isError = !state.isValid,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-    )
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            state = state.textFieldState,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(Res.string.label_daily_calorie_deficit)) },
+            supportingText = { Text(stringResource(Res.string.neutral_daily_calorie_deficit)) },
+            suffix = { Text(stringResource(Res.string.unit_kcal)) },
+            isError = state.textFieldState.text.isNotBlank() && state.parsedValue == null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        )
+        TemporaryDietEnergyDeficitForm(state = state.override, modifier = Modifier.fillMaxWidth())
+    }
 }
 
 private fun String.parseNonNegativeDeficit(): Double? =
     trim().replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0.0 }
+
+private fun String.parsePositiveDeficit(): Double? =
+    trim().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 }
+
+@Composable
+private fun TemporaryDietEnergyDeficitForm(
+    state: TemporaryDietEnergyDeficitFormState,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .clickable { state.enabled = !state.enabled }
+                    .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Checkbox(checked = state.enabled, onCheckedChange = null)
+            Text(
+                text = stringResource(Res.string.label_temporary_diet_deficit),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        AnimatedVisibility(state.enabled) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    state = state.textFieldState,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(Res.string.label_temporary_calorie_deficit)) },
+                    supportingText = {
+                        Text(stringResource(Res.string.neutral_temporary_daily_calorie_deficit))
+                    },
+                    suffix = { Text(stringResource(Res.string.unit_kcal)) },
+                    isError = state.parsedValue == null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DatePickerField(
+                        date = state.startDate,
+                        onDateChange = { selectedDate ->
+                            selectedDate?.let { state.startDate = it }
+                        },
+                        label = stringResource(Res.string.label_start_date),
+                        modifier = Modifier.weight(1f),
+                    )
+                    DatePickerField(
+                        date = state.endDate,
+                        onDateChange = { selectedDate ->
+                            selectedDate?.let { state.endDate = it }
+                        },
+                        label = stringResource(Res.string.label_end_date),
+                        isError = state.endDate < state.startDate,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (state.endDate < state.startDate) {
+                    Text(
+                        text = stringResource(Res.string.error_end_date_before_start_date),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun BasalMetabolicRateProfileForm(
@@ -446,20 +629,36 @@ private fun BirthDatePickerField(
     onBirthDateChange: (LocalDate?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    DatePickerField(
+        date = birthDate,
+        onDateChange = onBirthDateChange,
+        label = stringResource(Res.string.birth_date),
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun DatePickerField(
+    date: LocalDate?,
+    onDateChange: (LocalDate?) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+) {
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     val dateFormatter = LocalDateFormatter.current
 
     if (showDatePicker) {
         val datePickerState =
-            rememberDatePickerState(initialSelectedDateMillis = birthDate?.toUtcEpochMillis())
+            rememberDatePickerState(initialSelectedDateMillis = date?.toUtcEpochMillis())
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onBirthDateChange(
+                        onDateChange(
                             datePickerState.selectedDateMillis
-                                ?.let(Instant::fromEpochMilliseconds)
+                                ?.let { Instant.fromEpochMilliseconds(it) }
                                 ?.toLocalDateTime(TimeZone.UTC)
                                 ?.date
                         )
@@ -481,11 +680,12 @@ private fun BirthDatePickerField(
 
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = birthDate?.let(dateFormatter::formatDateShort).orEmpty(),
+            value = date?.let(dateFormatter::formatDateShort).orEmpty(),
             onValueChange = {},
             readOnly = true,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(Res.string.birth_date)) },
+            label = { Text(label) },
+            isError = isError,
         )
         Box(Modifier.matchParentSize().clickable { showDatePicker = true })
     }

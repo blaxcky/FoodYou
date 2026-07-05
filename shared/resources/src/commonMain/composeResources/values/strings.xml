@@ -123,6 +123,12 @@
     <string name="label_diet">Diet</string>
     <string name="label_daily_calorie_deficit">Daily calorie deficit</string>
     <string name="neutral_daily_calorie_deficit">Used by the diet goal display. Leave empty or set 0 to turn it off.</string>
+    <string name="label_temporary_diet_deficit">Temporary deficit</string>
+    <string name="label_temporary_calorie_deficit">Temporary calorie deficit</string>
+    <string name="neutral_temporary_daily_calorie_deficit">Overrides the daily calorie deficit for the selected dates.</string>
+    <string name="label_start_date">Start date</string>
+    <string name="label_end_date">End date</string>
+    <string name="error_end_date_before_start_date">End date must be on or after the start date.</string>
     <string name="weekly_so_far">So far</string>
     <string name="weekly_difference">Difference</string>
     <string name="weekly_percent">Percent</string>

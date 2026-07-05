@@ -237,6 +237,12 @@
     <string name="label_diet">Diät</string>
     <string name="label_daily_calorie_deficit">Tägliches Kaloriendefizit</string>
     <string name="neutral_daily_calorie_deficit">Wird für die Diät-Zielansicht genutzt. Leer lassen oder 0 setzen, um sie auszuschalten.</string>
+    <string name="label_temporary_diet_deficit">Temporäres Defizit</string>
+    <string name="label_temporary_calorie_deficit">Temporäres Kaloriendefizit</string>
+    <string name="neutral_temporary_daily_calorie_deficit">Ersetzt das tägliche Kaloriendefizit für die ausgewählten Daten.</string>
+    <string name="label_start_date">Startdatum</string>
+    <string name="label_end_date">Enddatum</string>
+    <string name="error_end_date_before_start_date">Das Enddatum muss am oder nach dem Startdatum liegen.</string>
     <string name="weekly_so_far">Bisher</string>
     <string name="weekly_difference">Differenz</string>
     <string name="weekly_percent">Prozent</string>

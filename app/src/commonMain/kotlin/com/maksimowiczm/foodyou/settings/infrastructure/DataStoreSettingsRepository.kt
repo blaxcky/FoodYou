@@ -11,12 +11,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStoreUserPreferencesRepository
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.set
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
+import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 
 internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
@@ -32,6 +34,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             expandGoalCard = this[SettingsPreferencesKeys.expandGoalCard] ?: true,
             goalDisplayMode = this.getGoalDisplayMode(),
             dietEnergyDeficitKcal = this[SettingsPreferencesKeys.dietEnergyDeficitKcal],
+            dietEnergyDeficitOverride = this.getDietEnergyDeficitOverride(),
             onboardingFinished = this[SettingsPreferencesKeys.onboardingFinished] ?: false,
             energyFormat = this.getEnergyFormat(SettingsPreferencesKeys.energyFormat),
             appLaunchInfo = this.getAppLaunchInfo(),
@@ -75,6 +78,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             SettingsPreferencesKeys.dietEnergyDeficitKcal,
             updated.dietEnergyDeficitKcal?.takeIf { it > 0.0 },
         )
+        setDietEnergyDeficitOverride(updated.dietEnergyDeficitOverride)
         this[SettingsPreferencesKeys.onboardingFinished] = updated.onboardingFinished
         setEnergyFormat(SettingsPreferencesKeys.energyFormat, updated.energyFormat)
         setAppLaunchInfo(updated.appLaunchInfo)
@@ -174,6 +178,38 @@ private fun Preferences.getGoalDisplayMode(): GoalDisplayMode =
         }
         .getOrElse { GoalDisplayMode.Normal }
 
+private fun MutablePreferences.setDietEnergyDeficitOverride(
+    value: DietEnergyDeficitOverride?
+) {
+    if (value != null && value.energyDeficitKcal > 0.0 && value.endDate >= value.startDate) {
+        this[SettingsPreferencesKeys.dietEnergyDeficitOverrideKcal] = value.energyDeficitKcal
+        this[SettingsPreferencesKeys.dietEnergyDeficitOverrideStartEpochDay] =
+            value.startDate.toEpochDays()
+        this[SettingsPreferencesKeys.dietEnergyDeficitOverrideEndEpochDay] =
+            value.endDate.toEpochDays()
+    } else {
+        remove(SettingsPreferencesKeys.dietEnergyDeficitOverrideKcal)
+        remove(SettingsPreferencesKeys.dietEnergyDeficitOverrideStartEpochDay)
+        remove(SettingsPreferencesKeys.dietEnergyDeficitOverrideEndEpochDay)
+    }
+}
+
+private fun Preferences.getDietEnergyDeficitOverride(): DietEnergyDeficitOverride? {
+    val kcal = this[SettingsPreferencesKeys.dietEnergyDeficitOverrideKcal]?.takeIf { it > 0.0 }
+    val startEpochDay = this[SettingsPreferencesKeys.dietEnergyDeficitOverrideStartEpochDay]
+    val endEpochDay = this[SettingsPreferencesKeys.dietEnergyDeficitOverrideEndEpochDay]
+
+    if (kcal == null || startEpochDay == null || endEpochDay == null) return null
+
+    val startDate = LocalDate.fromEpochDays(startEpochDay.toInt())
+    val endDate = LocalDate.fromEpochDays(endEpochDay.toInt())
+    return DietEnergyDeficitOverride(
+        energyDeficitKcal = kcal,
+        startDate = startDate,
+        endDate = endDate,
+    ).takeIf { it.endDate >= it.startDate }
+}
+
 private fun MutablePreferences.setPendingProductPhotoQuality(value: PendingProductPhotoQuality) =
     setWithNull(SettingsPreferencesKeys.pendingProductPhotoQuality, value.name)
 
@@ -241,6 +277,12 @@ private object SettingsPreferencesKeys {
         booleanPreferencesKey("settings:optimizedGoalDisplayEnabled")
     val goalDisplayMode = stringPreferencesKey("settings:goalDisplayMode")
     val dietEnergyDeficitKcal = doublePreferencesKey("settings:dietEnergyDeficitKcal")
+    val dietEnergyDeficitOverrideKcal =
+        doublePreferencesKey("settings:dietEnergyDeficitOverrideKcal")
+    val dietEnergyDeficitOverrideStartEpochDay =
+        longPreferencesKey("settings:dietEnergyDeficitOverrideStartEpochDay")
+    val dietEnergyDeficitOverrideEndEpochDay =
+        longPreferencesKey("settings:dietEnergyDeficitOverrideEndEpochDay")
     val onboardingFinished = booleanPreferencesKey("settings:onboardingFinished")
     val energyFormat = intPreferencesKey("settings:energyFormat")
     val stepsCaloriesPerStepKcal = doublePreferencesKey("settings:stepsCaloriesPerStepKcal")

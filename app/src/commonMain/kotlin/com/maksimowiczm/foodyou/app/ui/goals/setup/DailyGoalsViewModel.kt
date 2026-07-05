@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.goals.domain.entity.BasalMetabolicRateProfile
 import com.maksimowiczm.foodyou.goals.domain.entity.WeeklyGoals
 import com.maksimowiczm.foodyou.goals.domain.repository.BasalMetabolicRateProfileRepository
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlinx.coroutines.channels.Channel
@@ -32,6 +33,7 @@ internal class DailyGoalsViewModel(
                     weeklyGoals = weeklyGoals,
                     basalMetabolicRateProfile = basalMetabolicRateProfile,
                     dietEnergyDeficitKcal = settings.dietEnergyDeficitKcal,
+                    dietEnergyDeficitOverride = settings.dietEnergyDeficitOverride,
                 )
             }
             .stateIn(
@@ -47,16 +49,26 @@ internal class DailyGoalsViewModel(
         weeklyGoals: WeeklyGoals,
         basalMetabolicRateProfile: BasalMetabolicRateProfile,
         dietEnergyDeficitKcal: Double?,
+        dietEnergyDeficitOverride: DietEnergyDeficitOverride?,
     ) {
         viewModelScope.launch {
             val sanitizedDeficit = dietEnergyDeficitKcal?.takeIf { it > 0.0 }
+            val sanitizedOverride =
+                dietEnergyDeficitOverride?.takeIf {
+                    it.energyDeficitKcal > 0.0 && it.endDate >= it.startDate
+                }
             goalsRepository.updateWeeklyGoals(weeklyGoals)
             basalMetabolicRateProfileRepository.updateProfile(basalMetabolicRateProfile)
             settingsRepository.update {
                 copy(
                     dietEnergyDeficitKcal = sanitizedDeficit,
+                    dietEnergyDeficitOverride = sanitizedOverride,
                     goalDisplayMode =
-                        if (sanitizedDeficit == null && goalDisplayMode == GoalDisplayMode.Diet) {
+                        if (
+                            sanitizedDeficit == null &&
+                                sanitizedOverride == null &&
+                                goalDisplayMode == GoalDisplayMode.Diet
+                        ) {
                             GoalDisplayMode.Normal
                         } else {
                             goalDisplayMode
@@ -72,4 +84,5 @@ internal data class DailyGoalsSetupState(
     val weeklyGoals: WeeklyGoals,
     val basalMetabolicRateProfile: BasalMetabolicRateProfile,
     val dietEnergyDeficitKcal: Double?,
+    val dietEnergyDeficitOverride: DietEnergyDeficitOverride?,
 )

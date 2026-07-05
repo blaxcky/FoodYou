@@ -15,6 +15,7 @@ import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRep
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import java.time.format.DateTimeFormatter
 import java.text.NumberFormat
 import java.util.Locale
@@ -68,6 +69,8 @@ internal class CalorieWidgetUpdater(
                     consumedEnergyKcal = previousFacts.energy.value ?: 0.0,
                     baseEnergyGoalKcal = previousGoal[NutritionFactsField.Energy],
                     burnedEnergyKcal = previousActivity.totalEnergyKcal,
+                    dietEnergyDeficitKcal =
+                        settings.effectiveDietEnergyDeficitKcal(date) ?: 0.0,
                 )
             }
         val plannedFutureDays =
@@ -84,6 +87,8 @@ internal class CalorieWidgetUpdater(
                     consumedEnergyKcal = futureFacts.energy.value ?: 0.0,
                     baseEnergyGoalKcal = futureGoal[NutritionFactsField.Energy],
                     burnedEnergyKcal = futureActivity.totalEnergyKcal,
+                    dietEnergyDeficitKcal =
+                        settings.effectiveDietEnergyDeficitKcal(date) ?: 0.0,
                 )
             }
 
@@ -92,7 +97,7 @@ internal class CalorieWidgetUpdater(
             eatenKcal = facts.energy.value ?: 0.0,
             burnedKcal = activity.totalEnergyKcal,
             baseGoalKcal = goal[NutritionFactsField.Energy],
-            dietEnergyDeficitKcal = settings.dietEnergyDeficitKcal,
+            dietEnergyDeficitKcal = settings.effectiveDietEnergyDeficitKcal(today),
             previousDays = previousDays,
             plannedFutureDays = plannedFutureDays,
         )

@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.settings.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferences
+import kotlinx.datetime.LocalDate
 
 data class Settings(
     val lastRememberedVersion: String?,
@@ -12,6 +13,7 @@ data class Settings(
     val expandGoalCard: Boolean,
     val goalDisplayMode: GoalDisplayMode,
     val dietEnergyDeficitKcal: Double?,
+    val dietEnergyDeficitOverride: DietEnergyDeficitOverride? = null,
     val onboardingFinished: Boolean,
     val energyFormat: EnergyFormat,
     val appLaunchInfo: AppLaunchInfo,
@@ -31,6 +33,19 @@ data class Settings(
     val pendingProductPhotoQuality: PendingProductPhotoQuality = PendingProductPhotoQuality.Balanced,
     val crosstrainerCalorieDiscountPercent: Double = 0.0,
 ) : UserPreferences
+
+data class DietEnergyDeficitOverride(
+    val energyDeficitKcal: Double,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+)
+
+fun Settings.effectiveDietEnergyDeficitKcal(date: LocalDate): Double? =
+    dietEnergyDeficitOverride
+        ?.takeIf { date >= it.startDate && date <= it.endDate }
+        ?.energyDeficitKcal
+        ?.takeIf { it > 0.0 }
+        ?: dietEnergyDeficitKcal?.takeIf { it > 0.0 }
 
 data class FddbDiarySyncStatus(
     val imported: Int,
