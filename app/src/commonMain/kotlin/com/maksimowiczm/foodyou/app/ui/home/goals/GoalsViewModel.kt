@@ -234,9 +234,16 @@ internal class GoalsViewModel(
                 selectedDate,
                 today,
                 settings ->
-                Triple(selectedDate, today, settings.stepsCaloriesPerStepKcal)
+                Triple(selectedDate, today, settings)
             }
-            .flatMapLatest { (selectedDate, today, kcalPerStep) ->
+            .flatMapLatest { (selectedDate, today, settings) ->
+                val currentWeek = selectedDate.startOfWeek() == today.startOfWeek()
+                val goalDisplayMode =
+                    settings.goalDisplayMode.selectedGoalDisplayMode(
+                        currentWeek = currentWeek,
+                        dietEnergyDeficitKcal =
+                            settings.effectiveDietEnergyDeficitKcal(selectedDate),
+                    )
                 val dates = selectedDate.weekDatesUntil(today)
                 if (dates.isEmpty()) {
                     return@flatMapLatest flowOf(
@@ -253,7 +260,10 @@ internal class GoalsViewModel(
                         combine(
                             observeDiaryMealsUseCase.observeNutritionFacts(date),
                             goalsRepository.observeDailyGoals(date),
-                            activityRepository.observeDailySummary(date, kcalPerStep),
+                            activityRepository.observeDailySummary(
+                                date,
+                                settings.stepsCaloriesPerStepKcal,
+                            ),
                         ) { facts, goal, activity ->
                             val consumedEnergy = facts.energy.value ?: 0.0
                             val baseGoal = goal[NutritionFactsField.Energy]
@@ -261,8 +271,13 @@ internal class GoalsViewModel(
                             WeekDaySummaryModel(
                                 date = date,
                                 energy = roundedEnergyKcal(consumedEnergy),
-                                goal =
-                                    roundedEnergyKcal(baseGoal) + roundedEnergyKcal(burnedEnergy),
+                                goal = weeklyEnergyGoalKcal(
+                                    goalDisplayMode = goalDisplayMode,
+                                    baseEnergyGoalKcal = baseGoal,
+                                    burnedEnergyKcal = burnedEnergy,
+                                    dietEnergyDeficitKcal =
+                                        settings.effectiveDietEnergyDeficitKcal(date),
+                                ),
                             )
                         }
                     }
@@ -288,6 +303,21 @@ internal class GoalsViewModel(
 internal fun LocalDate.weekDatesUntil(today: LocalDate): List<LocalDate> {
     val weekStart = startOfWeek()
     return List(7) { weekStart.plus(it, DateTimeUnit.DAY) }.takeWhile { it <= today }
+}
+
+internal fun weeklyEnergyGoalKcal(
+    goalDisplayMode: GoalDisplayMode,
+    baseEnergyGoalKcal: Double,
+    burnedEnergyKcal: Double,
+    dietEnergyDeficitKcal: Double?,
+): Int {
+    val energyGoal =
+        if (goalDisplayMode == GoalDisplayMode.Diet && dietEnergyDeficitKcal != null) {
+            baseEnergyGoalKcal - dietEnergyDeficitKcal
+        } else {
+            baseEnergyGoalKcal
+        }
+    return roundedEnergyKcal(energyGoal) + roundedEnergyKcal(burnedEnergyKcal)
 }
 
 private data class SelectedGoalDay(
