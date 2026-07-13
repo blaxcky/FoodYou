@@ -51,6 +51,7 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.maksimowiczm.foodyou.barcodescanner.BarcodeConfirmation
 import foodyou.app.generated.resources.*
 import foodyou.app.generated.resources.Res
 import java.util.concurrent.ExecutorService
@@ -81,6 +82,7 @@ fun MlKitCameraBarcodeScannerScreen(
         }
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
     val barcodeReported = remember { AtomicBoolean(false) }
+    val barcodeConfirmation = remember { BarcodeConfirmation() }
 
     var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var camera by remember { mutableStateOf<Camera?>(null) }
@@ -120,6 +122,7 @@ fun MlKitCameraBarcodeScannerScreen(
                                 scanner = scanner,
                                 analysisExecutor = analysisExecutor,
                                 barcodeReported = barcodeReported,
+                                barcodeConfirmation = barcodeConfirmation,
                                 onBarcodeScan = { latestOnBarcodeScanned(it) },
                             )
 
@@ -177,6 +180,7 @@ private fun barcodeImageAnalysis(
     scanner: BarcodeScanner,
     analysisExecutor: ExecutorService,
     barcodeReported: AtomicBoolean,
+    barcodeConfirmation: BarcodeConfirmation,
     onBarcodeScan: (String) -> Unit,
 ): ImageAnalysis =
     ImageAnalysis.Builder()
@@ -189,6 +193,7 @@ private fun barcodeImageAnalysis(
                     imageProxy = imageProxy,
                     scanner = scanner,
                     barcodeReported = barcodeReported,
+                    barcodeConfirmation = barcodeConfirmation,
                     onBarcodeScan = onBarcodeScan,
                 )
             }
@@ -198,6 +203,7 @@ private fun analyzeBarcodeImage(
     imageProxy: ImageProxy,
     scanner: BarcodeScanner,
     barcodeReported: AtomicBoolean,
+    barcodeConfirmation: BarcodeConfirmation,
     onBarcodeScan: (String) -> Unit,
 ) {
     if (barcodeReported.get()) {
@@ -207,6 +213,7 @@ private fun analyzeBarcodeImage(
 
     val mediaImage = imageProxy.image
     if (mediaImage == null) {
+        barcodeConfirmation.reset()
         imageProxy.close()
         return
     }
@@ -216,10 +223,12 @@ private fun analyzeBarcodeImage(
         .process(image)
         .addOnSuccessListener { barcodes ->
             val rawValue = barcodes.firstNotNullOfOrNull { it.rawValue?.takeIf(String::isNotBlank) }
-            if (rawValue != null && barcodeReported.compareAndSet(false, true)) {
-                onBarcodeScan(rawValue)
+            val confirmedValue = barcodeConfirmation.observe(rawValue)
+            if (confirmedValue != null && barcodeReported.compareAndSet(false, true)) {
+                onBarcodeScan(confirmedValue)
             }
         }
+        .addOnFailureListener { barcodeConfirmation.reset() }
         .addOnCompleteListener { imageProxy.close() }
 }
 

@@ -29,6 +29,8 @@ kotlin {
             implementation(projects.shared.resources)
         }
 
+        commonTest.dependencies { implementation(libs.kotlin.test) }
+
         androidMain.dependencies {
             implementation(libs.accompanist.permissions)
             implementation(libs.androidx.activity.compose)
