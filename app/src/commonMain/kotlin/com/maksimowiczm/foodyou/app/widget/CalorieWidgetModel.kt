@@ -30,7 +30,7 @@ internal fun calorieWidgetModel(
     val optimizedGoal =
         optimizedEnergyGoalKcal(
             selectedDate = today,
-            today = today,
+            calculationDate = today,
             baseEnergyGoalKcal = baseGoalKcal,
             previousDays = previousDays,
             plannedFutureDays = plannedFutureDays,
@@ -40,7 +40,7 @@ internal fun calorieWidgetModel(
         dietDeficit?.let {
             adjustedEnergyGoalKcal(
                 selectedDate = today,
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = baseGoalKcal,
                 dailyEnergyDeficitKcal = it,
                 previousDays = previousDays,

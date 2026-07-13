@@ -108,25 +108,12 @@ internal class GoalsViewModel(
                             fatsGoal = goal[NutritionFactsField.Fats].roundToInt(),
                         )
                     }
-                val optimizeCurrentWeek =
-                    currentWeek && availableGoalDisplayModes.any { it != GoalDisplayMode.Normal }
-                val previousDays =
-                    if (optimizeCurrentWeek) {
-                        val weekStart = today.startOfWeek()
-                        List(today.dayOfWeek.isoDayNumber - 1) {
-                            weekStart.plus(it, DateTimeUnit.DAY)
-                        }
-                    } else {
-                        emptyList()
+                val calculationDates =
+                    goalCalculationDates(selectedDate = date, today = today).takeIf {
+                        availableGoalDisplayModes.any { mode -> mode != GoalDisplayMode.Normal }
                     }
-                val plannedFutureDays =
-                    if (optimizeCurrentWeek) {
-                        List(7 - today.dayOfWeek.isoDayNumber) {
-                            today.plus(it + 1, DateTimeUnit.DAY)
-                        }
-                    } else {
-                        emptyList()
-                    }
+                val previousDays = calculationDates?.previousDays.orEmpty()
+                val plannedFutureDays = calculationDates?.plannedFutureDays.orEmpty()
                 val previousDaySummaries =
                     if (previousDays.isEmpty()) {
                         flowOf(emptyList())
@@ -193,7 +180,7 @@ internal class GoalsViewModel(
                         availableGoalDisplayModes.map { mode ->
                             mode.summary(
                                 selectedDate = date,
-                                today = today,
+                                calculationDate = calculationDates?.calculationDate ?: today,
                                 baseEnergyGoalKcal = day.baseEnergyGoal,
                                 dietEnergyDeficitKcal = dietEnergyDeficitKcal,
                                 previousDays = previous,
@@ -290,6 +277,40 @@ internal fun LocalDate.weekDatesUntil(today: LocalDate): List<LocalDate> {
     return List(7) { weekStart.plus(it, DateTimeUnit.DAY) }.takeWhile { it <= today }
 }
 
+internal data class GoalCalculationDates(
+    val calculationDate: LocalDate,
+    val previousDays: List<LocalDate>,
+    val plannedFutureDays: List<LocalDate>,
+)
+
+internal fun goalCalculationDates(selectedDate: LocalDate, today: LocalDate): GoalCalculationDates {
+    val calculationDate = if (selectedDate < today) selectedDate else today
+    val sharedWeek = selectedDate.startOfWeek() == calculationDate.startOfWeek()
+    val previousDays =
+        if (sharedWeek) {
+            val weekStart = calculationDate.startOfWeek()
+            List(calculationDate.dayOfWeek.isoDayNumber - 1) {
+                weekStart.plus(it, DateTimeUnit.DAY)
+            }
+        } else {
+            emptyList()
+        }
+    val plannedFutureDays =
+        if (sharedWeek && calculationDate == today) {
+            List(7 - calculationDate.dayOfWeek.isoDayNumber) {
+                calculationDate.plus(it + 1, DateTimeUnit.DAY)
+            }
+        } else {
+            emptyList()
+        }
+
+    return GoalCalculationDates(
+        calculationDate = calculationDate,
+        previousDays = previousDays,
+        plannedFutureDays = plannedFutureDays,
+    )
+}
+
 private data class SelectedGoalDay(
     val consumedEnergy: Double,
     val burnedEnergy: Double,
@@ -332,7 +353,7 @@ internal fun percentageEnergyGoalKcal(energyGoalKcal: Double, baseEnergyGoalKcal
 
 private fun GoalDisplayMode.summary(
     selectedDate: LocalDate,
-    today: LocalDate,
+    calculationDate: LocalDate,
     baseEnergyGoalKcal: Double,
     dietEnergyDeficitKcal: Double?,
     previousDays: List<GoalEnergyOptimizationDay>,
@@ -342,7 +363,7 @@ private fun GoalDisplayMode.summary(
         if (this != GoalDisplayMode.Normal) {
             adjustedEnergyGoalKcal(
                 selectedDate = selectedDate,
-                today = today,
+                calculationDate = calculationDate,
                 baseEnergyGoalKcal = baseEnergyGoalKcal,
                 dailyEnergyDeficitKcal =
                     if (this == GoalDisplayMode.Diet) {

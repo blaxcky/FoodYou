@@ -6,6 +6,44 @@ import kotlinx.datetime.LocalDate
 
 class GoalEnergyOptimizationTest {
     @Test
+    fun historicalTuesdayDistributesMondaysDietSavingsAcrossOpenWeekDays() {
+        val monday =
+            GoalEnergyOptimizationDay(
+                date = LocalDate(2026, 5, 18),
+                consumedEnergyKcal = 311.0,
+                baseEnergyGoalKcal = 1500.0,
+                burnedEnergyKcal = 36.0,
+                dietEnergyDeficitKcal = 500.0,
+            )
+
+        val tuesdayGoal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
+                baseEnergyGoalKcal = 1500.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = listOf(monday),
+            )
+
+        assertEquals(1120.833333, tuesdayGoal, 0.000001)
+        assertEquals(-74, roundedRemainingEnergyKcal(tuesdayGoal, netEnergyKcal = 1195))
+    }
+
+    @Test
+    fun historicalMondayWithoutPreviousDaysKeepsDietDailyTarget() {
+        val goal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 18),
+                calculationDate = LocalDate(2026, 5, 18),
+                baseEnergyGoalKcal = 1500.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = emptyList(),
+            )
+
+        assertEquals(1000.0, goal)
+    }
+
+    @Test
     fun netEnergyUsesTheIndividuallyRoundedDisplayedValues() {
         val eaten = roundedEnergyKcal(1999.49)
         val burned = roundedEnergyKcal(0.51)
@@ -67,7 +105,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
@@ -87,7 +125,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
-                today = LocalDate(2026, 5, 20),
+                calculationDate = LocalDate(2026, 5, 20),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
@@ -107,7 +145,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 18),
-                today = LocalDate(2026, 5, 18),
+                calculationDate = LocalDate(2026, 5, 18),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays = emptyList(),
                 plannedFutureDays =
@@ -128,7 +166,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 18),
-                today = LocalDate(2026, 5, 18),
+                calculationDate = LocalDate(2026, 5, 18),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays = emptyList(),
@@ -150,7 +188,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
-                today = LocalDate(2026, 5, 20),
+                calculationDate = LocalDate(2026, 5, 20),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 300.0,
                 previousDays =
@@ -178,7 +216,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 18),
-                today = LocalDate(2026, 5, 18),
+                calculationDate = LocalDate(2026, 5, 18),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays = emptyList(),
                 plannedFutureDays =
@@ -221,7 +259,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
@@ -241,7 +279,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
-                today = LocalDate(2026, 5, 20),
+                calculationDate = LocalDate(2026, 5, 20),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
@@ -286,7 +324,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 24),
-                today = LocalDate(2026, 5, 24),
+                calculationDate = LocalDate(2026, 5, 24),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays = previousDays,
             )
@@ -299,7 +337,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 24),
-                today = LocalDate(2026, 5, 24),
+                calculationDate = LocalDate(2026, 5, 24),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
@@ -319,7 +357,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 24),
-                today = LocalDate(2026, 5, 24),
+                calculationDate = LocalDate(2026, 5, 24),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
@@ -389,7 +427,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 26),
+                calculationDate = LocalDate(2026, 5, 26),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
@@ -409,7 +447,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 18),
-                today = LocalDate(2026, 5, 18),
+                calculationDate = LocalDate(2026, 5, 18),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays = emptyList(),
@@ -423,7 +461,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays =
@@ -444,7 +482,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays =
@@ -465,7 +503,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
-                today = LocalDate(2026, 5, 20),
+                calculationDate = LocalDate(2026, 5, 20),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays =
@@ -491,7 +529,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
-                today = LocalDate(2026, 5, 20),
+                calculationDate = LocalDate(2026, 5, 20),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays =
@@ -517,7 +555,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays =
@@ -538,7 +576,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays =
@@ -559,7 +597,7 @@ class GoalEnergyOptimizationTest {
         val goal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = LocalDate(2026, 5, 26),
+                calculationDate = LocalDate(2026, 5, 26),
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 550.0,
                 previousDays = emptyList(),
@@ -584,7 +622,7 @@ class GoalEnergyOptimizationTest {
         val wednesdayGoal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays = previousDays,
@@ -592,7 +630,7 @@ class GoalEnergyOptimizationTest {
         val sundayGoal =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 24),
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays = previousDays,
@@ -619,7 +657,7 @@ class GoalEnergyOptimizationTest {
         val optimizedTuesday =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = 2000.0,
                 previousDays = emptyList(),
                 plannedFutureDays = plannedFutureDays,
@@ -627,7 +665,7 @@ class GoalEnergyOptimizationTest {
         val optimizedWednesday =
             optimizedEnergyGoalKcal(
                 selectedDate = wednesday,
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = 2000.0,
                 previousDays = emptyList(),
                 plannedFutureDays = plannedFutureDays,
@@ -635,7 +673,7 @@ class GoalEnergyOptimizationTest {
         val dietTuesday =
             adjustedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 19),
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays = emptyList(),
@@ -644,7 +682,7 @@ class GoalEnergyOptimizationTest {
         val dietWednesday =
             adjustedEnergyGoalKcal(
                 selectedDate = wednesday,
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = 2000.0,
                 dailyEnergyDeficitKcal = 500.0,
                 previousDays = emptyList(),
@@ -663,14 +701,14 @@ class GoalEnergyOptimizationTest {
         val currentDayGoal =
             optimizedEnergyGoalKcal(
                 selectedDate = today,
-                today = today,
+                calculationDate = today,
                 baseEnergyGoalKcal = 2000.0,
                 previousDays = emptyList(),
             )
         val nextDayGoal =
             optimizedEnergyGoalKcal(
                 selectedDate = LocalDate(2026, 5, 20),
-                today = LocalDate(2026, 5, 20),
+                calculationDate = LocalDate(2026, 5, 20),
                 baseEnergyGoalKcal = 2000.0,
                 previousDays =
                     listOf(
