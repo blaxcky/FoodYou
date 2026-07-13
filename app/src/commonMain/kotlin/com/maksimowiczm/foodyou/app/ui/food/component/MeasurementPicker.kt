@@ -274,10 +274,7 @@ fun rememberMeasurementPickerState(
         rememberSaveable(selectedMeasurement, stateSaver = Measurement.Saver) {
             mutableStateOf(selectedMeasurement)
         }
-    val inputMemory = remember { MeasurementPickerInputMemory() }
-
     LaunchedEffect(selectedMeasurement, totalWeight, servingWeight, isLiquid) {
-        inputMemory.reset()
         inputField.textFieldState.setTextAndPlaceCursorAtEnd(
             selectedMeasurement.rawValue.formatClipZeros()
         )
@@ -303,7 +300,6 @@ fun rememberMeasurementPickerState(
         typeState,
         selectedOptionState,
         measurementState,
-        inputMemory,
     ) {
         MeasurementPickerState(
             suggestions = suggestions,
@@ -316,7 +312,6 @@ fun rememberMeasurementPickerState(
             measurementState = measurementState,
             typeState = typeState,
             selectedOptionState = selectedOptionState,
-            inputMemory = inputMemory,
         )
     }
 }
@@ -332,7 +327,6 @@ class MeasurementPickerState(
     measurementState: MutableState<Measurement>,
     typeState: MutableState<MeasurementType>,
     selectedOptionState: MutableState<MeasurementPickerOption>,
-    private val inputMemory: MeasurementPickerInputMemory,
 ) {
     var measurement by measurementState
     var type by typeState
@@ -355,7 +349,7 @@ class MeasurementPickerState(
 
     fun selectOption(option: MeasurementPickerOption, inputTextOverride: String? = null) {
         val inputText =
-            inputMemory.select(
+            measurementPickerInputForSelection(
                 previousOption = selectedOption,
                 selectedOption = option,
                 currentInput = inputField.textFieldState.text.toString(),
@@ -378,46 +372,58 @@ class MeasurementPickerState(
         )
 }
 
-class MeasurementPickerInputMemory {
-    private val inputs = mutableMapOf<MeasurementPickerOptionKey, String>()
+internal fun measurementPickerInputForSelection(
+    previousOption: MeasurementPickerOption,
+    selectedOption: MeasurementPickerOption,
+    currentInput: String,
+    inputTextOverride: String? = null,
+): String {
+    if (inputTextOverride != null) return inputTextOverride
 
-    fun select(
-        previousOption: MeasurementPickerOption,
-        selectedOption: MeasurementPickerOption,
-        currentInput: String,
-        inputTextOverride: String? = null,
-    ): String {
-        inputs[previousOption.memoryKey] = currentInput
+    val currentValue = currentInput.toDoubleOrNull()
+    val previousUnitWeight = previousOption.metricWeightPerUnit
+    val selectedUnitWeight = selectedOption.metricWeightPerUnit
+    val convertedValue =
+        if (
+            currentValue != null &&
+                currentValue.isFinite() &&
+                currentValue > 0.0 &&
+                previousUnitWeight != null &&
+                previousUnitWeight.isFinite() &&
+                previousUnitWeight > 0.0 &&
+                selectedUnitWeight != null &&
+                selectedUnitWeight.isFinite() &&
+                selectedUnitWeight > 0.0
+        ) {
+            currentValue * previousUnitWeight / selectedUnitWeight
+        } else {
+            null
+        }
 
-        return inputTextOverride
-            ?: inputs[selectedOption.memoryKey]
-            ?: selectedOption.defaultInput(currentInput)
-    }
-
-    fun reset() {
-        inputs.clear()
+    return if (convertedValue != null && convertedValue.isFinite() && convertedValue > 0.0) {
+        convertedValue.formatClipZeros("%.4f")
+    } else {
+        selectedOption.defaultInput(currentInput)
     }
 }
 
 private fun MeasurementPickerOption.defaultInput(currentInput: String): String =
     if (selectsUnitQuantity) "1" else currentInput
 
-private val MeasurementPickerOption.memoryKey: MeasurementPickerOptionKey
+private val MeasurementPickerOption.metricWeightPerUnit: Double?
     get() =
         when (this) {
-            is MeasurementPickerOption.Standard -> MeasurementPickerOptionKey.Standard(type)
-            is MeasurementPickerOption.Portion ->
-                MeasurementPickerOptionKey.Portion(displayLabel, unitMeasurement)
+            is MeasurementPickerOption.Portion -> unitMeasurement.metric
+            is MeasurementPickerOption.Standard ->
+                when (type) {
+                    MeasurementType.Gram,
+                    MeasurementType.Milliliter -> 1.0
+                    MeasurementType.Ounce -> Measurement.Ounce(1.0).metric
+                    MeasurementType.FluidOunce -> Measurement.FluidOunce(1.0).metric
+                    MeasurementType.Package -> totalWeight
+                    MeasurementType.Serving -> servingWeight
+                }
         }
-
-private sealed interface MeasurementPickerOptionKey {
-    data class Standard(val type: MeasurementType) : MeasurementPickerOptionKey
-
-    data class Portion(
-        val displayLabel: String,
-        val unitMeasurement: Measurement.ImmutableMeasurement,
-    ) : MeasurementPickerOptionKey
-}
 
 @Immutable
 data class LabeledMeasurementSuggestion(
