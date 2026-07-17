@@ -71,7 +71,6 @@ class GoalsCardScreenshotTest {
                     energy = 1200,
                     burnedEnergy = 0,
                     netEnergy = 1200,
-                    todayEnergyGoal = 1600,
                     todayRemainingEnergy = 400,
                 ),
         )
@@ -86,7 +85,6 @@ class GoalsCardScreenshotTest {
                     energy = 1700,
                     burnedEnergy = 0,
                     netEnergy = 1700,
-                    todayEnergyGoal = 1600,
                     todayRemainingEnergy = -100,
                 ),
             width = 320,
@@ -288,7 +286,6 @@ class GoalsCardScreenshotTest {
                         carbohydratesGoal = fixture.carbohydratesGoal,
                         fats = fixture.fats,
                         fatsGoal = fixture.fatsGoal,
-                        todayEnergyGoal = fixture.todayEnergyGoal,
                         todayRemainingEnergy = fixture.todayRemainingEnergy,
                         onClick = {},
                         onLongClick = {},
@@ -333,7 +330,6 @@ class GoalsCardScreenshotTest {
         val carbohydratesGoal: Int,
         val fats: Int,
         val fatsGoal: Int,
-        val todayEnergyGoal: Int? = null,
         val todayRemainingEnergy: Int? = null,
     )
 
