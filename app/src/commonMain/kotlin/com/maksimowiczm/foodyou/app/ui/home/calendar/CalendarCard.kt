@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -105,12 +106,7 @@ private fun CalendarCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    text =
-                        dateFormatter.formatMonthYear(
-                            calendarState.firstVisibleDate ?: calendarState.selectedDate
-                        )
-                )
+                Text(text = dateFormatter.formatMonthYear(calendarState.firstVisibleDate))
 
                 Icon(
                     imageVector = Icons.Default.CalendarMonth,
@@ -199,8 +195,8 @@ private fun CalendarCardDatePicker(
     // Tick when user scrolls
     LaunchedEffect(calendarState) {
         combine(
-                snapshotFlow { calendarState.lazyListState.isScrollInProgress },
-                snapshotFlow { calendarState.lazyListState.firstVisibleItemIndex },
+                snapshotFlow { calendarState.pagerState.isScrollInProgress },
+                snapshotFlow { calendarState.pagerState.currentPage },
             ) { isScrollInProgress, _ ->
                 isScrollInProgress
             }
@@ -210,18 +206,23 @@ private fun CalendarCardDatePicker(
             }
     }
 
-    LazyRow(modifier = modifier, state = calendarState.lazyListState) {
-        items(count = calendarState.lazyListCount, key = { it }, contentType = { "date" }) {
-            val date = calendarState.zeroDate.plus(it.toLong(), DateTimeUnit.DAY)
-            DatePickerRowItem(
-                calendarState = calendarState,
-                date = date,
-                colors = colors,
-                onClick = {
-                    calendarState.onDateSelect(date = date, scroll = false)
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
-                },
-            )
+    HorizontalPager(modifier = modifier.fillMaxWidth(), state = calendarState.pagerState) { page ->
+        val weekStart = calendarState.weekRange.firstDateForPage(page)
+        Row(modifier = Modifier.fillMaxWidth()) {
+            repeat(7) { dayIndex ->
+                val date = weekStart.plus(dayIndex.toLong(), DateTimeUnit.DAY)
+                DatePickerRowItem(
+                    calendarState = calendarState,
+                    date = date,
+                    colors = colors,
+                    enabled = calendarState.weekRange.isSelectable(date),
+                    onClick = {
+                        calendarState.onDateSelect(date = date, scroll = false)
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -231,6 +232,7 @@ private fun DatePickerRowItem(
     calendarState: CalendarState,
     date: LocalDate,
     colors: CalendarCardColors,
+    enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -282,11 +284,12 @@ private fun DatePickerRowItem(
     Box(
         modifier =
             modifier
-                .padding(4.dp)
-                .size(48.dp)
+                .padding(horizontal = 2.dp, vertical = 4.dp)
+                .height(48.dp)
+                .alpha(if (enabled) 1f else 0.38f)
                 .border(1.dp, referenceDateIndicatorColor, shape)
                 .clip(shape)
-                .clickable { onClick() }
+                .clickable(enabled = enabled) { onClick() }
                 .drawBehind {
                     drawRect(backgroundColor)
                     drawCircle(

@@ -168,9 +168,16 @@ class HomeScreenScreenshotTest {
                 Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    listOf("Mo" to "11", "Di" to "12", "Mi" to "13", "Do" to "14", "Fr" to "15")
+                    listOf(
+                            "Mo" to "11",
+                            "Di" to "12",
+                            "Mi" to "13",
+                            "Do" to "14",
+                            "Fr" to "15",
+                            "Sa" to "16",
+                            "So" to "17",
+                        )
                         .forEach { (weekday, day) ->
                             DateCell(
                                 weekday = weekday,
@@ -198,7 +205,11 @@ class HomeScreenScreenshotTest {
             else MaterialTheme.colorScheme.onSurfaceVariant
 
         Column(
-            modifier = modifier.background(background, MaterialTheme.shapes.medium).padding(8.dp),
+            modifier =
+                modifier
+                    .padding(horizontal = 2.dp)
+                    .background(background, MaterialTheme.shapes.medium)
+                    .padding(vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
