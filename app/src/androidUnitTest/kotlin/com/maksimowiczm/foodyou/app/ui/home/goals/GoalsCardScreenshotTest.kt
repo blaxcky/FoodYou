@@ -63,6 +63,38 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun todayGoalAdjustment() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.today-goal-adjustment.png",
+            fixture =
+                ReferenceFixture.copy(
+                    energy = 1200,
+                    burnedEnergy = 0,
+                    netEnergy = 1200,
+                    todayEnergyGoal = 1600,
+                    todayRemainingEnergy = 400,
+                ),
+        )
+    }
+
+    @Test
+    fun todayGoalAdjustmentCompact() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.today-goal-adjustment-compact.png",
+            fixture =
+                ReferenceFixture.copy(
+                    energy = 1700,
+                    burnedEnergy = 0,
+                    netEnergy = 1700,
+                    todayEnergyGoal = 1600,
+                    todayRemainingEnergy = -100,
+                ),
+            width = 320,
+            height = 480,
+        )
+    }
+
+    @Test
     fun almostDone() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.almost-done.png",
@@ -256,6 +288,8 @@ class GoalsCardScreenshotTest {
                         carbohydratesGoal = fixture.carbohydratesGoal,
                         fats = fixture.fats,
                         fatsGoal = fixture.fatsGoal,
+                        todayEnergyGoal = fixture.todayEnergyGoal,
+                        todayRemainingEnergy = fixture.todayRemainingEnergy,
                         onClick = {},
                         onLongClick = {},
                         modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
@@ -299,6 +333,8 @@ class GoalsCardScreenshotTest {
         val carbohydratesGoal: Int,
         val fats: Int,
         val fatsGoal: Int,
+        val todayEnergyGoal: Int? = null,
+        val todayRemainingEnergy: Int? = null,
     )
 
     private companion object {

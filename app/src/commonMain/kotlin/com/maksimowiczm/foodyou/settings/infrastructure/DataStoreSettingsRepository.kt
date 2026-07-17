@@ -18,6 +18,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
 import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 
@@ -63,6 +64,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
+            todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: Settings) {
@@ -117,6 +119,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
+        setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
     }
 }
 
@@ -208,6 +211,29 @@ private fun Preferences.getDietEnergyDeficitOverride(): DietEnergyDeficitOverrid
         startDate = startDate,
         endDate = endDate,
     ).takeIf { it.endDate >= it.startDate }
+}
+
+private fun MutablePreferences.setTodayEnergyGoalAdjustment(
+    value: TodayEnergyGoalAdjustment?
+) {
+    if (value != null && value.reductionKcal > 0.0) {
+        this[SettingsPreferencesKeys.todayEnergyGoalAdjustmentEpochDay] = value.date.toEpochDays()
+        this[SettingsPreferencesKeys.todayEnergyGoalAdjustmentKcal] = value.reductionKcal
+    } else {
+        remove(SettingsPreferencesKeys.todayEnergyGoalAdjustmentEpochDay)
+        remove(SettingsPreferencesKeys.todayEnergyGoalAdjustmentKcal)
+    }
+}
+
+private fun Preferences.getTodayEnergyGoalAdjustment(): TodayEnergyGoalAdjustment? {
+    val epochDay = this[SettingsPreferencesKeys.todayEnergyGoalAdjustmentEpochDay] ?: return null
+    val reductionKcal =
+        this[SettingsPreferencesKeys.todayEnergyGoalAdjustmentKcal]?.takeIf { it > 0.0 }
+            ?: return null
+    return TodayEnergyGoalAdjustment(
+        date = LocalDate.fromEpochDays(epochDay.toInt()),
+        reductionKcal = reductionKcal,
+    )
 }
 
 private fun MutablePreferences.setPendingProductPhotoQuality(value: PendingProductPhotoQuality) =
@@ -306,6 +332,10 @@ private object SettingsPreferencesKeys {
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
+    val todayEnergyGoalAdjustmentEpochDay =
+        longPreferencesKey("settings:todayEnergyGoalAdjustmentEpochDay")
+    val todayEnergyGoalAdjustmentKcal =
+        doublePreferencesKey("settings:todayEnergyGoalAdjustmentKcal")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
     val firstLaunchCurrentVersionEpoch = longPreferencesKey("first_launch_current_version_epoch")

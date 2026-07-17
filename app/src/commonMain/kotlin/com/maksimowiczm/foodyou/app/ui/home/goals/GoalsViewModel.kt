@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
@@ -10,7 +11,9 @@ import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCas
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
+import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,6 +62,27 @@ internal class GoalsViewModel(
     fun setGoalDisplayMode(goalDisplayMode: SettingsGoalDisplayMode) {
         viewModelScope.launch {
             settingsRepository.update { copy(goalDisplayMode = goalDisplayMode) }
+        }
+    }
+
+    fun setTodayEnergyGoalReduction(reductionKcal: Double) {
+        if (reductionKcal <= 0.0) return
+        viewModelScope.launch {
+            val today = dateProvider.now().date
+            settingsRepository.update {
+                copy(
+                    todayEnergyGoalAdjustment =
+                        TodayEnergyGoalAdjustment(date = today, reductionKcal = reductionKcal)
+                )
+            }
+            updateCalorieWidgetValues()
+        }
+    }
+
+    fun resetTodayEnergyGoalReduction() {
+        viewModelScope.launch {
+            settingsRepository.update { copy(todayEnergyGoalAdjustment = null) }
+            updateCalorieWidgetValues()
         }
     }
 
@@ -190,11 +214,24 @@ internal class GoalsViewModel(
                     val selectedGoalDisplaySummary =
                         goalDisplaySummaries.firstOrNull { it.mode == goalDisplayMode }
                             ?: goalDisplaySummaries.first()
+                    val netEnergy =
+                        roundedNetEnergyKcal(day.consumedEnergy, day.burnedEnergy)
+                    val todayAdjustment =
+                        settings
+                            .effectiveTodayEnergyGoalAdjustment(date, today)
+                            ?.takeIf { it.reductionKcal <= day.baseEnergyGoal }
+                    val baseEnergyGoal = roundedEnergyKcal(day.baseEnergyGoal)
+                    val todayValues =
+                        todayEnergyGoalValues(
+                            baseGoalKcal = day.baseEnergyGoal,
+                            netEnergyKcal = netEnergy,
+                            reductionKcal = todayAdjustment?.reductionKcal,
+                        )
 
                     DaySummaryModel(
                         energy = roundedEnergyKcal(day.consumedEnergy),
                         burnedEnergy = roundedEnergyKcal(day.burnedEnergy),
-                        netEnergy = roundedNetEnergyKcal(day.consumedEnergy, day.burnedEnergy),
+                        netEnergy = netEnergy,
                         energyGoal = selectedGoalDisplaySummary.energyGoal,
                         showEnergyGoalValue = selectedGoalDisplaySummary.showEnergyGoalValue,
                         goalDisplayMode = goalDisplayMode,
@@ -206,6 +243,10 @@ internal class GoalsViewModel(
                         carbohydratesGoal = day.carbohydratesGoal,
                         fats = day.fats,
                         fatsGoal = day.fatsGoal,
+                        todayEnergyGoal = todayValues?.goalKcal,
+                        todayRemainingEnergy = todayValues?.remainingKcal,
+                        todayEnergyGoalReductionKcal = todayAdjustment?.reductionKcal,
+                        todayEnergyGoalEditable = date == today && baseEnergyGoal > 0,
                     )
                 }
             }
@@ -271,6 +312,20 @@ internal class GoalsViewModel(
                 initialValue = null,
             )
 }
+
+internal data class TodayEnergyGoalValues(val goalKcal: Int, val remainingKcal: Int)
+
+internal fun todayEnergyGoalValues(
+    baseGoalKcal: Double,
+    netEnergyKcal: Int,
+    reductionKcal: Double?,
+): TodayEnergyGoalValues? =
+    reductionKcal
+        ?.takeIf { it > 0.0 && it <= baseGoalKcal }
+        ?.let {
+            val goal = roundedEnergyKcal(baseGoalKcal - it)
+            TodayEnergyGoalValues(goalKcal = goal, remainingKcal = goal - netEnergyKcal)
+        }
 
 internal fun LocalDate.weekDatesUntil(today: LocalDate): List<LocalDate> {
     val weekStart = startOfWeek()

@@ -9,6 +9,34 @@ import kotlinx.datetime.LocalDate
 class CalorieWidgetModelTest {
 
     @Test
+    fun todayAdjustmentChangesOnlyNormalRemainingEnergy() {
+        val baseline =
+            calorieWidgetModel(
+                today = LocalDate(2026, 7, 17),
+                eatenKcal = 1200.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2100.0,
+                dietEnergyDeficitKcal = 300.0,
+                previousDays = emptyList(),
+            )
+        val adjusted =
+            calorieWidgetModel(
+                today = LocalDate(2026, 7, 17),
+                eatenKcal = 1200.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2100.0,
+                dietEnergyDeficitKcal = 300.0,
+                todayEnergyGoalReductionKcal = 500.0,
+                previousDays = emptyList(),
+            )
+
+        assertEquals(900, baseline.normalLeftKcal)
+        assertEquals(400, adjusted.normalLeftKcal)
+        assertEquals(baseline.optimizedLeftKcal, adjusted.optimizedLeftKcal)
+        assertEquals(baseline.dietLeftKcal, adjusted.dietLeftKcal)
+    }
+
+    @Test
     fun netEnergyUsesTheIndividuallyRoundedDisplayedValues() {
         val model =
             calorieWidgetModel(

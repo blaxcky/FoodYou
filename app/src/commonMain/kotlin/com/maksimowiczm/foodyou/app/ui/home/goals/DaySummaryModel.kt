@@ -18,6 +18,10 @@ internal data class DaySummaryModel(
     val carbohydratesGoal: Int,
     val fats: Int,
     val fatsGoal: Int,
+    val todayEnergyGoal: Int? = null,
+    val todayRemainingEnergy: Int? = null,
+    val todayEnergyGoalReductionKcal: Double? = null,
+    val todayEnergyGoalEditable: Boolean = false,
 )
 
 internal enum class GoalDisplayMode {

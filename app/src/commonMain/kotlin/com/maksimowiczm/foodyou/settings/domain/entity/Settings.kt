@@ -32,7 +32,21 @@ data class Settings(
     val fddbProductSyncManualCount: Int = 0,
     val pendingProductPhotoQuality: PendingProductPhotoQuality = PendingProductPhotoQuality.Balanced,
     val crosstrainerCalorieDiscountPercent: Double = 0.0,
+    val todayEnergyGoalAdjustment: TodayEnergyGoalAdjustment? = null,
 ) : UserPreferences
+
+data class TodayEnergyGoalAdjustment(
+    val date: LocalDate,
+    val reductionKcal: Double,
+)
+
+fun Settings.effectiveTodayEnergyGoalAdjustment(
+    selectedDate: LocalDate,
+    today: LocalDate,
+): TodayEnergyGoalAdjustment? =
+    todayEnergyGoalAdjustment?.takeIf {
+        selectedDate == today && it.date == today && it.reductionKcal > 0.0
+    }
 
 data class DietEnergyDeficitOverride(
     val energyDeficitKcal: Double,

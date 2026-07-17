@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
+import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
+import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -19,6 +21,62 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 
 class DataStoreSettingsRepositoryTest {
+    @Test
+    fun todayEnergyGoalAdjustmentRoundTripsThroughDataStore() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+        val adjustment =
+            TodayEnergyGoalAdjustment(LocalDate(2026, 7, 17), reductionKcal = 500.0)
+
+        repository.update { copy(todayEnergyGoalAdjustment = adjustment) }
+
+        assertEquals(adjustment, repository.observe().first().todayEnergyGoalAdjustment)
+    }
+
+    @Test
+    fun invalidOrPartialTodayEnergyGoalAdjustmentIsIgnored() = runTest {
+        val invalidRepository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+        invalidRepository.update {
+            copy(
+                todayEnergyGoalAdjustment =
+                    TodayEnergyGoalAdjustment(LocalDate(2026, 7, 17), reductionKcal = 0.0)
+            )
+        }
+        assertNull(invalidRepository.observe().first().todayEnergyGoalAdjustment)
+
+        val partialPreferences =
+            mutablePreferencesOf(
+                longPreferencesKey("settings:todayEnergyGoalAdjustmentEpochDay") to
+                    LocalDate(2026, 7, 17).toEpochDays()
+            )
+        val partialRepository =
+            DataStoreSettingsRepository(InMemoryPreferencesDataStore(partialPreferences))
+        assertNull(partialRepository.observe().first().todayEnergyGoalAdjustment)
+    }
+
+    @Test
+    fun todayEnergyGoalAdjustmentOnlyAppliesToActualToday() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+        val today = LocalDate(2026, 7, 17)
+        val settings =
+            repository.observe().first().copy(
+                todayEnergyGoalAdjustment = TodayEnergyGoalAdjustment(today, 500.0)
+            )
+
+        assertEquals(
+            500.0,
+            settings.effectiveTodayEnergyGoalAdjustment(today, today)?.reductionKcal,
+        )
+        assertNull(
+            settings.effectiveTodayEnergyGoalAdjustment(LocalDate(2026, 7, 16), today)
+        )
+        assertNull(
+            settings.effectiveTodayEnergyGoalAdjustment(
+                LocalDate(2026, 7, 18),
+                LocalDate(2026, 7, 18),
+            )
+        )
+    }
+
     @Test
     fun pendingProductPhotoQualityDefaultsToBalanced() = runTest {
         val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())

@@ -55,6 +55,11 @@ class CalorieWidgetProvider : AppWidgetProvider() {
             Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 launchReceiverUpdate(context) { updateAllSuspending(it) }
             }
+            Intent.ACTION_DATE_CHANGED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED -> {
+                launchReceiverUpdate(context) { updateAllSuspending(it) }
+            }
             else -> super.onReceive(context, intent)
         }
     }

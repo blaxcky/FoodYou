@@ -229,6 +229,12 @@
     <string name="goal_reached_percentage">%1$d %% erreicht</string>
     <string name="goal_net_energy">Nettoenergie</string>
     <string name="goal_no_diet_deficit">Kein Defizit gesetzt</string>
+    <string name="goal_today">Heute</string>
+    <string name="goal_today_target">Tagesziel</string>
+    <string name="goal_today_adjustment_title">Tagesziel festlegen</string>
+    <string name="goal_today_adjustment">Heute einsparen</string>
+    <string name="goal_today_preview">%1$s − %2$s = %3$s</string>
+    <string name="error_today_energy_goal_adjustment">Gib einen Wert größer null und höchstens in Höhe des normalen Ziels ein.</string>
     <string name="goal_display_mode_overview">Kalorienziel-Übersicht anzeigen</string>
     <string name="goal_display_mode_normal">Normales Kalorienziel anzeigen</string>
     <string name="goal_display_mode_optimized">Optimiertes Kalorienziel anzeigen</string>

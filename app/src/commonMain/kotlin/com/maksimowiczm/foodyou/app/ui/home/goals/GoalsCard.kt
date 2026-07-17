@@ -86,6 +86,8 @@ import foodyou.app.generated.resources.goal_net_energy
 import foodyou.app.generated.resources.goal_protein
 import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
+import foodyou.app.generated.resources.goal_today
+import foodyou.app.generated.resources.goal_today_target
 import foodyou.app.generated.resources.headline_your_week
 import foodyou.app.generated.resources.inter
 import foodyou.app.generated.resources.neutral_today_short
@@ -153,6 +155,8 @@ internal fun GoalsCard(
 
     val model = viewModel.model.collectAsStateWithLifecycle().value
 
+    var showTodayGoalDialog by remember { mutableStateOf(false) }
+
     if (model == null) {
         GoalsCardSkeleton(
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
@@ -177,11 +181,35 @@ internal fun GoalsCard(
             carbohydratesGoal = model.carbohydratesGoal,
             fats = model.fats,
             fatsGoal = model.fatsGoal,
+            todayEnergyGoal = model.todayEnergyGoal,
+            todayRemainingEnergy = model.todayRemainingEnergy,
+            todayEnergyGoalEditable = model.todayEnergyGoalEditable,
+            onTodayEnergyGoalClick = { showTodayGoalDialog = true },
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
             onDoubleClick = onDoubleClick,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             modifier = modifier,
+        )
+    }
+
+    if (showTodayGoalDialog && model != null) {
+        val baseGoal =
+            model.goalDisplaySummaries
+                .firstOrNull { it.mode == GoalDisplayMode.Normal }
+                ?.energyGoal ?: model.energyGoal
+        TodayEnergyGoalDialog(
+            baseGoalKcal = baseGoal,
+            currentReductionKcal = model.todayEnergyGoalReductionKcal,
+            onDismiss = { showTodayGoalDialog = false },
+            onSave = {
+                viewModel.setTodayEnergyGoalReduction(it)
+                showTodayGoalDialog = false
+            },
+            onReset = {
+                viewModel.resetTodayEnergyGoalReduction()
+                showTodayGoalDialog = false
+            },
         )
     }
 }
@@ -291,6 +319,10 @@ internal fun GoalsCard(
     carbohydratesGoal: Int,
     fats: Int,
     fatsGoal: Int,
+    todayEnergyGoal: Int? = null,
+    todayRemainingEnergy: Int? = null,
+    todayEnergyGoalEditable: Boolean = false,
+    onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDoubleClick: (() -> Unit)? = null,
@@ -360,6 +392,10 @@ internal fun GoalsCard(
             goalDisplayMode = displayedGoalCardView.toGoalDisplayMode(),
             goalDisplaySummaries = summaries,
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
+            todayEnergyGoal = todayEnergyGoal,
+            todayRemainingEnergy = todayRemainingEnergy,
+            todayEnergyGoalEditable = todayEnergyGoalEditable,
+            onTodayEnergyGoalClick = onTodayEnergyGoalClick,
             onClick = onClick,
             onLongClick = onLongClick,
             onDoubleClick = onDoubleClick,
@@ -893,6 +929,10 @@ private fun CaloriesOverview(
     goalDisplayMode: GoalDisplayMode,
     goalDisplaySummaries: List<GoalDisplaySummaryModel>,
     dietGoalDisplayModeEnabled: Boolean,
+    todayEnergyGoal: Int? = null,
+    todayRemainingEnergy: Int? = null,
+    todayEnergyGoalEditable: Boolean = false,
+    onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDoubleClick: (() -> Unit)?,
@@ -941,6 +981,15 @@ private fun CaloriesOverview(
                     burnedEnergyDelta = burnedEnergyDelta,
                     netEnergy = netEnergy,
                     summary = currentSummary,
+                    todayEnergyGoal = todayEnergyGoal.takeIf {
+                        currentSummary.mode == GoalDisplayMode.Normal
+                    },
+                    todayRemainingEnergy = todayRemainingEnergy.takeIf {
+                        currentSummary.mode == GoalDisplayMode.Normal
+                    },
+                    todayEnergyGoalEditable =
+                        todayEnergyGoalEditable && currentSummary.mode == GoalDisplayMode.Normal,
+                    onTodayEnergyGoalClick = onTodayEnergyGoalClick,
                     onClick = onClick,
                     onLongClick = onLongClick,
                     onDoubleClick = onDoubleClick,
@@ -1238,6 +1287,10 @@ private fun CaloriesOverviewPageCard(
     burnedEnergyDelta: Int?,
     netEnergy: Int,
     summary: GoalDisplaySummaryModel,
+    todayEnergyGoal: Int? = null,
+    todayRemainingEnergy: Int? = null,
+    todayEnergyGoalEditable: Boolean = false,
+    onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDoubleClick: (() -> Unit)?,
@@ -1272,6 +1325,10 @@ private fun CaloriesOverviewPageCard(
                     burnedEnergyDelta = burnedEnergyDelta,
                     netEnergy = netEnergy,
                     summary = summary,
+                    todayEnergyGoal = todayEnergyGoal,
+                    todayRemainingEnergy = todayRemainingEnergy,
+                    todayEnergyGoalEditable = todayEnergyGoalEditable,
+                    onTodayEnergyGoalClick = onTodayEnergyGoalClick,
                     modifier = Modifier.fillMaxWidth(),
                     footer = footer,
                 )
@@ -1287,6 +1344,10 @@ private fun CaloriesOverviewPage(
     burnedEnergyDelta: Int?,
     netEnergy: Int,
     summary: GoalDisplaySummaryModel,
+    todayEnergyGoal: Int? = null,
+    todayRemainingEnergy: Int? = null,
+    todayEnergyGoalEditable: Boolean = false,
+    onTodayEnergyGoalClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1308,6 +1369,24 @@ private fun CaloriesOverviewPage(
     val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
     val remainingLabel =
         stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
+    val todayRemainingOverflow = todayRemainingEnergy?.let { it < 0 } == true
+    val todayRemainingText =
+        todayRemainingEnergy?.let {
+            val value = abs(it)
+            val status =
+                if (todayRemainingOverflow) {
+                    " ${stringResource(Res.string.goal_too_much)}"
+                } else {
+                    ""
+                }
+            "${energyFormatter.formatEnergy(value, withSuffix = false).groupDigits()}$status · " +
+                stringResource(Res.string.goal_today_target)
+        }
+    val todayGoalText =
+        todayEnergyGoal?.let {
+            "${energyFormatter.formatEnergy(it, withSuffix = false).groupDigits()} · " +
+                stringResource(Res.string.goal_today)
+        }
 
     BoxWithConstraints(
         modifier = modifier
@@ -1340,6 +1419,9 @@ private fun CaloriesOverviewPage(
                         valueColor = valueColor,
                         labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
                         diameter = gaugeDiameter,
+                        supportingText = todayRemainingText,
+                        supportingColor =
+                            if (todayRemainingOverflow) GoalsErrorColor else GoalsMutedTextColor,
                     )
 
                     Spacer(Modifier.height(6.dp))
@@ -1383,7 +1465,14 @@ private fun CaloriesOverviewPage(
                                     "-"
                                 },
                             label = stringResource(Res.string.goal_goal),
-                            modifier = Modifier.weight(1f),
+                            supportingValue = todayGoalText,
+                            supportingFontSizeSp = 11,
+                            modifier =
+                                Modifier.weight(1f)
+                                    .clickable(
+                                        enabled = todayEnergyGoalEditable,
+                                        onClick = onTodayEnergyGoalClick,
+                                    ),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             muted = true,
                         )
@@ -1422,6 +1511,9 @@ private fun CaloriesOverviewPage(
                         valueColor = valueColor,
                         labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
                         diameter = gaugeDiameter,
+                        supportingText = todayRemainingText,
+                        supportingColor =
+                            if (todayRemainingOverflow) GoalsErrorColor else GoalsMutedTextColor,
                     )
                     Column(
                         modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
@@ -1448,7 +1540,13 @@ private fun CaloriesOverviewPage(
                                     "-"
                                 },
                             label = stringResource(Res.string.goal_goal),
-                            modifier = Modifier.fillMaxWidth(),
+                            supportingValue = todayGoalText,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .clickable(
+                                        enabled = todayEnergyGoalEditable,
+                                        onClick = onTodayEnergyGoalClick,
+                                    ),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             muted = true,
                         )
@@ -1723,6 +1821,8 @@ private fun SideMetric(
     supportingTopPadding: Dp = 0.dp,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     muted: Boolean = false,
+    supportingColor: Color = GoalsMutedTextColor,
+    supportingFontSizeSp: Int = 13,
 ) {
     val numberFontFamily = interNumberFontFamily()
     val energyFormatter = LocalEnergyFormatter.current
@@ -1759,11 +1859,11 @@ private fun SideMetric(
             Text(
                 text = supportingValue,
                 modifier = Modifier.fillMaxWidth().padding(top = supportingTopPadding),
-                color = GoalsMutedTextColor,
+                color = supportingColor,
                 style =
                     MaterialTheme.typography.labelMedium.copy(
                         fontFamily = numberFontFamily,
-                        fontSize = 13.sp,
+                        fontSize = supportingFontSizeSp.sp,
                         lineHeight = 16.sp,
                     ),
                 fontWeight = FontWeight.Normal,
@@ -1871,6 +1971,8 @@ private fun GaugeMetric(
     labelColor: Color = GoalsMutedTextColor,
     diameter: Dp,
     modifier: Modifier = Modifier,
+    supportingText: String? = null,
+    supportingColor: Color = GoalsMutedTextColor,
 ) {
     val numberFontFamily = interNumberFontFamily()
 
@@ -1916,6 +2018,21 @@ private fun GaugeMetric(
                 maxLines = 1,
                 textAlign = TextAlign.Center,
             )
+            if (supportingText != null) {
+                Text(
+                    text = supportingText,
+                    modifier = Modifier.padding(top = 3.dp),
+                    color = supportingColor,
+                    style =
+                        MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = numberFontFamily,
+                            fontSize = 12.sp,
+                            lineHeight = 15.sp,
+                        ),
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -2029,7 +2146,7 @@ private fun SemiCircleGauge(
     }
 }
 
-private fun String.groupDigits(): String {
+internal fun String.groupDigits(): String {
     val sign = if (startsWith("-")) "-" else ""
     val digits = if (sign.isEmpty()) this else drop(1)
 
