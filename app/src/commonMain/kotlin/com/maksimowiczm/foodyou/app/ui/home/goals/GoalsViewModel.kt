@@ -308,7 +308,7 @@ internal class GoalsViewModel(
             .distinctUntilChanged()
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(2_000),
+                started = SharingStarted.Eagerly,
                 initialValue = null,
             )
 }

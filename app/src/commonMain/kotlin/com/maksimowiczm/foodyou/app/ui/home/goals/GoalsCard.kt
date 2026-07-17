@@ -150,8 +150,6 @@ internal fun GoalsCard(
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
-    LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
-
     val model = viewModel.model.collectAsStateWithLifecycle().value
 
     var showTodayGoalDialog by remember { mutableStateOf(false) }
@@ -219,12 +217,12 @@ internal fun WeeklyGoalsCard(
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
-    LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
-
     val weekModel = viewModel.weekModel.collectAsStateWithLifecycle().value
     val expanded = viewModel.expandGoalsCard.collectAsStateWithLifecycle().value
 
-    if (weekModel != null) {
+    if (weekModel == null) {
+        WeeklyGoalsSkeleton(modifier = modifier)
+    } else {
         WeeklyGoalsContent(
             model = weekModel,
             expanded = expanded,
@@ -244,8 +242,6 @@ internal fun GoalOverviewCard(
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
-    LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
-
     val model = viewModel.model.collectAsStateWithLifecycle().value ?: return
     val summaries =
         remember(
@@ -2310,6 +2306,62 @@ private fun MacroProgressBar(
                         .background(GoalsErrorColor)
             )
         }
+    }
+}
+
+@Composable
+internal fun WeeklyGoalsSkeleton(
+    modifier: Modifier = Modifier,
+    shimmerEnabled: Boolean = true,
+) {
+    val shimmer =
+        if (shimmerEnabled) rememberShimmer(shimmerBounds = ShimmerBounds.Window) else null
+
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.headline_your_week),
+                style = MaterialTheme.typography.titleMedium,
+                color = GoalsTextColor,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        FoodYouHomeCard(color = GoalsCardColor, shape = GoalsCardShape) {
+            Column(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .defaultMinSize(minHeight = 342.dp)
+                        .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                WeeklySkeletonBlock(
+                    shimmer = shimmer,
+                    modifier = Modifier.width(196.dp).height(32.dp).clip(RoundedCornerShape(8.dp)),
+                )
+                WeeklySkeletonBlock(
+                    shimmer = shimmer,
+                    modifier =
+                        Modifier.fillMaxWidth().height(184.dp).clip(RoundedCornerShape(12.dp)),
+                )
+                WeeklySkeletonBlock(
+                    shimmer = shimmer,
+                    modifier = Modifier.width(112.dp).height(24.dp).clip(RoundedCornerShape(8.dp)),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeeklySkeletonBlock(shimmer: Shimmer?, modifier: Modifier = Modifier) {
+    if (shimmer == null) {
+        Box(modifier = modifier.background(GoalsTrackColor))
+    } else {
+        SkeletonBlock(shimmer = shimmer, modifier = modifier)
     }
 }
 

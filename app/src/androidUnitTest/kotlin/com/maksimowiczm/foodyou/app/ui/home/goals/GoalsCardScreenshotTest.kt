@@ -165,6 +165,16 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun weeklyLoading() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-loading.png",
+            roborazziComposeOptions = goalsCardOptions(width = 414, height = 430),
+        ) {
+            WeeklyGoalsLoadingGolden()
+        }
+    }
+
+    @Test
     fun burnedEnergyDelta() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.burned-energy-delta.png",
@@ -309,6 +319,23 @@ class GoalsCardScreenshotTest {
                     days = WeeklyChartLargeValueFixture,
                     today = WeeklyChartToday,
                     modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun WeeklyGoalsLoadingGolden() {
+        MaterialTheme {
+            Box(
+                modifier =
+                    Modifier.requiredSize(width = 414.dp, height = 430.dp)
+                        .background(Color(0xFFEEF5FA))
+                        .padding(horizontal = 12.dp, vertical = 18.dp)
+            ) {
+                WeeklyGoalsSkeleton(
+                    modifier = Modifier.fillMaxWidth(),
+                    shimmerEnabled = false,
                 )
             }
         }

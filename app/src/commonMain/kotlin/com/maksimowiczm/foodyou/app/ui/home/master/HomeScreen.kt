@@ -61,6 +61,7 @@ import com.maksimowiczm.foodyou.app.ui.home.calendar.CalendarCard
 import com.maksimowiczm.foodyou.app.ui.home.activity.ActivitiesCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalOverviewCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCard
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.goals.WeeklyGoalsCard
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.mealsCards
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.rememberMealsCardsState
@@ -100,6 +101,7 @@ fun HomeScreen(
     val activitySyncState by viewModel.activitySyncState.collectAsStateWithLifecycle()
     val homeSyncState by viewModel.homeSyncState.collectAsStateWithLifecycle()
     val homeState = rememberHomeState()
+    val goalsViewModel: GoalsViewModel = koinViewModel()
     val burnedEnergyDelta = activitySyncState.burnedEnergySyncDeltas[homeState.selectedDate]
     val mealsCardsState =
         rememberMealsCardsState(
@@ -110,6 +112,8 @@ fun HomeScreen(
             onEditEntry = onEditDiaryEntryClick,
             onEditFood = onEditFoodClick,
         )
+
+    LaunchedEffect(homeState.selectedDate) { goalsViewModel.setDate(homeState.selectedDate) }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showSettingsMenu by remember { mutableStateOf(false) }
@@ -318,6 +322,7 @@ fun HomeScreen(
                                 if (showGoalOverviewInGoalSlot) {
                                     GoalOverviewCard(
                                         homeState = homeState,
+                                        viewModel = goalsViewModel,
                                         onClick = {},
                                         onLongClick = onGoalsCardLongClick,
                                         onDoubleClick = { showGoalOverviewInGoalSlot = false },
@@ -328,6 +333,7 @@ fun HomeScreen(
                                 } else {
                                     GoalsCard(
                                         homeState = homeState,
+                                        viewModel = goalsViewModel,
                                         burnedEnergyDelta = burnedEnergyDelta,
                                         onClick = {},
                                         onLongClick = onGoalsCardLongClick,
@@ -368,6 +374,7 @@ fun HomeScreen(
                     item(key = "weekly-goals", contentType = "weekly-goals") {
                         WeeklyGoalsCard(
                             homeState = homeState,
+                            viewModel = goalsViewModel,
                             onWeightClick = onWeightReportClick,
                             modifier =
                                 Modifier.padding(horizontal = 8.dp)
