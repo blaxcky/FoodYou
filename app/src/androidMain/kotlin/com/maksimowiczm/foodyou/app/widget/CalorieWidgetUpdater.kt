@@ -1,12 +1,15 @@
 package com.maksimowiczm.foodyou.app.widget
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.app.infrastructure.android.MainActivity
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalEnergyOptimizationDay
 import com.maksimowiczm.foodyou.app.ui.home.goals.startOfWeek
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
@@ -129,6 +132,10 @@ internal class CalorieWidgetUpdater(
         RemoteViews(context.packageName, layout).apply { setValues(context, model) }
 
     private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
+        setOnClickPendingIntent(
+            R.id.widget_calories_root,
+            calorieWidgetLaunchPendingIntent(context),
+        )
         setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
         setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
         setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
@@ -223,6 +230,21 @@ internal class CalorieWidgetUpdater(
     private fun layout(manager: AppWidgetManager, appWidgetId: Int): Int =
         CalorieWidgetLayoutSelector.layout(manager.getAppWidgetOptions(appWidgetId))
 }
+
+internal fun calorieWidgetLaunchPendingIntent(context: Context): PendingIntent =
+    PendingIntent.getActivity(
+        context,
+        0,
+        calorieWidgetLaunchIntent(context),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+internal fun calorieWidgetLaunchIntent(context: Context): Intent =
+    Intent(context, MainActivity::class.java).apply {
+        action = Intent.ACTION_MAIN
+        addCategory(Intent.CATEGORY_LAUNCHER)
+        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    }
 
 private fun previousWeekDates(today: LocalDate): List<LocalDate> {
     val weekStart = today.startOfWeek()
