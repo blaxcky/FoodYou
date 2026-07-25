@@ -724,4 +724,54 @@ class GoalEnergyOptimizationTest {
         assertEquals(2000.0, currentDayGoal)
         assertEquals(2000.0, nextDayGoal)
     }
+
+    @Test
+    fun futureOptimizedGoalIncludesTodaysBalance() {
+        val saturday = LocalDate(2026, 5, 23)
+        val previousDays =
+            listOf(
+                GoalEnergyOptimizationDay(
+                    date = LocalDate(2026, 5, 20),
+                    consumedEnergyKcal = 2600.0,
+                    baseEnergyGoalKcal = 2000.0,
+                    burnedEnergyKcal = 0.0,
+                )
+            )
+
+        val goal =
+            optimizedEnergyGoalKcal(
+                selectedDate = saturday,
+                calculationDate = saturday,
+                baseEnergyGoalKcal = 2000.0,
+                previousDays = previousDays,
+            )
+
+        assertEquals(1700.0, goal)
+    }
+
+    @Test
+    fun futureDietGoalIncludesTodaysBalance() {
+        val saturday = LocalDate(2026, 5, 23)
+        val previousDays =
+            listOf(
+                GoalEnergyOptimizationDay(
+                    date = LocalDate(2026, 5, 20),
+                    consumedEnergyKcal = 1800.0,
+                    baseEnergyGoalKcal = 2000.0,
+                    burnedEnergyKcal = 0.0,
+                    dietEnergyDeficitKcal = 500.0,
+                )
+            )
+
+        val goal =
+            adjustedEnergyGoalKcal(
+                selectedDate = saturday,
+                calculationDate = saturday,
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays = previousDays,
+            )
+
+        assertEquals(1350.0, goal)
+    }
 }

@@ -19,25 +19,49 @@ class WeekDatesTest {
     }
 
     @Test
-    fun todayAndFutureSelectionUseTodayWithRemainingWeekPlanning() {
+    fun todayUsesEarlierDaysAndPlansTheRemainingWeek() {
         val today = LocalDate(2026, 5, 20)
-        val expectedPreviousDays =
-            listOf(LocalDate(2026, 5, 18), LocalDate(2026, 5, 19))
-        val expectedFutureDays =
+        val dates = goalCalculationDates(selectedDate = today, today = today)
+
+        assertEquals(today, dates.calculationDate)
+        assertEquals(
+            listOf(LocalDate(2026, 5, 18), LocalDate(2026, 5, 19)),
+            dates.previousDays,
+        )
+        assertEquals(
             listOf(
                 LocalDate(2026, 5, 21),
                 LocalDate(2026, 5, 22),
                 LocalDate(2026, 5, 23),
                 LocalDate(2026, 5, 24),
+            ),
+            dates.plannedFutureDays,
+        )
+    }
+
+    @Test
+    fun futureSelectionUsesAllEarlierWeekDaysAndPlansFromSelectedDay() {
+        val dates =
+            goalCalculationDates(
+                selectedDate = LocalDate(2026, 5, 23),
+                today = LocalDate(2026, 5, 20),
             )
 
-        listOf(today, LocalDate(2026, 5, 23)).forEach { selectedDate ->
-            val dates = goalCalculationDates(selectedDate = selectedDate, today = today)
-
-            assertEquals(today, dates.calculationDate)
-            assertEquals(expectedPreviousDays, dates.previousDays)
-            assertEquals(expectedFutureDays, dates.plannedFutureDays)
-        }
+        assertEquals(LocalDate(2026, 5, 23), dates.calculationDate)
+        assertEquals(
+            listOf(
+                LocalDate(2026, 5, 18),
+                LocalDate(2026, 5, 19),
+                LocalDate(2026, 5, 20),
+                LocalDate(2026, 5, 21),
+                LocalDate(2026, 5, 22),
+            ),
+            dates.previousDays,
+        )
+        assertEquals(
+            listOf(LocalDate(2026, 5, 23), LocalDate(2026, 5, 24)),
+            dates.plannedFutureDays,
+        )
     }
 
     @Test

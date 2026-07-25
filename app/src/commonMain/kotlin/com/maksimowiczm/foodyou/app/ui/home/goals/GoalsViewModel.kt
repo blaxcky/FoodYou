@@ -339,7 +339,10 @@ internal data class GoalCalculationDates(
 )
 
 internal fun goalCalculationDates(selectedDate: LocalDate, today: LocalDate): GoalCalculationDates {
-    val calculationDate = if (selectedDate < today) selectedDate else today
+    val futureDateInCurrentWeek =
+        selectedDate > today && selectedDate.startOfWeek() == today.startOfWeek()
+    val calculationDate =
+        if (selectedDate < today || futureDateInCurrentWeek) selectedDate else today
     val sharedWeek = selectedDate.startOfWeek() == calculationDate.startOfWeek()
     val previousDays =
         if (sharedWeek) {
@@ -351,9 +354,12 @@ internal fun goalCalculationDates(selectedDate: LocalDate, today: LocalDate): Go
             emptyList()
         }
     val plannedFutureDays =
-        if (sharedWeek && calculationDate == today) {
-            List(7 - calculationDate.dayOfWeek.isoDayNumber) {
-                calculationDate.plus(it + 1, DateTimeUnit.DAY)
+        if (sharedWeek && selectedDate >= today) {
+            val firstPlannedDate =
+                if (futureDateInCurrentWeek) calculationDate
+                else calculationDate.plus(1, DateTimeUnit.DAY)
+            List(8 - firstPlannedDate.dayOfWeek.isoDayNumber) {
+                firstPlannedDate.plus(it, DateTimeUnit.DAY)
             }
         } else {
             emptyList()
