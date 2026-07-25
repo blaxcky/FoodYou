@@ -40,7 +40,7 @@ class ResyncFddbProductUseCaseTest {
 
         val result = useCase.resync(ProductId)
 
-        assertIs<Result.Success<Unit, ResyncFddbProductError>>(result)
+        assertEquals(Unit, assertIs<Result.Success<Unit, ResyncFddbProductError>>(result).data)
         val product = repository.product(ProductId)
         assertEquals(remoteProduct.nutritionFacts, product.nutritionFacts)
         assertEquals(500.0, product.packageWeight)
@@ -60,7 +60,7 @@ class ResyncFddbProductUseCaseTest {
 
         val result = useCase.resync(ProductId)
 
-        assertIs<Result.Success<Unit, ResyncFddbProductError>>(result)
+        assertEquals(Unit, assertIs<Result.Success<Unit, ResyncFddbProductError>>(result).data)
         assertEquals(null, repository.product(ProductId).servingWeight)
     }
 

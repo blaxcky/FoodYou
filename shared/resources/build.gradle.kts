@@ -18,6 +18,8 @@ kotlin {
         implementation(libs.jetbrains.compose.runtime)
         implementation(libs.jetbrains.compose.components.resources)
     }
+
+    sourceSets.remove(sourceSets.getByName("commonTest"))
 }
 
 compose.resources {
