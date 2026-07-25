@@ -185,7 +185,8 @@ private fun MealSettingsScreen(
                                     IconButton(
                                         onClick = {},
                                         modifier =
-                                            Modifier.clearAndSetSemantics {}.hapticDraggableHandle(),
+                                            Modifier.clearAndSetSemantics {}
+                                                .hapticDraggableHandle(this@ReorderableItem),
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.DragHandle,

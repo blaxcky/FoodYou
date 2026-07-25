@@ -25,11 +25,6 @@ buildConfig {
 }
 
 kotlin {
-    sourceSets.all {
-        languageSettings.enableLanguageFeature("ExpectActualClasses")
-        languageSettings.enableLanguageFeature("ContextParameters")
-    }
-
     compilerOptions {
         optIn.add("androidx.compose.ui.ExperimentalComposeUiApi")
         optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")

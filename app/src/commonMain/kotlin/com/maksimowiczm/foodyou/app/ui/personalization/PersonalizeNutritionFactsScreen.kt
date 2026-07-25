@@ -213,7 +213,7 @@ private fun ReorderableCollectionItemScope.ListItem(
         Row(modifier = Modifier.padding(16.dp)) {
             Text(text = item.stringResource(), style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.weight(1f))
-            DragHandle(Modifier.hapticDraggableHandle())
+            DragHandle(Modifier.hapticDraggableHandle(this@ListItem))
         }
     }
 }

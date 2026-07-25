@@ -9,14 +9,14 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 
 @Composable
-context(scope: ReorderableCollectionItemScope)
 fun Modifier.hapticDraggableHandle(
+    reorderableScope: ReorderableCollectionItemScope,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
     onDragStarted: (startedPosition: Offset) -> Unit = {},
     onDragStopped: () -> Unit = {},
 ) =
-    with(scope) {
+    with(reorderableScope) {
         val localHapticFeedback = LocalHapticFeedback.current
 
         draggableHandle(

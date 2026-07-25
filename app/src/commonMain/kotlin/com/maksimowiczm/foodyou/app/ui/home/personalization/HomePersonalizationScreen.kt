@@ -179,12 +179,16 @@ private fun HomePersonalizationScreen(
                                     )
                             },
                     ) {
+                        val reorderableScope = this
                         with(it) {
                             when (card) {
-                                HomeCard.Calendar -> CalendarCardContent()
-                                HomeCard.Goals -> GoalsCardContent(onMore = onGoals)
-                                HomeCard.Meals -> MealsCardContent(onMore = onMeals)
-                                HomeCard.Activities -> ActivitiesCardContent(onMore = onActivities)
+                                HomeCard.Calendar -> CalendarCardContent(reorderableScope)
+                                HomeCard.Goals ->
+                                    GoalsCardContent(reorderableScope, onMore = onGoals)
+                                HomeCard.Meals ->
+                                    MealsCardContent(reorderableScope, onMore = onMeals)
+                                HomeCard.Activities ->
+                                    ActivitiesCardContent(reorderableScope, onMore = onActivities)
                             }
                         }
                     }
@@ -222,20 +226,21 @@ private fun ReorderableCollectionItemScope.MyCard(
 }
 
 @Composable
-context(_: ReorderableCollectionItemScope)
-private fun RowScope.CalendarCardContent() {
+private fun RowScope.CalendarCardContent(reorderableScope: ReorderableCollectionItemScope) {
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         Icon(imageVector = Icons.Outlined.CalendarMonth, contentDescription = null)
     }
     Spacer(Modifier.width(16.dp))
     Text(stringResource(Res.string.headline_calendar))
     Spacer(Modifier.weight(1f))
-    DragHandle(modifier = Modifier.hapticDraggableHandle())
+    DragHandle(modifier = Modifier.hapticDraggableHandle(reorderableScope))
 }
 
 @Composable
-context(_: ReorderableCollectionItemScope)
-private fun RowScope.MealsCardContent(onMore: () -> Unit) {
+private fun RowScope.MealsCardContent(
+    reorderableScope: ReorderableCollectionItemScope,
+    onMore: () -> Unit,
+) {
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         Icon(imageVector = Icons.Outlined.Restaurant, contentDescription = null)
     }
@@ -248,12 +253,14 @@ private fun RowScope.MealsCardContent(onMore: () -> Unit) {
             contentDescription = stringResource(Res.string.action_show_more),
         )
     }
-    DragHandle(modifier = Modifier.hapticDraggableHandle())
+    DragHandle(modifier = Modifier.hapticDraggableHandle(reorderableScope))
 }
 
 @Composable
-context(_: ReorderableCollectionItemScope)
-private fun RowScope.GoalsCardContent(onMore: () -> Unit) {
+private fun RowScope.GoalsCardContent(
+    reorderableScope: ReorderableCollectionItemScope,
+    onMore: () -> Unit,
+) {
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         Icon(imageVector = Icons.Outlined.Flag, contentDescription = null)
     }
@@ -266,12 +273,14 @@ private fun RowScope.GoalsCardContent(onMore: () -> Unit) {
             contentDescription = stringResource(Res.string.action_show_more),
         )
     }
-    DragHandle(modifier = Modifier.hapticDraggableHandle())
+    DragHandle(modifier = Modifier.hapticDraggableHandle(reorderableScope))
 }
 
 @Composable
-context(_: ReorderableCollectionItemScope)
-private fun RowScope.ActivitiesCardContent(onMore: () -> Unit) {
+private fun RowScope.ActivitiesCardContent(
+    reorderableScope: ReorderableCollectionItemScope,
+    onMore: () -> Unit,
+) {
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         Icon(imageVector = Icons.AutoMirrored.Outlined.DirectionsWalk, contentDescription = null)
     }
@@ -284,7 +293,7 @@ private fun RowScope.ActivitiesCardContent(onMore: () -> Unit) {
             contentDescription = stringResource(Res.string.action_show_more),
         )
     }
-    DragHandle(modifier = Modifier.hapticDraggableHandle())
+    DragHandle(modifier = Modifier.hapticDraggableHandle(reorderableScope))
 }
 
 @Composable
