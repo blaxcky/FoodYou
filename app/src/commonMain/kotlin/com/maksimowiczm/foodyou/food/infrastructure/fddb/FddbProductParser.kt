@@ -2,7 +2,6 @@ package com.maksimowiczm.foodyou.food.infrastructure.fddb
 
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 
@@ -170,7 +169,7 @@ private fun List<String>.findBarcode(): String? =
             ?.get(1)
     }
 
-private fun List<String>.findPortions(): List<FddbPortion> =
+private fun List<String>.findPortions(): List<ProductPortion> =
     mapNotNull { line ->
             val match = PortionRegex.matchEntire(line) ?: return@mapNotNull null
             val label = match.groupValues[1].trim()
@@ -189,7 +188,7 @@ private fun List<String>.findPortions(): List<FddbPortion> =
                     else -> return@mapNotNull null
                 }
 
-            FddbPortion(
+            ProductPortion(
                 label = label,
                 amount = amount,
                 unit = unit,
@@ -197,7 +196,7 @@ private fun List<String>.findPortions(): List<FddbPortion> =
         }
         .filter { it.amount > 0.0 }
 
-private fun List<FddbPortion>.findPackageWeight(): Double? =
+private fun List<ProductPortion>.findPackageWeight(): Double? =
     firstOrNull { portion ->
         portion.unit == ProductPortion.Unit.Gram &&
             PackageLabels.any { portion.label.contains(it, ignoreCase = true) }

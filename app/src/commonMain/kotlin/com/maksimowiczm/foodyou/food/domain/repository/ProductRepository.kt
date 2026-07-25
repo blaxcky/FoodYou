@@ -2,7 +2,6 @@ package com.maksimowiczm.foodyou.food.domain.repository
 
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
@@ -80,7 +79,7 @@ interface ProductRepository {
     suspend fun replaceProductPortions(
         productId: FoodId.Product,
         sourceType: FoodSource.Type,
-        portions: List<FddbPortion>,
+        portions: List<ProductPortion>,
     )
 
     /** Stores the user-managed effective portions without changing imported source portions. */

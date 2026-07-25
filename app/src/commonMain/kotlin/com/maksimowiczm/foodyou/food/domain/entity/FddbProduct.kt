@@ -9,6 +9,6 @@ data class FddbProduct(
     val isLiquid: Boolean,
     val packageWeight: Double?,
     val servingWeight: Double?,
-    val portions: List<FddbPortion> = emptyList(),
+    val portions: List<ProductPortion> = emptyList(),
     val nutritionFacts: NutritionFacts,
 )

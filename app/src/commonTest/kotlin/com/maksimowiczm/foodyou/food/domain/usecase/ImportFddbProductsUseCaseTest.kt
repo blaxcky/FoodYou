@@ -7,7 +7,6 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.food.domain.entity.FddbImportQueueItem
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -107,7 +106,7 @@ class ImportFddbProductsUseCaseTest {
 
     @Test
     fun storesPortionsForImportedProduct() = runBlocking {
-        val portions = listOf(FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram))
+        val portions = listOf(ProductPortion("Stück", 12.0, ProductPortion.Unit.Gram))
         val gateway = FakeFddbProductGateway(portions = portions)
         val repository = FakeProductRepository()
         val useCase = useCase(gateway, repository, FakeFddbImportQueueRepository())
@@ -122,7 +121,7 @@ class ImportFddbProductsUseCaseTest {
 
     @Test
     fun addsPortionsForExistingBarcode() = runBlocking {
-        val portions = listOf(FddbPortion("Stück", 12.0, ProductPortion.Unit.Gram))
+        val portions = listOf(ProductPortion("Stück", 12.0, ProductPortion.Unit.Gram))
         val gateway = FakeFddbProductGateway(portions = portions)
         val existing = product(id = 1, barcode = "1234567890123")
         val repository = FakeProductRepository(existingProduct = existing)
@@ -234,7 +233,7 @@ class ImportFddbProductsUseCaseTest {
         private val blockedUrl: String? = null,
         private val packageWeight: Double? = null,
         private val servingWeight: Double? = null,
-        private val portions: List<FddbPortion> = emptyList(),
+        private val portions: List<ProductPortion> = emptyList(),
     ) : FddbProductGateway {
         val requests = mutableListOf<String>()
 
@@ -409,7 +408,7 @@ class ImportFddbProductsUseCaseTest {
         override suspend fun replaceProductPortions(
             productId: FoodId.Product,
             sourceType: FoodSource.Type,
-            portions: List<FddbPortion>,
+            portions: List<ProductPortion>,
         ) {
             products.replaceAll { product ->
                 if (product.id == productId) product.copy(portions = portions) else product
@@ -461,7 +460,7 @@ class ImportFddbProductsUseCaseTest {
             servingWeight: Double? = null,
             source: FoodSource = FoodSource(FoodSource.Type.FDDB),
             nutritionFacts: NutritionFacts = NutritionFacts.Empty,
-            portions: List<FddbPortion> = emptyList(),
+            portions: List<ProductPortion> = emptyList(),
         ) =
             Product(
                 id = FoodId.Product(id),

@@ -7,7 +7,6 @@ import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.result.Result
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -26,7 +25,7 @@ import kotlinx.coroutines.runBlocking
 class ResyncFddbProductUseCaseTest {
     @Test
     fun overwritesFddbNutritionWeightsLiquidFlagAndPortions() = runBlocking {
-        val portions = listOf(FddbPortion("Piece", 42.0, ProductPortion.Unit.Gram))
+        val portions = listOf(ProductPortion("Piece", 42.0, ProductPortion.Unit.Gram))
         val remoteProduct =
             fddbProduct(
                 nutritionFacts = nutrition(energy = 222.0),
@@ -246,7 +245,7 @@ class ResyncFddbProductUseCaseTest {
         override suspend fun replaceProductPortions(
             productId: FoodId.Product,
             sourceType: FoodSource.Type,
-            portions: List<FddbPortion>,
+            portions: List<ProductPortion>,
         ) {
             products.value =
                 products.value.map { product ->
@@ -293,7 +292,7 @@ class ResyncFddbProductUseCaseTest {
             source: FoodSource = FoodSource(FoodSource.Type.FDDB),
             sourceUrl: String? = null,
             nutritionFacts: NutritionFacts = nutrition(energy = 100.0),
-            portions: List<FddbPortion> = emptyList(),
+            portions: List<ProductPortion> = emptyList(),
         ) =
             Product(
                 id = ProductId,
@@ -313,7 +312,7 @@ class ResyncFddbProductUseCaseTest {
             isLiquid: Boolean = false,
             packageWeight: Double? = 200.0,
             servingWeight: Double? = 20.0,
-            portions: List<FddbPortion> = emptyList(),
+            portions: List<ProductPortion> = emptyList(),
             nutritionFacts: NutritionFacts = nutrition(energy = 150.0),
         ) =
             FddbProduct(

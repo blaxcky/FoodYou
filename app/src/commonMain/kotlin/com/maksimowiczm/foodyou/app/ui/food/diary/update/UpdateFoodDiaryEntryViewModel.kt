@@ -10,7 +10,6 @@ import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.common.result.onError
 import com.maksimowiczm.foodyou.common.result.onSuccess
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
@@ -84,7 +83,7 @@ internal class UpdateFoodDiaryEntryViewModel(
                 initialValue = null,
             )
 
-    val portions: StateFlow<List<FddbPortion>?> =
+    val portions: StateFlow<List<ProductPortion>?> =
         entry
             .filterNotNull()
             .flatMapLatest { entry ->
@@ -142,7 +141,7 @@ internal class UpdateFoodDiaryEntryViewModel(
 
 internal suspend fun DiaryFood.editablePortions(
     productRepository: ProductRepository
-): List<FddbPortion> {
+): List<ProductPortion> {
     val product = this as? DiaryFoodProduct ?: return emptyList()
     val sourceUrl = product.source.url?.takeIf { it.isNotBlank() } ?: return emptyList()
     return productRepository.getProductBySource(product.source.type, sourceUrl)?.portions.orEmpty()

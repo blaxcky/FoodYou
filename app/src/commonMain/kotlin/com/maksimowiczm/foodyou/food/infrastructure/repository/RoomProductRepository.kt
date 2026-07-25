@@ -7,7 +7,6 @@ import com.maksimowiczm.foodyou.common.infrastructure.room.toEntity
 import com.maksimowiczm.foodyou.common.infrastructure.room.toEntityNutrients
 import com.maksimowiczm.foodyou.common.infrastructure.room.toNutritionFacts
 import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
@@ -146,7 +145,7 @@ internal class RoomProductRepository(
     override suspend fun replaceProductPortions(
         productId: FoodId.Product,
         sourceType: FoodSource.Type,
-        portions: List<FddbPortion>,
+        portions: List<ProductPortion>,
     ) {
         val sourceTypeEntity = sourceType.toEntity()
         val distinctPortions = portions.distinctByNormalizedLabel()
@@ -225,7 +224,7 @@ private fun Product.toEntity(): ProductEntity {
     )
 }
 
-private fun FddbPortion.toEntity(
+private fun ProductPortion.toEntity(
     productId: Long,
     sourceType: FoodSourceType,
 ): ProductPortionEntity =
@@ -242,7 +241,7 @@ private fun FddbPortion.toEntity(
             },
     )
 
-private fun ProductPortionEntity.toModel(): FddbPortion? {
+private fun ProductPortionEntity.toModel(): ProductPortion? {
     val unit =
         when (unit) {
             "g" -> ProductPortion.Unit.Gram
@@ -250,7 +249,7 @@ private fun ProductPortionEntity.toModel(): FddbPortion? {
             else -> return null
         }
 
-    return FddbPortion(label = label, amount = amount, unit = unit)
+    return ProductPortion(label = label, amount = amount, unit = unit)
 }
 
 private fun List<ProductPortionEntity>.effectivePortions(

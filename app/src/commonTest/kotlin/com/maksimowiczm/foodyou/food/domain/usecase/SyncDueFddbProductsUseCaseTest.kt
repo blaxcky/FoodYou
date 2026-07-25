@@ -7,7 +7,7 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.log.Logger
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -190,7 +190,7 @@ class SyncDueFddbProductsUseCaseTest {
         override suspend fun replaceProductPortions(
             productId: FoodId.Product,
             sourceType: FoodSource.Type,
-            portions: List<FddbPortion>,
+            portions: List<ProductPortion>,
         ) = Unit
 
         override suspend fun updateProductPortions(

@@ -54,7 +54,6 @@ import com.maksimowiczm.foodyou.common.domain.measurement.from
 import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
@@ -480,7 +479,7 @@ sealed interface MeasurementPickerOption {
     }
 }
 
-fun FddbPortion.toMeasurementPickerOption(isLiquid: Boolean): MeasurementPickerOption.Portion? {
+fun ProductPortion.toMeasurementPickerOption(isLiquid: Boolean): MeasurementPickerOption.Portion? {
     val measurement =
         when (unit) {
             ProductPortion.Unit.Gram -> {
@@ -498,7 +497,7 @@ fun FddbPortion.toMeasurementPickerOption(isLiquid: Boolean): MeasurementPickerO
     )
 }
 
-fun List<FddbPortion>.toMeasurementPickerOptions(
+fun List<ProductPortion>.toMeasurementPickerOptions(
     isLiquid: Boolean
 ): List<MeasurementPickerOption.Portion> = mapNotNull { it.toMeasurementPickerOption(isLiquid) }
 

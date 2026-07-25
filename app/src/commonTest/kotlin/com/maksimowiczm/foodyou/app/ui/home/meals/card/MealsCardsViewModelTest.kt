@@ -11,7 +11,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.log.Logger
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
@@ -518,7 +518,7 @@ class MealsCardsViewModelTest {
         override suspend fun replaceProductPortions(
             productId: FoodId.Product,
             sourceType: FoodSource.Type,
-            portions: List<FddbPortion>,
+            portions: List<ProductPortion>,
         ) = Unit
 
         override suspend fun deleteProduct(product: Product) = Unit

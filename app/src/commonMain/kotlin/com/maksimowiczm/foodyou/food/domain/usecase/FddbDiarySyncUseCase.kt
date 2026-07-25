@@ -7,7 +7,6 @@ import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.common.result.isSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryPortionMeasurement
-import com.maksimowiczm.foodyou.food.domain.entity.FddbPortion
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.normalizedLabel
@@ -164,7 +163,7 @@ private fun FddbDiaryPortionMeasurement.forProduct(product: Product): Measuremen
     }
 }
 
-private fun List<FddbPortion>.matchingPrefix(text: String): FddbPortion? {
+private fun List<ProductPortion>.matchingPrefix(text: String): ProductPortion? {
     val normalizedText = text.normalizedFddbPortionText()
     return sortedByDescending { it.normalizedLabel().length }
         .firstOrNull { portion ->
