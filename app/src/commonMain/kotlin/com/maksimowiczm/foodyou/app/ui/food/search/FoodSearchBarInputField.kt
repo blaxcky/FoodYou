@@ -47,14 +47,13 @@ internal fun FoodSearchBarInputField(
         },
         trailingIcon = {
             Row {
-                if (textFieldState.text.isEmpty()) {
-                    IconButton(onBarcodeScanner) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_barcode_scanner),
-                            contentDescription = stringResource(Res.string.action_scan_barcode),
-                        )
-                    }
-                } else {
+                IconButton(onBarcodeScanner) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_barcode_scanner),
+                        contentDescription = stringResource(Res.string.action_scan_barcode),
+                    )
+                }
+                if (textFieldState.text.isNotEmpty()) {
                     IconButton(
                         onClick = {
                             textFieldState.setTextAndPlaceCursorAtEnd("")
