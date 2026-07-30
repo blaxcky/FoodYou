@@ -76,6 +76,7 @@ fun DiaryFoodSearchScreen(
 
     val viewModel: DiaryFoodSearchViewModel = koinViewModel { parametersOf(mealId) }
     val meal = viewModel.meal.collectAsStateWithLifecycle().value
+    val searchInput = viewModel.searchInput.collectAsStateWithLifecycle().value
 
     val snackBarHostState = remember { SnackbarHostState() }
     val message = stringResource(Res.string.neutral_measurement_added)
@@ -124,9 +125,20 @@ fun DiaryFoodSearchScreen(
     val content: @Composable (PaddingValues) -> Unit =
         @Composable { paddingValues ->
             FoodSearchApp(
-                onFoodClick = { model, measurement -> onMeasure(model.id, measurement) },
+                onFoodClick = { model, measurement ->
+                    onMeasure(
+                        model.id,
+                        diarySearchMeasurement(
+                            suggestedMeasurement = measurement,
+                            isLiquid = model.isLiquid,
+                            amount = searchInput.amount,
+                        ),
+                    )
+                },
                 onUpdateUsdaApiKey = onUpdateUsdaApiKey,
                 onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
+                restoredSearchText = searchInput.originalText,
+                transformSearch = viewModel::prepareSearch,
                 showBarcodeScannerInitially = showBarcodeScanner,
                 modifier =
                     Modifier.padding(paddingValues)

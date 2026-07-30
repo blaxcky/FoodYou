@@ -7,7 +7,9 @@ import com.maksimowiczm.foodyou.common.domain.event.subscribe
 import com.maksimowiczm.foodyou.fooddiary.domain.event.FoodDiaryEntryCreatedEvent
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -17,6 +19,9 @@ internal class DiaryFoodSearchViewModel(
     eventBus: EventBus,
     mealRepository: MealRepository,
 ) : ViewModel() {
+    private val mutableSearchInput = MutableStateFlow(DiaryFoodSearchInput())
+    val searchInput = mutableSearchInput.asStateFlow()
+
     val meal =
         mealRepository
             .observeMeal(mealId)
@@ -34,5 +39,16 @@ internal class DiaryFoodSearchViewModel(
 
     init {
         eventBus.subscribe<FoodDiaryEntryCreatedEvent>(viewModelScope) { eventChannel.send(Unit) }
+    }
+
+    fun prepareSearch(input: String?): String? {
+        if (input == null) {
+            mutableSearchInput.value = DiaryFoodSearchInput()
+            return null
+        }
+
+        val parsed = parseDiaryFoodSearchInput(input)
+        mutableSearchInput.value = parsed
+        return parsed.searchText
     }
 }

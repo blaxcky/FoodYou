@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -67,10 +68,15 @@ fun FoodSearchApp(
     excludedRecipe: FoodId.Recipe? = null,
     layout: FoodSearchLayout = FoodSearchLayout.Overlay,
     showBarcodeScannerInitially: Boolean = false,
+    restoredSearchText: String = "",
+    transformSearch: (String?) -> String? = { it },
 ) {
     val viewModel: FoodSearchViewModel = koinViewModel { parametersOf(excludedRecipe) }
     val appState =
-        rememberFoodSearchAppState(showBarcodeScanner = showBarcodeScannerInitially)
+        rememberFoodSearchAppState(
+            searchTextFieldState = rememberTextFieldState(restoredSearchText),
+            showBarcodeScanner = showBarcodeScannerInitially,
+        )
 
     FoodSearchApp(
         uiState = viewModel.uiState.collectAsStateWithLifecycle().value,
@@ -83,6 +89,7 @@ fun FoodSearchApp(
         modifier = modifier,
         appState = appState,
         layout = layout,
+        transformSearch = transformSearch,
     )
 }
 
@@ -103,13 +110,14 @@ internal fun FoodSearchApp(
     modifier: Modifier = Modifier,
     appState: FoodSearchAppState = rememberFoodSearchAppState(),
     layout: FoodSearchLayout = FoodSearchLayout.Overlay,
+    transformSearch: (String?) -> String? = { it },
 ) {
     val coroutineScope = rememberCoroutineScope()
     val onSearch: (String?) -> Unit =
-        remember(onSearch, appState, coroutineScope) {
+        remember(onSearch, transformSearch, appState, coroutineScope) {
             { query ->
                 appState.searchTextFieldState.setTextAndPlaceCursorAtEnd(query ?: "")
-                onSearch(query)
+                onSearch(transformSearch(query))
                 coroutineScope.launch { appState.searchBarState.animateToCollapsed() }
             }
         }
@@ -131,6 +139,7 @@ internal fun FoodSearchApp(
                 textFieldState = appState.searchTextFieldState,
                 onSearch = onSearch,
                 onBarcodeScanner = { appState.showBarcodeScanner = true },
+                onClear = { transformSearch(null).let {} },
             )
         }
 

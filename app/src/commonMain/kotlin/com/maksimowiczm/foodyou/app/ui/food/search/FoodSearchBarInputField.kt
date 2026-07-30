@@ -26,6 +26,7 @@ internal fun FoodSearchBarInputField(
     textFieldState: TextFieldState,
     onSearch: (String?) -> Unit,
     onBarcodeScanner: () -> Unit,
+    onClear: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -57,6 +58,7 @@ internal fun FoodSearchBarInputField(
                     IconButton(
                         onClick = {
                             textFieldState.setTextAndPlaceCursorAtEnd("")
+                            onClear()
                             if (searchBarState.targetValue == SearchBarValue.Collapsed) {
                                 onSearch(null)
                             }
