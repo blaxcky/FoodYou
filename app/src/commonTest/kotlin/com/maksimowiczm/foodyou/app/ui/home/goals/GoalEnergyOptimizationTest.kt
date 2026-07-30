@@ -6,6 +6,112 @@ import kotlinx.datetime.LocalDate
 
 class GoalEnergyOptimizationTest {
     @Test
+    fun lockedPastDayContributesExactSurplusRegardlessOfActualValues() {
+        val result =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 7, 30),
+                calculationDate = LocalDate(2026, 7, 30),
+                baseEnergyGoalKcal = 2_000.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = LocalDate(2026, 7, 29),
+                            consumedEnergyKcal = 100.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 800.0,
+                            lockedSurplusKcal = 500.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1_875.0, result)
+    }
+
+    @Test
+    fun lockedDayInDietModeAddsItsSurplusAndEffectiveDeficit() {
+        val result =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 7, 30),
+                calculationDate = LocalDate(2026, 7, 30),
+                baseEnergyGoalKcal = 2_000.0,
+                dailyEnergyDeficitKcal = 500.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = LocalDate(2026, 7, 29),
+                            consumedEnergyKcal = 0.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 300.0,
+                            dietEnergyDeficitKcal = 500.0,
+                            lockedSurplusKcal = 500.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1_250.0, result)
+    }
+
+    @Test
+    fun zeroLockedFutureDayIsExcludedWithoutAddingBalance() {
+        val result =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 7, 31),
+                calculationDate = LocalDate(2026, 7, 31),
+                baseEnergyGoalKcal = 2_000.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 2_400.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+                plannedFutureDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = LocalDate(2026, 8, 1),
+                            consumedEnergyKcal = 5_000.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 0.0,
+                            lockedSurplusKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1_800.0, result)
+    }
+
+    @Test
+    fun selectedLockedFutureDayKeepsItsOwnNormalTarget() {
+        val result =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 7, 31),
+                calculationDate = LocalDate(2026, 7, 30),
+                baseEnergyGoalKcal = 2_000.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 2_500.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+                plannedFutureDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = LocalDate(2026, 7, 31),
+                            consumedEnergyKcal = 0.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 0.0,
+                            lockedSurplusKcal = 500.0,
+                        )
+                    ),
+            )
+
+        assertEquals(2_000.0, result)
+    }
+
+    @Test
     fun historicalTuesdayDistributesMondaysDietSavingsAcrossOpenWeekDays() {
         val monday =
             GoalEnergyOptimizationDay(

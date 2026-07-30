@@ -12,6 +12,7 @@ internal data class GoalEnergyOptimizationDay(
     val baseEnergyGoalKcal: Double,
     val burnedEnergyKcal: Double,
     val dietEnergyDeficitKcal: Double? = null,
+    val lockedSurplusKcal: Double? = null,
 )
 
 internal fun optimizedEnergyGoalKcal(
@@ -80,14 +81,14 @@ private fun adjustedEnergyGoalKcal(
         previousDays.sumOf { day ->
             val dayDeficit =
                 if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
-            day.consumedEnergyKcal -
+            day.simulatedConsumedEnergyKcal() -
                 (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit)
         }
     val plannedSurplus =
         plannedFutureDays.sumOf { day ->
             val dayDeficit =
                 if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
-            (day.consumedEnergyKcal -
+            (day.simulatedConsumedEnergyKcal() -
                     (day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit))
                 .coerceAtLeast(0.0)
         }
@@ -101,8 +102,9 @@ private fun adjustedEnergyGoalKcal(
         plannedFutureDays.count { day ->
             val dayDeficit =
                 if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
-            day.consumedEnergyKcal >
-                day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit
+            day.lockedSurplusKcal != null ||
+                day.consumedEnergyKcal >
+                    day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit
         }
     val unplannedOpenDays =
         (8 - calculationDate.dayOfWeek.isoDayNumber - plannedSurplusDays).coerceAtLeast(1)
@@ -113,8 +115,9 @@ private fun adjustedEnergyGoalKcal(
             val dayDeficit =
                 if (dietMode) day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal else 0.0
             day.date == selectedDate &&
-                day.consumedEnergyKcal >
-                    day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit
+                (day.lockedSurplusKcal != null ||
+                    day.consumedEnergyKcal >
+                        day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit)
         }
 
     return if (selectedDayIsOverplanned) {
@@ -123,6 +126,10 @@ private fun adjustedEnergyGoalKcal(
         (dailyTarget - dailyAdjustment).coerceAtMost(baseEnergyGoalKcal)
     }
 }
+
+private fun GoalEnergyOptimizationDay.simulatedConsumedEnergyKcal(): Double =
+    lockedSurplusKcal?.let { baseEnergyGoalKcal + burnedEnergyKcal + it }
+        ?: consumedEnergyKcal
 
 internal fun LocalDate.startOfWeek(): LocalDate =
     minus(dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY)

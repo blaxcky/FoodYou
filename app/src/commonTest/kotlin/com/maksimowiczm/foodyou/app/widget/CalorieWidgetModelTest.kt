@@ -7,6 +7,32 @@ import kotlin.test.assertNull
 import kotlinx.datetime.LocalDate
 
 class CalorieWidgetModelTest {
+    @Test
+    fun plannedLockedDayUsesFixedSurplusForOptimizedAndDietGoals() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 7, 27),
+                eatenKcal = 1_000.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2_000.0,
+                dietEnergyDeficitKcal = 500.0,
+                previousDays = emptyList(),
+                plannedFutureDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = LocalDate(2026, 7, 28),
+                            consumedEnergyKcal = 0.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 700.0,
+                            lockedSurplusKcal = 500.0,
+                        )
+                    ),
+            )
+
+        assertEquals(917, model.optimizedLeftKcal)
+        assertEquals(333, model.dietLeftKcal)
+    }
+
 
     @Test
     fun todayAdjustmentChangesOnlyNormalRemainingEnergy() {

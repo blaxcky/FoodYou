@@ -20,6 +20,7 @@ import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
+import com.maksimowiczm.foodyou.settings.domain.entity.lockedDaySurplus
 import java.time.format.DateTimeFormatter
 import java.text.NumberFormat
 import java.util.Locale
@@ -75,6 +76,7 @@ internal class CalorieWidgetUpdater(
                     burnedEnergyKcal = previousActivity.totalEnergyKcal,
                     dietEnergyDeficitKcal =
                         settings.effectiveDietEnergyDeficitKcal(date) ?: 0.0,
+                    lockedSurplusKcal = settings.lockedDaySurplus(date)?.surplusKcal,
                 )
             }
         val plannedFutureDays =
@@ -93,6 +95,7 @@ internal class CalorieWidgetUpdater(
                     burnedEnergyKcal = futureActivity.totalEnergyKcal,
                     dietEnergyDeficitKcal =
                         settings.effectiveDietEnergyDeficitKcal(date) ?: 0.0,
+                    lockedSurplusKcal = settings.lockedDaySurplus(date)?.surplusKcal,
                 )
             }
 

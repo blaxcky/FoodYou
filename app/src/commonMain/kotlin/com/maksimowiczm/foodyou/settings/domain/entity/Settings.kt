@@ -33,7 +33,16 @@ data class Settings(
     val pendingProductPhotoQuality: PendingProductPhotoQuality = PendingProductPhotoQuality.Balanced,
     val crosstrainerCalorieDiscountPercent: Double = 0.0,
     val todayEnergyGoalAdjustment: TodayEnergyGoalAdjustment? = null,
+    val defaultLockedDaySurplusKcal: Double = DEFAULT_LOCKED_DAY_SURPLUS_KCAL,
+    val lockedDaySurpluses: List<LockedDaySurplus> = emptyList(),
 ) : UserPreferences
+
+data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)
+
+const val DEFAULT_LOCKED_DAY_SURPLUS_KCAL = 500.0
+
+fun Settings.lockedDaySurplus(date: LocalDate): LockedDaySurplus? =
+    lockedDaySurpluses.firstOrNull { it.date == date }
 
 data class TodayEnergyGoalAdjustment(
     val date: LocalDate,

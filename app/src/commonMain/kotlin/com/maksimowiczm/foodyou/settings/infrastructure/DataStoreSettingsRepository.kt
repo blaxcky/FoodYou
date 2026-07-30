@@ -12,9 +12,11 @@ import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStor
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.set
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_LOCKED_DAY_SURPLUS_KCAL
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
+import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
@@ -65,6 +67,11 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
             todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
+            defaultLockedDaySurplusKcal =
+                this[SettingsPreferencesKeys.defaultLockedDaySurplusKcal]
+                    ?.takeIf { it.isFinite() && it >= 0.0 }
+                    ?: DEFAULT_LOCKED_DAY_SURPLUS_KCAL,
+            lockedDaySurpluses = this.getLockedDaySurpluses(),
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: Settings) {
@@ -120,6 +127,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
         setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
+        this[SettingsPreferencesKeys.defaultLockedDaySurplusKcal] =
+            updated.defaultLockedDaySurplusKcal.takeIf { it.isFinite() && it >= 0.0 }
+                ?: DEFAULT_LOCKED_DAY_SURPLUS_KCAL
+        setLockedDaySurpluses(updated.lockedDaySurpluses)
     }
 }
 
@@ -236,6 +247,34 @@ private fun Preferences.getTodayEnergyGoalAdjustment(): TodayEnergyGoalAdjustmen
     )
 }
 
+private fun MutablePreferences.setLockedDaySurpluses(value: List<LockedDaySurplus>) {
+    val serialized =
+        value
+            .asSequence()
+            .filter { it.surplusKcal.isFinite() && it.surplusKcal >= 0.0 }
+            .associateBy { it.date }
+            .values
+            .sortedBy { it.date }
+            .joinToString(",") { "${it.date.toEpochDays()}:${it.surplusKcal}" }
+    setWithNull(SettingsPreferencesKeys.lockedDaySurpluses, serialized.takeIf(String::isNotEmpty))
+}
+
+private fun Preferences.getLockedDaySurpluses(): List<LockedDaySurplus> =
+    this[SettingsPreferencesKeys.lockedDaySurpluses]
+        ?.split(',')
+        .orEmpty()
+        .mapNotNull { entry ->
+            val parts = entry.split(':')
+            if (parts.size != 2) return@mapNotNull null
+            val epochDay = parts[0].toIntOrNull() ?: return@mapNotNull null
+            val surplus = parts[1].toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }
+                ?: return@mapNotNull null
+            runCatching { LockedDaySurplus(LocalDate.fromEpochDays(epochDay), surplus) }.getOrNull()
+        }
+        .associateBy { it.date }
+        .values
+        .sortedBy { it.date }
+
 private fun MutablePreferences.setPendingProductPhotoQuality(value: PendingProductPhotoQuality) =
     setWithNull(SettingsPreferencesKeys.pendingProductPhotoQuality, value.name)
 
@@ -336,6 +375,9 @@ private object SettingsPreferencesKeys {
         longPreferencesKey("settings:todayEnergyGoalAdjustmentEpochDay")
     val todayEnergyGoalAdjustmentKcal =
         doublePreferencesKey("settings:todayEnergyGoalAdjustmentKcal")
+    val defaultLockedDaySurplusKcal =
+        doublePreferencesKey("settings:defaultLockedDaySurplusKcal")
+    val lockedDaySurpluses = stringPreferencesKey("settings:lockedDaySurpluses")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
     val firstLaunchCurrentVersionEpoch = longPreferencesKey("first_launch_current_version_epoch")
