@@ -51,6 +51,7 @@ internal data class WeekDaySummaryModel(
     val date: kotlinx.datetime.LocalDate,
     val energy: Int,
     val goal: Int,
+    val locked: Boolean = false,
 ) {
     val difference: Int = energy - goal
     val percent: Int =

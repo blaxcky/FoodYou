@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.outlined.LocalFireDepartment as OutlinedLocalFireDepartment
@@ -89,6 +90,7 @@ import foodyou.app.generated.resources.goal_too_much
 import foodyou.app.generated.resources.goal_today_target
 import foodyou.app.generated.resources.headline_your_week
 import foodyou.app.generated.resources.inter
+import foodyou.app.generated.resources.locked_day_status
 import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
@@ -702,12 +704,22 @@ private fun WeeklyBar(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = label,
-            color = GoalsTextColor,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                color = GoalsTextColor,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+            )
+            if (day.locked) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = stringResource(Res.string.locked_day_status),
+                    tint = GoalsTextColor,
+                    modifier = Modifier.padding(start = 2.dp).size(11.dp),
+                )
+            }
+        }
     }
 }
 
@@ -752,6 +764,7 @@ private fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modifi
                 soFar = day.energy.toString().groupDigits(),
                 difference = day.difference.toString().groupDigits(),
                 percent = day.percent.toString(),
+                locked = day.locked,
             )
         }
     }
@@ -766,6 +779,7 @@ private fun WeeklyDetailsRow(
     percent: String,
     modifier: Modifier = Modifier,
     header: Boolean = false,
+    locked: Boolean = false,
 ) {
     val numberFontFamily = interNumberFontFamily()
     val style =
@@ -774,7 +788,16 @@ private fun WeeklyDetailsRow(
     val weight = if (header) FontWeight.SemiBold else FontWeight.Normal
 
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(day, modifier = Modifier.weight(0.65f), style = style, fontWeight = FontWeight.SemiBold)
+        Row(modifier = Modifier.weight(0.65f), verticalAlignment = Alignment.CenterVertically) {
+            Text(day, style = style, fontWeight = FontWeight.SemiBold)
+            if (locked) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = stringResource(Res.string.locked_day_status),
+                    modifier = Modifier.padding(start = 2.dp).size(12.dp),
+                )
+            }
+        }
         Text(goal, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
         Text(soFar, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
         Text(difference, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)

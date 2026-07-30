@@ -72,6 +72,8 @@ import com.maksimowiczm.foodyou.app.ui.common.component.DiscardDialog
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
+import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
+import com.maksimowiczm.foodyou.app.ui.common.utility.validatedNonNegativeEnergyKcal
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
@@ -115,11 +117,27 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
             initialValue = setupState.dietEnergyDeficitKcal,
             initialOverride = setupState.dietEnergyDeficitOverride,
         )
+    val energyFormatter = LocalEnergyFormatter.current
+    val initialLockedDaySurplusInput =
+        remember(setupState.defaultLockedDaySurplusKcal, energyFormatter) {
+            energyFormatter
+                .fromKcal(setupState.defaultLockedDaySurplusKcal)
+                .formatClipZeros("%.2f")
+        }
+    var lockedDaySurplusInput by rememberSaveable(initialLockedDaySurplusInput) {
+        mutableStateOf(initialLockedDaySurplusInput)
+    }
+    val defaultLockedDaySurplusKcal =
+        validatedNonNegativeEnergyKcal(lockedDaySurplusInput, energyFormatter::toKcal)
 
     DailyGoalsContent(
         weeklyState = weeklyState,
         basalMetabolicRateProfileState = basalMetabolicRateProfileState,
         dietEnergyDeficitState = dietEnergyDeficitState,
+        lockedDaySurplusInput = lockedDaySurplusInput,
+        onLockedDaySurplusInputChange = { lockedDaySurplusInput = it },
+        lockedDaySurplusValid = defaultLockedDaySurplusKcal != null,
+        lockedDaySurplusModified = lockedDaySurplusInput != initialLockedDaySurplusInput,
         onBack = onBack,
         onSave = {
             viewModel.update(
@@ -128,6 +146,7 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
                     basalMetabolicRateProfileState.intoProfile(),
                 dietEnergyDeficitKcal = dietEnergyDeficitState.value,
                 dietEnergyDeficitOverride = dietEnergyDeficitState.overrideValue,
+                defaultLockedDaySurplusKcal = defaultLockedDaySurplusKcal ?: return@DailyGoalsContent,
             )
         },
         modifier = modifier,
@@ -139,6 +158,10 @@ internal fun DailyGoalsContent(
     weeklyState: WeeklyGoalsState,
     basalMetabolicRateProfileState: BasalMetabolicRateProfileFormState,
     dietEnergyDeficitState: DietEnergyDeficitFormState,
+    lockedDaySurplusInput: String,
+    onLockedDaySurplusInputChange: (String) -> Unit,
+    lockedDaySurplusValid: Boolean,
+    lockedDaySurplusModified: Boolean,
     onBack: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier,
@@ -147,11 +170,13 @@ internal fun DailyGoalsContent(
     val isModified =
         weeklyState.isModified ||
             basalMetabolicRateProfileState.isModified ||
-            dietEnergyDeficitState.isModified
+            dietEnergyDeficitState.isModified ||
+            lockedDaySurplusModified
     val isValid =
         weeklyState.isValid &&
             basalMetabolicRateProfileState.isValid &&
-            dietEnergyDeficitState.isValid
+            dietEnergyDeficitState.isValid &&
+            lockedDaySurplusValid
     val handleOnBack = { if (isModified) showDiscardDialog = true else onBack() }
     NavigationEventHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
@@ -208,6 +233,13 @@ internal fun DailyGoalsContent(
                         state = dietEnergyDeficitState,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     )
+                    Spacer(Modifier.height(12.dp))
+                    LockedDaySurplusDefaultField(
+                        value = lockedDaySurplusInput,
+                        onValueChange = onLockedDaySurplusInputChange,
+                        isValid = lockedDaySurplusValid,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    )
                     HorizontalDivider(Modifier.padding(vertical = 16.dp))
                     Text(
                         text = stringResource(Res.string.action_set_goals),
@@ -252,6 +284,34 @@ internal fun DailyGoalsContent(
             }
         }
     }
+}
+
+@Composable
+private fun LockedDaySurplusDefaultField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    isValid: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val energyFormatter = LocalEnergyFormatter.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        label = { Text(stringResource(Res.string.locked_day_default_surplus_label)) },
+        suffix = { Text(energyFormatter.suffix()) },
+        supportingText = {
+            Text(
+                stringResource(
+                    if (isValid) Res.string.locked_day_default_surplus_supporting_text
+                    else Res.string.locked_day_surplus_error
+                )
+            )
+        },
+        isError = !isValid,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+    )
 }
 
 @Stable

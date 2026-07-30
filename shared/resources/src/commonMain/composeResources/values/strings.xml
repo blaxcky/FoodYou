@@ -129,6 +129,16 @@
     <string name="label_diet">Diet</string>
     <string name="label_daily_calorie_deficit">Daily calorie deficit</string>
     <string name="neutral_daily_calorie_deficit">Used by the diet goal display. Leave empty or set 0 to turn it off.</string>
+    <string name="locked_day_default_surplus_label">Default surplus for locked days</string>
+    <string name="locked_day_default_surplus_supporting_text">Used for newly locked calendar days. Existing locked days keep their value.</string>
+    <string name="locked_day_dialog_title_new">Lock calendar day</string>
+    <string name="locked_day_dialog_title_edit">Edit locked calendar day</string>
+    <string name="locked_day_surplus_label">Fixed calorie surplus</string>
+    <string name="locked_day_surplus_supporting_text">Diary entries and activity stay visible but are ignored in the weekly balance.</string>
+    <string name="locked_day_surplus_error">Enter zero or a positive number.</string>
+    <string name="locked_day_unlock">Unlock</string>
+    <string name="locked_day_status">Locked day</string>
+    <string name="locked_day_long_click_description">Lock or edit day</string>
     <string name="label_temporary_diet_deficit">Temporary deficit</string>
     <string name="label_temporary_calorie_deficit">Temporary calorie deficit</string>
     <string name="neutral_temporary_daily_calorie_deficit">Overrides the daily calorie deficit for the selected dates.</string>

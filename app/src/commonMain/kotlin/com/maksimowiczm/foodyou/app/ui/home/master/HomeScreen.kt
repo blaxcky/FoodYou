@@ -303,6 +303,7 @@ fun HomeScreen(
                             item(key = HomeCard.Calendar, contentType = HomeCard.Calendar) {
                                 CalendarCard(
                                     homeState = homeState,
+                                    viewModel = goalsViewModel,
                                     modifier =
                                         Modifier.padding(horizontal = 8.dp)
                                             .padding(bottom = DefaultHomeCardSpacing),

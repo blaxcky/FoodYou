@@ -175,6 +175,38 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun weeklyLockedDay() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-locked-day.png",
+            roborazziComposeOptions = goalsCardOptions(width = 414, height = 220),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Box(Modifier.requiredSize(414.dp, 220.dp).background(Color.White).padding(16.dp)) {
+                        WeeklyGoalsChart(
+                            days =
+                                listOf(
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 7, 27),
+                                        energy = 2_500,
+                                        goal = 2_000,
+                                        locked = true,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 7, 28),
+                                        energy = 1_750,
+                                        goal = 2_000,
+                                    ),
+                                ),
+                            today = LocalDate(2026, 7, 28),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun burnedEnergyDelta() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.burned-energy-delta.png",

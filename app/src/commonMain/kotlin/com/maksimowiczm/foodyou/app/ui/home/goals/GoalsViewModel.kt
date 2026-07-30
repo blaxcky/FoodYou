@@ -10,10 +10,12 @@ import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRep
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import com.maksimowiczm.foodyou.goals.domain.repository.GoalsRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
+import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
+import com.maksimowiczm.foodyou.settings.domain.entity.lockedDaySurplus
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -82,6 +84,45 @@ internal class GoalsViewModel(
     fun resetTodayEnergyGoalReduction() {
         viewModelScope.launch {
             settingsRepository.update { copy(todayEnergyGoalAdjustment = null) }
+            updateCalorieWidgetValues()
+        }
+    }
+
+    private val _lockedDaySettings =
+        settingsRepository.observe().map {
+            LockedDaySettings(
+                defaultSurplusKcal = it.defaultLockedDaySurplusKcal,
+                lockedDays = it.lockedDaySurpluses,
+            )
+        }
+    val lockedDaySettings: StateFlow<LockedDaySettings> =
+        _lockedDaySettings.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _lockedDaySettings.first() },
+        )
+
+    fun lockDay(date: LocalDate, surplusKcal: Double) {
+        if (!surplusKcal.isFinite() || surplusKcal < 0.0) return
+        viewModelScope.launch {
+            settingsRepository.update {
+                copy(
+                    lockedDaySurpluses =
+                        lockedDaySurpluses
+                            .filterNot { it.date == date }
+                            .plus(LockedDaySurplus(date, surplusKcal))
+                            .sortedBy { it.date }
+                )
+            }
+            updateCalorieWidgetValues()
+        }
+    }
+
+    fun unlockDay(date: LocalDate) {
+        viewModelScope.launch {
+            settingsRepository.update {
+                copy(lockedDaySurpluses = lockedDaySurpluses.filterNot { it.date == date })
+            }
             updateCalorieWidgetValues()
         }
     }
@@ -160,6 +201,8 @@ internal class GoalsViewModel(
                                         dietEnergyDeficitKcal =
                                             settings.effectiveDietEnergyDeficitKcal(previousDate)
                                                 ?: 0.0,
+                                        lockedSurplusKcal =
+                                            settings.lockedDaySurplus(previousDate)?.surplusKcal,
                                     )
                                 }
                             }
@@ -190,6 +233,8 @@ internal class GoalsViewModel(
                                         dietEnergyDeficitKcal =
                                             settings.effectiveDietEnergyDeficitKcal(futureDate)
                                                 ?: 0.0,
+                                        lockedSurplusKcal =
+                                            settings.lockedDaySurplus(futureDate)?.surplusKcal,
                                     )
                                 }
                             }
@@ -262,9 +307,9 @@ internal class GoalsViewModel(
                 selectedDate,
                 today,
                 settings ->
-                Triple(selectedDate, today, settings.stepsCaloriesPerStepKcal)
+                Triple(selectedDate, today, settings)
             }
-            .flatMapLatest { (selectedDate, today, kcalPerStep) ->
+            .flatMapLatest { (selectedDate, today, settings) ->
                 val dates = selectedDate.weekDatesUntil(today)
                 if (dates.isEmpty()) {
                     return@flatMapLatest flowOf(
@@ -281,16 +326,25 @@ internal class GoalsViewModel(
                         combine(
                             observeDiaryMealsUseCase.observeNutritionFacts(date),
                             goalsRepository.observeDailyGoals(date),
-                            activityRepository.observeDailySummary(date, kcalPerStep),
+                            activityRepository.observeDailySummary(
+                                date,
+                                settings.stepsCaloriesPerStepKcal,
+                            ),
                         ) { facts, goal, activity ->
                             val consumedEnergy = facts.energy.value ?: 0.0
                             val baseGoal = goal[NutritionFactsField.Energy]
                             val burnedEnergy = activity.totalEnergyKcal
+                            val lockedSurplus = settings.lockedDaySurplus(date)?.surplusKcal
+                            val goalWithActivity =
+                                roundedEnergyKcal(baseGoal) + roundedEnergyKcal(burnedEnergy)
                             WeekDaySummaryModel(
                                 date = date,
-                                energy = roundedEnergyKcal(consumedEnergy),
-                                goal =
-                                    roundedEnergyKcal(baseGoal) + roundedEnergyKcal(burnedEnergy),
+                                energy =
+                                    lockedSurplus?.let {
+                                        goalWithActivity + roundedEnergyKcal(it)
+                                    } ?: roundedEnergyKcal(consumedEnergy),
+                                goal = goalWithActivity,
+                                locked = lockedSurplus != null,
                             )
                         }
                     }
@@ -312,6 +366,11 @@ internal class GoalsViewModel(
                 initialValue = null,
             )
 }
+
+internal data class LockedDaySettings(
+    val defaultSurplusKcal: Double,
+    val lockedDays: List<LockedDaySurplus>,
+)
 
 internal data class TodayEnergyGoalValues(val goalKcal: Int, val remainingKcal: Int)
 

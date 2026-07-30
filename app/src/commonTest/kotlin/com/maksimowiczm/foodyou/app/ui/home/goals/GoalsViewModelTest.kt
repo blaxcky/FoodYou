@@ -32,6 +32,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
+import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.test.Test
@@ -44,6 +45,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -89,6 +91,56 @@ class GoalsViewModelTest {
         assertEquals(Today, model.today)
     }
 
+    @Test
+    fun lockedDayUsesSimulatedWeeklyEnergyAndExactDifference() = runViewModelTest {
+        val viewModel =
+            createViewModel(
+                defaultSettings().copy(
+                    lockedDaySurpluses =
+                        listOf(LockedDaySurplus(LocalDate(2026, 7, 14), 500.0))
+                )
+            )
+
+        viewModel.setDate(Today)
+        advanceUntilIdle()
+
+        val model = assertNotNull(viewModel.weekModel.value)
+        assertEquals(
+            WeekDaySummaryModel(
+                date = LocalDate(2026, 7, 14),
+                energy = 2_700,
+                goal = 2_200,
+                locked = true,
+            ),
+            model.days[1],
+        )
+        assertEquals(3_700, model.totalEnergy)
+        assertEquals(6_600, model.totalGoal)
+    }
+
+    @Test
+    fun lockEditAndUnlockPreserveConfiguredDefault() = runViewModelTest {
+        val repository =
+            InMemoryPreferencesRepository(defaultSettings().copy(defaultLockedDaySurplusKcal = 650.0))
+        val viewModel = createViewModel(settingsRepository = repository)
+        val date = LocalDate(2026, 7, 17)
+
+        viewModel.lockDay(date, 500.0)
+        advanceUntilIdle()
+        viewModel.lockDay(date, 250.0)
+        advanceUntilIdle()
+
+        assertEquals(650.0, repository.observe().first().defaultLockedDaySurplusKcal)
+        assertEquals(
+            listOf(LockedDaySurplus(date, 250.0)),
+            repository.observe().first().lockedDaySurpluses,
+        )
+
+        viewModel.unlockDay(date)
+        advanceUntilIdle()
+        assertEquals(emptyList(), repository.observe().first().lockedDaySurpluses)
+    }
+
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {
@@ -101,10 +153,14 @@ class GoalsViewModelTest {
         }
     }
 
-    private fun createViewModel(): GoalsViewModel {
+    private fun createViewModel(
+        settings: Settings = defaultSettings(),
+        settingsRepository: InMemoryPreferencesRepository<Settings> =
+            InMemoryPreferencesRepository(settings),
+    ): GoalsViewModel {
         val dateProvider = FixedDateProvider(Today)
         return GoalsViewModel(
-                settingsRepository = InMemoryPreferencesRepository(defaultSettings()),
+                settingsRepository = settingsRepository,
                 observeDiaryMealsUseCase =
                     ObserveDiaryMealsUseCase(
                         mealRepository = SingleMealRepository,

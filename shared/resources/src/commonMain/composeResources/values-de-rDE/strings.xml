@@ -243,6 +243,16 @@
     <string name="label_diet">Diät</string>
     <string name="label_daily_calorie_deficit">Tägliches Kaloriendefizit</string>
     <string name="neutral_daily_calorie_deficit">Wird für die Diät-Zielansicht genutzt. Leer lassen oder 0 setzen, um sie auszuschalten.</string>
+    <string name="locked_day_default_surplus_label">Standardüberschuss für gesperrte Tage</string>
+    <string name="locked_day_default_surplus_supporting_text">Wird für neu gesperrte Kalendertage verwendet. Bestehende Sperren behalten ihren Wert.</string>
+    <string name="locked_day_dialog_title_new">Kalendertag sperren</string>
+    <string name="locked_day_dialog_title_edit">Gesperrten Kalendertag bearbeiten</string>
+    <string name="locked_day_surplus_label">Fester Kalorienüberschuss</string>
+    <string name="locked_day_surplus_supporting_text">Tagebucheinträge und Aktivitäten bleiben sichtbar, werden in der Wochenbilanz aber ignoriert.</string>
+    <string name="locked_day_surplus_error">Gib null oder eine positive Zahl ein.</string>
+    <string name="locked_day_unlock">Entsperren</string>
+    <string name="locked_day_status">Gesperrter Tag</string>
+    <string name="locked_day_long_click_description">Tag sperren oder bearbeiten</string>
     <string name="label_temporary_diet_deficit">Temporäres Defizit</string>
     <string name="label_temporary_calorie_deficit">Temporäres Kaloriendefizit</string>
     <string name="neutral_temporary_daily_calorie_deficit">Ersetzt das tägliche Kaloriendefizit für die ausgewählten Daten.</string>

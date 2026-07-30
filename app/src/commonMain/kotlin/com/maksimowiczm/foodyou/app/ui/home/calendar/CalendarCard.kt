@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,17 +14,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -36,11 +42,19 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
+import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
+import com.maksimowiczm.foodyou.app.ui.common.utility.validatedNonNegativeEnergyKcal
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsViewModel
+import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.extension.now
@@ -59,7 +73,11 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 @Composable
-internal fun CalendarCard(homeState: HomeState, modifier: Modifier = Modifier) {
+internal fun CalendarCard(
+    homeState: HomeState,
+    viewModel: GoalsViewModel,
+    modifier: Modifier = Modifier,
+) {
     val dateProvider = koinInject<DateProvider>()
     val today = dateProvider.observeDate().collectAsStateWithLifecycle(LocalDate.now()).value
 
@@ -80,22 +98,51 @@ internal fun CalendarCard(homeState: HomeState, modifier: Modifier = Modifier) {
         }
     }
 
-    CalendarCard(calendarState = calendarState, modifier = modifier)
+    val lockedDaySettings by viewModel.lockedDaySettings.collectAsStateWithLifecycle()
+    CalendarCard(
+        calendarState = calendarState,
+        lockedDays = lockedDaySettings.lockedDays,
+        defaultLockedDaySurplusKcal = lockedDaySettings.defaultSurplusKcal,
+        onLockDay = viewModel::lockDay,
+        onUnlockDay = viewModel::unlockDay,
+        modifier = modifier,
+    )
 }
 
 @Composable
-private fun CalendarCard(
+internal fun CalendarCard(
     calendarState: CalendarState,
+    lockedDays: List<LockedDaySurplus>,
+    defaultLockedDaySurplusKcal: Double,
+    onLockDay: (LocalDate, Double) -> Unit,
+    onUnlockDay: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
-    colors: CalendarCardColors = CalendarCardDefaults.colors(),
 ) {
+    val colors = CalendarCardDefaults.colors()
     val dateFormatter = LocalDateFormatter.current
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var lockDialogDate by remember { mutableStateOf<LocalDate?>(null) }
 
     if (showDatePicker) {
         CalendarCardDatePickerDialog(
             calendarState = calendarState,
             onDismissRequest = { showDatePicker = false },
+        )
+    }
+    lockDialogDate?.let { date ->
+        LockedDayDialog(
+            date = date,
+            currentSurplusKcal = lockedDays.firstOrNull { it.date == date }?.surplusKcal,
+            defaultSurplusKcal = defaultLockedDaySurplusKcal,
+            onDismiss = { lockDialogDate = null },
+            onSave = {
+                onLockDay(date, it)
+                lockDialogDate = null
+            },
+            onUnlock = {
+                onUnlockDay(date)
+                lockDialogDate = null
+            },
         )
     }
 
@@ -115,7 +162,12 @@ private fun CalendarCard(
             }
             Spacer(Modifier.height(8.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
-                CalendarCardDatePicker(calendarState = calendarState, colors = colors)
+                CalendarCardDatePicker(
+                    calendarState = calendarState,
+                    lockedDays = lockedDays,
+                    onLongClick = { lockDialogDate = it },
+                    colors = colors,
+                )
             }
         }
     }
@@ -187,6 +239,8 @@ private fun CalendarCardDatePickerDialog(
 @Composable
 private fun CalendarCardDatePicker(
     calendarState: CalendarState,
+    lockedDays: List<LockedDaySurplus>,
+    onLongClick: (LocalDate) -> Unit,
     colors: CalendarCardColors,
     modifier: Modifier = Modifier,
 ) {
@@ -216,9 +270,14 @@ private fun CalendarCardDatePicker(
                     date = date,
                     colors = colors,
                     enabled = calendarState.weekRange.isSelectable(date),
+                    locked = lockedDays.any { it.date == date },
                     onClick = {
                         calendarState.onDateSelect(date = date, scroll = false)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
+                    },
+                    onLongClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongClick(date)
                     },
                     modifier = Modifier.weight(1f),
                 )
@@ -233,7 +292,9 @@ private fun DatePickerRowItem(
     date: LocalDate,
     colors: CalendarCardColors,
     enabled: Boolean,
+    locked: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val namesOfDayOfWeek = calendarState.namesOfDayOfWeek
@@ -280,6 +341,8 @@ private fun DatePickerRowItem(
             label = "Reference date indicator color",
         )
     val shape = MaterialTheme.shapes.medium
+    val lockedDescription = stringResource(Res.string.locked_day_status)
+    val longClickDescription = stringResource(Res.string.locked_day_long_click_description)
 
     Box(
         modifier =
@@ -289,7 +352,18 @@ private fun DatePickerRowItem(
                 .alpha(if (enabled) 1f else 0.38f)
                 .border(1.dp, referenceDateIndicatorColor, shape)
                 .clip(shape)
-                .clickable(enabled = enabled) { onClick() }
+                .semantics {
+                    if (locked) stateDescription = lockedDescription
+                    onLongClick(label = longClickDescription) {
+                        if (enabled) onLongClick()
+                        enabled
+                    }
+                }
+                .combinedClickable(
+                    enabled = enabled,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
                 .drawBehind {
                     drawRect(backgroundColor)
                     drawCircle(
@@ -310,14 +384,124 @@ private fun DatePickerRowItem(
                 color = color,
                 textAlign = TextAlign.Center,
             )
-            Text(
-                text = date.day.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = color,
-                textAlign = TextAlign.Center,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = date.day.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = color,
+                    textAlign = TextAlign.Center,
+                )
+                if (locked) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.padding(start = 2.dp).size(12.dp),
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+internal fun LockedCalendarDatePreview(date: LocalDate, modifier: Modifier = Modifier) {
+    val calendarState =
+        rememberCalendarState(
+            namesOfDayOfWeek = listOf("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"),
+            referenceDate = date,
+            selectedDate = date,
+        )
+    DatePickerRowItem(
+        calendarState = calendarState,
+        date = date,
+        colors = CalendarCardDefaults.colors(),
+        enabled = true,
+        locked = true,
+        onClick = {},
+        onLongClick = {},
+        modifier = modifier.width(54.dp),
+    )
+}
+
+@Composable
+internal fun LockedDayDialog(
+    date: LocalDate,
+    currentSurplusKcal: Double?,
+    defaultSurplusKcal: Double,
+    onDismiss: () -> Unit,
+    onSave: (Double) -> Unit,
+    onUnlock: () -> Unit,
+) {
+    val energyFormatter = LocalEnergyFormatter.current
+    val initialKcal = currentSurplusKcal ?: defaultSurplusKcal
+    var input by remember(date, currentSurplusKcal, defaultSurplusKcal) {
+        mutableStateOf(
+            energyFormatter.fromKcal(initialKcal).let {
+                if (it % 1.0 == 0.0) it.toLong().toString() else it.toString()
+            }
+        )
+    }
+    val surplusKcal = validatedNonNegativeEnergyKcal(input, energyFormatter::toKcal)
+    val showError = input.isNotBlank() && surplusKcal == null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                stringResource(
+                    if (currentSurplusKcal == null) {
+                        Res.string.locked_day_dialog_title_new
+                    } else {
+                        Res.string.locked_day_dialog_title_edit
+                    }
+                )
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(LocalDateFormatter.current.formatDate(date))
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(Res.string.locked_day_surplus_label)) },
+                    suffix = { Text(energyFormatter.suffix()) },
+                    supportingText = {
+                        Text(
+                            stringResource(
+                                if (showError) Res.string.locked_day_surplus_error
+                                else Res.string.locked_day_surplus_supporting_text
+                            )
+                        )
+                    },
+                    isError = showError,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = surplusKcal != null,
+                onClick = { surplusKcal?.let(onSave) },
+            ) {
+                Text(stringResource(Res.string.action_save))
+            }
+        },
+        dismissButton = {
+            Row {
+                if (currentSurplusKcal != null) {
+                    TextButton(onClick = onUnlock) {
+                        Text(stringResource(Res.string.locked_day_unlock))
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+            }
+        },
+    )
 }
 
 @Immutable
