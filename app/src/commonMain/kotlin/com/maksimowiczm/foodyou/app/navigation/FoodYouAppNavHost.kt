@@ -9,6 +9,7 @@ import androidx.navigation.toRoute
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.app.ui.activity.ActivitySettingsScreen
 import com.maksimowiczm.foodyou.app.ui.activity.ManualActivityScreen
+import com.maksimowiczm.foodyou.app.ui.activity.StepExclusionsScreen
 import com.maksimowiczm.foodyou.app.ui.about.AboutScreen
 import com.maksimowiczm.foodyou.app.ui.database.exportcsvproducts.ExportCsvProductsScreen
 import com.maksimowiczm.foodyou.app.ui.database.externaldatabases.ExternalDatabasesScreen
@@ -127,6 +128,9 @@ fun FoodYouAppNavHost(
                 },
                 onEditActivityClick = { id ->
                     navController.navigateSingleTop(ManualActivity(0, id))
+                },
+                onStepExclusionsClick = { epochDay ->
+                    navController.navigateSingleTop(StepExclusions(epochDay))
                 },
                 onEditDiaryEntryClick = { foodEntryId, manualEntryId ->
                     when {
@@ -263,6 +267,14 @@ fun FoodYouAppNavHost(
                 id = route.id,
                 onBack = { navController.popBackStackInclusive<ManualActivity>() },
                 onSave = { navController.popBackStackInclusive<ManualActivity>() },
+            )
+        }
+        forwardBackwardComposable<StepExclusions> {
+            val route = it.toRoute<StepExclusions>()
+            StepExclusionsScreen(
+                date = LocalDate.fromEpochDays(route.epochDay),
+                onBack = { navController.popBackStackInclusive<StepExclusions>() },
+                onSaved = { navController.popBackStackInclusive<StepExclusions>() },
             )
         }
         forwardBackwardComposable<DatabaseSettings> {
@@ -585,6 +597,8 @@ fun FoodYouAppNavHost(
 @Serializable private object ActivitySettings
 
 @Serializable private data class ManualActivity(val epochDay: Long, val id: Long?)
+
+@Serializable private data class StepExclusions(val epochDay: Long)
 
 @Serializable private object DatabaseSettings
 

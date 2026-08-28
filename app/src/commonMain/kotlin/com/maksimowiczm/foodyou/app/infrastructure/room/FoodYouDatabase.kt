@@ -223,9 +223,27 @@ internal object ProductQuickCaptureMigration : Migration(46, 47) {
 internal object StepExclusionMigration : Migration(47, 48) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL(
-            "ALTER TABLE `DailyStepSummary` ADD COLUMN `excludedSteps` INTEGER NOT NULL DEFAULT 0"
+            """
+                CREATE TABLE `DailyStepSummary_new` (
+                    `dateEpochDay` INTEGER NOT NULL,
+                    `rawSteps` INTEGER NOT NULL,
+                    `excludedSteps` INTEGER NOT NULL,
+                    `syncedEpochSeconds` INTEGER NOT NULL,
+                    PRIMARY KEY(`dateEpochDay`)
+                )
+            """.trimIndent()
         )
-        connection.execSQL("ALTER TABLE `DailyStepSummary` RENAME COLUMN `steps` TO `rawSteps`")
+        connection.execSQL(
+            """
+                INSERT INTO `DailyStepSummary_new` (
+                    `dateEpochDay`, `rawSteps`, `excludedSteps`, `syncedEpochSeconds`
+                )
+                SELECT `dateEpochDay`, `steps`, 0, `syncedEpochSeconds`
+                FROM `DailyStepSummary`
+            """.trimIndent()
+        )
+        connection.execSQL("DROP TABLE `DailyStepSummary`")
+        connection.execSQL("ALTER TABLE `DailyStepSummary_new` RENAME TO `DailyStepSummary`")
         connection.execSQL(
             """
                 CREATE TABLE IF NOT EXISTS `StepExclusionPeriod` (

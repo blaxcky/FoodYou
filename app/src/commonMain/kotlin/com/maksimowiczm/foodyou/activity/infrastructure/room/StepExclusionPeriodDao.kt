@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.activity.infrastructure.room
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +18,8 @@ interface StepExclusionPeriodDao {
     @Query("DELETE FROM StepExclusionPeriod WHERE dateEpochDay = :dateEpochDay")
     suspend fun deleteAll(dateEpochDay: Long)
 
-    @Insert suspend fun insertAll(periods: List<StepExclusionPeriodEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(periods: List<StepExclusionPeriodEntity>)
 
     @Transaction
     suspend fun replaceAll(dateEpochDay: Long, periods: List<StepExclusionPeriodEntity>) {

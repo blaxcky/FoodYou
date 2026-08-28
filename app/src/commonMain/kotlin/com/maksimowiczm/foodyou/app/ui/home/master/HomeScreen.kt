@@ -91,6 +91,7 @@ fun HomeScreen(
     onActivityCardLongClick: () -> Unit,
     onAddActivityClick: (epochDay: Long) -> Unit,
     onEditActivityClick: (id: Long) -> Unit,
+    onStepExclusionsClick: (epochDay: Long) -> Unit,
     onEditDiaryEntryClick: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
     onEditFoodClick: (FoodId.Product) -> Unit,
     onWeightReportClick: () -> Unit,
@@ -362,6 +363,7 @@ fun HomeScreen(
                                     homeState = homeState,
                                     onAdd = onAddActivityClick,
                                     onEdit = onEditActivityClick,
+                                    onStepExclusions = onStepExclusionsClick,
                                     onLongClick = onActivityCardLongClick,
                                     modifier =
                                         Modifier.padding(horizontal = 8.dp)

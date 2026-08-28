@@ -35,26 +35,29 @@ internal fun ActivitiesCard(
     homeState: HomeState,
     onAdd: (epochDay: Long) -> Unit,
     onEdit: (id: Long) -> Unit,
+    onStepExclusions: (epochDay: Long) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ActivitiesCardViewModel = koinViewModel(),
 ) {
     LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
     val model = viewModel.model.collectAsStateWithLifecycle().value
-    ActivitiesCard(
+    ActivitiesCardContent(
         model = model,
         onAdd = { onAdd(homeState.selectedDate.toEpochDays()) },
         onEdit = onEdit,
+        onStepExclusions = { onStepExclusions(homeState.selectedDate.toEpochDays()) },
         onLongClick = onLongClick,
         modifier = modifier,
     )
 }
 
 @Composable
-private fun ActivitiesCard(
+internal fun ActivitiesCardContent(
     model: ActivitiesCardModel?,
     onAdd: () -> Unit,
     onEdit: (id: Long) -> Unit,
+    onStepExclusions: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -111,7 +114,26 @@ private fun ActivitiesCard(
                             cardModel.countedSteps.toString().groupDigits(),
                         ),
                     energy = energyFormatter.formatEnergy(-cardModel.stepEnergyKcal),
+                    modifier =
+                        if (cardModel.healthConnectStepsEnabled) {
+                            Modifier.clickable(onClick = onStepExclusions)
+                        } else {
+                            Modifier
+                        },
                 )
+
+                if (cardModel.healthConnectStepsEnabled) {
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
+                    ActivityRow(
+                        label =
+                            stringResource(
+                                Res.string.neutral_x_excluded_steps,
+                                cardModel.excludedSteps.toString().groupDigits(),
+                            ),
+                        energy = null,
+                        modifier = Modifier.clickable(onClick = onStepExclusions),
+                    )
+                }
 
                 cardModel.manualEntries.forEach { entry ->
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))
@@ -147,7 +169,7 @@ private fun ActivitiesCard(
 @Composable
 private fun ActivityRow(
     label: String,
-    energy: String,
+    energy: String?,
     modifier: Modifier = Modifier,
     labelStyle: TextStyle = MaterialTheme.typography.labelLarge,
     energyStyle: TextStyle = MaterialTheme.typography.labelLarge,
@@ -164,7 +186,7 @@ private fun ActivityRow(
             Spacer(Modifier.padding(start = 24.dp))
         }
         Text(text = label, modifier = Modifier.weight(1f), style = labelStyle)
-        Text(text = energy, style = energyStyle)
+        if (energy != null) Text(text = energy, style = energyStyle)
     }
 }
 

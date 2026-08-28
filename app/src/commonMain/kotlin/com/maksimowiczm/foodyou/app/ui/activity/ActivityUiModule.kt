@@ -17,4 +17,10 @@ fun Module.activityUi() {
             healthConnectActivitySync = get(),
         )
     }
+    viewModel {
+        StepExclusionsViewModel(
+            repository = get(),
+            healthConnectActivitySync = get(),
+        )
+    }
 }
