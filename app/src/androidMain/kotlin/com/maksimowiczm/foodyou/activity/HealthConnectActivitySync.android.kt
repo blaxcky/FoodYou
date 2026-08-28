@@ -11,6 +11,10 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.activity.domain.entity.StepExclusionPeriod
+import com.maksimowiczm.foodyou.activity.domain.usecase.MINUTES_PER_DAY
+import com.maksimowiczm.foodyou.activity.domain.usecase.boundedExcludedSteps
+import com.maksimowiczm.foodyou.activity.domain.usecase.mergeStepExclusionPeriods
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
@@ -18,9 +22,12 @@ import java.io.IOException
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.atTime
 import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 
@@ -82,26 +89,27 @@ private class AndroidHealthConnectActivitySync(
             val client = client()
             val timeZone = TimeZone.currentSystemDefault()
             dates.distinct().forEach { date ->
-                val start = date.atStartOfDayIn(timeZone).toJavaInstant()
-                val end =
-                    date.plus(1, kotlinx.datetime.DateTimeUnit.DAY)
-                        .atStartOfDayIn(timeZone)
-                        .toJavaInstant()
-                val result =
-                    client.aggregate(
-                        AggregateRequest(
-                            metrics = setOf(StepsRecord.COUNT_TOTAL),
-                            timeRangeFilter =
-                                androidx.health.connect.client.time.TimeRangeFilter.between(
-                                    start,
-                                    end,
-                                ),
-                        )
+                val rawSteps = client.aggregateSteps(date.dayStart(timeZone), date.dayEnd(timeZone))
+                val periods =
+                    mergeStepExclusionPeriods(
+                        repository.observeStepExclusionPeriods(date).first()
+                    )
+                val excludedSteps =
+                    boundedExcludedSteps(
+                        rawSteps = rawSteps,
+                        intervalSteps =
+                            periods.map { period ->
+                                client.aggregateSteps(
+                                    period.startInstant(timeZone),
+                                    period.endInstant(timeZone),
+                                )
+                            },
                     )
                 repository.upsertStepSummary(
                     DailyStepSummary(
                         date = date,
-                        steps = result[StepsRecord.COUNT_TOTAL] ?: 0,
+                        rawSteps = rawSteps,
+                        excludedSteps = excludedSteps,
                         syncedAt = Clock.System.now(),
                     )
                 )
@@ -127,6 +135,34 @@ private class AndroidHealthConnectActivitySync(
         WorkManager.getInstance(context).cancelUniqueWork(ActivityStepsSyncWorker.NAME)
     }
 }
+
+private suspend fun HealthConnectClient.aggregateSteps(
+    start: java.time.Instant,
+    end: java.time.Instant,
+): Long =
+    aggregate(
+        AggregateRequest(
+            metrics = setOf(StepsRecord.COUNT_TOTAL),
+            timeRangeFilter =
+                androidx.health.connect.client.time.TimeRangeFilter.between(start, end),
+        )
+    )[StepsRecord.COUNT_TOTAL] ?: 0
+
+private fun LocalDate.dayStart(timeZone: TimeZone): java.time.Instant =
+    atStartOfDayIn(timeZone).toJavaInstant()
+
+private fun LocalDate.dayEnd(timeZone: TimeZone): java.time.Instant =
+    plus(1, kotlinx.datetime.DateTimeUnit.DAY).atStartOfDayIn(timeZone).toJavaInstant()
+
+private fun StepExclusionPeriod.startInstant(timeZone: TimeZone): java.time.Instant =
+    date.atTime(LocalTime(startMinute / 60, startMinute % 60)).toInstant(timeZone).toJavaInstant()
+
+private fun StepExclusionPeriod.endInstant(timeZone: TimeZone): java.time.Instant =
+    if (endMinute == MINUTES_PER_DAY) {
+        date.dayEnd(timeZone)
+    } else {
+        date.atTime(LocalTime(endMinute / 60, endMinute % 60)).toInstant(timeZone).toJavaInstant()
+    }
 
 private fun kotlin.time.Instant.toJavaInstant(): java.time.Instant =
     java.time.Instant.ofEpochSecond(epochSeconds, nanosecondsOfSecond.toLong())

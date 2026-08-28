@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.activity.domain.entity.DailyActivitySummary
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntryId
+import com.maksimowiczm.foodyou.activity.domain.entity.StepExclusionPeriod
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.result.Err
@@ -430,7 +431,9 @@ class HomeViewModelTest {
             observedDates += date
             return flowOf(
                 DailyActivitySummary(
-                    steps = 0,
+                    rawSteps = 0,
+                    excludedSteps = 0,
+                    countedSteps = 0,
                     stepEnergyKcal = 0.0,
                     manualEnergyKcal = 0.0,
                     totalEnergyKcal = totalEnergyKcal.removeAt(0),
@@ -446,6 +449,14 @@ class HomeViewModelTest {
         override suspend fun deleteManualEntry(id: ManualActivityEntryId) = error("Not used")
 
         override suspend fun upsertStepSummary(summary: DailyStepSummary) = error("Not used")
+
+        override fun observeStepExclusionPeriods(date: LocalDate): Flow<List<StepExclusionPeriod>> =
+            flowOf(emptyList())
+
+        override suspend fun replaceStepExclusionPeriods(
+            date: LocalDate,
+            periods: List<StepExclusionPeriod>,
+        ) = error("Not used")
     }
 
     private companion object {

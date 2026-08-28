@@ -16,6 +16,7 @@ import com.maksimowiczm.foodyou.app.infrastructure.room.migration.ActivityMigrat
 import com.maksimowiczm.foodyou.activity.ActivityDatabase
 import com.maksimowiczm.foodyou.activity.infrastructure.room.DailyStepSummaryEntity
 import com.maksimowiczm.foodyou.activity.infrastructure.room.ManualActivityEntryEntity
+import com.maksimowiczm.foodyou.activity.infrastructure.room.StepExclusionPeriodEntity
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.deleteUsedFoodEvent
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.fixMeasurementSuggestions
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.foodYou3Migration
@@ -80,6 +81,7 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntit
             ManualDiaryEntryEntity::class,
             ManualActivityEntryEntity::class,
             DailyStepSummaryEntity::class,
+            StepExclusionPeriodEntity::class,
             PendingProductEntity::class,
             FoodSnapEntryEntity::class,
             ProductFts::class,
@@ -166,7 +168,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 47
+        const val VERSION = 48
 
         private val migrations: List<Migration> =
             listOf(
@@ -199,6 +201,7 @@ abstract class FoodYouDatabase :
                 FoodSnapMigration,
                 ProductFavoriteMigration,
                 ProductQuickCaptureMigration,
+                StepExclusionMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -214,6 +217,25 @@ abstract class FoodYouDatabase :
 internal object ProductQuickCaptureMigration : Migration(46, 47) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE `Product` ADD COLUMN `isQuickCapture` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+internal object StepExclusionMigration : Migration(47, 48) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE `DailyStepSummary` ADD COLUMN `excludedSteps` INTEGER NOT NULL DEFAULT 0"
+        )
+        connection.execSQL("ALTER TABLE `DailyStepSummary` RENAME COLUMN `steps` TO `rawSteps`")
+        connection.execSQL(
+            """
+                CREATE TABLE IF NOT EXISTS `StepExclusionPeriod` (
+                    `dateEpochDay` INTEGER NOT NULL,
+                    `startMinute` INTEGER NOT NULL,
+                    `endMinute` INTEGER NOT NULL,
+                    PRIMARY KEY(`dateEpochDay`, `startMinute`, `endMinute`)
+                )
+            """.trimIndent()
+        )
     }
 }
 

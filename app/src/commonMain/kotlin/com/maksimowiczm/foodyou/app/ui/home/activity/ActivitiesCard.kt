@@ -108,7 +108,7 @@ private fun ActivitiesCard(
                     label =
                         stringResource(
                             Res.string.neutral_x_steps,
-                            cardModel.steps.toString().groupDigits(),
+                            cardModel.countedSteps.toString().groupDigits(),
                         ),
                     energy = energyFormatter.formatEnergy(-cardModel.stepEnergyKcal),
                 )

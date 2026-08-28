@@ -13,5 +13,6 @@ fun Module.activity() {
     factoryOf(::RoomActivityRepository).bind<ActivityRepository>()
     factory { get<ActivityDatabase>().manualActivityEntryDao }
     factory { get<ActivityDatabase>().dailyStepSummaryDao }
+    factory { get<ActivityDatabase>().stepExclusionPeriodDao }
     healthConnectActivitySync()
 }

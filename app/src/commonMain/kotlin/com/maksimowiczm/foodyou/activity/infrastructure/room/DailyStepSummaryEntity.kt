@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "DailyStepSummary")
 data class DailyStepSummaryEntity(
     @PrimaryKey val dateEpochDay: Long,
-    val steps: Long,
+    val rawSteps: Long,
+    val excludedSteps: Long,
     val syncedEpochSeconds: Long,
 )

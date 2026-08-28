@@ -19,7 +19,9 @@ import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
 
 internal data class ActivitiesCardModel(
-    val steps: Long,
+    val countedSteps: Long,
+    val excludedSteps: Long,
+    val healthConnectStepsEnabled: Boolean,
     val stepEnergyKcal: Int,
     val manualEnergyKcal: Int,
     val totalEnergyKcal: Int,
@@ -45,7 +47,9 @@ internal class ActivitiesCardViewModel(
                         activityRepository.observeManualEntries(date),
                     ) { summary, entries ->
                         ActivitiesCardModel(
-                            steps = summary.steps,
+                            countedSteps = summary.countedSteps,
+                            excludedSteps = summary.excludedSteps,
+                            healthConnectStepsEnabled = settings.healthConnectStepsEnabled,
                             stepEnergyKcal = roundedActivityEnergyKcal(summary.stepEnergyKcal),
                             manualEnergyKcal = roundedActivityEnergyKcal(summary.manualEnergyKcal),
                             totalEnergyKcal = roundedActivityEnergyKcal(summary.totalEnergyKcal),

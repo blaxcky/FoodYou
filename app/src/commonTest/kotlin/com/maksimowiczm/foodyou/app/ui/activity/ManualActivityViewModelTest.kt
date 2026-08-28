@@ -5,6 +5,7 @@ import com.maksimowiczm.foodyou.activity.domain.entity.DailyActivitySummary
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntryId
+import com.maksimowiczm.foodyou.activity.domain.entity.StepExclusionPeriod
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
@@ -153,6 +154,14 @@ class ManualActivityViewModelTest {
         override suspend fun deleteManualEntry(id: ManualActivityEntryId) = error("Not used")
 
         override suspend fun upsertStepSummary(summary: DailyStepSummary) = error("Not used")
+
+        override fun observeStepExclusionPeriods(date: LocalDate): Flow<List<StepExclusionPeriod>> =
+            error("Not used")
+
+        override suspend fun replaceStepExclusionPeriods(
+            date: LocalDate,
+            periods: List<StepExclusionPeriod>,
+        ) = error("Not used")
     }
 
     private class FakeSettingsRepository(initialValue: Settings) :
