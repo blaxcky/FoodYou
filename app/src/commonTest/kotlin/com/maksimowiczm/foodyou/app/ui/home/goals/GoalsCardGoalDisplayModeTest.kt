@@ -131,9 +131,40 @@ class GoalsCardGoalDisplayModeTest {
         assertEquals(listOf(GoalDisplayMode.Normal, GoalDisplayMode.Optimized), availableModes)
     }
 
+    @Test
+    fun supplementalGoalsIncludeChangedOptimizationAndActiveDiet() {
+        val summaries = goalDisplaySummaries(optimizedGoal = 2250)
+
+        assertEquals(
+            listOf(GoalDisplayMode.Optimized, GoalDisplayMode.Diet),
+            summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true).map { it.mode },
+        )
+    }
+
+    @Test
+    fun supplementalGoalsIncludeOnlyTheActiveVariant() {
+        val summaries = goalDisplaySummaries(optimizedGoal = 2100)
+
+        assertEquals(
+            listOf(GoalDisplayMode.Diet),
+            summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true).map { it.mode },
+        )
+    }
+
+    @Test
+    fun supplementalGoalsAreEmptyWithoutChangedOptimizationOrEffectiveDiet() {
+        val summaries = goalDisplaySummaries(optimizedGoal = 2100)
+
+        assertEquals(
+            emptyList(),
+            summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = false),
+        )
+    }
+
     private fun goalDisplaySummaries(
         optimizedAvailable: Boolean = true,
         dietAvailable: Boolean = true,
+        optimizedGoal: Int = 2250,
     ): List<GoalDisplaySummaryModel> =
         listOf(
             GoalDisplaySummaryModel(
@@ -143,7 +174,7 @@ class GoalsCardGoalDisplayModeTest {
             ),
             GoalDisplaySummaryModel(
                 mode = GoalDisplayMode.Optimized,
-                energyGoal = 2250,
+                energyGoal = optimizedGoal,
                 showEnergyGoalValue = optimizedAvailable,
             ),
             GoalDisplaySummaryModel(

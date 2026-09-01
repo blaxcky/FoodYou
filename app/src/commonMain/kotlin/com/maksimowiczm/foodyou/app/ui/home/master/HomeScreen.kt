@@ -59,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.home.calendar.CalendarCard
 import com.maksimowiczm.foodyou.app.ui.home.activity.ActivitiesCard
-import com.maksimowiczm.foodyou.app.ui.home.goals.GoalOverviewCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCard
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsViewModel
 import com.maksimowiczm.foodyou.app.ui.home.goals.WeeklyGoalsCard
@@ -119,14 +118,13 @@ fun HomeScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showFddbLoginDialog by remember { mutableStateOf(false) }
-    var showGoalOverviewInGoalSlot by rememberSaveable { mutableStateOf(false) }
     var showDeleteSelectedEntriesDialog by rememberSaveable { mutableStateOf(false) }
     var showMoveSelectedEntriesSheet by rememberSaveable { mutableStateOf(false) }
     var pullRefreshActive by remember { mutableStateOf(false) }
     var pullRefreshSyncStarted by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
     val goalBottomSpacing =
-        if (!showGoalOverviewInGoalSlot && order.hasAdjacentCards(HomeCard.Goals, HomeCard.Meals)) {
+        if (order.hasAdjacentCards(HomeCard.Goals, HomeCard.Meals)) {
             RelatedHomeSectionSpacing
         } else {
             DefaultHomeCardSpacing
@@ -314,48 +312,26 @@ fun HomeScreen(
                         HomeCard.Goals ->
                             item(
                                 key = HomeCard.Goals,
-                                contentType =
-                                    if (showGoalOverviewInGoalSlot) {
-                                        "goal-overview"
-                                    } else {
-                                        HomeCard.Goals
-                                    },
+                                contentType = HomeCard.Goals,
                             ) {
-                                if (showGoalOverviewInGoalSlot) {
-                                    GoalOverviewCard(
-                                        homeState = homeState,
-                                        viewModel = goalsViewModel,
-                                        onClick = {},
-                                        onLongClick = onGoalsCardLongClick,
-                                        onDoubleClick = { showGoalOverviewInGoalSlot = false },
-                                        modifier =
-                                            Modifier.padding(horizontal = 8.dp)
-                                                .padding(bottom = goalBottomSpacing),
-                                    )
-                                } else {
-                                    GoalsCard(
-                                        homeState = homeState,
-                                        viewModel = goalsViewModel,
-                                        burnedEnergyDelta = burnedEnergyDelta,
-                                        onClick = {},
-                                        onLongClick = onGoalsCardLongClick,
-                                        onDoubleClick = { showGoalOverviewInGoalSlot = true },
-                                        modifier =
-                                            Modifier.padding(horizontal = 8.dp)
-                                                .padding(bottom = goalBottomSpacing),
-                                    )
-                                }
-                            }
-
-                        HomeCard.Meals -> {
-                            if (!showGoalOverviewInGoalSlot) {
-                                mealsCards(
-                                    state = mealsCardsState,
-                                    contentPadding = PaddingValues(horizontal = 8.dp),
-                                    bottomSpacing = mealsBottomSpacing,
+                                GoalsCard(
+                                    homeState = homeState,
+                                    viewModel = goalsViewModel,
+                                    burnedEnergyDelta = burnedEnergyDelta,
+                                    onClick = {},
+                                    onLongClick = onGoalsCardLongClick,
+                                    modifier =
+                                        Modifier.padding(horizontal = 8.dp)
+                                            .padding(bottom = goalBottomSpacing),
                                 )
                             }
-                        }
+
+                        HomeCard.Meals ->
+                            mealsCards(
+                                state = mealsCardsState,
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                bottomSpacing = mealsBottomSpacing,
+                            )
 
                         HomeCard.Activities ->
                             item(key = HomeCard.Activities, contentType = HomeCard.Activities) {
@@ -373,17 +349,15 @@ fun HomeScreen(
                     }
                 }
 
-                if (!showGoalOverviewInGoalSlot) {
-                    item(key = "weekly-goals", contentType = "weekly-goals") {
-                        WeeklyGoalsCard(
-                            homeState = homeState,
-                            viewModel = goalsViewModel,
-                            onWeightClick = onWeightReportClick,
-                            modifier =
-                                Modifier.padding(horizontal = 8.dp)
-                                    .padding(bottom = DefaultHomeCardSpacing),
-                        )
-                    }
+                item(key = "weekly-goals", contentType = "weekly-goals") {
+                    WeeklyGoalsCard(
+                        homeState = homeState,
+                        viewModel = goalsViewModel,
+                        onWeightClick = onWeightReportClick,
+                        modifier =
+                            Modifier.padding(horizontal = 8.dp)
+                                .padding(bottom = DefaultHomeCardSpacing),
+                    )
                 }
 
             }

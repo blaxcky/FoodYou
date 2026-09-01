@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -231,9 +234,9 @@ class GoalsCardScreenshotTest {
     fun normalModeActive() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.mode-normal.png",
-            fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Normal),
+            fixture = SupplementalFixture.copy(goalDisplayMode = GoalDisplayMode.Normal),
             width = 414,
-            height = 322,
+            height = 500,
         )
     }
 
@@ -241,9 +244,9 @@ class GoalsCardScreenshotTest {
     fun optimizedModeActive() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.mode-optimized.png",
-            fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Optimized),
+            fixture = SupplementalFixture.copy(goalDisplayMode = GoalDisplayMode.Optimized),
             width = 414,
-            height = 322,
+            height = 500,
         )
     }
 
@@ -251,9 +254,9 @@ class GoalsCardScreenshotTest {
     fun dietModeActive() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.mode-diet.png",
-            fixture = ReferenceFixture.copy(goalDisplayMode = GoalDisplayMode.Diet),
+            fixture = SupplementalFixture.copy(goalDisplayMode = GoalDisplayMode.Diet),
             width = 414,
-            height = 322,
+            height = 500,
         )
     }
 
@@ -264,6 +267,42 @@ class GoalsCardScreenshotTest {
             fixture = ReferenceFixture.copy(dietGoalDisplayModeEnabled = false),
             width = 414,
             height = 322,
+        )
+    }
+
+    @Test
+    fun supplementalOneRow() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.supplemental-one-row.png",
+            fixture = SupplementalFixture.copy(dietGoalDisplayModeEnabled = false),
+            width = 414,
+            height = 430,
+        )
+    }
+
+    @Test
+    fun supplementalOverflow() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.supplemental-overflow.png",
+            fixture =
+                SupplementalFixture.copy(
+                    energy = 2450,
+                    burnedEnergy = 150,
+                    netEnergy = 2300,
+                ),
+            width = 414,
+            height = 500,
+        )
+    }
+
+    @Test
+    fun supplementalLargeFont() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.supplemental-large-font.png",
+            fixture = SupplementalFixture,
+            width = 414,
+            height = 520,
+            fontScale = 1.25f,
         )
     }
 
@@ -295,44 +334,60 @@ class GoalsCardScreenshotTest {
         fixture: GoalsCardFixture,
         width: Int = 620,
         height: Int = 430,
+        fontScale: Float = 1f,
     ) {
         captureRoboImage(
             filePath = filePath,
             roborazziComposeOptions = goalsCardOptions(width = width, height = height),
         ) {
-            GoalsCardGolden(fixture = fixture, width = width, height = height)
+            GoalsCardGolden(
+                fixture = fixture,
+                width = width,
+                height = height,
+                fontScale = fontScale,
+            )
         }
     }
 
     @Composable
-    private fun GoalsCardGolden(fixture: GoalsCardFixture, width: Int, height: Int) {
-        EnergyFormatterProvider(EnergyFormatter.kilocalories) {
-            MaterialTheme {
-                Box(
-                    modifier =
-                        Modifier.requiredSize(width = width.dp, height = height.dp)
-                            .background(Color(0xFFEEF5FA))
-                ) {
-                    GoalsCard(
-                        energy = fixture.energy,
-                        burnedEnergy = fixture.burnedEnergy,
-                        burnedEnergyDelta = fixture.burnedEnergyDelta,
-                        netEnergy = fixture.netEnergy,
-                        energyGoal = fixture.energyGoal,
-                        goalDisplayMode = fixture.goalDisplayMode,
-                        goalDisplaySummaries = fixture.goalDisplaySummaries,
-                        dietGoalDisplayModeEnabled = fixture.dietGoalDisplayModeEnabled,
-                        proteins = fixture.proteins,
-                        proteinsGoal = fixture.proteinsGoal,
-                        carbohydrates = fixture.carbohydrates,
-                        carbohydratesGoal = fixture.carbohydratesGoal,
-                        fats = fixture.fats,
-                        fatsGoal = fixture.fatsGoal,
-                        todayRemainingEnergy = fixture.todayRemainingEnergy,
-                        onClick = {},
-                        onLongClick = {},
-                        modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
-                    )
+    private fun GoalsCardGolden(
+        fixture: GoalsCardFixture,
+        width: Int,
+        height: Int,
+        fontScale: Float,
+    ) {
+        val density = LocalDensity.current
+        CompositionLocalProvider(
+            LocalDensity provides Density(density = density.density, fontScale = fontScale)
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Box(
+                        modifier =
+                            Modifier.requiredSize(width = width.dp, height = height.dp)
+                                .background(Color(0xFFEEF5FA))
+                    ) {
+                        GoalsCard(
+                            energy = fixture.energy,
+                            burnedEnergy = fixture.burnedEnergy,
+                            burnedEnergyDelta = fixture.burnedEnergyDelta,
+                            netEnergy = fixture.netEnergy,
+                            energyGoal = fixture.energyGoal,
+                            goalDisplayMode = fixture.goalDisplayMode,
+                            goalDisplaySummaries = fixture.goalDisplaySummaries,
+                            dietGoalDisplayModeEnabled = fixture.dietGoalDisplayModeEnabled,
+                            proteins = fixture.proteins,
+                            proteinsGoal = fixture.proteinsGoal,
+                            carbohydrates = fixture.carbohydrates,
+                            carbohydratesGoal = fixture.carbohydratesGoal,
+                            fats = fixture.fats,
+                            fatsGoal = fixture.fatsGoal,
+                            todayRemainingEnergy = fixture.todayRemainingEnergy,
+                            onClick = {},
+                            onLongClick = {},
+                            modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
@@ -410,6 +465,31 @@ class GoalsCardScreenshotTest {
                 carbohydratesGoal = 128,
                 fats = 0,
                 fatsGoal = 68,
+            )
+
+        val SupplementalFixture =
+            ReferenceFixture.copy(
+                energy = 1300,
+                burnedEnergy = 100,
+                netEnergy = 1200,
+                goalDisplaySummaries =
+                    listOf(
+                        GoalDisplaySummaryModel(
+                            mode = GoalDisplayMode.Normal,
+                            energyGoal = 2100,
+                            showEnergyGoalValue = true,
+                        ),
+                        GoalDisplaySummaryModel(
+                            mode = GoalDisplayMode.Optimized,
+                            energyGoal = 2250,
+                            showEnergyGoalValue = true,
+                        ),
+                        GoalDisplaySummaryModel(
+                            mode = GoalDisplayMode.Diet,
+                            energyGoal = 1800,
+                            showEnergyGoalValue = true,
+                        ),
+                    ),
             )
 
         val WeeklyChartToday = LocalDate.parse("2026-07-01")

@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -82,14 +81,14 @@ import foodyou.app.generated.resources.goal_display_mode_optimized
 import foodyou.app.generated.resources.goal_fat
 import foodyou.app.generated.resources.goal_goal
 import foodyou.app.generated.resources.goal_left
-import foodyou.app.generated.resources.goal_no_diet_deficit
-import foodyou.app.generated.resources.goal_net_energy
 import foodyou.app.generated.resources.goal_protein
 import foodyou.app.generated.resources.goal_reached_percentage
 import foodyou.app.generated.resources.goal_too_much
 import foodyou.app.generated.resources.goal_today_target
 import foodyou.app.generated.resources.headline_your_week
 import foodyou.app.generated.resources.inter
+import foodyou.app.generated.resources.label_diet
+import foodyou.app.generated.resources.label_optimized
 import foodyou.app.generated.resources.locked_day_status
 import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
@@ -121,8 +120,6 @@ private val GoalsTrackColor = Color(0xFFE4EEF5)
 private val GoalsProgressColor = Color(0xFF006B9A)
 private val GoalsErrorColor = Color(0xFFC51F1F)
 private val NormalGoalComparisonBorderColor = Color(0xFFDADCE0)
-private val NormalGoalComparisonTrackColor = Color(0xFFE0E3E7)
-private val OverviewGoalAccentColor = Color(0xFF537188)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 private val DietGoalAccentColor = Color(0xFFC98A00)
 private val FatTrackColor = Color(0xFFFFCFCF)
@@ -133,7 +130,6 @@ private val ProteinTrackColor = Color(0xFFD4F0DD)
 private val ProteinColor = Color(0xFF61BF80)
 
 private enum class GoalCardView {
-    Overview,
     Normal,
     Optimized,
     Diet,
@@ -148,7 +144,6 @@ internal fun GoalsCard(
     burnedEnergyDelta: Int? = null,
     onClick: (epochDay: Long) -> Unit,
     onLongClick: () -> Unit,
-    onDoubleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
@@ -160,7 +155,6 @@ internal fun GoalsCard(
         GoalsCardSkeleton(
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
-            onDoubleClick = onDoubleClick,
             modifier = modifier,
         )
     } else {
@@ -185,7 +179,6 @@ internal fun GoalsCard(
             onTodayEnergyGoalClick = { showTodayGoalDialog = true },
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
-            onDoubleClick = onDoubleClick,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             modifier = modifier,
         )
@@ -236,62 +229,6 @@ internal fun WeeklyGoalsCard(
 }
 
 @Composable
-internal fun GoalOverviewCard(
-    homeState: HomeState,
-    onClick: (epochDay: Long) -> Unit,
-    onLongClick: () -> Unit,
-    onDoubleClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-    viewModel: GoalsViewModel = koinViewModel(),
-) {
-    val model = viewModel.model.collectAsStateWithLifecycle().value ?: return
-    val summaries =
-        remember(
-            model.goalDisplayMode,
-            model.energyGoal,
-            model.showEnergyGoalValue,
-            model.goalDisplaySummaries,
-        ) {
-            model.goalDisplaySummaries.withNormalGoalDisplaySummary(
-                goalDisplayMode = model.goalDisplayMode,
-                energyGoal = model.energyGoal,
-                showEnergyGoalValue = model.showEnergyGoalValue,
-            )
-        }
-
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = GoalCardView.Overview.label(),
-                style = MaterialTheme.typography.titleMedium,
-                color = GoalsTextColor,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-
-        CaloriesOverview(
-            energy = model.energy,
-            burnedEnergy = model.burnedEnergy,
-            burnedEnergyDelta = null,
-            netEnergy = model.netEnergy,
-            energyGoal = model.energyGoal,
-            showEnergyGoalValue = model.showEnergyGoalValue,
-            goalCardView = GoalCardView.Overview,
-            goalDisplayMode = model.goalDisplayMode.availableOrNormal(summaries.map { it.mode }),
-            goalDisplaySummaries = summaries,
-            dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
-            onClick = { onClick(homeState.selectedDate.toEpochDays()) },
-            onLongClick = onLongClick,
-            onDoubleClick = onDoubleClick,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
 internal fun GoalsCard(
     energy: Int,
     burnedEnergy: Int,
@@ -320,7 +257,6 @@ internal fun GoalsCard(
     onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onDoubleClick: (() -> Unit)? = null,
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -356,7 +292,6 @@ internal fun GoalsCard(
             dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
             onSelectGoalCardView = {
                 when (it) {
-                    GoalCardView.Overview -> displayedGoalCardView = GoalCardView.Overview
                     GoalCardView.Normal,
                     GoalCardView.Optimized,
                     GoalCardView.Diet -> {
@@ -383,16 +318,13 @@ internal fun GoalsCard(
             netEnergy = netEnergy,
             energyGoal = energyGoal,
             showEnergyGoalValue = showEnergyGoalValue,
-            goalCardView = displayedGoalCardView,
             goalDisplayMode = displayedGoalCardView.toGoalDisplayMode(),
             goalDisplaySummaries = summaries,
-            dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
             todayRemainingEnergy = todayRemainingEnergy,
             todayEnergyGoalEditable = todayEnergyGoalEditable,
             onTodayEnergyGoalClick = onTodayEnergyGoalClick,
             onClick = onClick,
             onLongClick = onLongClick,
-            onDoubleClick = onDoubleClick,
             modifier = Modifier.fillMaxWidth(),
         ) {
             MacroGoalsFooter(
@@ -405,6 +337,17 @@ internal fun GoalsCard(
                 proteinsProgress = proteinsProgress,
                 carbsProgress = carbsProgress,
                 fatsProgress = fatsProgress,
+            )
+        }
+
+        val supplementalSummaries =
+            summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled)
+        if (supplementalSummaries.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            SupplementalGoalsCard(
+                netEnergy = netEnergy,
+                summaries = supplementalSummaries,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -940,16 +883,13 @@ private fun CaloriesOverview(
     netEnergy: Int,
     energyGoal: Int,
     showEnergyGoalValue: Boolean,
-    goalCardView: GoalCardView,
     goalDisplayMode: GoalDisplayMode,
     goalDisplaySummaries: List<GoalDisplaySummaryModel>,
-    dietGoalDisplayModeEnabled: Boolean,
     todayRemainingEnergy: Int? = null,
     todayEnergyGoalEditable: Boolean = false,
     onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onDoubleClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -968,324 +908,100 @@ private fun CaloriesOverview(
     val selectedIndex = summaries.indexOfFirst { it.mode == goalDisplayMode }.coerceAtLeast(0)
     val currentSummary = summaries[selectedIndex]
 
-    Box(
-        modifier =
-            modifier
-                .clip(GoalsCardShape)
-                .background(Color.Transparent)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            if (goalCardView == GoalCardView.Overview) {
-                GoalComparisonOverviewCard(
-                    netEnergy = netEnergy,
-                    summaries = summaries,
-                    dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                    onDoubleClick = onDoubleClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    footer = footer,
-                )
-            } else {
-                CaloriesOverviewPageCard(
-                    energy = energy,
-                    burnedEnergy = burnedEnergy,
-                    burnedEnergyDelta = burnedEnergyDelta,
-                    netEnergy = netEnergy,
-                    summary = currentSummary,
-                    todayRemainingEnergy = todayRemainingEnergy.takeIf {
-                        currentSummary.mode == GoalDisplayMode.Normal
-                    },
-                    todayEnergyGoalEditable =
-                        todayEnergyGoalEditable && currentSummary.mode == GoalDisplayMode.Normal,
-                    onTodayEnergyGoalClick = onTodayEnergyGoalClick,
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                    onDoubleClick = onDoubleClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    footer = footer,
-                )
-            }
-        }
-    }
+    CaloriesOverviewPageCard(
+        energy = energy,
+        burnedEnergy = burnedEnergy,
+        burnedEnergyDelta = burnedEnergyDelta,
+        netEnergy = netEnergy,
+        summary = currentSummary,
+        todayRemainingEnergy = todayRemainingEnergy.takeIf {
+            currentSummary.mode == GoalDisplayMode.Normal
+        },
+        todayEnergyGoalEditable =
+            todayEnergyGoalEditable && currentSummary.mode == GoalDisplayMode.Normal,
+        onTodayEnergyGoalClick = onTodayEnergyGoalClick,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier,
+        footer = footer,
+    )
 }
 
 @Composable
-private fun GoalComparisonOverviewCard(
+private fun SupplementalGoalsCard(
     netEnergy: Int,
     summaries: List<GoalDisplaySummaryModel>,
-    dietGoalDisplayModeEnabled: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onDoubleClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    footer: @Composable () -> Unit = {},
 ) {
     FoodYouHomeCard(
         modifier = modifier,
         color = GoalsCardColor,
         shape = GoalsCardShape,
-        onClick = onClick,
-        onLongClick = onLongClick,
-        onDoubleClick = onDoubleClick,
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
-            val compact = maxWidth < 360.dp
-
-            Column(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .padding(
-                            start = horizontalPadding,
-                            top = 21.dp,
-                            end = horizontalPadding,
-                            bottom = 14.dp,
-                        ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                GoalComparisonHeader(netEnergy = netEnergy)
-
-                val normalSummary = summaries.firstOrNull { it.mode == GoalDisplayMode.Normal }
-                val optimizedSummary =
-                    summaries.firstOrNull { it.mode == GoalDisplayMode.Optimized }
-                val dietSummary = summaries.firstOrNull { it.mode == GoalDisplayMode.Diet }
-
-                if (compact) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        GoalComparisonItem(
-                            mode = GoalDisplayMode.Normal,
-                            netEnergy = netEnergy,
-                            summary = normalSummary,
-                            enabled = normalSummary != null,
-                        )
-                        GoalComparisonItem(
-                            mode = GoalDisplayMode.Optimized,
-                            netEnergy = netEnergy,
-                            summary = optimizedSummary,
-                            enabled = optimizedSummary?.showEnergyGoalValue == true,
-                        )
-                        GoalComparisonItem(
-                            mode = GoalDisplayMode.Diet,
-                            netEnergy = netEnergy,
-                            summary = dietSummary,
-                            enabled = dietGoalDisplayModeEnabled && dietSummary != null,
-                            disabledLabel = stringResource(Res.string.goal_no_diet_deficit),
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        GoalComparisonItem(
-                            mode = GoalDisplayMode.Normal,
-                            netEnergy = netEnergy,
-                            summary = normalSummary,
-                            enabled = normalSummary != null,
-                            modifier = Modifier.weight(1f),
-                        )
-                        GoalComparisonItem(
-                            mode = GoalDisplayMode.Optimized,
-                            netEnergy = netEnergy,
-                            summary = optimizedSummary,
-                            enabled = optimizedSummary?.showEnergyGoalValue == true,
-                            modifier = Modifier.weight(1f),
-                        )
-                        GoalComparisonItem(
-                            mode = GoalDisplayMode.Diet,
-                            netEnergy = netEnergy,
-                            summary = dietSummary,
-                            enabled = dietGoalDisplayModeEnabled && dietSummary != null,
-                            disabledLabel = stringResource(Res.string.goal_no_diet_deficit),
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+            summaries.forEachIndexed { index, summary ->
+                if (index > 0) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = GoalsTrackColor,
+                    )
                 }
-
-                footer()
+                SupplementalGoalRow(netEnergy = netEnergy, summary = summary)
             }
         }
     }
 }
 
 @Composable
-private fun GoalComparisonHeader(netEnergy: Int, modifier: Modifier = Modifier) {
-    val energyFormatter = LocalEnergyFormatter.current
-    val valueColor = if (netEnergy < 0) GoalsErrorColor else GoalsTextColor
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.LocalFireDepartment,
-            contentDescription = null,
-            tint = GoalsProgressColor,
-            modifier = Modifier.size(26.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Column {
-            Text(
-                text =
-                    "${energyFormatter.formatEnergy(netEnergy, withSuffix = false).groupDigits()} " +
-                        stringResource(Res.string.unit_kcal),
-                color = valueColor,
-                style =
-                    MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = interNumberFontFamily(),
-                        fontSize = 20.sp,
-                        lineHeight = 24.sp,
-                    ),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-            Text(
-                text = stringResource(Res.string.goal_net_energy),
-                color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun GoalComparisonItem(
-    mode: GoalDisplayMode,
+private fun SupplementalGoalRow(
     netEnergy: Int,
-    summary: GoalDisplaySummaryModel?,
-    enabled: Boolean,
+    summary: GoalDisplaySummaryModel,
     modifier: Modifier = Modifier,
-    disabledLabel: String? = null,
 ) {
     val energyFormatter = LocalEnergyFormatter.current
-    val numberFontFamily = interNumberFontFamily()
-    val accentColor = mode.accentColor()
-    val neutral = mode == GoalDisplayMode.Normal
-    val backgroundColor =
-        if (neutral) Color.Transparent else accentColor.copy(alpha = if (enabled) 0.1f else 0.04f)
-    val borderColor =
-        if (neutral) {
-            NormalGoalComparisonBorderColor.copy(alpha = if (enabled) 1f else 0.42f)
-        } else {
-            accentColor.copy(alpha = if (enabled) 0.28f else 0.1f)
-        }
-    val iconColor = if (neutral) GoalsMutedTextColor else accentColor
-    val progressTrackColor = if (neutral) NormalGoalComparisonTrackColor else GoalsTrackColor
-    val cardShape = RoundedCornerShape(14.dp)
-    val target = summary?.energyGoal ?: 0
-    val remaining = target - netEnergy
+    val remaining = summary.energyGoal - netEnergy
     val overflow = remaining < 0
-    val remainingValue = abs(remaining)
-    val remainingLabel =
-        stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
-    val calorieProgress =
-        summary?.let { calorieGoalProgress(netEnergy, it.energyGoal, it.percentageEnergyGoal) }
-    val progress = calorieProgress?.progress ?: 0f
-    val overflowProgress = calorieProgress?.overflowProgress ?: 0f
-    val contentAlpha = if (enabled) 1f else 0.46f
-    val remainingColor = if (enabled && overflow) GoalsErrorColor else GoalsTextColor
-    val targetColor = if (target < 0) GoalsErrorColor else GoalsMutedTextColor
+    val accentColor = summary.mode.accentColor()
+    val progress =
+        calorieGoalProgress(netEnergy, summary.energyGoal, summary.percentageEnergyGoal).progress
 
-    Column(
-        modifier =
-            modifier
-                .clip(cardShape)
-                .background(backgroundColor)
-                .border(
-                    width = 1.dp,
-                    color = borderColor,
-                    shape = cardShape,
-                )
-                .padding(horizontal = 10.dp, vertical = 10.dp)
-                .alpha(contentAlpha),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector =
-                    if (neutral) {
-                        Icons.Outlined.OutlinedLocalFireDepartment
-                    } else {
-                        mode.icon()
-                    },
-                contentDescription = null,
-                tint = iconColor,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(5.dp))
             Text(
-                text = mode.label(),
-                color = GoalsTextColor,
-                style = MaterialTheme.typography.labelLarge,
+                text =
+                    stringResource(
+                        if (summary.mode == GoalDisplayMode.Optimized) {
+                            Res.string.label_optimized
+                        } else {
+                            Res.string.label_diet
+                        }
+                    ),
+                color = accentColor,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text =
+                    "${energyFormatter.formatEnergy(abs(remaining), withSuffix = false).groupDigits()} " +
+                        stringResource(Res.string.unit_kcal) +
+                        if (overflow) " ${stringResource(Res.string.goal_too_much)}" else "",
+                color = if (overflow) GoalsErrorColor else GoalsTextColor,
+                style =
+                    MaterialTheme.typography.titleSmall.copy(fontFamily = interNumberFontFamily()),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Text(
-            text =
-                if (enabled && summary?.showEnergyGoalValue == true) {
-                    "${energyFormatter.formatEnergy(remainingValue, withSuffix = false).groupDigits()} " +
-                        stringResource(Res.string.unit_kcal)
-                } else {
-                    "-"
-                },
-            color = remainingColor,
-            style =
-                MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = numberFontFamily,
-                    fontSize = 16.sp,
-                    lineHeight = 20.sp,
-                ),
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (enabled && summary?.showEnergyGoalValue == true) {
-            Text(
-                text = remainingLabel,
-                color = remainingColor,
-                style =
-                    MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, lineHeight = 14.sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
             )
         }
         MacroProgressBar(
-            progress = progress,
-            trackColor = progressTrackColor,
+            progress = if (overflow) 1f else progress,
+            trackColor = GoalsTrackColor,
             color = accentColor,
-            overflow = false,
-            overflowProgress = if (enabled) overflowProgress else 0f,
-            overflowGapWidth = 1.dp,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            text =
-                if (enabled && summary?.showEnergyGoalValue == true) {
-                    "${energyFormatter.formatEnergy(target, withSuffix = false).groupDigits()} " +
-                        stringResource(Res.string.unit_kcal) +
-                        " " +
-                        stringResource(Res.string.goal_goal)
-                } else {
-                    disabledLabel ?: "-"
-                },
-            color = targetColor,
-            style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp, lineHeight = 14.sp),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
+            overflow = overflow,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -1303,7 +1019,6 @@ private fun CaloriesOverviewPageCard(
     onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onDoubleClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1313,7 +1028,6 @@ private fun CaloriesOverviewPageCard(
         shape = GoalsCardShape,
         onClick = onClick,
         onLongClick = onLongClick,
-        onDoubleClick = onDoubleClick,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
@@ -1719,6 +1433,22 @@ internal fun List<GoalDisplaySummaryModel>.availableForGoalDisplayModes(
 ): List<GoalDisplaySummaryModel> =
     filter { it.availableForGoalDisplayMode(dietGoalDisplayModeEnabled) }
 
+internal fun List<GoalDisplaySummaryModel>.supplementalGoalSummaries(
+    dietGoalDisplayModeEnabled: Boolean
+): List<GoalDisplaySummaryModel> {
+    val normalGoal = firstOrNull { it.mode == GoalDisplayMode.Normal }?.energyGoal
+    return filter { summary ->
+        when (summary.mode) {
+            GoalDisplayMode.Normal -> false
+            GoalDisplayMode.Optimized ->
+                summary.showEnergyGoalValue &&
+                    normalGoal != null &&
+                    summary.energyGoal != normalGoal
+            GoalDisplayMode.Diet -> summary.showEnergyGoalValue && dietGoalDisplayModeEnabled
+        }
+    }
+}
+
 internal fun GoalDisplayMode.availableOrNormal(
     availableGoalDisplayModes: List<GoalDisplayMode>
 ): GoalDisplayMode =
@@ -1763,7 +1493,6 @@ private fun GoalDisplayMode.toGoalCardView(): GoalCardView =
 
 private fun GoalCardView.toGoalDisplayMode(): GoalDisplayMode =
     when (this) {
-        GoalCardView.Overview -> GoalDisplayMode.Normal
         GoalCardView.Normal -> GoalDisplayMode.Normal
         GoalCardView.Optimized -> GoalDisplayMode.Optimized
         GoalCardView.Diet -> GoalDisplayMode.Diet
@@ -1771,7 +1500,6 @@ private fun GoalCardView.toGoalDisplayMode(): GoalDisplayMode =
 
 private fun GoalCardView.label(): String =
     when (this) {
-        GoalCardView.Overview -> "Übersicht"
         GoalCardView.Normal -> GoalDisplayMode.Normal.label()
         GoalCardView.Optimized -> GoalDisplayMode.Optimized.label()
         GoalCardView.Diet -> GoalDisplayMode.Diet.label()
@@ -1786,7 +1514,6 @@ private fun GoalDisplayMode.label(): String =
 
 private fun GoalCardView.accentColor(): Color =
     when (this) {
-        GoalCardView.Overview -> OverviewGoalAccentColor
         GoalCardView.Normal -> GoalDisplayMode.Normal.accentColor()
         GoalCardView.Optimized -> GoalDisplayMode.Optimized.accentColor()
         GoalCardView.Diet -> GoalDisplayMode.Diet.accentColor()
@@ -1801,7 +1528,6 @@ private fun GoalDisplayMode.accentColor(): Color =
 
 private fun GoalCardView.icon(): androidx.compose.ui.graphics.vector.ImageVector =
     when (this) {
-        GoalCardView.Overview -> Icons.Filled.Dashboard
         GoalCardView.Normal -> GoalDisplayMode.Normal.icon()
         GoalCardView.Optimized -> GoalDisplayMode.Optimized.icon()
         GoalCardView.Diet -> GoalDisplayMode.Diet.icon()
@@ -2392,7 +2118,6 @@ private fun WeeklySkeletonBlock(shimmer: Shimmer?, modifier: Modifier = Modifier
 private fun GoalsCardSkeleton(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onDoubleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val shimmer = rememberShimmer(shimmerBounds = ShimmerBounds.Window)
@@ -2403,7 +2128,6 @@ private fun GoalsCardSkeleton(
         shape = GoalsCardShape,
         onClick = onClick,
         onLongClick = onLongClick,
-        onDoubleClick = onDoubleClick,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
