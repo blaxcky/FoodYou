@@ -18,6 +18,7 @@ import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
 import com.maksimowiczm.foodyou.app.ui.common.theme.LightNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import kotlinx.datetime.LocalTime
 import org.junit.After
 import org.junit.Test
@@ -64,9 +65,69 @@ class MealCardScreenshotTest {
                             onAddToEntry = { _, _ -> },
                             onDeleteEntry = {},
                             selectedEntries = emptySet(),
+                            isCollapsed = false,
                             isSelectionMode = false,
                             onEnterSelection = {},
                             onToggleSelection = {},
+                            onToggleCollapsed = {},
+                            onLongClick = {},
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun populatedExpanded() {
+        captureMealCard(
+            filePath = "MealCardScreenshotTest.populated-expanded.png",
+            height = 220,
+            isCollapsed = false,
+        )
+    }
+
+    @Test
+    fun populatedCollapsed() {
+        captureMealCard(
+            filePath = "MealCardScreenshotTest.populated-collapsed.png",
+            height = 120,
+            isCollapsed = true,
+        )
+    }
+
+    private fun captureMealCard(filePath: String, height: Int, isCollapsed: Boolean) {
+        captureRoboImage(
+            filePath = filePath,
+            roborazziComposeOptions =
+                RoborazziComposeOptions.Builder().size(widthDp = 390, heightDp = height)
+                    .locale("de-rDE")
+                    .build(),
+        ) {
+            CompositionLocalProvider(LocalNutrientsPalette provides LightNutrientsPalette) {
+                MaterialTheme {
+                    Box(
+                        modifier =
+                            Modifier.requiredSize(width = 390.dp, height = height.dp)
+                                .background(Color(0xFFEEF5FA))
+                                .padding(8.dp)
+                    ) {
+                        MealCard(
+                            meal = PopulatedMeal,
+                            onAddFood = {},
+                            onQuickAdd = {},
+                            onBarcodeScan = {},
+                            onEditEntry = {},
+                            onEditFood = {},
+                            onAddToEntry = { _, _ -> },
+                            onDeleteEntry = {},
+                            selectedEntries = emptySet(),
+                            isCollapsed = isCollapsed,
+                            isSelectionMode = false,
+                            onEnterSelection = {},
+                            onToggleSelection = {},
+                            onToggleCollapsed = {},
                             onLongClick = {},
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -89,6 +150,31 @@ class MealCardScreenshotTest {
                 proteins = 0.0,
                 carbohydrates = 0.0,
                 fats = 0.0,
+            )
+
+        val PopulatedMeal =
+            MealModel(
+                id = 2,
+                name = "Frühstück",
+                from = LocalTime(7, 0),
+                to = LocalTime(10, 0),
+                isAllDay = false,
+                foods =
+                    listOf(
+                        ManualMealEntryModel(
+                            id = ManualDiaryEntryId(1),
+                            mealId = 2,
+                            name = "Haferflocken mit Beeren",
+                            energy = 420,
+                            proteins = 14.0,
+                            carbohydrates = 62.0,
+                            fats = 11.0,
+                        )
+                    ),
+                energy = 420,
+                proteins = 14.0,
+                carbohydrates = 62.0,
+                fats = 11.0,
             )
     }
 }

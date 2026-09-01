@@ -50,6 +50,7 @@ internal fun rememberMealsCardsState(
     val diaryMeals = viewModel.diaryMeals.collectAsStateWithLifecycle().value
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     val selectedEntries by viewModel.selectedEntries.collectAsStateWithLifecycle()
+    val collapsedMealIds by viewModel.collapsedMealIds.collectAsStateWithLifecycle()
     val quickCaptureProducts by viewModel.quickCaptureProducts.collectAsStateWithLifecycle()
     val selectedQuickCaptureMeasurement by
         viewModel.selectedQuickCaptureMeasurement.collectAsStateWithLifecycle()
@@ -102,6 +103,7 @@ internal fun rememberMealsCardsState(
         meals = diaryMeals,
         layout = layout,
         selectedEntries = selectedEntries,
+        collapsedMealIds = collapsedMealIds,
         onAdd = { mealId -> onAdd(homeState.selectedDate.toEpochDays(), mealId) },
         onQuickAdd = { mealId -> onQuickAdd(homeState.selectedDate.toEpochDays(), mealId) },
         onBarcodeScan = { mealId -> onBarcodeScan(homeState.selectedDate.toEpochDays(), mealId) },
@@ -115,6 +117,7 @@ internal fun rememberMealsCardsState(
         onDeleteEntry = viewModel::onDeleteEntry,
         onEnterSelection = viewModel::enterSelection,
         onToggleSelection = viewModel::toggleSelection,
+        onToggleMealCollapsed = viewModel::toggleMealCollapsed,
         onClearSelection = viewModel::clearSelection,
         onDeleteSelectedEntries = viewModel::deleteSelectedEntries,
         onMoveSelectedEntries = viewModel::moveSelectedEntries,
@@ -221,6 +224,7 @@ internal class MealsCardsState(
     val meals: List<MealModel>?,
     val layout: MealsCardsLayout,
     val selectedEntries: Set<MealEntrySelectionKey>,
+    val collapsedMealIds: Set<Long>,
     val onAdd: (mealId: Long) -> Unit,
     val onQuickAdd: (mealId: Long) -> Unit,
     val onBarcodeScan: (mealId: Long) -> Unit,
@@ -230,6 +234,7 @@ internal class MealsCardsState(
     val onDeleteEntry: (MealEntryModel) -> Unit,
     val onEnterSelection: (MealEntryModel) -> Unit,
     val onToggleSelection: (MealEntryModel) -> Unit,
+    val onToggleMealCollapsed: (mealId: Long) -> Unit,
     val onClearSelection: () -> Unit,
     val onDeleteSelectedEntries: () -> Unit,
     val onMoveSelectedEntries: (mealId: Long) -> Unit,
@@ -258,9 +263,11 @@ internal fun LazyListScope.mealsCards(
                     onAddToEntry = state.onAddToEntry,
                     onDeleteEntry = state.onDeleteEntry,
                     selectedEntries = state.selectedEntries,
+                    collapsedMealIds = state.collapsedMealIds,
                     isSelectionMode = state.isSelectionMode,
                     onEnterSelection = state.onEnterSelection,
                     onToggleSelection = state.onToggleSelection,
+                    onToggleMealCollapsed = state.onToggleMealCollapsed,
                     onLongClick = state.onLongClick,
                     contentPadding = contentPadding,
                     modifier = modifier.padding(bottom = bottomSpacing),
@@ -304,9 +311,11 @@ internal fun LazyListScope.mealsCards(
                         onAddToEntry = state.onAddToEntry,
                         onDeleteEntry = state.onDeleteEntry,
                         selectedEntries = state.selectedEntries,
+                        isCollapsed = meal.id in state.collapsedMealIds,
                         isSelectionMode = state.isSelectionMode,
                         onEnterSelection = state.onEnterSelection,
                         onToggleSelection = state.onToggleSelection,
+                        onToggleCollapsed = { state.onToggleMealCollapsed(meal.id) },
                         onLongClick = { state.onLongClick(meal.id) },
                         modifier =
                             modifier.padding(contentPadding).padding(

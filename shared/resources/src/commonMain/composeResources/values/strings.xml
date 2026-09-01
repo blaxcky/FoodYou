@@ -574,6 +574,8 @@
     <string name="headline_manual_energy_input">Manual energy input</string>
 
     <string name="headline_quick_add">Quick add</string>
+    <string name="action_expand_meal">Expand meal</string>
+    <string name="action_collapse_meal">Collapse meal</string>
     <string name="headline_delete_selected_entries">Delete selected entries</string>
     <string name="headline_select_target_meal">Select target meal</string>
     <string name="description_quick_capture_empty">Mark products for quick capture from the product edit screen.</string>

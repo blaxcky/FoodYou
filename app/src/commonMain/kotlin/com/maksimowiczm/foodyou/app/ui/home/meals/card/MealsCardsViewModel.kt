@@ -19,6 +19,7 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.CollapsedMealCard
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
@@ -59,12 +60,33 @@ internal class MealsCardsViewModel(
     private val observeMeasurementSuggestionsUseCase: ObserveMeasurementSuggestionsUseCase,
     private val createFoodDiaryEntryUseCase: CreateFoodDiaryEntryUseCase,
     private val eventBus: EventBus,
-    mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
+    private val mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
     private val _selectedEntries = MutableStateFlow<Set<MealEntrySelectionKey>>(emptySet())
     private val selectedQuickCaptureProductId = MutableStateFlow<FoodId.Product?>(null)
     val selectedEntries: StateFlow<Set<MealEntrySelectionKey>> = _selectedEntries
+
+    val collapsedMealIds: StateFlow<Set<Long>> =
+        dateState
+            .flatMapLatest { date ->
+                if (date == null) {
+                    flowOf(emptySet())
+                } else {
+                    mealsPreferencesRepository.observe().map { preferences ->
+                        preferences.collapsedMealCards
+                            .asSequence()
+                            .filter { it.date == date }
+                            .map { it.mealId }
+                            .toSet()
+                    }
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(2_000),
+                initialValue = emptySet(),
+            )
 
     val diaryMeals: StateFlow<List<MealModel>?> =
         dateState
@@ -143,6 +165,23 @@ internal class MealsCardsViewModel(
 
     fun clearSelection() {
         _selectedEntries.value = emptySet()
+    }
+
+    fun toggleMealCollapsed(mealId: Long) {
+        val date = dateState.value ?: return
+        val card = CollapsedMealCard(date = date, mealId = mealId)
+        viewModelScope.launch {
+            mealsPreferencesRepository.update {
+                copy(
+                    collapsedMealCards =
+                        if (card in collapsedMealCards) {
+                            collapsedMealCards - card
+                        } else {
+                            collapsedMealCards + card
+                        }
+                )
+            }
+        }
     }
 
     fun deleteSelectedEntries() {

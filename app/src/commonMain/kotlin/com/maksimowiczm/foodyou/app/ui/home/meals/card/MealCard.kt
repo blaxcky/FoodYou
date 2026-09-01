@@ -1,5 +1,10 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -17,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -75,9 +82,11 @@ internal fun MealCard(
     onAddToEntry: (MealEntryModel, Double) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     selectedEntries: Set<MealEntrySelectionKey>,
+    isCollapsed: Boolean,
     isSelectionMode: Boolean,
     onEnterSelection: (MealEntryModel) -> Unit,
     onToggleSelection: (MealEntryModel) -> Unit,
+    onToggleCollapsed: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -130,11 +139,11 @@ internal fun MealCard(
 
                 MealNutritionSummary(
                     meal = meal,
-                    modifier = Modifier.padding(top = 2.dp).widthIn(min = 150.dp),
+                    modifier = Modifier.padding(top = 2.dp).widthIn(min = 130.dp),
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(
@@ -159,24 +168,55 @@ internal fun MealCard(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    if (meal.foods.isNotEmpty() && !isSelectionMode) {
+                        IconButton(
+                            onClick = onToggleCollapsed,
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                imageVector =
+                                    if (isCollapsed) {
+                                        Icons.Default.KeyboardArrowDown
+                                    } else {
+                                        Icons.Default.KeyboardArrowUp
+                                    },
+                                contentDescription =
+                                    stringResource(
+                                        if (isCollapsed) {
+                                            Res.string.action_expand_meal
+                                        } else {
+                                            Res.string.action_collapse_meal
+                                        }
+                                    ),
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
 
-            FoodContainer(
-                foods = meal.foods,
-                onEditEntry = onEditEntry,
-                onEditFood = onEditFood,
-                onAddToEntry = onAddToEntry,
-                onDeleteEntry = onDeleteEntry,
-                selectedEntries = selectedEntries,
-                isSelectionMode = isSelectionMode,
-                onEnterSelection = onEnterSelection,
-                onToggleSelection = onToggleSelection,
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .clip(MaterialTheme.shapes.medium),
-            )
+            AnimatedVisibility(
+                visible = !isCollapsed,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                FoodContainer(
+                    foods = meal.foods,
+                    onEditEntry = onEditEntry,
+                    onEditFood = onEditFood,
+                    onAddToEntry = onAddToEntry,
+                    onDeleteEntry = onDeleteEntry,
+                    selectedEntries = selectedEntries,
+                    isSelectionMode = isSelectionMode,
+                    onEnterSelection = onEnterSelection,
+                    onToggleSelection = onToggleSelection,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(top = 16.dp)
+                            .clip(MaterialTheme.shapes.medium),
+                )
+            }
         }
     }
 }

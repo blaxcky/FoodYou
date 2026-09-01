@@ -142,6 +142,8 @@
     <string name="description_sponsor_short_2">Unterstütze die Entwicklung der App</string>
 
     <string name="headline_quick_add">Schnelles Hinzufügen</string>
+    <string name="action_expand_meal">Mahlzeit einblenden</string>
+    <string name="action_collapse_meal">Mahlzeit ausblenden</string>
     <string name="headline_delete_selected_entries">Ausgewählte Einträge löschen</string>
     <string name="headline_select_target_meal">Ziel-Mahlzeit auswählen</string>
     <string name="label_selected_entries_count">%1$d ausgewählt</string>

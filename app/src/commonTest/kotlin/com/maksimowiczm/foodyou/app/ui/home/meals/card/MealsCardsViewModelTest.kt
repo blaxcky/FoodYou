@@ -23,6 +23,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.CollapsedMealCard
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
@@ -45,7 +46,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -59,6 +63,83 @@ import kotlinx.datetime.TimeZone
 
 class MealsCardsViewModelTest {
     private val viewModels = mutableListOf<MealsCardsViewModel>()
+
+    @Test
+    fun toggleMealCollapsedPersistsAndReturnsToExpanded() = runViewModelTest {
+        val preferencesRepository = FakeMealsPreferencesRepository()
+        val viewModel = createViewModel(preferencesRepository = preferencesRepository)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.collapsedMealIds.collect()
+        }
+        val date = LocalDate(2026, 6, 17)
+        viewModel.setDate(date)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.collapsedMealIds.value.isEmpty())
+
+        viewModel.toggleMealCollapsed(mealId = 1)
+        advanceUntilIdle()
+
+        assertEquals(setOf(1L), viewModel.collapsedMealIds.value)
+        assertEquals(
+            setOf(CollapsedMealCard(date = date, mealId = 1)),
+            preferencesRepository.value.collapsedMealCards,
+        )
+
+        viewModel.toggleMealCollapsed(mealId = 1)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.collapsedMealIds.value.isEmpty())
+        assertTrue(preferencesRepository.value.collapsedMealCards.isEmpty())
+    }
+
+    @Test
+    fun collapsedMealsAreScopedToSelectedDate() = runViewModelTest {
+        val preferencesRepository = FakeMealsPreferencesRepository()
+        val viewModel = createViewModel(preferencesRepository = preferencesRepository)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.collapsedMealIds.collect()
+        }
+        val firstDate = LocalDate(2026, 6, 17)
+        val secondDate = LocalDate(2026, 6, 18)
+
+        viewModel.setDate(firstDate)
+        viewModel.toggleMealCollapsed(mealId = 1)
+        advanceUntilIdle()
+        viewModel.setDate(secondDate)
+        advanceUntilIdle()
+        assertTrue(viewModel.collapsedMealIds.value.isEmpty())
+
+        viewModel.toggleMealCollapsed(mealId = 2)
+        advanceUntilIdle()
+        assertEquals(setOf(2L), viewModel.collapsedMealIds.value)
+
+        viewModel.setDate(firstDate)
+        advanceUntilIdle()
+        assertEquals(setOf(1L), viewModel.collapsedMealIds.value)
+    }
+
+    @Test
+    fun collapsedMealsAreRestoredFromPreferences() = runViewModelTest {
+        val date = LocalDate(2026, 6, 17)
+        val preferencesRepository =
+            FakeMealsPreferencesRepository(
+                collapsedMealCards =
+                    setOf(
+                        CollapsedMealCard(date = date, mealId = 1),
+                        CollapsedMealCard(date = LocalDate(2026, 6, 18), mealId = 2),
+                    )
+            )
+        val viewModel = createViewModel(preferencesRepository = preferencesRepository)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.collapsedMealIds.collect()
+        }
+
+        viewModel.setDate(date)
+        advanceUntilIdle()
+
+        assertEquals(setOf(1L), viewModel.collapsedMealIds.value)
+    }
 
     @Test
     fun selectionToggleHandlesFoodAndManualEntries() = runViewModelTest {
@@ -217,8 +298,9 @@ class MealsCardsViewModelTest {
         dateProvider: DateProvider = FixedDateProvider(LocalDateTime(2026, 6, 17, 8, 0)),
         productRepository: ProductRepository = FakeProductRepository(),
         eventBus: EventBus = RecordingEventBus(),
+        preferencesRepository: FakeMealsPreferencesRepository =
+            FakeMealsPreferencesRepository(),
     ): MealsCardsViewModel {
-        val preferencesRepository = FakeMealsPreferencesRepository()
         return MealsCardsViewModel(
             observeDiaryMealsUseCase =
                 ObserveDiaryMealsUseCase(
@@ -431,17 +513,26 @@ class MealsCardsViewModelTest {
         override suspend fun reorderMeals(order: List<Long>) = Unit
     }
 
-    private class FakeMealsPreferencesRepository : UserPreferencesRepository<MealsPreferences> {
-        override fun observe(): Flow<MealsPreferences> =
-            flowOf(
+    private class FakeMealsPreferencesRepository(
+        collapsedMealCards: Set<CollapsedMealCard> = emptySet()
+    ) : UserPreferencesRepository<MealsPreferences> {
+        private val state =
+            MutableStateFlow(
                 MealsPreferences(
                     layout = MealsCardsLayout.Vertical,
                     useTimeBasedSorting = false,
                     ignoreAllDayMeals = false,
+                    collapsedMealCards = collapsedMealCards,
                 )
             )
+        val value: MealsPreferences
+            get() = state.value
 
-        override suspend fun update(transform: MealsPreferences.() -> MealsPreferences) = Unit
+        override fun observe(): Flow<MealsPreferences> = state
+
+        override suspend fun update(transform: MealsPreferences.() -> MealsPreferences) {
+            state.value = state.value.transform()
+        }
     }
 
     private class FixedDateProvider(private val now: LocalDateTime) : DateProvider {
