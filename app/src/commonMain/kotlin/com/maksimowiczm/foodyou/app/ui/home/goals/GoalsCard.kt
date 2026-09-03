@@ -938,11 +938,11 @@ private fun SupplementalGoalsCard(
         color = GoalsCardColor,
         shape = GoalsCardShape,
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
             summaries.forEachIndexed { index, summary ->
                 if (index > 0) {
                     HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
+                        modifier = Modifier.padding(vertical = 10.dp),
                         color = GoalsTrackColor,
                     )
                 }
@@ -965,44 +965,42 @@ private fun SupplementalGoalRow(
     val progress =
         calorieGoalProgress(netEnergy, summary.energyGoal, summary.percentageEnergyGoal).progress
 
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text =
-                    stringResource(
-                        if (summary.mode == GoalDisplayMode.Optimized) {
-                            Res.string.label_optimized
-                        } else {
-                            Res.string.label_diet
-                        }
-                    ),
-                color = accentColor,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text =
-                    "${energyFormatter.formatEnergy(abs(remaining), withSuffix = false).groupDigits()} " +
-                        stringResource(Res.string.unit_kcal) +
-                        if (overflow) " ${stringResource(Res.string.goal_too_much)}" else "",
-                color = if (overflow) GoalsErrorColor else GoalsTextColor,
-                style =
-                    MaterialTheme.typography.titleSmall.copy(fontFamily = interNumberFontFamily()),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text =
+                stringResource(
+                    if (summary.mode == GoalDisplayMode.Optimized) {
+                        Res.string.label_optimized
+                    } else {
+                        Res.string.label_diet
+                    }
+                ),
+            color = accentColor,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
         MacroProgressBar(
             progress = if (overflow) 1f else progress,
             trackColor = GoalsTrackColor,
             color = accentColor,
             overflow = overflow,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text =
+                "${energyFormatter.formatEnergy(abs(remaining), withSuffix = false).groupDigits()} " +
+                    stringResource(Res.string.unit_kcal) +
+                    if (overflow) " ${stringResource(Res.string.goal_too_much)}" else "",
+            color = if (overflow) GoalsErrorColor else GoalsTextColor,
+            style = MaterialTheme.typography.titleSmall.copy(fontFamily = interNumberFontFamily()),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
