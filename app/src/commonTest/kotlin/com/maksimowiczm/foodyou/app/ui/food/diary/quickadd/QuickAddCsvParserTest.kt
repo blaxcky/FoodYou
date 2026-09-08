@@ -10,6 +10,71 @@ class QuickAddCsvParserTest {
     private val parser = QuickAddCsvParserImpl(CsvParserImpl())
 
     @Test
+    fun ignoresThinkingTimeBeforeCsv() = runBlocking {
+        val result =
+            parser.parse(
+                """
+                41s nachgedacht
+
+                name,energy,proteins,carbohydrates,fats
+                "Palatschinken, Speck-Gemüse-Pizza, Gyros-Huhn und Reis",1442,98.1,137.5,54.4
+                """
+                    .trimIndent()
+            )
+
+        assertEquals(
+            QuickAddCsvData(
+                name = "Palatschinken, Speck-Gemüse-Pizza, Gyros-Huhn und Reis",
+                energyKcal = 1442.0,
+                proteins = 98.1,
+                carbohydrates = 137.5,
+                fats = 54.4,
+            ),
+            result.dataOrFail(),
+        )
+    }
+
+    @Test
+    fun ignoresArbitraryLeadingTextWithHeaderFormattingVariants() = runBlocking {
+        val prefix = "Hier ist deine Auswertung, inklusive Nährwerten.\nEinleitung mit einem \"Zitat\n\n"
+        val headers =
+            listOf(
+                "name,energy,proteins,carbohydrates,fats\n",
+                "\uFEFF name, energy, proteins, carbohydrates, fats\r\n",
+                "\uFEFF name, energy, proteins, carbohydrates, fats ",
+            )
+
+        for (header in headers) {
+            val result = parser.parse(prefix + header + "\"Reis\",650,45,72,18")
+
+            assertEquals(QuickAddCsvData("Reis", 650.0, 45.0, 72.0, 18.0), result.dataOrFail())
+        }
+    }
+
+    @Test
+    fun stillRejectsInvalidCsvAfterLeadingText() = runBlocking {
+        val header = "name,energy,proteins,carbohydrates,fats\n"
+        val cases =
+            listOf(
+                "title,energy,proteins,carbohydrates,fats\nReis,650,45,72,18" to
+                    QuickAddCsvError.InvalidHeader,
+                "name,energy,proteins,carbohydrates,fatsExtra\nReis,650,45,72,18" to
+                    QuickAddCsvError.InvalidHeader,
+                header + "Reis,650,45,72,18\nHuhn,300,35,0,10" to
+                    QuickAddCsvError.InvalidDataRowCount,
+                header + "Reis,abc,45,72,18" to QuickAddCsvError.InvalidNumber,
+                header + "Reis,650,-45,72,18" to QuickAddCsvError.NegativeNumber,
+                header + "\"\",650,45,72,18" to QuickAddCsvError.EmptyName,
+                header + "Reis,650,45,72,18\nZusätzlicher Text" to
+                    QuickAddCsvError.InvalidDataRowCount,
+            )
+
+        for ((csv, expectedError) in cases) {
+            assertEquals(expectedError, parser.parse("41s nachgedacht\n\n" + csv).errorOrFail())
+        }
+    }
+
+    @Test
     fun parsesValidHeaderAndDataRow() = runBlocking {
         val result =
             parser.parse(
