@@ -230,7 +230,7 @@ internal class MealsCardsState(
     val onBarcodeScan: (mealId: Long) -> Unit,
     val onEditEntry: (MealEntryModel) -> Unit,
     val onEditFood: (FoodId.Product) -> Unit,
-    val onAddToEntry: (MealEntryModel, Double) -> Unit,
+    val onAddToEntry: (MealEntryModel, EntryAddition) -> Unit,
     val onDeleteEntry: (MealEntryModel) -> Unit,
     val onEnterSelection: (MealEntryModel) -> Unit,
     val onToggleSelection: (MealEntryModel) -> Unit,

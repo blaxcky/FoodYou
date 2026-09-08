@@ -10,6 +10,11 @@ class MeasurementPickerInputConversionTest {
     private val piece = portion(label = "1 Stück (8 g)", measurement = Measurement.Gram(8.0))
 
     @Test
+    fun decimalCommaIsConvertedToPortionQuantity() {
+        assertEquals("1.5", select(previous = gram, selected = piece, input = "12,0"))
+    }
+
+    @Test
     fun gramsAreConvertedToPortionQuantity() {
         assertEquals("4", select(previous = gram, selected = piece, input = "32"))
     }

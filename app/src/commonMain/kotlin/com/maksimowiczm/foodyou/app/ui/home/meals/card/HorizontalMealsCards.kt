@@ -21,7 +21,7 @@ internal fun HorizontalMealsCards(
     onBarcodeScan: (mealId: Long) -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
-    onAddToEntry: (MealEntryModel, Double) -> Unit,
+    onAddToEntry: (MealEntryModel, EntryAddition) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     selectedEntries: Set<MealEntrySelectionKey>,
     collapsedMealIds: Set<Long>,

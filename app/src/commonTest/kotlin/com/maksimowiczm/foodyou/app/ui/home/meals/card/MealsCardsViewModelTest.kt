@@ -7,13 +7,14 @@ import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.event.EventBus
 import com.maksimowiczm.foodyou.common.domain.event.IntegrationEvent
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
+import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.log.Logger
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.entity.RecipeIngredient
 import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
@@ -21,9 +22,11 @@ import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.CollapsedMealCard
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
-import com.maksimowiczm.foodyou.fooddiary.domain.entity.CollapsedMealCard
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipeIngredient
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
@@ -271,6 +274,131 @@ class MealsCardsViewModelTest {
             assertEquals(measurement, event.measurement)
             assertEquals(dateProvider.nowInstant(), event.timestamp)
         }
+
+    @Test
+    fun additionsConvertIntoCurrentStoredUnit() = runViewModelTest {
+        val repository = FakeFoodDiaryEntryRepository()
+        val viewModel = createViewModel(foodEntryRepository = repository)
+        val original = foodEntry(1, 1)
+        val product = (original.food as DiaryFoodProduct).copy(servingWeight = 25.0, totalWeight = 200.0)
+        val cases = listOf(
+            Triple(Measurement.Gram(100.0), Measurement.Serving(3.0), Measurement.Gram(175.0)),
+            Triple(Measurement.Serving(2.0), Measurement.Gram(75.0), Measurement.Serving(5.0)),
+            Triple(Measurement.Package(1.0), Measurement.Serving(2.0), Measurement.Package(1.25)),
+            Triple(Measurement.Gram(100.0), Measurement.Package(0.5), Measurement.Gram(200.0)),
+            Triple(Measurement.Serving(2.0), Measurement.Serving(1.5), Measurement.Serving(3.5)),
+        )
+        for ((current, addition, expected) in cases) {
+            repository.entries[original.id] = original.copy(food = product, measurement = current)
+            // The dialog model deliberately contains stale amounts and no reference weights.
+            viewModel.onAddToEntry(foodModel(1), EntryAddition.Food(addition))
+            advanceUntilIdle()
+            assertEquals(expected, repository.entries.getValue(original.id).measurement)
+        }
+        repository.entries[original.id] = original.copy(
+            food = product.copy(isLiquid = true), measurement = Measurement.Milliliter(100.0))
+        viewModel.onAddToEntry(foodModel(1), EntryAddition.Food(Measurement.Serving(1.5)))
+        advanceUntilIdle()
+        assertEquals(Measurement.Milliliter(137.5), repository.entries.getValue(original.id).measurement)
+    }
+
+    @Test
+    fun recipeServingsUseStoredRecipeWeight() = runViewModelTest {
+        val repository = FakeFoodDiaryEntryRepository()
+        val viewModel = createViewModel(foodEntryRepository = repository)
+        val original = foodEntry(1, 1)
+        val recipe = DiaryFoodRecipe(
+            id = FoodId.Recipe(1), name = "Recipe", servings = 4,
+            ingredients = listOf(DiaryFoodRecipeIngredient(original.food, Measurement.Gram(800.0))),
+            isLiquid = false, note = null,
+        )
+        repository.entries[original.id] = original.copy(food = recipe, measurement = Measurement.Serving(1.0))
+        viewModel.onAddToEntry(foodModel(1).copy(isRecipe = true), EntryAddition.Food(Measurement.Gram(100.0)))
+        advanceUntilIdle()
+        assertEquals(Measurement.Serving(1.5), repository.entries.getValue(original.id).measurement)
+        viewModel.onAddToEntry(foodModel(1).copy(isRecipe = true), EntryAddition.Food(Measurement.Serving(2.0)))
+        advanceUntilIdle()
+        assertEquals(Measurement.Serving(3.5), repository.entries.getValue(original.id).measurement)
+    }
+
+    @Test
+    fun optionsExcludeInvalidReferencesButKeepNamedPortions() {
+        val portion = ProductPortion(label = "Scheibe", amount = 30.0, unit = ProductPortion.Unit.Gram)
+        for (weight in listOf(null, 0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY)) {
+            val options = foodModel(1).copy(servingWeight = weight, totalWeight = weight, portions = listOf(portion)).additionOptions()
+            assertEquals(2, options.size)
+            assertEquals(Measurement.Gram(45.0), options.last().measurementForInput(1.5))
+        }
+    }
+
+    @Test
+    fun invalidAdditionsAndMissingConversionsDoNotUpdateEntry() = runViewModelTest {
+        val repository = FakeFoodDiaryEntryRepository()
+        val viewModel = createViewModel(foodEntryRepository = repository)
+        val original = foodEntry(1, 1)
+        repository.entries[original.id] = original
+        val invalid = listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY)
+            .map { Measurement.Gram(it) } + listOf(Measurement.Serving(1.0), Measurement.Package(1.0), Measurement.Milliliter(1.0))
+        for (addition in invalid) {
+            viewModel.onAddToEntry(foodModel(1), EntryAddition.Food(addition))
+            advanceUntilIdle()
+            assertEquals(original, repository.entries[original.id])
+        }
+        for (weight in listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY)) {
+            val entry = original.copy(food = (original.food as DiaryFoodProduct).copy(servingWeight = weight))
+            assertEquals(null, entry.measurementWithAddition(Measurement.Serving(1.0)))
+        }
+        val overflowingEntry = original.copy(measurement = Measurement.Gram(Double.MAX_VALUE))
+        assertEquals(null, overflowingEntry.measurementWithAddition(Measurement.Gram(Double.MAX_VALUE)))
+    }
+
+    @Test
+    fun namedPortionsAreResolvedOnceAndDeletedProductsKeepDiaryUnits() = runViewModelTest {
+        val repository = FakeFoodDiaryEntryRepository()
+        val source = FoodSource(FoodSource.Type.User, url = "product/1")
+        val portion = ProductPortion(label = "Scheibe", amount = 30.0, unit = ProductPortion.Unit.Gram)
+        val product = product(1).copy(source = source, portions = listOf(portion))
+        val products = FakeProductRepository(listOf(product))
+        val original = foodEntry(1, 1)
+        repository.entries[original.id] = original.copy(food = (original.food as DiaryFoodProduct).copy(source = source, servingWeight = 25.0))
+        val deletedProductEntry = foodEntry(2, 1)
+        repository.entries[deletedProductEntry.id] = deletedProductEntry.copy(
+            measurement = Measurement.Package(1.0),
+            food = (deletedProductEntry.food as DiaryFoodProduct).copy(
+                source = source.copy(url = "deleted/2"), servingWeight = 25.0, totalWeight = 250.0,
+            ),
+        )
+        val viewModel = createViewModel(foodEntryRepository = repository, productRepository = products)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.diaryMeals.collect() }
+        viewModel.setDate(original.date)
+        advanceUntilIdle()
+        val models = viewModel.diaryMeals.value!!.flatMap { it.foods }.filterIsInstance<FoodMealEntryModel>()
+        assertEquals(listOf(portion), models.first().portions)
+        assertEquals(product.id, models.first().editableProductId)
+        assertEquals(2, products.sourceLookups)
+        assertEquals(Measurement.Package(1.0), models.last().measurement)
+        assertTrue(models.last().portions.isEmpty())
+        val option = models.first().additionOptions().filterIsInstance<com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerOption.Portion>().single()
+        viewModel.onAddToEntry(models.first(), EntryAddition.Food(option.measurementForInput(1.5)))
+        advanceUntilIdle()
+        assertEquals(Measurement.Gram(145.0), repository.entries.getValue(original.id).measurement)
+    }
+
+    @Test
+    fun manualAdditionKeepsFactorBehaviorAndRejectsNonFiniteValues() = runViewModelTest {
+        val repository = FakeManualDiaryEntryRepository()
+        val viewModel = createViewModel(manualEntryRepository = repository)
+        val original = manualEntry(1, 1).copy(nutritionFacts = NutritionFacts(energy = NutrientValue.Incomplete(100.0)))
+        repository.entries[original.id] = original
+        for (value in listOf(Double.NaN, Double.POSITIVE_INFINITY, 0.0, -1.0)) {
+            viewModel.onAddToEntry(manualModel(1), EntryAddition.Manual(value))
+            advanceUntilIdle()
+            assertEquals(original, repository.entries[original.id])
+        }
+        viewModel.onAddToEntry(manualModel(1), EntryAddition.Manual(1.5))
+        advanceUntilIdle()
+        assertEquals(original.nutritionFacts * 2.5, repository.entries.getValue(original.id).nutritionFacts)
+    }
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
@@ -564,7 +692,11 @@ class MealsCardsViewModelTest {
 
         override suspend fun getProductByBarcode(barcode: String): Product? = null
 
-        override suspend fun getProductBySource(type: FoodSource.Type, url: String): Product? = null
+        var sourceLookups = 0
+        override suspend fun getProductBySource(type: FoodSource.Type, url: String): Product? {
+            sourceLookups++
+            return products.values.firstOrNull { it.source.type == type && it.source.url == url }
+        }
 
         override fun observeProducts(limit: Int, offset: Int): Flow<List<Product>> =
             flowOf(products.values.toList().drop(offset).take(limit))

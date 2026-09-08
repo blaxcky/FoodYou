@@ -246,19 +246,15 @@ internal class MealsCardsViewModel(
         }
     }
 
-    fun onAddToEntry(model: MealEntryModel, amount: Double) {
-        if (amount <= 0.0) return
-
+    fun onAddToEntry(model: MealEntryModel, addition: EntryAddition) {
         viewModelScope.launch {
             val now = dateProvider.now()
             when (model) {
                 is FoodMealEntryModel -> {
                     val entry = foodEntryRepository.observe(model.id).firstOrNull() ?: return@launch
+                    val measurement = (addition as? EntryAddition.Food)?.measurement ?: return@launch
                     val updatedMeasurement =
-                        Measurement.from(
-                            type = entry.measurement.type,
-                            rawValue = entry.measurement.rawValue + amount,
-                        )
+                        entry.measurementWithAddition(measurement) ?: return@launch
                     foodEntryRepository.update(
                         entry.copy(measurement = updatedMeasurement, updatedAt = now)
                     )
@@ -267,6 +263,8 @@ internal class MealsCardsViewModel(
                 is ManualMealEntryModel -> {
                     val entry =
                         manualEntryRepository.observe(model.id).firstOrNull() ?: return@launch
+                    val amount = (addition as? EntryAddition.Manual)?.factor ?: return@launch
+                    if (!amount.isFinite() || amount <= 0.0 || !(1.0 + amount).isFinite()) return@launch
                     manualEntryRepository.update(
                         entry.copy(
                             nutritionFacts = entry.nutritionFacts * (1.0 + amount),
@@ -387,12 +385,13 @@ private suspend fun DiaryEntry.toMealEntryModel(
     productRepository: ProductRepository
 ): MealEntryModel =
     when (this) {
-        is FoodDiaryEntry ->
+        is FoodDiaryEntry -> {
+            val product = (food as? DiaryFoodProduct)?.resolvedProduct(productRepository)
             FoodMealEntryModel(
                 id = id,
                 mealId = mealId,
-                editableProductId =
-                    (food as? DiaryFoodProduct)?.editableProductId(productRepository),
+                editableProductId = product?.id,
+                portions = product?.portions.orEmpty(),
                 name = food.name,
                 energy = nutritionFacts.energy.value?.roundToInt(),
                 proteins = nutritionFacts.proteins.value,
@@ -405,6 +404,7 @@ private suspend fun DiaryEntry.toMealEntryModel(
                 totalWeight = food.totalWeight,
                 servingWeight = food.servingWeight,
             )
+        }
 
         is ManualDiaryEntry ->
             ManualMealEntryModel(
@@ -418,9 +418,33 @@ private suspend fun DiaryEntry.toMealEntryModel(
             )
     }
 
-private suspend fun DiaryFoodProduct.editableProductId(
+private suspend fun DiaryFoodProduct.resolvedProduct(
     productRepository: ProductRepository
-): FoodId.Product? {
+): Product? {
     val sourceUrl = source.url?.takeIf { it.isNotBlank() } ?: return null
-    return productRepository.getProductBySource(source.type, sourceUrl)?.id
+    return productRepository.getProductBySource(source.type, sourceUrl)
+}
+
+internal fun FoodDiaryEntry.measurementWithAddition(addition: Measurement): Measurement? {
+    if (!addition.rawValue.isFinite() || addition.rawValue <= 0.0) return null
+    val amount =
+        if (addition.type == measurement.type) addition.rawValue
+        else {
+            fun unitWeight(value: Measurement): Double? =
+                when (value) {
+                    is Measurement.Gram -> if (food.isLiquid) null else 1.0
+                    is Measurement.Ounce -> if (food.isLiquid) null else Measurement.Ounce(1.0).metric
+                    is Measurement.Milliliter -> if (food.isLiquid) 1.0 else null
+                    is Measurement.FluidOunce ->
+                        if (food.isLiquid) Measurement.FluidOunce(1.0).metric else null
+                    is Measurement.Serving -> food.servingWeight
+                    is Measurement.Package -> food.totalWeight
+                }?.takeIf { it.isFinite() && it > 0.0 }
+            val sourceWeight = unitWeight(addition) ?: return null
+            val targetWeight = unitWeight(measurement) ?: return null
+            addition.rawValue * sourceWeight / targetWeight
+        }
+    val total = measurement.rawValue + amount
+    if (!amount.isFinite() || amount <= 0.0 || !total.isFinite() || total <= 0.0) return null
+    return Measurement.from(measurement.type, total)
 }

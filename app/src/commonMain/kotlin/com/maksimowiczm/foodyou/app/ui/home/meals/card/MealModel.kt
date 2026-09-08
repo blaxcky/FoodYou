@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.card
 import androidx.compose.runtime.*
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import kotlinx.datetime.LocalTime
@@ -55,6 +56,7 @@ internal data class FoodMealEntryModel(
     val isRecipe: Boolean,
     val servingWeight: Double?,
     val totalWeight: Double?,
+    val portions: List<ProductPortion> = emptyList(),
 ) : MealEntryModel {
     override val selectionKey: MealEntrySelectionKey = MealEntrySelectionKey.Food(id)
 }
@@ -70,4 +72,9 @@ internal data class ManualMealEntryModel(
     override val fats: Double?,
 ) : MealEntryModel {
     override val selectionKey: MealEntrySelectionKey = MealEntrySelectionKey.Manual(id)
+}
+
+internal sealed interface EntryAddition {
+    data class Food(val measurement: Measurement) : EntryAddition
+    data class Manual(val factor: Double) : EntryAddition
 }

@@ -379,7 +379,7 @@ internal fun measurementPickerInputForSelection(
 ): String {
     if (inputTextOverride != null) return inputTextOverride
 
-    val currentValue = currentInput.toDoubleOrNull()
+    val currentValue = currentInput.replace(',', '.').toDoubleOrNull()
     val previousUnitWeight = previousOption.metricWeightPerUnit
     val selectedUnitWeight = selectedOption.metricWeightPerUnit
     val convertedValue =

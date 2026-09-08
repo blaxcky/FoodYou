@@ -9,6 +9,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -28,6 +32,8 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,17 +58,19 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
-import com.maksimowiczm.foodyou.app.ui.common.utility.stringResource
+import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerOption
+import com.maksimowiczm.foodyou.app.ui.food.component.measurementPickerInputForSelection
+import com.maksimowiczm.foodyou.app.ui.food.component.toMeasurementPickerOptions
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -79,7 +87,7 @@ internal fun MealCard(
     onBarcodeScan: () -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
-    onAddToEntry: (MealEntryModel, Double) -> Unit,
+    onAddToEntry: (MealEntryModel, EntryAddition) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     selectedEntries: Set<MealEntrySelectionKey>,
     isCollapsed: Boolean,
@@ -301,7 +309,7 @@ private fun FoodContainer(
     foods: List<MealEntryModel>,
     onEditEntry: (MealEntryModel) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
-    onAddToEntry: (MealEntryModel, Double) -> Unit,
+    onAddToEntry: (MealEntryModel, EntryAddition) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     selectedEntries: Set<MealEntrySelectionKey>,
     isSelectionMode: Boolean,
@@ -353,7 +361,7 @@ private fun FoodContainerItem(
     entry: MealEntryModel,
     onEditEntry: (MealEntryModel) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
-    onAddToEntry: (MealEntryModel, Double) -> Unit,
+    onAddToEntry: (MealEntryModel, EntryAddition) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
     selected: Boolean,
     isSelectionMode: Boolean,
@@ -457,7 +465,7 @@ private fun BottomSheetContent(
     entry: MealEntryModel,
     onEdit: () -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
-    onAddToEntry: (Double) -> Unit,
+    onAddToEntry: (EntryAddition) -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -556,10 +564,10 @@ private fun DeleteDialog(onDismissRequest: () -> Unit, onDeleteEntry: () -> Unit
 }
 
 @Composable
-private fun AddToEntryDialog(
+internal fun AddToEntryDialog(
     entry: MealEntryModel,
     onDismissRequest: () -> Unit,
-    onAddToEntry: (Double) -> Unit,
+    onAddToEntry: (EntryAddition) -> Unit,
 ) {
     val initialAmount =
         remember(entry) {
@@ -568,36 +576,34 @@ private fun AddToEntryDialog(
                 is ManualMealEntryModel -> "1"
             }
         }
-    var amountText by
-        rememberSaveable(initialAmount, stateSaver = TextFieldValue.Saver) {
-            mutableStateOf(
-                TextFieldValue(
-                    text = initialAmount,
-                    selection = TextRange(0, initialAmount.length),
-                )
-            )
-        }
-    val amount = remember(amountText.text) { amountText.text.replace(',', '.').toDoubleOrNull() }
-    val isError = amountText.text.isNotBlank() && (amount == null || amount <= 0.0)
+    val amountText = rememberTextFieldState(initialAmount, TextRange(0, initialAmount.length))
+    val options = remember(entry) { (entry as? FoodMealEntryModel)?.additionOptions().orEmpty() }
+    var selectedIndex by rememberSaveable(entry) { mutableStateOf(0) }
+    val selectedOption = options.getOrNull(selectedIndex)
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val servingUnit =
+        if ((entry as? FoodMealEntryModel)?.isRecipe == true) ServingUnit.Serving else ServingUnit.Piece
+    val amount = remember(amountText.text) { amountText.text.toString().replace(',', '.').toDoubleOrNull() }
+    val isError = amountText.text.isNotBlank() && (amount == null || !amount.isFinite() || amount <= 0.0)
     val amountFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) { amountFocusRequester.requestFocus() }
 
-    val suffix =
-        when (entry) {
-            is FoodMealEntryModel ->
-                entry.measurement.type.stringResource(
-                    servingUnit = if (entry.isRecipe) ServingUnit.Serving else ServingUnit.Piece
-                )
-            is ManualMealEntryModel -> null
+    val addition =
+        amount?.takeIf { it.isFinite() && it > 0.0 }?.let { value ->
+            if (selectedOption != null) {
+                selectedOption.measurementForInput(value)
+                    .takeIf { it.rawValue.isFinite() && it.rawValue > 0.0 }
+                    ?.let(EntryAddition::Food)
+            } else EntryAddition.Manual(value)
         }
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                enabled = amount != null && amount > 0.0,
-                onClick = { onAddToEntry(amount ?: return@TextButton) },
+                enabled = addition != null,
+                onClick = { onAddToEntry(addition ?: return@TextButton) },
             ) {
                 Text(stringResource(Res.string.action_add))
             }
@@ -609,21 +615,60 @@ private fun AddToEntryDialog(
         },
         title = { Text(stringResource(Res.string.action_add_to_entry)) },
         text = {
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = { amountText = it },
-                label = { Text(stringResource(Res.string.label_additional_amount)) },
-                suffix = suffix?.let { { Text(it) } },
-                isError = isError,
-                supportingText = {
-                    if (isError) {
-                        Text(stringResource(Res.string.error_invalid_number))
+            Column {
+                OutlinedTextField(
+                    state = amountText,
+                    label = { Text(stringResource(Res.string.label_additional_amount)) },
+                    isError = isError,
+                    supportingText = if (isError) {
+                        { Text(stringResource(Res.string.error_invalid_number)) }
+                    } else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    modifier = Modifier.fillMaxWidth().focusRequester(amountFocusRequester),
+                )
+                if (selectedOption != null) {
+                    Box {
+                        TextButton(onClick = { expanded = true }) {
+                            Text(selectedOption.label(servingUnit), modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            options.forEachIndexed { index, option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label(servingUnit)) },
+                                    onClick = {
+                                        val text =
+                                            measurementPickerInputForSelection(
+                                                selectedOption, option, amountText.text.toString(),
+                                            )
+                                        amountText.edit {
+                                            replace(0, length, text)
+                                            selectAll()
+                                        }
+                                        selectedIndex = index
+                                        expanded = false
+                                    },
+                                )
+                            }
+                        }
                     }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                modifier = Modifier.focusRequester(amountFocusRequester),
-            )
+                }
+            }
         },
     )
+}
+
+internal fun FoodMealEntryModel.additionOptions(): List<MeasurementPickerOption> {
+    fun valid(weight: Double?) = weight != null && weight.isFinite() && weight > 0.0
+    fun standard(type: MeasurementType) =
+        MeasurementPickerOption.Standard(type, totalWeight, servingWeight, isLiquid)
+    return buildList {
+        // Preserve the diary unit, including older entries whose product no longer exists.
+        add(standard(measurement.type))
+        add(standard(if (isLiquid) MeasurementType.Milliliter else MeasurementType.Gram))
+        if (valid(servingWeight)) add(standard(MeasurementType.Serving))
+        if (valid(totalWeight)) add(standard(MeasurementType.Package))
+        addAll(portions.toMeasurementPickerOptions(isLiquid).filter { valid(it.unitMeasurement.metric) })
+    }.distinct()
 }
