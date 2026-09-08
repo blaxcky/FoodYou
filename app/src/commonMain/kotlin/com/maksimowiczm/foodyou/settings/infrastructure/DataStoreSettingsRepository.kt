@@ -35,6 +35,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             secureScreen = this[SettingsPreferencesKeys.secureScreen] ?: false,
             homeCardOrder = this.getHomeCardOrder(SettingsPreferencesKeys.homeCardOrder),
             expandGoalCard = this[SettingsPreferencesKeys.expandGoalCard] ?: true,
+            goalCardModeSwitchingEnabled = this[SettingsPreferencesKeys.goalCardModeSwitchingEnabled] ?: true,
+            supplementalGoalsEnabled = this[SettingsPreferencesKeys.supplementalGoalsEnabled] ?: true,
             goalDisplayMode = this.getGoalDisplayMode(),
             dietEnergyDeficitKcal = this[SettingsPreferencesKeys.dietEnergyDeficitKcal],
             dietEnergyDeficitOverride = this.getDietEnergyDeficitOverride(),
@@ -82,6 +84,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.secureScreen] = updated.secureScreen
         setHomeCardOrder(SettingsPreferencesKeys.homeCardOrder, updated.homeCardOrder)
         this[SettingsPreferencesKeys.expandGoalCard] = updated.expandGoalCard
+        this[SettingsPreferencesKeys.goalCardModeSwitchingEnabled] = updated.goalCardModeSwitchingEnabled
+        this[SettingsPreferencesKeys.supplementalGoalsEnabled] = updated.supplementalGoalsEnabled
         setGoalDisplayMode(updated.goalDisplayMode)
         setWithNull(
             SettingsPreferencesKeys.dietEnergyDeficitKcal,
@@ -340,6 +344,8 @@ private object SettingsPreferencesKeys {
     val expandGoalCard = booleanPreferencesKey("settings:expandGoalCard")
     val optimizedGoalDisplayEnabled =
         booleanPreferencesKey("settings:optimizedGoalDisplayEnabled")
+    val goalCardModeSwitchingEnabled = booleanPreferencesKey("settings:goalCardModeSwitchingEnabled")
+    val supplementalGoalsEnabled = booleanPreferencesKey("settings:supplementalGoalsEnabled")
     val goalDisplayMode = stringPreferencesKey("settings:goalDisplayMode")
     val dietEnergyDeficitKcal = doublePreferencesKey("settings:dietEnergyDeficitKcal")
     val dietEnergyDeficitOverrideKcal =

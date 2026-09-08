@@ -167,6 +167,8 @@ internal fun GoalsCard(
             netEnergy = model.netEnergy,
             energyGoal = model.energyGoal,
             showEnergyGoalValue = model.showEnergyGoalValue,
+            goalCardModeSwitchingEnabled = model.goalCardModeSwitchingEnabled,
+            supplementalGoalsEnabled = model.supplementalGoalsEnabled,
             goalDisplayMode = model.goalDisplayMode,
             goalDisplaySummaries = model.goalDisplaySummaries,
             dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
@@ -247,6 +249,8 @@ internal fun GoalsCard(
                 showEnergyGoalValue = showEnergyGoalValue,
             )
         ),
+    goalCardModeSwitchingEnabled: Boolean = true,
+    supplementalGoalsEnabled: Boolean = true,
     dietGoalDisplayModeEnabled: Boolean = true,
     proteins: Int,
     proteinsGoal: Int,
@@ -288,30 +292,32 @@ internal fun GoalsCard(
     }
 
     Column(modifier = modifier) {
-        GoalDisplayModeButtons(
-            goalCardView = displayedGoalCardView,
-            availableGoalDisplayModes = availableGoalDisplayModes,
-            dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
-            onSelectGoalCardView = {
-                when (it) {
-                    GoalCardView.Normal,
-                    GoalCardView.Optimized,
-                    GoalCardView.Diet -> {
-                        val mode = it.toGoalDisplayMode()
-                        if (mode in availableGoalDisplayModes) {
-                            displayedGoalCardView = it
-                            onSelectGoalDisplayMode(mode)
+        if (goalCardModeSwitchingEnabled) {
+            GoalDisplayModeButtons(
+                goalCardView = displayedGoalCardView,
+                availableGoalDisplayModes = availableGoalDisplayModes,
+                dietGoalDisplayModeEnabled = dietGoalDisplayModeEnabled,
+                onSelectGoalCardView = {
+                    when (it) {
+                        GoalCardView.Normal,
+                        GoalCardView.Optimized,
+                        GoalCardView.Diet -> {
+                            val mode = it.toGoalDisplayMode()
+                            if (mode in availableGoalDisplayModes) {
+                                displayedGoalCardView = it
+                                onSelectGoalDisplayMode(mode)
+                            }
                         }
                     }
-                }
-            },
-            modifier =
-                Modifier.fillMaxWidth()
-                    .height(38.dp)
-                    .padding(end = 14.dp),
-        )
+                },
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(38.dp)
+                        .padding(end = 14.dp),
+            )
 
-        Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(4.dp))
+        }
 
         CaloriesOverview(
             energy = energy,
@@ -320,7 +326,9 @@ internal fun GoalsCard(
             netEnergy = netEnergy,
             energyGoal = energyGoal,
             showEnergyGoalValue = showEnergyGoalValue,
-            goalDisplayMode = displayedGoalCardView.toGoalDisplayMode(),
+            goalDisplayMode =
+                if (goalCardModeSwitchingEnabled) displayedGoalCardView.toGoalDisplayMode()
+                else GoalDisplayMode.Normal,
             goalDisplaySummaries = summaries,
             todayRemainingEnergy = todayRemainingEnergy,
             todayEnergyGoalEditable = todayEnergyGoalEditable,
@@ -344,7 +352,7 @@ internal fun GoalsCard(
 
         val supplementalSummaries =
             summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled)
-        if (supplementalSummaries.isNotEmpty()) {
+        if (supplementalGoalsEnabled && supplementalSummaries.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             SupplementalGoalsCard(
                 netEnergy = netEnergy,

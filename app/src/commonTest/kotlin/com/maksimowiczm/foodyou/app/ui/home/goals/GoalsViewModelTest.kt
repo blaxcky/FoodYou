@@ -36,6 +36,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalDisplayMode as CardGoalDisplayMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -60,6 +61,40 @@ import kotlinx.datetime.TimeZone
 
 class GoalsViewModelTest {
     private var viewModel: GoalsViewModel? = null
+
+    @Test
+    fun hidingModeSwitchingUsesNormalAndRestoresSavedModeWithoutChangingGoals() = runViewModelTest {
+        for (savedMode in listOf(GoalDisplayMode.Optimized, GoalDisplayMode.Diet)) {
+            val repository = InMemoryPreferencesRepository(
+                defaultSettings().copy(goalDisplayMode = savedMode, dietEnergyDeficitKcal = 500.0)
+            )
+            val model = createViewModel(settingsRepository = repository)
+            model.setDate(Today)
+            val original = model.model.first { it != null }!!
+            assertEquals(CardGoalDisplayMode.valueOf(savedMode.name), original.goalDisplayMode)
+            for (supplemental in listOf(true, false)) {
+                repository.update {
+                    copy(goalCardModeSwitchingEnabled = false, supplementalGoalsEnabled = supplemental)
+                }
+                val hidden = model.model.first {
+                    it != null && !it.goalCardModeSwitchingEnabled && it.supplementalGoalsEnabled == supplemental
+                }!!
+                assertEquals(CardGoalDisplayMode.Normal, hidden.goalDisplayMode)
+                assertEquals(
+                    original.goalDisplaySummaries.first { it.mode == CardGoalDisplayMode.Normal }.energyGoal,
+                    hidden.energyGoal,
+                )
+                assertEquals(original.goalDisplaySummaries, hidden.goalDisplaySummaries)
+                assertEquals(savedMode, repository.observe().first().goalDisplayMode)
+            }
+            repository.update { copy(goalCardModeSwitchingEnabled = true) }
+            val restored = model.model.first { it?.goalCardModeSwitchingEnabled == true }!!
+            assertEquals(original.goalDisplayMode, restored.goalDisplayMode)
+            assertEquals(original.goalDisplaySummaries, restored.goalDisplaySummaries)
+            assertEquals(false, restored.supplementalGoalsEnabled)
+            model.viewModelScope.cancel()
+        }
+    }
 
     @Test
     fun setDatePreloadsWeekModelWithoutUiCollector() = runViewModelTest {

@@ -24,6 +24,24 @@ import kotlinx.datetime.LocalDate
 
 class DataStoreSettingsRepositoryTest {
     @Test
+    fun goalCardVisibilityDefaultsAndIndependentUpdatesRoundTrip() = runTest {
+        val dataStore = InMemoryPreferencesDataStore()
+        val repository = DataStoreSettingsRepository(dataStore)
+        assertEquals(true, repository.observe().first().goalCardModeSwitchingEnabled)
+        assertEquals(true, repository.observe().first().supplementalGoalsEnabled)
+
+        for ((modeSwitching, supplemental) in listOf(false to true, false to false, true to false, true to true)) {
+            val previousSupplemental = repository.observe().first().supplementalGoalsEnabled
+            repository.update { copy(goalCardModeSwitchingEnabled = modeSwitching) }
+            assertEquals(previousSupplemental, repository.observe().first().supplementalGoalsEnabled)
+            repository.update { copy(supplementalGoalsEnabled = supplemental) }
+            val reloaded = DataStoreSettingsRepository(dataStore).observe().first()
+            assertEquals(modeSwitching, reloaded.goalCardModeSwitchingEnabled)
+            assertEquals(supplemental, reloaded.supplementalGoalsEnabled)
+        }
+    }
+
+    @Test
     fun lockedDaysHaveSafeDefaults() = runTest {
         val settings =
             DataStoreSettingsRepository(InMemoryPreferencesDataStore()).observe().first()

@@ -41,6 +41,47 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun visibilityCombinations() {
+        for (modeSwitching in listOf(true, false)) {
+            for (supplemental in listOf(true, false)) {
+                captureGoalsCard(
+                    filePath = "GoalsCardScreenshotTest.visibility-$modeSwitching-$supplemental.png",
+                    height = 500,
+                    fixture = SupplementalFixture.copy(
+                        goalDisplayMode = GoalDisplayMode.Diet,
+                        goalCardModeSwitchingEnabled = modeSwitching,
+                        supplementalGoalsEnabled = supplemental,
+                    ),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun settingsVisibilityCombinations() {
+        for (modeSwitching in listOf(true, false)) {
+            for (supplemental in listOf(true, false)) {
+                captureRoboImage(
+                    filePath = "GoalsCardScreenshotTest.settings-$modeSwitching-$supplemental.png",
+                    roborazziComposeOptions = goalsCardOptions(width = 414, height = 850),
+                ) {
+                    EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                        MaterialTheme {
+                            GoalsCardSettingsContent(
+                                onBack = {},
+                                goalCardModeSwitchingEnabled = modeSwitching,
+                                supplementalGoalsEnabled = supplemental,
+                                onModeSwitchingChange = {},
+                                onSupplementalGoalsChange = {},
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun reference() {
         captureGoalsCard("GoalsCardScreenshotTest.reference.png", ReferenceFixture)
     }
@@ -375,6 +416,8 @@ class GoalsCardScreenshotTest {
                             energyGoal = fixture.energyGoal,
                             goalDisplayMode = fixture.goalDisplayMode,
                             goalDisplaySummaries = fixture.goalDisplaySummaries,
+                            goalCardModeSwitchingEnabled = fixture.goalCardModeSwitchingEnabled,
+                            supplementalGoalsEnabled = fixture.supplementalGoalsEnabled,
                             dietGoalDisplayModeEnabled = fixture.dietGoalDisplayModeEnabled,
                             proteins = fixture.proteins,
                             proteinsGoal = fixture.proteinsGoal,
@@ -437,6 +480,8 @@ class GoalsCardScreenshotTest {
         val goalDisplayMode: GoalDisplayMode = GoalDisplayMode.Normal,
         val goalDisplaySummaries: List<GoalDisplaySummaryModel> =
             defaultGoalDisplaySummaries(energyGoal),
+        val goalCardModeSwitchingEnabled: Boolean = true,
+        val supplementalGoalsEnabled: Boolean = true,
         val dietGoalDisplayModeEnabled: Boolean = true,
         val proteins: Int,
         val proteinsGoal: Int,

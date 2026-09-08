@@ -142,8 +142,11 @@ internal class GoalsViewModel(
                         currentWeek = currentWeek,
                         dietEnergyDeficitKcal = dietEnergyDeficitKcal,
                     )
+                val requestedGoalDisplayMode =
+                    if (settings.goalCardModeSwitchingEnabled) settings.goalDisplayMode
+                    else SettingsGoalDisplayMode.Normal
                 val goalDisplayMode =
-                    settings.goalDisplayMode.selectedGoalDisplayMode(
+                    requestedGoalDisplayMode.selectedGoalDisplayMode(
                         currentWeek = currentWeek,
                         dietEnergyDeficitKcal = dietEnergyDeficitKcal,
                     )
@@ -279,6 +282,8 @@ internal class GoalsViewModel(
                         netEnergy = netEnergy,
                         energyGoal = selectedGoalDisplaySummary.energyGoal,
                         showEnergyGoalValue = selectedGoalDisplaySummary.showEnergyGoalValue,
+                        goalCardModeSwitchingEnabled = settings.goalCardModeSwitchingEnabled,
+                        supplementalGoalsEnabled = settings.supplementalGoalsEnabled,
                         goalDisplayMode = goalDisplayMode,
                         goalDisplaySummaries = goalDisplaySummaries,
                         dietGoalDisplayModeEnabled = dietEnergyDeficitKcal != null,

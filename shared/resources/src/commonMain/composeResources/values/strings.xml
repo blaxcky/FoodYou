@@ -719,4 +719,8 @@
     <string name="description_privacy_policy">See how your data is handled</string>
 
     <string name="error_open_food_facts_timeout">Open Food Facts is taking too long to respond. The service may be temporarily slow or unavailable. Try scanning the product barcode instead.</string>
+    <string name="goal_card_mode_switching_title">Show mode switching</string>
+    <string name="goal_card_mode_switching_description">Show the mode name and buttons above the goal card. When hidden, the card uses Normal.</string>
+    <string name="supplemental_goals_title">Show additional goal bars</string>
+    <string name="supplemental_goals_description">Show the Optimized and Diet goals below the main card when available.</string>
 </resources>

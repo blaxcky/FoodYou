@@ -591,4 +591,8 @@
     <string name="headline_photo_quality_fast">Schnell</string>
     <string name="headline_photo_quality_balanced">Ausgewogen</string>
     <string name="headline_photo_quality_high">Hoch</string>
+    <string name="goal_card_mode_switching_title">Modus-Umschaltung anzeigen</string>
+    <string name="goal_card_mode_switching_description">Zeigt Modusname und Knöpfe über der Zielkarte. Ausgeblendet verwendet die Karte Normal.</string>
+    <string name="supplemental_goals_title">Zusätzliche Zielbalken anzeigen</string>
+    <string name="supplemental_goals_description">Zeigt die Ziele für Optimiert und Diät unter der großen Karte, sofern verfügbar.</string>
 </resources>

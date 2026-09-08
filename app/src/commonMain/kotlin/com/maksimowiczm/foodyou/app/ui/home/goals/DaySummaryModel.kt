@@ -18,6 +18,8 @@ internal data class DaySummaryModel(
     val carbohydratesGoal: Int,
     val fats: Int,
     val fatsGoal: Int,
+    val goalCardModeSwitchingEnabled: Boolean = true,
+    val supplementalGoalsEnabled: Boolean = true,
     val todayEnergyGoal: Int? = null,
     val todayRemainingEnergy: Int? = null,
     val todayEnergyGoalReductionKcal: Double? = null,

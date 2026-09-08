@@ -11,6 +11,8 @@ data class Settings(
     val secureScreen: Boolean,
     val homeCardOrder: List<HomeCard>,
     val expandGoalCard: Boolean,
+    val supplementalGoalsEnabled: Boolean = true,
+    val goalCardModeSwitchingEnabled: Boolean = true,
     val goalDisplayMode: GoalDisplayMode,
     val dietEnergyDeficitKcal: Double?,
     val dietEnergyDeficitOverride: DietEnergyDeficitOverride? = null,
