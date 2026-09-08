@@ -8,6 +8,23 @@ import kotlinx.datetime.LocalDate
 
 class CalorieWidgetModelTest {
     @Test
+    fun preservesCountedStepsIncludingZeroAndLargeCounts() {
+        for (steps in listOf(0L, 8_432L, 12_345L, 3_000_000_000L)) {
+            val model = calorieWidgetModel(
+                today = LocalDate(2026, 9, 8),
+                eatenKcal = 0.0,
+                burnedKcal = 0.0,
+                countedSteps = steps,
+                baseGoalKcal = 2000.0,
+                dietEnergyDeficitKcal = null,
+                previousDays = emptyList(),
+            )
+            assertEquals(steps, model.countedSteps)
+        }
+    }
+
+
+    @Test
     fun plannedLockedDayUsesFixedSurplusForOptimizedAndDietGoals() {
         val model =
             calorieWidgetModel(
@@ -223,6 +240,7 @@ class CalorieWidgetModelTest {
             )
 
         assertEquals(today, model.date)
+        assertEquals(0L, model.countedSteps)
     }
 
     @Test

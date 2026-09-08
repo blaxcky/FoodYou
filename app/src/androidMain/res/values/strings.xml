@@ -4,6 +4,7 @@
     <string name="widget_calories_eaten">Gegessen</string>
     <string name="widget_calories_burned">Verbrannt</string>
     <string name="widget_calories_left">Übrig</string>
+    <string name="widget_calories_steps_format">%1$s Schritte</string>
     <string name="widget_calories_today_format">Heute, %1$s</string>
     <string name="widget_calories_normal">Normal</string>
     <string name="widget_calories_optimized">Optimiert</string>

@@ -51,7 +51,7 @@ internal class CalorieWidgetUpdater(
         }
     }
 
-    private suspend fun loadModel(): CalorieWidgetModel {
+    internal suspend fun loadModel(): CalorieWidgetModel {
         val settings = settingsRepository.observe().first()
         val today = dateProvider.now().date
         val facts = observeDiaryMealsUseCase.observeNutritionFacts(today).first()
@@ -103,6 +103,7 @@ internal class CalorieWidgetUpdater(
             today = today,
             eatenKcal = facts.energy.value ?: 0.0,
             burnedKcal = activity.totalEnergyKcal,
+            countedSteps = activity.countedSteps,
             baseGoalKcal = goal[NutritionFactsField.Energy],
             dietEnergyDeficitKcal = settings.effectiveDietEnergyDeficitKcal(today),
             todayEnergyGoalReductionKcal =
@@ -122,116 +123,122 @@ internal class CalorieWidgetUpdater(
             RemoteViews(
                 mapOf(
                     CalorieWidgetLayoutSelector.mediumSize to
-                        createRemoteViews(context, R.layout.widget_calories_medium, model),
+                        createCalorieWidgetRemoteViews(context, R.layout.widget_calories_medium, model),
                     CalorieWidgetLayoutSelector.largeSize to
-                        createRemoteViews(context, R.layout.widget_calories_large, model),
+                        createCalorieWidgetRemoteViews(context, R.layout.widget_calories_large, model),
                 )
             )
         } else {
-            createRemoteViews(context, layout(manager, appWidgetId), model)
+            createCalorieWidgetRemoteViews(context, layout(manager, appWidgetId), model)
         }
-
-    private fun createRemoteViews(context: Context, layout: Int, model: CalorieWidgetModel) =
-        RemoteViews(context.packageName, layout).apply { setValues(context, model) }
-
-    private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
-        setOnClickPendingIntent(
-            R.id.widget_calories_root,
-            calorieWidgetLaunchPendingIntent(context),
-        )
-        setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
-        setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
-        setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
-        setTextViewText(R.id.widget_calories_left_normal, context.number(model.normalLeftKcal))
-        setTextViewText(
-            R.id.widget_calories_left_optimized,
-            model.optimizedLeftKcal?.let { context.number(it) } ?: "-",
-        )
-        setTextViewText(
-            R.id.widget_calories_left_diet,
-            model.dietLeftKcal?.let { context.number(it) } ?: "--",
-        )
-        setLeftColors(
-            context = context,
-            cardId = R.id.widget_calories_left_normal_card,
-            valueId = R.id.widget_calories_left_normal,
-            value = model.normalLeftKcal,
-        )
-        if (model.optimizedLeftKcal == null) {
-            setInt(
-                R.id.widget_calories_left_optimized,
-                "setTextColor",
-                context.getColor(R.color.widget_calories_muted_text),
-            )
-            setInt(
-                R.id.widget_calories_left_optimized_card,
-                "setBackgroundResource",
-                R.drawable.widget_calories_left_optimized,
-            )
-        } else {
-            setLeftColors(
-                context = context,
-                cardId = R.id.widget_calories_left_optimized_card,
-                valueId = R.id.widget_calories_left_optimized,
-                value = model.optimizedLeftKcal,
-            )
-        }
-        if (model.dietLeftKcal == null) {
-            setInt(
-                R.id.widget_calories_left_diet,
-                "setTextColor",
-                context.getColor(R.color.widget_calories_muted_text),
-            )
-            setInt(
-                R.id.widget_calories_left_diet_card,
-                "setBackgroundResource",
-                R.drawable.widget_calories_left_diet,
-            )
-        } else {
-            setLeftColors(
-                context = context,
-                cardId = R.id.widget_calories_left_diet_card,
-                valueId = R.id.widget_calories_left_diet,
-                value = model.dietLeftKcal,
-            )
-        }
-        setViewVisibility(
-            R.id.widget_calories_diet_disabled,
-            if (model.dietLeftKcal == null) View.VISIBLE else View.GONE,
-        )
-        setViewVisibility(
-            R.id.widget_calories_diet_unit,
-            if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
-        )
-    }
-
-    private fun RemoteViews.setLeftColors(
-        context: Context,
-        cardId: Int,
-        valueId: Int,
-        value: Int,
-    ) {
-        val isOpen = value >= 0
-        setInt(
-            valueId,
-            "setTextColor",
-            context.getColor(
-                if (isOpen) R.color.widget_calories_green else R.color.widget_calories_red
-            ),
-        )
-        setInt(
-            cardId,
-            "setBackgroundResource",
-            if (isOpen) {
-                R.drawable.widget_calories_left_normal
-            } else {
-                R.drawable.widget_calories_left_negative
-            },
-        )
-    }
 
     private fun layout(manager: AppWidgetManager, appWidgetId: Int): Int =
         CalorieWidgetLayoutSelector.layout(manager.getAppWidgetOptions(appWidgetId))
+}
+
+internal fun createCalorieWidgetRemoteViews(context: Context, layout: Int, model: CalorieWidgetModel) =
+    RemoteViews(context.packageName, layout).apply { setValues(context, model) }
+
+private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
+    setOnClickPendingIntent(
+        R.id.widget_calories_root,
+        calorieWidgetLaunchPendingIntent(context),
+    )
+    setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
+    val steps = NumberFormat.getIntegerInstance().format(model.countedSteps)
+    setTextViewText(R.id.widget_calories_steps, steps)
+    setContentDescription(
+        R.id.widget_calories_steps,
+        context.getString(R.string.widget_calories_steps_format, steps),
+    )
+    setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
+    setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
+    setTextViewText(R.id.widget_calories_left_normal, context.number(model.normalLeftKcal))
+    setTextViewText(
+        R.id.widget_calories_left_optimized,
+        model.optimizedLeftKcal?.let { context.number(it) } ?: "-",
+    )
+    setTextViewText(
+        R.id.widget_calories_left_diet,
+        model.dietLeftKcal?.let { context.number(it) } ?: "--",
+    )
+    setLeftColors(
+        context = context,
+        cardId = R.id.widget_calories_left_normal_card,
+        valueId = R.id.widget_calories_left_normal,
+        value = model.normalLeftKcal,
+    )
+    if (model.optimizedLeftKcal == null) {
+        setInt(
+            R.id.widget_calories_left_optimized,
+            "setTextColor",
+            context.getColor(R.color.widget_calories_muted_text),
+        )
+        setInt(
+            R.id.widget_calories_left_optimized_card,
+            "setBackgroundResource",
+            R.drawable.widget_calories_left_optimized,
+        )
+    } else {
+        setLeftColors(
+            context = context,
+            cardId = R.id.widget_calories_left_optimized_card,
+            valueId = R.id.widget_calories_left_optimized,
+            value = model.optimizedLeftKcal,
+        )
+    }
+    if (model.dietLeftKcal == null) {
+        setInt(
+            R.id.widget_calories_left_diet,
+            "setTextColor",
+            context.getColor(R.color.widget_calories_muted_text),
+        )
+        setInt(
+            R.id.widget_calories_left_diet_card,
+            "setBackgroundResource",
+            R.drawable.widget_calories_left_diet,
+        )
+    } else {
+        setLeftColors(
+            context = context,
+            cardId = R.id.widget_calories_left_diet_card,
+            valueId = R.id.widget_calories_left_diet,
+            value = model.dietLeftKcal,
+        )
+    }
+    setViewVisibility(
+        R.id.widget_calories_diet_disabled,
+        if (model.dietLeftKcal == null) View.VISIBLE else View.GONE,
+    )
+    setViewVisibility(
+        R.id.widget_calories_diet_unit,
+        if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
+    )
+}
+
+private fun RemoteViews.setLeftColors(
+    context: Context,
+    cardId: Int,
+    valueId: Int,
+    value: Int,
+) {
+    val isOpen = value >= 0
+    setInt(
+        valueId,
+        "setTextColor",
+        context.getColor(
+            if (isOpen) R.color.widget_calories_green else R.color.widget_calories_red
+        ),
+    )
+    setInt(
+        cardId,
+        "setBackgroundResource",
+        if (isOpen) {
+            R.drawable.widget_calories_left_normal
+        } else {
+            R.drawable.widget_calories_left_negative
+        },
+    )
 }
 
 internal fun calorieWidgetLaunchPendingIntent(context: Context): PendingIntent =

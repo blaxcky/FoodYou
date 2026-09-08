@@ -10,6 +10,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="24dp"
+        android:baselineAligned="false"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -29,6 +30,27 @@
             android:gravity="center_vertical"
             android:includeFontPadding="false"
             android:maxLines="1"
+            android:textColor="@color/widget_calories_text"
+            android:textSize="15sp" />
+
+        <ImageView
+            android:id="@+id/widget_calories_steps_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_widget_walk" />
+
+        <TextView
+            android:id="@+id/widget_calories_steps"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginStart="4dp"
+            android:gravity="center_vertical"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="0"
             android:textColor="@color/widget_calories_text"
             android:textSize="15sp" />
 

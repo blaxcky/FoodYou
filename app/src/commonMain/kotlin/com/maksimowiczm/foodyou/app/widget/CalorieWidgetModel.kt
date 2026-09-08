@@ -10,6 +10,7 @@ import kotlinx.datetime.LocalDate
 
 internal data class CalorieWidgetModel(
     val date: LocalDate,
+    val countedSteps: Long,
     val eatenKcal: Int,
     val burnedKcal: Int,
     val normalLeftKcal: Int,
@@ -21,6 +22,7 @@ internal fun calorieWidgetModel(
     today: LocalDate,
     eatenKcal: Double,
     burnedKcal: Double,
+    countedSteps: Long = 0,
     baseGoalKcal: Double,
     dietEnergyDeficitKcal: Double?,
     todayEnergyGoalReductionKcal: Double? = null,
@@ -59,6 +61,7 @@ internal fun calorieWidgetModel(
 
     return CalorieWidgetModel(
         date = today,
+        countedSteps = countedSteps,
         eatenKcal = roundedEnergyKcal(eatenKcal),
         burnedKcal = roundedEnergyKcal(burnedKcal),
         normalLeftKcal = normalLeftKcal,
