@@ -49,9 +49,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -933,6 +935,37 @@ private fun SupplementalGoalsCard(
     summaries: List<GoalDisplaySummaryModel>,
     modifier: Modifier = Modifier,
 ) {
+    val energyFormatter = LocalEnergyFormatter.current
+    val labelStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
+    val valueStyle = labelStyle.copy(fontFamily = interNumberFontFamily())
+    val labels = summaries.map { summary ->
+        stringResource(
+            if (summary.mode == GoalDisplayMode.Optimized) {
+                Res.string.label_optimized
+            } else {
+                Res.string.label_diet
+            }
+        )
+    }
+    val values = summaries.map { summary ->
+        val remaining = summary.energyGoal - netEnergy
+        "${energyFormatter.formatEnergy(abs(remaining), withSuffix = false).groupDigits()} " +
+            stringResource(Res.string.unit_kcal) +
+            if (remaining < 0) " ${stringResource(Res.string.goal_too_much)}" else ""
+    }
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val labelWidth = with(density) {
+        (labels.maxOfOrNull {
+            textMeasurer.measure(it, style = labelStyle, maxLines = 1).size.width
+        } ?: 0).toDp()
+    }
+    val valueWidth = with(density) {
+        (values.maxOfOrNull {
+            textMeasurer.measure(it, style = valueStyle, maxLines = 1).size.width
+        } ?: 0).toDp()
+    }
+
     FoodYouHomeCard(
         modifier = modifier,
         color = GoalsCardColor,
@@ -946,7 +979,16 @@ private fun SupplementalGoalsCard(
                         color = GoalsTrackColor,
                     )
                 }
-                SupplementalGoalRow(netEnergy = netEnergy, summary = summary)
+                SupplementalGoalRow(
+                    netEnergy = netEnergy,
+                    summary = summary,
+                    label = labels[index],
+                    value = values[index],
+                    labelStyle = labelStyle,
+                    valueStyle = valueStyle,
+                    labelWidth = labelWidth,
+                    valueWidth = valueWidth,
+                )
             }
         }
     }
@@ -956,9 +998,14 @@ private fun SupplementalGoalsCard(
 private fun SupplementalGoalRow(
     netEnergy: Int,
     summary: GoalDisplaySummaryModel,
+    label: String,
+    value: String,
+    labelStyle: TextStyle,
+    valueStyle: TextStyle,
+    labelWidth: Dp,
+    valueWidth: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val energyFormatter = LocalEnergyFormatter.current
     val remaining = summary.energyGoal - netEnergy
     val overflow = remaining < 0
     val accentColor = summary.mode.accentColor()
@@ -971,17 +1018,10 @@ private fun SupplementalGoalRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text =
-                stringResource(
-                    if (summary.mode == GoalDisplayMode.Optimized) {
-                        Res.string.label_optimized
-                    } else {
-                        Res.string.label_diet
-                    }
-                ),
+            text = label,
+            modifier = Modifier.width(labelWidth),
             color = accentColor,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+            style = labelStyle,
             maxLines = 1,
         )
         MacroProgressBar(
@@ -992,13 +1032,11 @@ private fun SupplementalGoalRow(
             modifier = Modifier.weight(1f),
         )
         Text(
-            text =
-                "${energyFormatter.formatEnergy(abs(remaining), withSuffix = false).groupDigits()} " +
-                    stringResource(Res.string.unit_kcal) +
-                    if (overflow) " ${stringResource(Res.string.goal_too_much)}" else "",
+            text = value,
+            modifier = Modifier.width(valueWidth),
             color = if (overflow) GoalsErrorColor else GoalsTextColor,
-            style = MaterialTheme.typography.titleSmall.copy(fontFamily = interNumberFontFamily()),
-            fontWeight = FontWeight.SemiBold,
+            style = valueStyle,
+            textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
