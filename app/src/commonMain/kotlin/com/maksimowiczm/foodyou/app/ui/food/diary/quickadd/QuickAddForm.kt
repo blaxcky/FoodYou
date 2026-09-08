@@ -6,12 +6,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,11 +23,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -41,6 +47,48 @@ import org.jetbrains.compose.resources.stringResource
 internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifier) {
     val energyFormatter = LocalEnergyFormatter.current
     val coroutineScope = rememberCoroutineScope()
+    var showCsvHelp by remember { mutableStateOf(false) }
+    var showEnergyHelp by remember { mutableStateOf(false) }
+
+    if (showCsvHelp) {
+        QuickAddHelpDialog(
+            title = stringResource(Res.string.headline_quick_add_csv_help),
+            onDismissRequest = { showCsvHelp = false },
+        ) {
+            Text(stringResource(Res.string.description_quick_add_csv_help))
+            Text(stringResource(Res.string.example_quick_add_csv))
+        }
+    }
+    if (showEnergyHelp) {
+        QuickAddHelpDialog(
+            title = stringResource(Res.string.headline_quick_add_energy_help),
+            onDismissRequest = { showEnergyHelp = false },
+        ) {
+            Text(stringResource(Res.string.description_quick_add_energy_help))
+            Text(
+                unorderedList(
+                    stringResource(
+                        Res.string.x_energy_unit_per_g,
+                        stringResource(Res.string.nutriment_proteins),
+                        energyFormatter.proteinsEnergyDensity,
+                        energyFormatter.suffix(),
+                    ),
+                    stringResource(
+                        Res.string.x_energy_unit_per_g,
+                        stringResource(Res.string.nutriment_carbohydrates),
+                        energyFormatter.carbohydratesEnergyDensity,
+                        energyFormatter.suffix(),
+                    ),
+                    stringResource(
+                        Res.string.x_energy_unit_per_g,
+                        stringResource(Res.string.nutriment_fats),
+                        energyFormatter.fatsEnergyDensity,
+                        energyFormatter.suffix(),
+                    ),
+                )
+            )
+        }
+    }
 
     Column(modifier = modifier) {
         OutlinedTextField(
@@ -89,9 +137,15 @@ internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifie
                         onClick = { state.autoCalculateEnergy = !state.autoCalculateEnergy }
                     ) {
                         if (state.autoCalculateEnergy) {
-                            Icon(imageVector = Icons.Outlined.Calculate, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Outlined.Calculate,
+                                contentDescription = stringResource(Res.string.headline_manual_energy_input),
+                            )
                         } else {
-                            Icon(imageVector = Icons.Outlined.Keyboard, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Outlined.Keyboard,
+                                contentDescription = stringResource(Res.string.headline_auto_calculate_energy),
+                            )
                         }
                     }
                 }
@@ -101,16 +155,42 @@ internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifie
                 KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
         )
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(
+                    if (state.autoCalculateEnergy) Res.string.status_quick_add_auto_energy
+                    else Res.string.status_quick_add_manual_energy
+                ),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            IconButton(onClick = { showEnergyHelp = true }) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = stringResource(Res.string.action_quick_add_energy_help),
+                )
+            }
+        }
+
         OutlinedTextField(
             state = state.csvTextFieldState,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(Res.string.headline_quick_add_csv)) },
             supportingText = {
                 val error = state.csvError
-                if (error == null) {
-                    Text(stringResource(Res.string.description_quick_add_csv))
-                } else {
+                if (error != null) {
                     Text(error.stringResource())
+                }
+            },
+            trailingIcon = {
+                IconButton(onClick = { showCsvHelp = true }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = stringResource(Res.string.action_quick_add_csv_help),
+                    )
                 }
             },
             isError = state.csvError != null,
@@ -145,36 +225,32 @@ internal fun QuickAddForm(state: QuickAddFormState, modifier: Modifier = Modifie
                 else -> Unit
             }
         }
-
-        Text(
-            text = stringResource(Res.string.description_calories_are_calculated),
-            style = MaterialTheme.typography.bodySmall,
-        )
-        Text(
-            text =
-                unorderedList(
-                    stringResource(
-                        Res.string.x_energy_unit_per_g,
-                        stringResource(Res.string.nutriment_proteins),
-                        energyFormatter.proteinsEnergyDensity,
-                        energyFormatter.suffix(),
-                    ),
-                    stringResource(
-                        Res.string.x_energy_unit_per_g,
-                        stringResource(Res.string.nutriment_carbohydrates),
-                        energyFormatter.carbohydratesEnergyDensity,
-                        energyFormatter.suffix(),
-                    ),
-                    stringResource(
-                        Res.string.x_energy_unit_per_g,
-                        stringResource(Res.string.nutriment_fats),
-                        energyFormatter.fatsEnergyDensity,
-                        energyFormatter.suffix(),
-                    ),
-                ),
-            style = MaterialTheme.typography.bodySmall,
-        )
     }
+}
+
+@Composable
+private fun QuickAddHelpDialog(
+    title: String,
+    onDismissRequest: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(title) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                content()
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(Res.string.action_quick_add_help_understood))
+            }
+        },
+    )
 }
 
 @Composable

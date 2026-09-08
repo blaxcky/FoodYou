@@ -1,15 +1,12 @@
 package com.maksimowiczm.foodyou.app.ui.food.diary.quickadd
 
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -104,11 +101,6 @@ internal fun QuickAddScreen(
             contentPadding = paddingValues.add(horizontal = 16.dp, vertical = 8.dp),
         ) {
             item {
-                Text(
-                    text = stringResource(Res.string.description_quick_add),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Spacer(Modifier.height(16.dp))
                 QuickAddForm(state = state, modifier = Modifier.focusRequester(focusRequester))
             }
         }

@@ -723,4 +723,14 @@
     <string name="goal_card_mode_switching_description">Show the mode name and buttons above the goal card. When hidden, the card uses Normal.</string>
     <string name="supplemental_goals_title">Show additional goal bars</string>
     <string name="supplemental_goals_description">Show the Optimized and Diet goals below the main card when available.</string>
+    <string name="headline_quick_add_csv_help">Import CSV</string>
+    <string name="description_quick_add_csv_help">Paste the header below and exactly one data row, then tap Apply. Use commas to separate columns and a dot for decimals. Energy is always in kcal; protein, carbohydrates and fat are in grams. Example:</string>
+    <string name="example_quick_add_csv">name,energy,proteins,carbohydrates,fats\nYogurt,150,10,20,3.5</string>
+    <string name="headline_quick_add_energy_help">Energy calculation</string>
+    <string name="description_quick_add_energy_help">Use the calculator/keyboard button in the energy field to switch between automatic calculation and manual input. Automatic energy is calculated from protein, carbohydrates and fat. Alcohol is not included. Energy per gram:</string>
+    <string name="status_quick_add_auto_energy">Automatic from macros</string>
+    <string name="status_quick_add_manual_energy">Manual input</string>
+    <string name="action_quick_add_csv_help">Show CSV import help</string>
+    <string name="action_quick_add_energy_help">Show energy calculation help</string>
+    <string name="action_quick_add_help_understood">Got it</string>
 </resources>

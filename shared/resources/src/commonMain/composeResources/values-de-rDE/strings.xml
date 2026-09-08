@@ -595,4 +595,16 @@
     <string name="goal_card_mode_switching_description">Zeigt Modusname und Knöpfe über der Zielkarte. Ausgeblendet verwendet die Karte Normal.</string>
     <string name="supplemental_goals_title">Zusätzliche Zielbalken anzeigen</string>
     <string name="supplemental_goals_description">Zeigt die Ziele für Optimiert und Diät unter der großen Karte, sofern verfügbar.</string>
+    <string name="headline_quick_add_csv_help">CSV importieren</string>
+    <string name="description_quick_add_csv_help">Füge die folgende Kopfzeile und genau eine Datenzeile ein und tippe auf Übernehmen. Trenne Spalten mit Kommas und verwende einen Punkt für Dezimalzahlen. Energie ist immer in kcal; Eiweiß, Kohlenhydrate und Fett sind in Gramm. Beispiel:</string>
+    <string name="example_quick_add_csv">name,energy,proteins,carbohydrates,fats\nJoghurt,150,10,20,3.5</string>
+    <string name="headline_quick_add_energy_help">Energieberechnung</string>
+    <string name="description_quick_add_energy_help">Mit dem Rechner-/Tastatur-Knopf im Energiefeld wechselst du zwischen automatischer Berechnung und manueller Eingabe. Die automatische Berechnung nutzt Eiweiß, Kohlenhydrate und Fett. Alkohol wird nicht einbezogen. Energie pro Gramm:</string>
+    <string name="status_quick_add_auto_energy">Automatisch aus Makros</string>
+    <string name="status_quick_add_manual_energy">Manuelle Eingabe</string>
+    <string name="action_quick_add_csv_help">Hilfe zum CSV-Import anzeigen</string>
+    <string name="action_quick_add_energy_help">Hilfe zur Energieberechnung anzeigen</string>
+    <string name="action_quick_add_help_understood">Verstanden</string>
+    <string name="headline_quick_add_csv">CSV-Import</string>
+    <string name="action_apply">Übernehmen</string>
 </resources>
