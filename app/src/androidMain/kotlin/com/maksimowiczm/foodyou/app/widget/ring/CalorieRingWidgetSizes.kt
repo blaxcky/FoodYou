@@ -20,7 +20,6 @@ internal enum class GoalRowsMode {
 internal data class CalorieRingLayoutSpec(
     val padding: Dp,
     val goalRows: GoalRowsMode,
-    val metricsStacked: Boolean,
     val headerHeight: Dp,
     val headerTextSize: TextUnit,
     val ring: Dp,
@@ -40,8 +39,8 @@ internal object CalorieRingWidgetSizes {
     val BarGoalsMinHeight = 150.dp
     val GoalRowHeight = 18.dp
     val HeaderSpacing = 4.dp
-    val StackedMetricsMinHeight = 76.dp
-    val LargeMetricsMinHeight = 100.dp
+    val LargeMetricsMinHeight = 90.dp
+    val MediumMetricsMinHeight = 70.dp
 }
 
 internal fun goalRowsMode(height: Dp): GoalRowsMode =
@@ -69,19 +68,23 @@ internal fun calorieRingLayoutSpec(size: DpSize): CalorieRingLayoutSpec {
             goalBlockHeight(goalRows)
     val ring = minOf(heroHeight, size.width * 0.42f).coerceIn(56.dp, 140.dp)
     val stroke = (ring / 11f).coerceIn(6.dp, 12.dp)
-    val largeMetrics = ring >= 90.dp && heroHeight >= CalorieRingWidgetSizes.LargeMetricsMinHeight
     return CalorieRingLayoutSpec(
         padding = padding,
         goalRows = goalRows,
-        metricsStacked = heroHeight >= CalorieRingWidgetSizes.StackedMetricsMinHeight,
         headerHeight = headerHeight,
         headerTextSize = if (large) 14.sp else 13.sp,
         ring = ring,
         stroke = stroke,
         ringValueTextSize = (ring.value * 0.2f).roundToInt().coerceIn(14, 28).sp,
         ringLabelTextSize = (ring.value * 0.11f).roundToInt().coerceIn(9, 13).sp,
-        metricLabelTextSize = if (largeMetrics) 12.sp else 11.sp,
-        metricValueTextSize = if (largeMetrics) 20.sp else 16.sp,
+        metricLabelTextSize =
+            if (heroHeight >= CalorieRingWidgetSizes.MediumMetricsMinHeight) 12.sp else 11.sp,
+        metricValueTextSize =
+            when {
+                heroHeight >= CalorieRingWidgetSizes.LargeMetricsMinHeight -> 22.sp
+                heroHeight >= CalorieRingWidgetSizes.MediumMetricsMinHeight -> 20.sp
+                else -> 16.sp
+            },
         goalRowHeight = CalorieRingWidgetSizes.GoalRowHeight,
         goalTextSize = if (large) 12.sp else 11.sp,
         goalValueTextSize = if (large) 13.sp else 12.sp,

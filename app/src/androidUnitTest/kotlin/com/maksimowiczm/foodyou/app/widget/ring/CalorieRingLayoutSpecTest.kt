@@ -5,8 +5,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class CalorieRingLayoutSpecTest {
     @Test
@@ -14,18 +12,17 @@ class CalorieRingLayoutSpecTest {
         val spec = calorieRingLayoutSpec(DpSize(250.dp, 110.dp))
 
         assertEquals(GoalRowsMode.None, spec.goalRows)
-        assertFalse(spec.metricsStacked)
         assertEquals(66.dp, spec.ring)
+        assertEquals(16.sp, spec.metricValueTextSize)
     }
 
     @Test
-    fun typicalCellShowsGoalBarsWithStackedMetrics() {
+    fun typicalCellShowsGoalBarsWithMediumMetrics() {
         val spec = calorieRingLayoutSpec(DpSize(320.dp, 170.dp))
 
         assertEquals(GoalRowsMode.Bars, spec.goalRows)
-        assertTrue(spec.metricsStacked)
         assertEquals(78.dp, spec.ring)
-        assertEquals(16.sp, spec.metricValueTextSize)
+        assertEquals(20.sp, spec.metricValueTextSize)
     }
 
     @Test
@@ -38,9 +35,8 @@ class CalorieRingLayoutSpecTest {
         val spec = calorieRingLayoutSpec(DpSize(320.dp, 240.dp))
 
         assertEquals(GoalRowsMode.Bars, spec.goalRows)
-        assertTrue(spec.metricsStacked)
         assertEquals(134.4f, spec.ring.value, 0.01f)
-        assertEquals(20.sp, spec.metricValueTextSize)
+        assertEquals(22.sp, spec.metricValueTextSize)
     }
 
     @Test

@@ -153,44 +153,44 @@ private fun HeroRow(
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         RingWithCenter(context, model, spec)
-        Spacer(modifier = GlanceModifier.width(if (spec.ring >= 90.dp) 18.dp else 14.dp))
-        if (spec.metricsStacked) {
-            Column(
-                modifier = GlanceModifier.defaultWeight(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                EatenMetric(context, model, spec)
-                Spacer(modifier = GlanceModifier.height(if (spec.ring >= 90.dp) 10.dp else 6.dp))
-                BurnedMetric(context, model, spec)
-            }
-        } else {
-            Row(
-                modifier = GlanceModifier.defaultWeight(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                EatenMetric(context, model, spec)
-                Spacer(modifier = GlanceModifier.width(16.dp))
-                BurnedMetric(context, model, spec)
-            }
+        Spacer(modifier = GlanceModifier.width(12.dp))
+        Row(
+            modifier = GlanceModifier.defaultWeight(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            EatenMetric(context, model, spec, GlanceModifier.defaultWeight())
+            BurnedMetric(context, model, spec, GlanceModifier.defaultWeight())
         }
     }
 }
 
 @Composable
-private fun EatenMetric(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) =
+private fun EatenMetric(
+    context: Context,
+    model: CalorieWidgetModel,
+    spec: CalorieRingLayoutSpec,
+    modifier: GlanceModifier,
+) =
     SideMetric(
         context = context,
         spec = spec,
+        modifier = modifier,
         label = context.getString(R.string.widget_calories_eaten),
         value = model.eatenKcal,
         color = GlanceTheme.colors.primary,
     )
 
 @Composable
-private fun BurnedMetric(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) =
+private fun BurnedMetric(
+    context: Context,
+    model: CalorieWidgetModel,
+    spec: CalorieRingLayoutSpec,
+    modifier: GlanceModifier,
+) =
     SideMetric(
         context = context,
         spec = spec,
+        modifier = modifier,
         label = context.getString(R.string.widget_calories_burned),
         value = model.burnedKcal,
         color = GlanceTheme.colors.tertiary,
@@ -236,21 +236,19 @@ private fun InlineGoal(
             maxLines = 1,
         )
         Spacer(modifier = GlanceModifier.width(6.dp))
-        Text(
-            text = leftKcal?.let { context.formatWidgetNumber(it) } ?: disabledText,
-            style =
-                TextStyle(
-                    color =
-                        when {
-                            leftKcal == null -> GlanceTheme.colors.onSurfaceVariant
-                            leftKcal < 0 -> GlanceTheme.colors.error
-                            else -> GlanceTheme.colors.onSurface
-                        },
-                    fontSize = if (leftKcal == null) spec.goalTextSize else spec.goalValueTextSize,
-                    fontWeight = if (leftKcal == null) FontWeight.Normal else FontWeight.Bold,
-                ),
-            maxLines = 1,
-        )
+        if (leftKcal == null) {
+            Text(
+                text = disabledText,
+                style =
+                    TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = spec.goalTextSize,
+                    ),
+                maxLines = 1,
+            )
+        } else {
+            GoalValue(context, spec, leftKcal)
+        }
     }
 }
 
@@ -357,40 +355,78 @@ private fun SideMetric(
     label: String,
     value: Int,
     color: ColorProvider,
+    modifier: GlanceModifier,
 ) {
-    Column {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(
             text = label,
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
                     fontSize = spec.metricLabelTextSize,
+                    textAlign = TextAlign.Center,
                 ),
             maxLines = 1,
         )
-        Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            text = context.formatWidgetNumber(value),
+            style =
+                TextStyle(
+                    color = color,
+                    fontSize = spec.metricValueTextSize,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                ),
+            maxLines = 1,
+        )
+        Text(
+            text = context.getString(R.string.widget_calories_unit_kcal),
+            style =
+                TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = spec.metricLabelTextSize,
+                    textAlign = TextAlign.Center,
+                ),
+            maxLines = 1,
+        )
+    }
+}
+
+/** Remaining kcal of a goal: plain text when open, an error badge without sign when exceeded. */
+@Composable
+private fun GoalValue(context: Context, spec: CalorieRingLayoutSpec, leftKcal: Int) {
+    if (leftKcal < 0) {
+        Box(
+            modifier =
+                GlanceModifier.background(GlanceTheme.colors.errorContainer)
+                    .cornerRadius(8.dp)
+                    .padding(horizontal = 6.dp, vertical = 1.dp)
+        ) {
             Text(
-                text = context.formatWidgetNumber(value),
+                text = context.formatWidgetNumber(abs(leftKcal)),
                 style =
                     TextStyle(
-                        color = color,
-                        fontSize = spec.metricValueTextSize,
+                        color = GlanceTheme.colors.error,
+                        fontSize = spec.goalValueTextSize,
                         fontWeight = FontWeight.Bold,
                     ),
                 maxLines = 1,
             )
-            Spacer(modifier = GlanceModifier.width(3.dp))
-            Text(
-                text = context.getString(R.string.widget_calories_unit_kcal),
-                style =
-                    TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = spec.metricLabelTextSize,
-                    ),
-                maxLines = 1,
-                modifier = GlanceModifier.padding(bottom = 2.dp),
-            )
         }
+    } else {
+        Text(
+            text = context.formatWidgetNumber(leftKcal),
+            style =
+                TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = spec.goalValueTextSize,
+                    fontWeight = FontWeight.Bold,
+                ),
+            maxLines = 1,
+        )
     }
 }
 
@@ -440,20 +476,9 @@ private fun GoalBarRow(
                 )
             }
             Spacer(modifier = GlanceModifier.width(8.dp))
-            Text(
-                text = context.formatWidgetNumber(leftKcal),
-                style =
-                    TextStyle(
-                        color =
-                            if (leftKcal < 0) GlanceTheme.colors.error
-                            else GlanceTheme.colors.onSurface,
-                        fontSize = spec.goalValueTextSize,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.End,
-                    ),
-                maxLines = 1,
-                modifier = GlanceModifier.width(60.dp),
-            )
+            Box(modifier = GlanceModifier.width(64.dp), contentAlignment = Alignment.CenterEnd) {
+                GoalValue(context, spec, leftKcal)
+            }
         }
     }
 }
