@@ -7,18 +7,19 @@ synchronize it with GitHub using the GitHub CLI (`gh`) before moving on to the n
 
 ## Local JDK 21
 
-Android Studio is installed via Flatpak. Its JBR 21 is visible inside Android Studio as
-`/app/extra/jbr`, but from the normal terminal the host path is:
+This project requires JDK 21 for Gradle. Use the system OpenJDK 21:
 
 ```bash
-/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr
+/usr/lib/jvm/java-21-openjdk
 ```
 
-Use it for Gradle commands because the system `java` may point to JDK 25, which breaks this
-project's Gradle/Kotlin setup before compilation.
+Do not use the Android Studio Flatpak JBR
+(`/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr`): it has been
+updated to JDK 25 and makes Gradle fail immediately with a bare version message such as `25.0.3`.
+The system `java` may also point to JDK 25, so always set `JAVA_HOME` explicitly.
 
 ```bash
-JAVA_HOME=/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr ./gradlew :app:compileDevReleaseKotlinAndroid
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew :app:compileDevReleaseKotlinAndroid
 ```
 
 Set `GRADLE_USER_HOME` to the workspace cache for Gradle commands. This keeps Gradle wrapper locks
@@ -27,7 +28,7 @@ approval prompts for the host Gradle cache path.
 
 ```bash
 GRADLE_USER_HOME=/home/markus/GitHub/FoodYou/.gradle \
-JAVA_HOME=/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr \
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
 ./gradlew :app:compileDevReleaseKotlinAndroid
 ```
 
