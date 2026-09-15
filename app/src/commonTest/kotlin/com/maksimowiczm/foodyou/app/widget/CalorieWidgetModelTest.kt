@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.widget
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalEnergyOptimizationDay
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlinx.datetime.LocalDate
 
@@ -265,5 +266,68 @@ class CalorieWidgetModelTest {
 
         assertEquals(1833, model.optimizedLeftKcal)
         assertEquals(1250, model.dietLeftKcal)
+    }
+
+    @Test
+    fun goalValuesAreConsistentWithRemainingValues() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 20),
+                eatenKcal = 1520.6,
+                burnedKcal = 120.2,
+                baseGoalKcal = 2000.0,
+                dietEnergyDeficitKcal = 500.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 2600.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+            )
+
+        assertEquals(1401, model.netKcal)
+        assertEquals(2000, model.normalGoalKcal)
+        assertEquals(model.normalLeftKcal, model.normalGoalKcal - model.netKcal)
+        val optimizedGoal = assertNotNull(model.optimizedGoalKcal)
+        assertEquals(model.optimizedLeftKcal, optimizedGoal - model.netKcal)
+        val dietGoal = assertNotNull(model.dietGoalKcal)
+        assertEquals(model.dietLeftKcal, dietGoal - model.netKcal)
+    }
+
+    @Test
+    fun goalValuesAreHiddenTogetherWithRemainingValues() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 5, 20),
+                eatenKcal = 1000.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2000.0,
+                dietEnergyDeficitKcal = null,
+                previousDays = emptyList(),
+            )
+
+        assertNull(model.optimizedLeftKcal)
+        assertNull(model.optimizedGoalKcal)
+        assertNull(model.dietLeftKcal)
+        assertNull(model.dietGoalKcal)
+    }
+
+    @Test
+    fun todayReductionLowersNormalGoal() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 7, 17),
+                eatenKcal = 1200.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2100.0,
+                dietEnergyDeficitKcal = null,
+                todayEnergyGoalReductionKcal = 500.0,
+                previousDays = emptyList(),
+            )
+
+        assertEquals(1600, model.normalGoalKcal)
+        assertEquals(400, model.normalLeftKcal)
     }
 }

@@ -12,6 +12,7 @@ import com.maksimowiczm.foodyou.app.ui.FoodYouApp
 import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchAction
 import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchRequest
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProvider
+import com.maksimowiczm.foodyou.app.widget.ring.CalorieRingWidget
 
 class MainActivity : FoodYouAbstractActivity() {
     private val launchRequestState = mutableStateOf<FoodYouLaunchRequest?>(null)
@@ -47,6 +48,7 @@ class MainActivity : FoodYouAbstractActivity() {
     override fun onStart() {
         super.onStart()
         CalorieWidgetProvider.updateAll(this)
+        CalorieRingWidget.requestUpdateAll(this)
     }
 
     private fun publishShortcuts() {

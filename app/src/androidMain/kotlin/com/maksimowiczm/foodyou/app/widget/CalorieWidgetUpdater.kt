@@ -144,23 +144,23 @@ private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
         R.id.widget_calories_root,
         calorieWidgetLaunchPendingIntent(context),
     )
-    setTextViewText(R.id.widget_calories_date, context.formatDate(model.date))
-    val steps = NumberFormat.getIntegerInstance().format(model.countedSteps)
+    setTextViewText(R.id.widget_calories_date, context.formatWidgetDate(model.date))
+    val steps = context.formatWidgetNumber(model.countedSteps)
     setTextViewText(R.id.widget_calories_steps, steps)
     setContentDescription(
         R.id.widget_calories_steps,
         context.getString(R.string.widget_calories_steps_format, steps),
     )
-    setTextViewText(R.id.widget_calories_eaten, context.number(model.eatenKcal))
-    setTextViewText(R.id.widget_calories_burned, context.number(model.burnedKcal))
-    setTextViewText(R.id.widget_calories_left_normal, context.number(model.normalLeftKcal))
+    setTextViewText(R.id.widget_calories_eaten, context.formatWidgetNumber(model.eatenKcal))
+    setTextViewText(R.id.widget_calories_burned, context.formatWidgetNumber(model.burnedKcal))
+    setTextViewText(R.id.widget_calories_left_normal, context.formatWidgetNumber(model.normalLeftKcal))
     setTextViewText(
         R.id.widget_calories_left_optimized,
-        model.optimizedLeftKcal?.let { context.number(it) } ?: "-",
+        model.optimizedLeftKcal?.let { context.formatWidgetNumber(it) } ?: "-",
     )
     setTextViewText(
         R.id.widget_calories_left_diet,
-        model.dietLeftKcal?.let { context.number(it) } ?: "--",
+        model.dietLeftKcal?.let { context.formatWidgetNumber(it) } ?: "--",
     )
     setLeftColors(
         context = context,
@@ -268,9 +268,13 @@ private fun futureWeekDates(today: LocalDate): List<LocalDate> {
     }
 }
 
-private fun Context.number(value: Int): String = NumberFormat.getIntegerInstance().format(value)
+internal fun Context.formatWidgetNumber(value: Int): String =
+    NumberFormat.getIntegerInstance().format(value)
 
-private fun Context.formatDate(date: LocalDate): String {
+internal fun Context.formatWidgetNumber(value: Long): String =
+    NumberFormat.getIntegerInstance().format(value)
+
+internal fun Context.formatWidgetDate(date: LocalDate): String {
     val locale = Locale.getDefault()
     val formattedDate =
         DateTimeFormatter.ofPattern(

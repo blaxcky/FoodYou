@@ -17,6 +17,7 @@ composeMultiplatform = "1.10.1"
 composeMultiplatformMaterial3 = "1.11.0-alpha03"
 composeNavigation = "2.9.2"
 composeNavigationevent = "1.0.1"
+glance = "1.2.0"
 datastorePreferences = "1.2.0"
 healthConnect = "1.2.0-alpha02"
 gmazzoBuildConfig = "6.0.7"
@@ -53,6 +54,8 @@ androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-p
 androidx-health-connect-client = { module = "androidx.health.connect:connect-client", version.ref = "healthConnect" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging3" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging3" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "room" }

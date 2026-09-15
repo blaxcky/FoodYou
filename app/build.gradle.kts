@@ -97,6 +97,8 @@ kotlin {
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.view)
+            implementation(libs.androidx.glance.appwidget)
+            implementation(libs.androidx.glance.material3)
             implementation("com.google.guava:guava:33.5.0-android")
             implementation(libs.androidx.health.connect.client)
             implementation(libs.androidx.work.runtime.ktx)

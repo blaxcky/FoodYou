@@ -13,8 +13,12 @@ internal data class CalorieWidgetModel(
     val countedSteps: Long,
     val eatenKcal: Int,
     val burnedKcal: Int,
+    val netKcal: Int,
+    val normalGoalKcal: Int,
     val normalLeftKcal: Int,
+    val optimizedGoalKcal: Int?,
     val optimizedLeftKcal: Int?,
+    val dietGoalKcal: Int?,
     val dietLeftKcal: Int?,
 )
 
@@ -52,20 +56,25 @@ internal fun calorieWidgetModel(
         }
 
     val baseNormalLeftKcal = roundedRemainingEnergyKcal(baseGoalKcal, netEnergyKcal)
-    val normalLeftKcal =
+    val effectiveNormalGoalKcal =
         todayEnergyGoalReductionKcal
             ?.takeIf { it > 0.0 && it <= baseGoalKcal }
-            ?.let { roundedRemainingEnergyKcal(baseGoalKcal - it, netEnergyKcal) }
-            ?: baseNormalLeftKcal
+            ?.let { baseGoalKcal - it } ?: baseGoalKcal
+    val normalLeftKcal = roundedRemainingEnergyKcal(effectiveNormalGoalKcal, netEnergyKcal)
     val optimizedLeftKcal = roundedRemainingEnergyKcal(optimizedGoal, netEnergyKcal)
+    val showOptimized = optimizedLeftKcal != baseNormalLeftKcal
 
     return CalorieWidgetModel(
         date = today,
         countedSteps = countedSteps,
         eatenKcal = roundedEnergyKcal(eatenKcal),
         burnedKcal = roundedEnergyKcal(burnedKcal),
+        netKcal = netEnergyKcal,
+        normalGoalKcal = roundedEnergyKcal(effectiveNormalGoalKcal),
         normalLeftKcal = normalLeftKcal,
-        optimizedLeftKcal = optimizedLeftKcal.takeIf { it != baseNormalLeftKcal },
+        optimizedGoalKcal = roundedEnergyKcal(optimizedGoal).takeIf { showOptimized },
+        optimizedLeftKcal = optimizedLeftKcal.takeIf { showOptimized },
+        dietGoalKcal = dietGoal?.let(::roundedEnergyKcal),
         dietLeftKcal = dietGoal?.let { roundedRemainingEnergyKcal(it, netEnergyKcal) },
     )
 }
