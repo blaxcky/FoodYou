@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.glance.ExperimentalGlanceApi
 import androidx.glance.appwidget.compose
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -100,7 +101,11 @@ class CalorieRingWidgetScreenshotTest {
         val context = controller.get()
         val remoteViews = runBlocking {
             CalorieRingWidget(loadModel = { model })
-                .compose(context = context, size = DpSize(width.dp, height.dp))
+                .compose(
+                    context = context,
+                    size = DpSize(width.dp, height.dp),
+                    state = mutablePreferencesOf().apply { write(model) },
+                )
         }
         val scale = context.resources.displayMetrics.density
         val widthPx = (width * scale).toInt()
