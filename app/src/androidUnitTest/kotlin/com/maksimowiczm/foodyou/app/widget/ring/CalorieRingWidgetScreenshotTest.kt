@@ -50,11 +50,11 @@ class CalorieRingWidgetScreenshotTest {
     @Test fun minLightNormal() = capture("min", 250, 110, night = false, case = "normal", model = normal())
     @Test fun minLightOverflow() = capture("min", 250, 110, night = false, case = "overflow", model = overflow())
     @Test fun cellLightNormal() = capture("cell", 320, 170, night = false, case = "normal", model = normal())
-    @Test fun cellDarkOverflow() = capture("cell", 320, 170, night = true, case = "overflow", model = overflow())
+    /** Night mode must still render the light design. */
+    @Test fun cellNightOverflow() = capture("cell", 320, 170, night = true, case = "overflow", model = overflow())
     @Test fun cellLightNoDiet() = capture("cell", 320, 170, night = false, case = "no-diet", model = noDiet())
     @Test fun tallLightNormal() = capture("tall", 320, 240, night = false, case = "normal", model = normal())
-    @Test fun tallDarkNormal() = capture("tall", 320, 240, night = true, case = "normal", model = normal())
-    @Test fun tallDarkOverflow() = capture("tall", 320, 240, night = true, case = "overflow", model = overflow())
+    @Test fun tallLightOverflow() = capture("tall", 320, 240, night = false, case = "overflow", model = overflow())
     @Test fun wideLightNormal() = capture("wide", 400, 150, night = false, case = "normal", model = normal())
     @Test fun midLightNormal() = capture("mid", 300, 190, night = false, case = "normal", model = normal())
 
@@ -81,7 +81,7 @@ class CalorieRingWidgetScreenshotTest {
         val root = render(width, height, night, model)
         root.captureRoboImage(
             filePath =
-                "CalorieRingWidgetScreenshotTest.$size-${if (night) "dark" else "light"}-$case.png"
+                "CalorieRingWidgetScreenshotTest.$size-${if (night) "night" else "light"}-$case.png"
         )
     }
 
