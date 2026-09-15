@@ -23,8 +23,7 @@ internal class CalorieRingWidget(
     }
 ) : GlanceAppWidget() {
 
-    override val sizeMode: SizeMode =
-        SizeMode.Responsive(setOf(CalorieRingWidgetSizes.Compact, CalorieRingWidgetSizes.Tall))
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val model =

@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -50,10 +49,7 @@ import kotlin.math.roundToInt
 @Composable
 internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
     val context = LocalContext.current
-    val tall = isTallWidget()
-    val padding =
-        if (tall) CalorieRingWidgetSizes.TallPadding else CalorieRingWidgetSizes.CompactPadding
-    val ring = ringDiameter(LocalSize.current.height, tall)
+    val spec = calorieRingLayoutSpec(LocalSize.current)
 
     Box(
         modifier =
@@ -62,16 +58,21 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                 .appWidgetBackground()
                 .widgetCornerRadius()
                 .clickable(actionStartActivity(calorieWidgetLaunchIntent(context)))
-                .padding(padding)
+                .padding(spec.padding)
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            HeaderRow(context, model)
-            Spacer(modifier = GlanceModifier.height(4.dp))
-            HeroRow(context, model, ring, modifier = GlanceModifier.fillMaxWidth().defaultWeight())
-            if (tall) {
+            HeaderRow(context, model, spec)
+            Spacer(modifier = GlanceModifier.height(CalorieRingWidgetSizes.HeaderSpacing))
+            HeroRow(context, model, spec, modifier = GlanceModifier.fillMaxWidth().defaultWeight())
+            if (spec.goalRows == GoalRowsMode.Inline) {
+                Spacer(modifier = GlanceModifier.height(6.dp))
+                InlineGoalsRow(context, model, spec)
+            }
+            if (spec.goalRows == GoalRowsMode.Bars) {
                 Spacer(modifier = GlanceModifier.height(8.dp))
                 GoalBarRow(
                     context = context,
+                    spec = spec,
                     label = context.getString(R.string.widget_calories_optimized),
                     goalKcal = model.optimizedGoalKcal,
                     leftKcal = model.optimizedLeftKcal,
@@ -81,6 +82,7 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                 Spacer(modifier = GlanceModifier.height(4.dp))
                 GoalBarRow(
                     context = context,
+                    spec = spec,
                     label = context.getString(R.string.widget_calories_diet),
                     goalKcal = model.dietGoalKcal,
                     leftKcal = model.dietLeftKcal,
@@ -100,10 +102,10 @@ private fun GlanceModifier.widgetCornerRadius(): GlanceModifier =
     }
 
 @Composable
-private fun HeaderRow(context: Context, model: CalorieWidgetModel) {
+private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) {
     val steps = context.formatWidgetNumber(model.countedSteps)
     Row(
-        modifier = GlanceModifier.fillMaxWidth().height(CalorieRingWidgetSizes.HeaderHeight),
+        modifier = GlanceModifier.fillMaxWidth().height(spec.headerHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -111,7 +113,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel) {
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 13.sp,
+                    fontSize = spec.headerTextSize,
                     fontWeight = FontWeight.Medium,
                 ),
             maxLines = 1,
@@ -121,7 +123,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel) {
             provider = ImageProvider(R.drawable.ic_widget_walk),
             contentDescription = null,
             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-            modifier = GlanceModifier.size(16.dp),
+            modifier = GlanceModifier.size(spec.headerHeight - 4.dp),
         )
         Spacer(modifier = GlanceModifier.width(4.dp))
         Text(
@@ -129,7 +131,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel) {
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurface,
-                    fontSize = 13.sp,
+                    fontSize = spec.headerTextSize,
                     fontWeight = FontWeight.Medium,
                 ),
             maxLines = 1,
@@ -146,43 +148,122 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel) {
 private fun HeroRow(
     context: Context,
     model: CalorieWidgetModel,
-    ring: Dp,
+    spec: CalorieRingLayoutSpec,
     modifier: GlanceModifier = GlanceModifier,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        RingWithCenter(context, model, ring)
-        Spacer(modifier = GlanceModifier.width(14.dp))
-        Column(
-            modifier = GlanceModifier.defaultWeight(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SideMetric(
-                context = context,
-                label = context.getString(R.string.widget_calories_eaten),
-                value = model.eatenKcal,
-                color = GlanceTheme.colors.primary,
-            )
-            Spacer(modifier = GlanceModifier.height(6.dp))
-            SideMetric(
-                context = context,
-                label = context.getString(R.string.widget_calories_burned),
-                value = model.burnedKcal,
-                color = GlanceTheme.colors.tertiary,
-            )
+        RingWithCenter(context, model, spec)
+        Spacer(modifier = GlanceModifier.width(if (spec.ring >= 90.dp) 18.dp else 14.dp))
+        if (spec.metricsStacked) {
+            Column(
+                modifier = GlanceModifier.defaultWeight(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                EatenMetric(context, model, spec)
+                Spacer(modifier = GlanceModifier.height(if (spec.ring >= 90.dp) 10.dp else 6.dp))
+                BurnedMetric(context, model, spec)
+            }
+        } else {
+            Row(
+                modifier = GlanceModifier.defaultWeight(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                EatenMetric(context, model, spec)
+                Spacer(modifier = GlanceModifier.width(16.dp))
+                BurnedMetric(context, model, spec)
+            }
         }
     }
 }
 
 @Composable
-private fun RingWithCenter(context: Context, model: CalorieWidgetModel, ring: Dp) {
+private fun EatenMetric(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) =
+    SideMetric(
+        context = context,
+        spec = spec,
+        label = context.getString(R.string.widget_calories_eaten),
+        value = model.eatenKcal,
+        color = GlanceTheme.colors.primary,
+    )
+
+@Composable
+private fun BurnedMetric(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) =
+    SideMetric(
+        context = context,
+        spec = spec,
+        label = context.getString(R.string.widget_calories_burned),
+        value = model.burnedKcal,
+        color = GlanceTheme.colors.tertiary,
+    )
+
+@Composable
+private fun InlineGoalsRow(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth().height(spec.goalRowHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        InlineGoal(
+            context = context,
+            spec = spec,
+            label = context.getString(R.string.widget_calories_optimized),
+            leftKcal = model.optimizedLeftKcal,
+            disabledText = context.getString(R.string.widget_calories_placeholder),
+        )
+        Spacer(modifier = GlanceModifier.width(16.dp))
+        InlineGoal(
+            context = context,
+            spec = spec,
+            label = context.getString(R.string.widget_calories_diet),
+            leftKcal = model.dietLeftKcal,
+            disabledText = context.getString(R.string.widget_calories_diet_disabled),
+        )
+    }
+}
+
+@Composable
+private fun InlineGoal(
+    context: Context,
+    spec: CalorieRingLayoutSpec,
+    label: String,
+    leftKcal: Int?,
+    disabledText: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = label,
+            style =
+                TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = spec.goalTextSize),
+            maxLines = 1,
+        )
+        Spacer(modifier = GlanceModifier.width(6.dp))
+        Text(
+            text = leftKcal?.let { context.formatWidgetNumber(it) } ?: disabledText,
+            style =
+                TextStyle(
+                    color =
+                        when {
+                            leftKcal == null -> GlanceTheme.colors.onSurfaceVariant
+                            leftKcal < 0 -> GlanceTheme.colors.error
+                            else -> GlanceTheme.colors.onSurface
+                        },
+                    fontSize = if (leftKcal == null) spec.goalTextSize else spec.goalValueTextSize,
+                    fontWeight = if (leftKcal == null) FontWeight.Normal else FontWeight.Bold,
+                ),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) {
+    val ring = spec.ring
     val density = context.resources.displayMetrics.density
     val sizePx = min((ring.value * density).roundToInt(), WidgetRingRenderer.MAX_PIXELS)
-    val strokeDp = if (ring < 80.dp) 6.dp else 9.dp
-    val strokePx = strokeDp.value * sizePx / ring.value
+    val strokePx = spec.stroke.value * sizePx / ring.value
     val progress = calorieWidgetProgress(model.netKcal, model.normalGoalKcal)
     val arcs = ringArcs(progress.progress, progress.overflow)
-    val valueSize = if (ring < 72.dp) 15.sp else if (ring < 88.dp) 18.sp else 20.sp
-    val labelSize = if (ring < 72.dp) 9.sp else 10.sp
+    val valueSize = spec.ringValueTextSize
+    val labelSize = spec.ringLabelTextSize
     val eaten = context.formatWidgetNumber(model.eatenKcal)
     val goal = context.formatWidgetNumber(model.normalGoalKcal)
     val left = context.formatWidgetNumber(model.normalLeftKcal)
@@ -267,23 +348,42 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, ring: Dp
 }
 
 @Composable
-private fun SideMetric(context: Context, label: String, value: Int, color: ColorProvider) {
+private fun SideMetric(
+    context: Context,
+    spec: CalorieRingLayoutSpec,
+    label: String,
+    value: Int,
+    color: ColorProvider,
+) {
     Column {
         Text(
             text = label,
-            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+            style =
+                TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = spec.metricLabelTextSize,
+                ),
             maxLines = 1,
         )
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = context.formatWidgetNumber(value),
-                style = TextStyle(color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                style =
+                    TextStyle(
+                        color = color,
+                        fontSize = spec.metricValueTextSize,
+                        fontWeight = FontWeight.Bold,
+                    ),
                 maxLines = 1,
             )
             Spacer(modifier = GlanceModifier.width(3.dp))
             Text(
                 text = context.getString(R.string.widget_calories_unit_kcal),
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp),
+                style =
+                    TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = spec.metricLabelTextSize,
+                    ),
                 maxLines = 1,
                 modifier = GlanceModifier.padding(bottom = 2.dp),
             )
@@ -294,6 +394,7 @@ private fun SideMetric(context: Context, label: String, value: Int, color: Color
 @Composable
 private fun GoalBarRow(
     context: Context,
+    spec: CalorieRingLayoutSpec,
     label: String,
     goalKcal: Int?,
     leftKcal: Int?,
@@ -301,26 +402,31 @@ private fun GoalBarRow(
     disabledText: String,
 ) {
     Row(
-        modifier = GlanceModifier.fillMaxWidth().height(CalorieRingWidgetSizes.GoalRowHeight),
+        modifier = GlanceModifier.fillMaxWidth().height(spec.goalRowHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
-            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+            style =
+                TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = spec.goalTextSize),
             maxLines = 1,
-            modifier = GlanceModifier.width(62.dp),
+            modifier = GlanceModifier.width(66.dp),
         )
         if (goalKcal == null || leftKcal == null) {
             Text(
                 text = disabledText,
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                style =
+                    TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = spec.goalTextSize,
+                    ),
                 maxLines = 1,
                 modifier = GlanceModifier.defaultWeight(),
             )
         } else {
             val progress = calorieWidgetProgress(netKcal, goalKcal)
             val overflowing = progress.overflow > 0f
-            Box(modifier = GlanceModifier.defaultWeight().height(6.dp).cornerRadius(3.dp)) {
+            Box(modifier = GlanceModifier.defaultWeight().height(8.dp).cornerRadius(4.dp)) {
                 LinearProgressIndicator(
                     progress = if (overflowing) 1f else progress.progress,
                     modifier = GlanceModifier.fillMaxSize(),
@@ -344,12 +450,12 @@ private fun GoalBarRow(
                         color =
                             if (leftKcal < 0) GlanceTheme.colors.error
                             else GlanceTheme.colors.onSurface,
-                        fontSize = 12.sp,
+                        fontSize = spec.goalValueTextSize,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.End,
                     ),
                 maxLines = 1,
-                modifier = GlanceModifier.width(56.dp),
+                modifier = GlanceModifier.width(60.dp),
             )
         }
     }

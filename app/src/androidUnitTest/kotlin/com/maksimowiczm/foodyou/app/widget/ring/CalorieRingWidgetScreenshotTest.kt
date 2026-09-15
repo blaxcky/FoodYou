@@ -47,34 +47,41 @@ class CalorieRingWidgetScreenshotTest {
         stopKoin()
     }
 
-    @Test fun compactLightNormal() = capture(tall = false, night = false, case = "normal", model = normal())
-    @Test fun compactDarkNormal() = capture(tall = false, night = true, case = "normal", model = normal())
-    @Test fun compactLightOverflow() = capture(tall = false, night = false, case = "overflow", model = overflow())
-    @Test fun tallLightNormal() = capture(tall = true, night = false, case = "normal", model = normal())
-    @Test fun tallDarkNormal() = capture(tall = true, night = true, case = "normal", model = normal())
-    @Test fun tallLightOverflow() = capture(tall = true, night = false, case = "overflow", model = overflow())
-    @Test fun tallDarkOverflow() = capture(tall = true, night = true, case = "overflow", model = overflow())
-    @Test fun tallLightNoDiet() = capture(tall = true, night = false, case = "no-diet", model = noDiet())
-    @Test fun tallLightWide() = capture(tall = true, night = false, case = "wide", model = normal(), width = 360)
+    @Test fun minLightNormal() = capture("min", 250, 110, night = false, case = "normal", model = normal())
+    @Test fun minLightOverflow() = capture("min", 250, 110, night = false, case = "overflow", model = overflow())
+    @Test fun cellLightNormal() = capture("cell", 320, 170, night = false, case = "normal", model = normal())
+    @Test fun cellDarkOverflow() = capture("cell", 320, 170, night = true, case = "overflow", model = overflow())
+    @Test fun cellLightNoDiet() = capture("cell", 320, 170, night = false, case = "no-diet", model = noDiet())
+    @Test fun tallLightNormal() = capture("tall", 320, 240, night = false, case = "normal", model = normal())
+    @Test fun tallDarkNormal() = capture("tall", 320, 240, night = true, case = "normal", model = normal())
+    @Test fun tallDarkOverflow() = capture("tall", 320, 240, night = true, case = "overflow", model = overflow())
+    @Test fun wideLightNormal() = capture("wide", 400, 150, night = false, case = "normal", model = normal())
+    @Test fun midLightNormal() = capture("mid", 300, 190, night = false, case = "normal", model = normal())
 
     /** High-resolution capture that doubles as the widget picker preview image. */
     @Test
     fun previewImage() {
-        val root = render(width = 250, height = 190, night = false, model = normal(), density = "xxhdpi")
+        val root = render(width = 320, height = 240, night = false, model = normal(), density = "xxhdpi")
         root.captureRoboImage(filePath = "CalorieRingWidgetScreenshotTest.preview-xxhdpi.png")
     }
 
     @Test
     @Config(sdk = [30])
-    fun tallLightFallbackTheme() =
-        capture(tall = true, night = false, case = "fallback", model = normal())
+    fun cellLightFallbackTheme() =
+        capture("cell", 320, 170, night = false, case = "fallback", model = normal())
 
-    private fun capture(tall: Boolean, night: Boolean, case: String, model: CalorieWidgetModel, width: Int = 250) {
-        val height = if (tall) 190 else 120
+    private fun capture(
+        size: String,
+        width: Int,
+        height: Int,
+        night: Boolean,
+        case: String,
+        model: CalorieWidgetModel,
+    ) {
         val root = render(width, height, night, model)
         root.captureRoboImage(
             filePath =
-                "CalorieRingWidgetScreenshotTest.${if (tall) "tall" else "compact"}-${if (night) "dark" else "light"}-$case.png"
+                "CalorieRingWidgetScreenshotTest.$size-${if (night) "dark" else "light"}-$case.png"
         )
     }
 
