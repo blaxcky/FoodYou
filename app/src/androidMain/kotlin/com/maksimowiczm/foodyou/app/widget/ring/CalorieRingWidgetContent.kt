@@ -3,7 +3,6 @@ package com.maksimowiczm.foodyou.app.widget.ring
 import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -43,6 +42,7 @@ import com.maksimowiczm.foodyou.app.widget.calorieWidgetLaunchIntent
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetProgress
 import com.maksimowiczm.foodyou.app.widget.formatWidgetDate
 import com.maksimowiczm.foodyou.app.widget.formatWidgetNumber
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -69,7 +69,7 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                 InlineGoalsRow(context, model, spec)
             }
             if (spec.goalRows == GoalRowsMode.Bars) {
-                Spacer(modifier = GlanceModifier.height(8.dp))
+                Spacer(modifier = GlanceModifier.height(6.dp))
                 GoalBarRow(
                     context = context,
                     spec = spec,
@@ -79,7 +79,7 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                     netKcal = model.netKcal,
                     disabledText = context.getString(R.string.widget_calories_placeholder),
                 )
-                Spacer(modifier = GlanceModifier.height(4.dp))
+                Spacer(modifier = GlanceModifier.height(2.dp))
                 GoalBarRow(
                     context = context,
                     spec = spec,
@@ -264,9 +264,14 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
     val arcs = ringArcs(progress.progress, progress.overflow)
     val valueSize = spec.ringValueTextSize
     val labelSize = spec.ringLabelTextSize
+    val over = model.normalLeftKcal < 0
     val eaten = context.formatWidgetNumber(model.eatenKcal)
     val goal = context.formatWidgetNumber(model.normalGoalKcal)
     val left = context.formatWidgetNumber(model.normalLeftKcal)
+    val centerValue = context.formatWidgetNumber(abs(model.normalLeftKcal))
+    val centerLabel =
+        context.getString(if (over) R.string.widget_calories_over else R.string.widget_calories_left)
+    val trackColor = if (arcs.hasOverflow) GlanceTheme.colors.errorContainer else GlanceTheme.colors.primaryContainer
 
     Box(
         modifier =
@@ -279,10 +284,10 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
         Image(
             provider = ImageProvider(WidgetRingRenderer.track(sizePx, strokePx)),
             contentDescription = null,
-            colorFilter = ColorFilter.tint(GlanceTheme.colors.surfaceVariant),
+            colorFilter = ColorFilter.tint(trackColor),
             modifier = GlanceModifier.size(ring),
         )
-        if (arcs.hasProgress) {
+        if (arcs.hasProgress && !arcs.hasOverflow) {
             Image(
                 provider =
                     ImageProvider(
@@ -291,7 +296,7 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
                             strokePx = strokePx,
                             startDeg = arcs.progressStartDeg,
                             sweepDeg = arcs.progressSweepDeg,
-                            roundCaps = !arcs.hasOverflow,
+                            roundCaps = true,
                         )
                     ),
                 contentDescription = null,
@@ -308,7 +313,7 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
                             strokePx = strokePx,
                             startDeg = arcs.overflowStartDeg,
                             sweepDeg = arcs.overflowSweepDeg,
-                            roundCaps = false,
+                            roundCaps = true,
                         )
                     ),
                 contentDescription = null,
@@ -321,12 +326,10 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = left,
+                text = centerValue,
                 style =
                     TextStyle(
-                        color =
-                            if (model.normalLeftKcal < 0) GlanceTheme.colors.error
-                            else GlanceTheme.colors.onSurface,
+                        color = if (over) GlanceTheme.colors.error else GlanceTheme.colors.onSurface,
                         fontSize = valueSize,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
@@ -334,10 +337,10 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
                 maxLines = 1,
             )
             Text(
-                text = context.getString(R.string.widget_calories_left),
+                text = centerLabel,
                 style =
                     TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
+                        color = if (over) GlanceTheme.colors.error else GlanceTheme.colors.onSurfaceVariant,
                         fontSize = labelSize,
                         textAlign = TextAlign.Center,
                     ),
@@ -428,19 +431,13 @@ private fun GoalBarRow(
             val overflowing = progress.overflow > 0f
             Box(modifier = GlanceModifier.defaultWeight().height(8.dp).cornerRadius(4.dp)) {
                 LinearProgressIndicator(
-                    progress = if (overflowing) 1f else progress.progress,
+                    progress = if (overflowing) progress.overflow else progress.progress,
                     modifier = GlanceModifier.fillMaxSize(),
                     color = if (overflowing) GlanceTheme.colors.error else GlanceTheme.colors.primary,
-                    backgroundColor = GlanceTheme.colors.surfaceVariant,
+                    backgroundColor =
+                        if (overflowing) GlanceTheme.colors.errorContainer
+                        else GlanceTheme.colors.primaryContainer,
                 )
-                if (overflowing) {
-                    LinearProgressIndicator(
-                        progress = 1f - progress.overflow,
-                        modifier = GlanceModifier.fillMaxSize(),
-                        color = GlanceTheme.colors.primary,
-                        backgroundColor = ColorProvider(Color.Transparent),
-                    )
-                }
             }
             Spacer(modifier = GlanceModifier.width(8.dp))
             Text(

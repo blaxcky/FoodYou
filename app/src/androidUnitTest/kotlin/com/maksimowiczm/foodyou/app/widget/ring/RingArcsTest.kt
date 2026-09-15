@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 class RingArcsTest {
     @Test
-    fun progressWithoutOverflowHasNoGap() {
+    fun progressWithoutOverflowRunsClockwiseFromTheTop() {
         val arcs = ringArcs(progress = 0.5f, overflow = 0f)
 
         assertEquals(-90f, arcs.progressStartDeg)
@@ -16,21 +16,18 @@ class RingArcsTest {
     }
 
     @Test
-    fun overflowShrinksProgressAndLeavesGaps() {
+    fun overflowShareStartsAtTheTop() {
         val arcs = ringArcs(progress = 1f, overflow = 0.25f)
 
-        assertTrue(arcs.hasProgress)
         assertTrue(arcs.hasOverflow)
-        assertEquals(270f - 2.5f, arcs.progressSweepDeg)
-        assertEquals(-180f, arcs.overflowStartDeg)
-        assertEquals(90f - 2.5f, arcs.overflowSweepDeg)
+        assertEquals(-90f, arcs.overflowStartDeg)
+        assertEquals(90f, arcs.overflowSweepDeg)
     }
 
     @Test
-    fun fullOverflowFillsTheRingInErrorColor() {
+    fun fullOverflowFillsTheRing() {
         val arcs = ringArcs(progress = 1f, overflow = 1f)
 
-        assertFalse(arcs.hasProgress)
         assertEquals(360f, arcs.overflowSweepDeg)
     }
 }

@@ -54,26 +54,20 @@ internal data class RingArcs(
 }
 
 /**
- * Full-circle variant of the in-app gauge geometry: progress runs clockwise from the top,
- * overflow runs backwards from the top in the error color, separated by small gaps.
+ * Full-circle variant of the in-app gauge geometry: progress runs clockwise from the top over a
+ * primary-container track. Once the goal is exceeded the track turns into the error container and
+ * the overflow share runs clockwise from the top in the error color.
  */
-internal fun ringArcs(progress: Float, overflow: Float, gapDeg: Float = 2.5f): RingArcs {
+internal fun ringArcs(progress: Float, overflow: Float): RingArcs {
     val overflowSweep = 360f * overflow.coerceIn(0f, 1f)
-    val visibleProgress = if (overflow > 0f) 1f - overflow.coerceIn(0f, 1f) else progress
-    val rawProgressSweep = 360f * visibleProgress.coerceIn(0f, 1f)
     if (overflowSweep <= 0f) {
-        return RingArcs(TOP_DEG, rawProgressSweep, TOP_DEG, 0f)
+        return RingArcs(TOP_DEG, 360f * progress.coerceIn(0f, 1f), TOP_DEG, 0f)
     }
-    if (overflowSweep >= 360f) {
-        return RingArcs(TOP_DEG, 0f, TOP_DEG, 360f)
-    }
-    val progressSweep = (rawProgressSweep - gapDeg).coerceAtLeast(0f)
-    val overflowSweepTrimmed = (overflowSweep - gapDeg).coerceAtLeast(0f)
     return RingArcs(
         progressStartDeg = TOP_DEG,
-        progressSweepDeg = progressSweep,
-        overflowStartDeg = TOP_DEG - overflowSweep,
-        overflowSweepDeg = overflowSweepTrimmed,
+        progressSweepDeg = 360f,
+        overflowStartDeg = TOP_DEG,
+        overflowSweepDeg = overflowSweep,
     )
 }
 

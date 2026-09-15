@@ -36,11 +36,11 @@ internal data class CalorieRingLayoutSpec(
 
 internal object CalorieRingWidgetSizes {
     val MinSize = DpSize(250.dp, 110.dp)
-    val InlineGoalsMinHeight = 150.dp
-    val BarGoalsMinHeight = 200.dp
-    val GoalRowHeight = 20.dp
+    val InlineGoalsMinHeight = 130.dp
+    val BarGoalsMinHeight = 150.dp
+    val GoalRowHeight = 18.dp
     val HeaderSpacing = 4.dp
-    val StackedMetricsMinHeight = 84.dp
+    val StackedMetricsMinHeight = 76.dp
     val LargeMetricsMinHeight = 100.dp
 }
 
@@ -56,14 +56,14 @@ internal fun goalBlockHeight(mode: GoalRowsMode): Dp =
         GoalRowsMode.None -> 0.dp
         GoalRowsMode.Inline -> 6.dp + CalorieRingWidgetSizes.GoalRowHeight
         GoalRowsMode.Bars ->
-            8.dp + CalorieRingWidgetSizes.GoalRowHeight + 4.dp + CalorieRingWidgetSizes.GoalRowHeight
+            6.dp + CalorieRingWidgetSizes.GoalRowHeight + 2.dp + CalorieRingWidgetSizes.GoalRowHeight
     }
 
 internal fun calorieRingLayoutSpec(size: DpSize): CalorieRingLayoutSpec {
     val goalRows = goalRowsMode(size.height)
     val large = goalRows != GoalRowsMode.None
-    val padding = if (large) 14.dp else 10.dp
-    val headerHeight = if (large) 22.dp else 20.dp
+    val padding = if (large) 12.dp else 10.dp
+    val headerHeight = 20.dp
     val heroHeight =
         size.height - padding * 2 - headerHeight - CalorieRingWidgetSizes.HeaderSpacing -
             goalBlockHeight(goalRows)

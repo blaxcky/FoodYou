@@ -49,7 +49,7 @@ class WidgetRingRendererTest {
     }
 
     @Test
-    fun overflowArcRunsBackwardsFromTheTop() {
+    fun overflowArcCoversTheOverflowShareFromTheTop() {
         val arcs = ringArcs(progress = 1f, overflow = 0.25f)
         val bitmap =
             WidgetRingRenderer.arc(
@@ -60,8 +60,8 @@ class WidgetRingRendererTest {
                 roundCaps = false,
             )
 
-        assertTrue(bitmap.alphaAt(15, 15) > 200)
-        assertEquals(0, bitmap.alphaAt(85, 15))
+        assertTrue(bitmap.alphaAt(85, 15) > 200)
+        assertEquals(0, bitmap.alphaAt(15, 15))
     }
 
     @Test

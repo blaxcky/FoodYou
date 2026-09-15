@@ -19,13 +19,18 @@ class CalorieRingLayoutSpecTest {
     }
 
     @Test
-    fun typicalCellShowsInlineGoalsWithStackedMetrics() {
+    fun typicalCellShowsGoalBarsWithStackedMetrics() {
         val spec = calorieRingLayoutSpec(DpSize(320.dp, 170.dp))
 
-        assertEquals(GoalRowsMode.Inline, spec.goalRows)
+        assertEquals(GoalRowsMode.Bars, spec.goalRows)
         assertTrue(spec.metricsStacked)
-        assertEquals(90.dp, spec.ring)
+        assertEquals(78.dp, spec.ring)
         assertEquals(16.sp, spec.metricValueTextSize)
+    }
+
+    @Test
+    fun lowCellShowsInlineGoals() {
+        assertEquals(GoalRowsMode.Inline, calorieRingLayoutSpec(DpSize(320.dp, 140.dp)).goalRows)
     }
 
     @Test
@@ -34,7 +39,7 @@ class CalorieRingLayoutSpecTest {
 
         assertEquals(GoalRowsMode.Bars, spec.goalRows)
         assertTrue(spec.metricsStacked)
-        assertEquals(134.dp, spec.ring)
+        assertEquals(134.4f, spec.ring.value, 0.01f)
         assertEquals(20.sp, spec.metricValueTextSize)
     }
 
