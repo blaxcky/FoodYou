@@ -21,13 +21,28 @@ class CalorieRingLayoutSpecTest {
         val spec = calorieRingLayoutSpec(DpSize(320.dp, 170.dp))
 
         assertEquals(GoalRowsMode.Bars, spec.goalRows)
-        assertEquals(78.dp, spec.ring)
+        assertEquals(70.dp, spec.ring)
         assertEquals(20.sp, spec.metricValueTextSize)
     }
 
     @Test
     fun lowCellShowsInlineGoals() {
         assertEquals(GoalRowsMode.Inline, calorieRingLayoutSpec(DpSize(320.dp, 140.dp)).goalRows)
+    }
+
+    @Test
+    fun goalRowModeThresholds() {
+        assertEquals(GoalRowsMode.None, calorieRingLayoutSpec(DpSize(320.dp, 133.dp)).goalRows)
+        assertEquals(GoalRowsMode.Inline, calorieRingLayoutSpec(DpSize(320.dp, 134.dp)).goalRows)
+        assertEquals(GoalRowsMode.Inline, calorieRingLayoutSpec(DpSize(320.dp, 157.dp)).goalRows)
+        assertEquals(GoalRowsMode.Bars, calorieRingLayoutSpec(DpSize(320.dp, 158.dp)).goalRows)
+    }
+
+    /** At the mode thresholds the minimum ring must still fit into the hero area. */
+    @Test
+    fun ringFitsHeroAtThresholds() {
+        assertEquals(58.dp, calorieRingLayoutSpec(DpSize(320.dp, 134.dp)).ring)
+        assertEquals(58.dp, calorieRingLayoutSpec(DpSize(320.dp, 158.dp)).ring)
     }
 
     @Test

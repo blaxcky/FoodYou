@@ -402,15 +402,15 @@ private fun GoalValue(context: Context, spec: CalorieRingLayoutSpec, leftKcal: I
         Box(
             modifier =
                 GlanceModifier.background(GlanceTheme.colors.errorContainer)
-                    .cornerRadius(8.dp)
-                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                    .cornerRadius(10.dp)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
             Text(
                 text = context.formatWidgetNumber(abs(leftKcal)),
                 style =
                     TextStyle(
                         color = GlanceTheme.colors.error,
-                        fontSize = spec.goalValueTextSize,
+                        fontSize = spec.goalBadgeTextSize,
                         fontWeight = FontWeight.Bold,
                     ),
                 maxLines = 1,
