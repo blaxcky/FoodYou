@@ -34,7 +34,6 @@ class SaveQuickCaptureEntryUseCase(
         directWeightInGrams: Double? = null,
         beforeWeightInGrams: Double? = null,
         afterWeightInGrams: Double? = null,
-        afterRequired: Boolean = false,
     ): SaveQuickCaptureEntryResult {
         val canonicalName = canonicalQuickCaptureFoodName(foodName)
         if (canonicalName.isBlank()) return SaveQuickCaptureEntryResult.InvalidName
@@ -51,7 +50,7 @@ class SaveQuickCaptureEntryUseCase(
                             it.isFinite() && it >= 0.0 &&
                                 beforeWeightInGrams != null && beforeWeightInGrams > it
                         } == true
-                    beforeValid && (afterValid || (afterRequired && afterWeightInGrams == null))
+                    beforeValid && (afterValid || afterWeightInGrams == null)
                 }
             }
         if (!valid) return SaveQuickCaptureEntryResult.InvalidWeight
@@ -63,7 +62,6 @@ class SaveQuickCaptureEntryUseCase(
                 directWeightInGrams = directWeightInGrams,
                 beforeWeightInGrams = beforeWeightInGrams,
                 afterWeightInGrams = afterWeightInGrams,
-                afterRequired = afterRequired,
                 createdAt = dateProvider.nowInstant(),
             )
         )

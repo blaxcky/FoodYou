@@ -23,7 +23,6 @@ data class QuickCaptureLogEntry(
     val directWeightInGrams: Double?,
     val beforeWeightInGrams: Double?,
     val afterWeightInGrams: Double?,
-    val afterRequired: Boolean,
     val photoPath: String?,
     val createdAt: Instant,
     val completedAt: Instant?,
@@ -58,7 +57,6 @@ data class QuickCaptureLogEntry(
     val isAwaitingAfter: Boolean
         get() =
             weightMode == QuickCaptureWeightMode.BeforeAfter &&
-                afterRequired &&
                 afterWeightInGrams == null
 
     val isReady: Boolean

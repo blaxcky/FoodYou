@@ -29,7 +29,6 @@ internal class RoomQuickCaptureRepository(private val dao: QuickCaptureDao) :
         directWeightInGrams: Double?,
         beforeWeightInGrams: Double?,
         afterWeightInGrams: Double?,
-        afterRequired: Boolean,
         createdAt: Instant,
     ): Long {
         val name =
@@ -46,7 +45,9 @@ internal class RoomQuickCaptureRepository(private val dao: QuickCaptureDao) :
                 directWeightInGrams = directWeightInGrams,
                 beforeWeightInGrams = beforeWeightInGrams,
                 afterWeightInGrams = afterWeightInGrams,
-                afterRequired = afterRequired,
+                afterRequired =
+                    weightMode == QuickCaptureWeightMode.BeforeAfter &&
+                        afterWeightInGrams == null,
                 photoPath = null,
                 createdAt = createdAt.toEpochMilliseconds(),
                 completedAt = null,
@@ -124,7 +125,6 @@ private fun QuickCaptureLogEntryEntity.toModel(): QuickCaptureLogEntry =
         directWeightInGrams = directWeightInGrams,
         beforeWeightInGrams = beforeWeightInGrams,
         afterWeightInGrams = afterWeightInGrams,
-        afterRequired = afterRequired,
         photoPath = photoPath,
         createdAt = Instant.fromEpochMilliseconds(createdAt),
         completedAt = completedAt?.let(Instant::fromEpochMilliseconds),

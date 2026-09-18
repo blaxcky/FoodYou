@@ -235,7 +235,7 @@ internal fun QuickCaptureLog(
     formError: QuickCaptureFormError?,
     formSavedTick: Int,
     onAggregateChange: (Boolean) -> Unit,
-    onSave: (String, QuickCaptureWeightMode, Double?, Double?, Double?, Boolean) -> Unit,
+    onSave: (String, QuickCaptureWeightMode, Double?, Double?, Double?) -> Unit,
     onCompleteAfter: (Long, Double) -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
     onClearCompleted: () -> Unit,
@@ -363,7 +363,7 @@ internal fun QuickCaptureEntryForm(
     names: List<QuickCaptureFoodName>,
     error: QuickCaptureFormError?,
     savedTick: Int,
-    onSave: (String, QuickCaptureWeightMode, Double?, Double?, Double?, Boolean) -> Unit,
+    onSave: (String, QuickCaptureWeightMode, Double?, Double?, Double?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var name by rememberSaveable { mutableStateOf("") }
@@ -371,7 +371,6 @@ internal fun QuickCaptureEntryForm(
     var direct by rememberSaveable { mutableStateOf("") }
     var before by rememberSaveable { mutableStateOf("") }
     var after by rememberSaveable { mutableStateOf("") }
-    var afterRequired by rememberSaveable { mutableStateOf(false) }
     val weightFocus = remember { FocusRequester() }
 
     fun submit() {
@@ -381,7 +380,6 @@ internal fun QuickCaptureEntryForm(
             direct.toLocalizedDouble(),
             before.toLocalizedDouble(),
             after.toLocalizedDouble(),
-            afterRequired,
         )
     }
 
@@ -391,7 +389,6 @@ internal fun QuickCaptureEntryForm(
             direct = ""
             before = ""
             after = ""
-            afterRequired = false
         }
     }
 
@@ -447,16 +444,6 @@ internal fun QuickCaptureEntryForm(
                         onDone = ::submit,
                         isError = error == QuickCaptureFormError.Weight,
                     )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = afterRequired,
-                        onCheckedChange = {
-                            afterRequired = it
-                            if (it) after = ""
-                        },
-                    )
-                    Text(stringResource(Res.string.headline_quick_capture_after_required))
                 }
             }
             if (error != null) {
@@ -844,7 +831,6 @@ internal class QuickCaptureViewModel(
         direct: Double?,
         before: Double?,
         after: Double?,
-        afterRequired: Boolean,
     ) {
         viewModelScope.launch {
             when (
@@ -854,7 +840,6 @@ internal class QuickCaptureViewModel(
                         directWeightInGrams = direct,
                         beforeWeightInGrams = before,
                         afterWeightInGrams = after,
-                        afterRequired = afterRequired,
                     )
                 ) {
                     is SaveQuickCaptureEntryResult.Saved -> {

@@ -742,7 +742,6 @@
     <string name="headline_quick_capture_before_after">Before / after</string>
     <string name="headline_quick_capture_before">Before</string>
     <string name="headline_quick_capture_after">After</string>
-    <string name="headline_quick_capture_after_required">After required later</string>
     <string name="headline_quick_capture_aggregate">Add identical foods</string>
     <string name="headline_quick_capture_waiting_after">After weight is still missing</string>
     <string name="headline_quick_capture_usage">Used %1$d times</string>

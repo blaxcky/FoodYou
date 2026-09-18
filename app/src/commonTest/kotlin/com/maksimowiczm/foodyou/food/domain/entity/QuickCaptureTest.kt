@@ -17,7 +17,7 @@ class QuickCaptureTest {
     @Test
     fun beforeAfterRequiresAValidDifference() {
         val ready = entry(id = 1, before = 410.0, after = 175.5)
-        val awaiting = entry(id = 2, before = 410.0, after = null, afterRequired = true)
+        val awaiting = entry(id = 2, before = 410.0, after = null)
         val invalid = entry(id = 3, before = 410.0, after = 410.0)
 
         assertEquals(234.5, ready.effectiveWeightInGrams)
@@ -34,7 +34,7 @@ class QuickCaptureTest {
                 entry(id = 1, foodNameId = 7, foodName = "Apple", direct = 100.0),
                 entry(id = 2, foodNameId = 7, foodName = "Apple", direct = 52.5),
                 entry(id = 3, foodNameId = 8, foodName = "Apple", direct = 25.0),
-                entry(id = 4, foodNameId = 7, foodName = "Apple", before = 200.0, after = null, afterRequired = true),
+                entry(id = 4, foodNameId = 7, foodName = "Apple", before = 200.0, after = null),
                 entry(id = 5, foodNameId = 7, foodName = "Apple", direct = 10.0, completed = true),
             )
 
@@ -67,7 +67,6 @@ class QuickCaptureTest {
         direct: Double? = null,
         before: Double? = null,
         after: Double? = null,
-        afterRequired: Boolean = false,
         completed: Boolean = false,
     ) =
         QuickCaptureLogEntry(
@@ -78,7 +77,6 @@ class QuickCaptureTest {
             directWeightInGrams = direct,
             beforeWeightInGrams = before,
             afterWeightInGrams = after,
-            afterRequired = afterRequired,
             photoPath = null,
             createdAt = Instant.fromEpochSeconds(id),
             completedAt = if (completed) Instant.fromEpochSeconds(100) else null,

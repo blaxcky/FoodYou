@@ -19,7 +19,6 @@ interface QuickCaptureRepository {
         directWeightInGrams: Double?,
         beforeWeightInGrams: Double?,
         afterWeightInGrams: Double?,
-        afterRequired: Boolean,
         createdAt: Instant,
     ): Long
 
