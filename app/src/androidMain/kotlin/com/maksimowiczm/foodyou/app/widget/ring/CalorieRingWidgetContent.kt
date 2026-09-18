@@ -110,6 +110,13 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: Calorie
         modifier = GlanceModifier.fillMaxWidth().height(spec.headerHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Image(
+            provider = ImageProvider(R.drawable.ic_widget_calendar),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
+            modifier = GlanceModifier.size(spec.headerHeight - 2.dp),
+        )
+        Spacer(modifier = GlanceModifier.width(6.dp))
         Text(
             text = context.formatWidgetDate(model.date),
             style =
@@ -270,7 +277,9 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
     val left = context.formatWidgetNumber(model.normalLeftKcal)
     val centerValue = context.formatWidgetNumber(abs(model.normalLeftKcal))
     val centerLabel =
-        context.getString(if (over) R.string.widget_calories_over else R.string.widget_calories_left)
+        context.getString(
+            if (over) R.string.widget_calories_over else R.string.widget_calories_left_lowercase
+        )
     Box(
         modifier =
             GlanceModifier.size(ring).semantics {
@@ -436,16 +445,28 @@ private fun GoalValue(context: Context, spec: CalorieRingLayoutSpec, leftKcal: I
             )
         }
     } else {
-        Text(
-            text = context.formatWidgetNumber(leftKcal),
-            style =
-                TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = spec.goalValueTextSize,
-                    fontWeight = FontWeight.Bold,
-                ),
-            maxLines = 1,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = context.formatWidgetNumber(leftKcal),
+                style =
+                    TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = spec.goalValueTextSize,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                maxLines = 1,
+            )
+            Spacer(modifier = GlanceModifier.width(3.dp))
+            Text(
+                text = context.getString(R.string.widget_calories_left_lowercase),
+                style =
+                    TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = spec.goalTextSize,
+                    ),
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -495,7 +516,7 @@ private fun GoalBarRow(
                 )
             }
             Spacer(modifier = GlanceModifier.width(8.dp))
-            Box(modifier = GlanceModifier.width(64.dp), contentAlignment = Alignment.CenterEnd) {
+            Box(modifier = GlanceModifier.width(80.dp), contentAlignment = Alignment.CenterEnd) {
                 GoalValue(context, spec, leftKcal)
             }
         }
