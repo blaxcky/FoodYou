@@ -69,6 +69,7 @@ fun FoodSearchApp(
     layout: FoodSearchLayout = FoodSearchLayout.Overlay,
     showBarcodeScannerInitially: Boolean = false,
     restoredSearchText: String = "",
+    searchInitially: Boolean = false,
     transformSearch: (String?) -> String? = { it },
 ) {
     val viewModel: FoodSearchViewModel = koinViewModel { parametersOf(excludedRecipe) }
@@ -77,6 +78,12 @@ fun FoodSearchApp(
             searchTextFieldState = rememberTextFieldState(restoredSearchText),
             showBarcodeScanner = showBarcodeScannerInitially,
         )
+
+    LaunchedEffect(restoredSearchText, searchInitially) {
+        if (searchInitially && restoredSearchText.isNotBlank()) {
+            viewModel.search(transformSearch(restoredSearchText))
+        }
+    }
 
     FoodSearchApp(
         uiState = viewModel.uiState.collectAsStateWithLifecycle().value,

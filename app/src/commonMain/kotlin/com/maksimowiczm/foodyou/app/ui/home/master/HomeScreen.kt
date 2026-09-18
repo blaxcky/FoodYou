@@ -80,7 +80,7 @@ private val RelatedHomeSectionSpacing = 24.dp
 fun HomeScreen(
     onSettings: () -> Unit,
     onPendingProducts: () -> Unit,
-    onFoodSnap: () -> Unit,
+    onQuickCapture: () -> Unit,
     onTitle: () -> Unit,
     onMealCardAddClick: (epochDay: Long, mealId: Long) -> Unit,
     onMealCardQuickAddClick: (epochDay: Long, mealId: Long) -> Unit,
@@ -217,10 +217,10 @@ fun HomeScreen(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("FoodSnap") },
+                            text = { Text(stringResource(Res.string.headline_quick_capture)) },
                             onClick = {
                                 showSettingsMenu = false
-                                onFoodSnap()
+                                onQuickCapture()
                             },
                         )
                         DropdownMenuItem(

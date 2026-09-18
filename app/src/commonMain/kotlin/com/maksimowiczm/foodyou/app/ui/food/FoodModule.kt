@@ -3,24 +3,31 @@ package com.maksimowiczm.foodyou.app.ui.food
 import com.maksimowiczm.foodyou.app.ui.food.product.foodProduct
 import com.maksimowiczm.foodyou.app.ui.food.recipe.foodRecipe
 import com.maksimowiczm.foodyou.app.ui.food.search.FoodSearchViewModel
-import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapEntryViewModel
-import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapInboxViewModel
+import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCapturePhotoViewModel
+import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCaptureViewModel
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 
 fun Module.food() {
-    viewModel { FoodSnapInboxViewModel(observeEntries = get(), capturePhoto = get()) }
+    viewModel {
+        QuickCaptureViewModel(
+            observe = get(),
+            saveEntry = get(),
+            capture = get(),
+            completeAfter = get(),
+            deleteEntries = get(),
+            updateLibrary = get(),
+            settingsRepository = userPreferencesRepository(),
+        )
+    }
     viewModel { (entryId: Long) ->
-        FoodSnapEntryViewModel(
+        QuickCapturePhotoViewModel(
             entryId = entryId,
-            observeEntries = get(),
-            observeFood = get(),
-            mealRepository = get(),
-            dateProvider = get(),
-            completeEntry = get(),
-            deleteEntry = get(),
+            observe = get(),
+            processPhoto = get(),
+            deleteEntries = get(),
         )
     }
     viewModel { (excluded: FoodId.Recipe?) ->

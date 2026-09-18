@@ -69,6 +69,8 @@ fun DiaryFoodSearchScreen(
     date: LocalDate,
     mealId: Long,
     showBarcodeScanner: Boolean = false,
+    initialSearchText: String = "",
+    presetWeightInGrams: Double? = null,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
 ) {
@@ -128,16 +130,20 @@ fun DiaryFoodSearchScreen(
                 onFoodClick = { model, measurement ->
                     onMeasure(
                         model.id,
-                        diarySearchMeasurement(
-                            suggestedMeasurement = measurement,
-                            isLiquid = model.isLiquid,
-                            amount = searchInput.amount,
-                        ),
+                        presetWeightInGrams?.let { weight ->
+                            if (model.isLiquid) Measurement.Milliliter(weight)
+                            else Measurement.Gram(weight)
+                        } ?: diarySearchMeasurement(
+                                suggestedMeasurement = measurement,
+                                isLiquid = model.isLiquid,
+                                amount = searchInput.amount,
+                            ),
                     )
                 },
                 onUpdateUsdaApiKey = onUpdateUsdaApiKey,
                 onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
-                restoredSearchText = searchInput.originalText,
+                restoredSearchText = initialSearchText.ifBlank { searchInput.originalText },
+                searchInitially = initialSearchText.isNotBlank(),
                 transformSearch = viewModel::prepareSearch,
                 showBarcodeScannerInitially = showBarcodeScanner,
                 modifier =

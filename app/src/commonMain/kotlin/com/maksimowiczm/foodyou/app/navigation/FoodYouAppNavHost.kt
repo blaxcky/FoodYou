@@ -29,8 +29,8 @@ import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchRequest
 import com.maksimowiczm.foodyou.app.ui.food.pending.CompletePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.CreatePendingProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductsScreen
-import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapEntryScreen
-import com.maksimowiczm.foodyou.app.ui.food.snap.FoodSnapInboxScreen
+import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCapturePhotoScreen
+import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCaptureScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.CreateProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.product.UpdateProductScreen
 import com.maksimowiczm.foodyou.app.ui.food.recipe.CreateRecipeScreen
@@ -58,9 +58,11 @@ import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.usecase.MarkQuickCaptureCompletedUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.selectMealForBarcodeShortcut
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -74,6 +76,8 @@ fun FoodYouAppNavHost(
     val navController = rememberNavController()
     val dateProvider: DateProvider = koinInject()
     val mealRepository: MealRepository = koinInject()
+    val markQuickCaptureCompleted: MarkQuickCaptureCompletedUseCase = koinInject()
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(launchRequest?.nonce) {
         when (launchRequest?.action) {
@@ -103,7 +107,7 @@ fun FoodYouAppNavHost(
             HomeScreen(
                 onSettings = { navController.navigateSingleTop(Settings) },
                 onPendingProducts = { navController.navigateSingleTop(PendingProducts) },
-                onFoodSnap = { navController.navigateSingleTop(FoodSnapInbox) },
+                onQuickCapture = { navController.navigateSingleTop(QuickCapture) },
                 onTitle = { navController.navigateSingleTop(About) },
                 onMealCardAddClick = { epochDay, mealId ->
                     navController.navigateSingleTop(FoodDiarySearch(epochDay, mealId))
@@ -175,21 +179,44 @@ fun FoodYouAppNavHost(
                 onPendingProduct = { navController.navigateSingleTop(CompletePendingProduct(it)) },
             )
         }
-        forwardBackwardComposable<FoodSnapInbox> {
-            FoodSnapInboxScreen(
-                onBack = { navController.popBackStackInclusive<FoodSnapInbox>() },
-                onEntry = { navController.navigate(FoodSnapEntry(it)) },
+        forwardBackwardComposable<QuickCapture> {
+            QuickCaptureScreen(
+                onBack = { navController.popBackStackInclusive<QuickCapture>() },
+                onPhoto = { navController.navigate(QuickCapturePhoto(it)) },
+                onTransfer = { request ->
+                    coroutineScope.launch {
+                        val now = dateProvider.now()
+                        val meals = mealRepository.observeMeals().first().sortedBy { it.rank }
+                        val meal =
+                            selectMealForBarcodeShortcut(meals, now.time)
+                                ?: meals.firstOrNull()
+                                ?: return@launch
+                        navController.navigate(
+                            FoodDiarySearch(
+                                date = now.date.toEpochDays(),
+                                mealId = meal.id,
+                                initialSearchText = request.foodName,
+                                quickCaptureEntryIds = request.entryIds,
+                                quickCaptureWeightInGrams = request.weightInGrams,
+                            )
+                        )
+                    }
+                },
             )
         }
-        forwardBackwardComposable<FoodSnapEntry> {
-            val (entryId) = it.toRoute<FoodSnapEntry>()
-            FoodSnapEntryScreen(
+        forwardBackwardComposable<QuickCapturePhoto> {
+            val (entryId) = it.toRoute<QuickCapturePhoto>()
+            QuickCapturePhotoScreen(
                 entryId = entryId,
-                onBack = { navController.popBackStackInclusive<FoodSnapEntry>() },
-                onCompleted = { navController.popBackStackInclusive<FoodSnapEntry>() },
-                onUpdateUsdaApiKey = { navController.navigateSingleTop(UsdaApiKey) },
-                onUpdateOpenFoodFactsCredentials = {
-                    navController.navigateSingleTop(OpenFoodFactsLogin)
+                onBack = { navController.popBackStackInclusive<QuickCapturePhoto>() },
+                onProcessed = { nextId ->
+                    if (nextId == null) {
+                        navController.popBackStackInclusive<QuickCapturePhoto>()
+                    } else {
+                        navController.navigate(QuickCapturePhoto(nextId)) {
+                            popUpTo<QuickCapturePhoto> { inclusive = true }
+                        }
+                    }
                 },
             )
         }
@@ -358,7 +385,9 @@ fun FoodYouAppNavHost(
             )
         }
         forwardBackwardComposable<FoodDiarySearch> {
-            val (date, mealId, showBarcodeScanner) = it.toRoute<FoodDiarySearch>()
+            val route = it.toRoute<FoodDiarySearch>()
+            val date = route.date
+            val mealId = route.mealId
 
             DiaryFoodSearchScreen(
                 onBack = { navController.popBackStackInclusive<FoodDiarySearch>() },
@@ -375,6 +404,7 @@ fun FoodYouAppNavHost(
                             mealId = mealId,
                             foodId = foodId,
                             measurement = measurement,
+                            quickCaptureEntryIds = route.quickCaptureEntryIds,
                         )
                     )
                 },
@@ -384,7 +414,9 @@ fun FoodYouAppNavHost(
                 },
                 date = LocalDate.fromEpochDays(date),
                 mealId = mealId,
-                showBarcodeScanner = showBarcodeScanner,
+                showBarcodeScanner = route.showBarcodeScanner,
+                initialSearchText = route.initialSearchText,
+                presetWeightInGrams = route.quickCaptureWeightInGrams,
                 animatedVisibilityScope = this,
             )
         }
@@ -480,9 +512,16 @@ fun FoodYouAppNavHost(
                     }
                 },
                 onEntryAdded = {
-                    while (true) {
-                        if (!navController.popBackStackInclusive<FoodDiaryCreateEntry>()) {
-                            break
+                    if (route.quickCaptureEntryIds.isNotEmpty()) {
+                        coroutineScope.launch {
+                            markQuickCaptureCompleted.mark(route.quickCaptureEntryIds)
+                            navController.popBackStack<QuickCapture>(inclusive = false)
+                        }
+                    } else {
+                        while (true) {
+                            if (!navController.popBackStackInclusive<FoodDiaryCreateEntry>()) {
+                                break
+                            }
                         }
                     }
                 },
@@ -494,6 +533,7 @@ fun FoodYouAppNavHost(
                             mealId = route.mealId,
                             foodId = foodId,
                             measurement = measurement,
+                            quickCaptureEntryIds = route.quickCaptureEntryIds,
                         )
                     )
                 },
@@ -568,9 +608,9 @@ fun FoodYouAppNavHost(
 
 @Serializable private object PendingProducts
 
-@Serializable private object FoodSnapInbox
+@Serializable private object QuickCapture
 
-@Serializable private data class FoodSnapEntry(val entryId: Long)
+@Serializable private data class QuickCapturePhoto(val entryId: Long)
 
 @Serializable private object CreatePendingProduct
 
@@ -626,6 +666,9 @@ private data class FoodDiarySearch(
     val date: Long,
     val mealId: Long,
     val showBarcodeScanner: Boolean = false,
+    val initialSearchText: String = "",
+    val quickCaptureEntryIds: List<Long> = emptyList(),
+    val quickCaptureWeightInGrams: Double? = null,
 )
 
 @Serializable private data class FoodDiaryCreateProduct(val date: Long, val mealId: Long)
@@ -644,12 +687,14 @@ private class FoodDiaryCreateEntry(
     private val recipeId: Long?,
     private val measurementType: MeasurementType?,
     private val measurementValue: Double?,
+    val quickCaptureEntryIds: List<Long> = emptyList(),
 ) {
     constructor(
         date: Long,
         mealId: Long,
         foodId: FoodId,
         measurement: Measurement?,
+        quickCaptureEntryIds: List<Long> = emptyList(),
     ) : this(
         date = date,
         mealId = mealId,
@@ -657,6 +702,7 @@ private class FoodDiaryCreateEntry(
         recipeId = if (foodId is FoodId.Recipe) foodId.id else null,
         measurementType = measurement?.type,
         measurementValue = measurement?.rawValue,
+        quickCaptureEntryIds = quickCaptureEntryIds,
     )
 
     init {
