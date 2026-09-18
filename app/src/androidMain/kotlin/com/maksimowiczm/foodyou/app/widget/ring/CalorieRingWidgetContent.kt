@@ -423,50 +423,35 @@ private fun SideMetric(
     }
 }
 
-/** Remaining kcal of a goal: plain text when open, an error badge without sign when exceeded. */
+/** Remaining kcal of a goal with a "left" suffix; exceeded goals turn red with an "over" suffix. */
 @Composable
 private fun GoalValue(context: Context, spec: CalorieRingLayoutSpec, leftKcal: Int) {
-    if (leftKcal < 0) {
-        Box(
-            modifier =
-                GlanceModifier.background(GlanceTheme.colors.errorContainer)
-                    .cornerRadius(10.dp)
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-        ) {
-            Text(
-                text = context.formatWidgetNumber(abs(leftKcal)),
-                style =
-                    TextStyle(
-                        color = GlanceTheme.colors.error,
-                        fontSize = spec.goalBadgeTextSize,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                maxLines = 1,
-            )
-        }
-    } else {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = context.formatWidgetNumber(leftKcal),
-                style =
-                    TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = spec.goalValueTextSize,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                maxLines = 1,
-            )
-            Spacer(modifier = GlanceModifier.width(3.dp))
-            Text(
-                text = context.getString(R.string.widget_calories_left_lowercase),
-                style =
-                    TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = spec.goalTextSize,
-                    ),
-                maxLines = 1,
-            )
-        }
+    val over = leftKcal < 0
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = context.formatWidgetNumber(abs(leftKcal)),
+            style =
+                TextStyle(
+                    color = if (over) GlanceTheme.colors.error else GlanceTheme.colors.onSurface,
+                    fontSize = spec.goalValueTextSize,
+                    fontWeight = FontWeight.Bold,
+                ),
+            maxLines = 1,
+        )
+        Spacer(modifier = GlanceModifier.width(3.dp))
+        Text(
+            text =
+                context.getString(
+                    if (over) R.string.widget_calories_over_lowercase
+                    else R.string.widget_calories_left_lowercase
+                ),
+            style =
+                TextStyle(
+                    color = if (over) GlanceTheme.colors.error else GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = spec.goalTextSize,
+                ),
+            maxLines = 1,
+        )
     }
 }
 
