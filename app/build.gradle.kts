@@ -112,6 +112,8 @@ kotlin {
             implementation(libs.androidx.testCore.ktx)
             implementation(libs.androidx.testRunner)
             implementation(libs.androidx.testExt.junit)
+            implementation(libs.kotlin.test)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
         }
 
         androidUnitTest.dependencies {

@@ -227,7 +227,7 @@ fun QuickCaptureScreen(
 }
 
 @Composable
-private fun QuickCaptureLog(
+internal fun QuickCaptureLog(
     entries: List<QuickCaptureLogEntry>,
     names: List<QuickCaptureFoodName>,
     aggregate: Boolean,
@@ -358,7 +358,7 @@ private fun QuickCaptureLog(
 }
 
 @Composable
-private fun QuickCaptureEntryForm(
+internal fun QuickCaptureEntryForm(
     names: List<QuickCaptureFoodName>,
     error: QuickCaptureFormError?,
     savedTick: Int,
@@ -654,7 +654,7 @@ private fun QuickCaptureCompletedRow(
 }
 
 @Composable
-private fun QuickCapturePhotos(
+internal fun QuickCapturePhotos(
     entries: List<QuickCaptureLogEntry>,
     onPhoto: (Long) -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
@@ -690,7 +690,7 @@ private fun QuickCapturePhotos(
 }
 
 @Composable
-private fun QuickCaptureLibrary(
+internal fun QuickCaptureLibrary(
     names: List<QuickCaptureFoodName>,
     onRename: (Long, String) -> Unit,
     onDelete: (Long) -> Unit,
