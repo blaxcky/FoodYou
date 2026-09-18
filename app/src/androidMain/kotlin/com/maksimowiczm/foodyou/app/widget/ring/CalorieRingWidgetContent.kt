@@ -116,7 +116,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: Calorie
             provider = ImageProvider(R.drawable.ic_widget_calendar),
             contentDescription = null,
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
-            modifier = GlanceModifier.size(spec.headerHeight - 2.dp),
+            modifier = GlanceModifier.size(spec.dateIconSize),
         )
         Spacer(modifier = GlanceModifier.width(6.dp))
         Text(
@@ -124,7 +124,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: Calorie
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = spec.headerTextSize,
+                    fontSize = spec.dateTextSize,
                     fontWeight = FontWeight.Medium,
                 ),
             maxLines = 1,

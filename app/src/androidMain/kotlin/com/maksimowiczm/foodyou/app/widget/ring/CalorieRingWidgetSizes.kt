@@ -23,6 +23,9 @@ internal data class CalorieRingLayoutSpec(
     val goalRows: GoalRowsMode,
     val headerHeight: Dp,
     val headerTextSize: TextUnit,
+    /** Date text and calendar icon are slightly smaller than the step count. */
+    val dateTextSize: TextUnit,
+    val dateIconSize: Dp,
     val ring: Dp,
     val stroke: Dp,
     val ringValueTextSize: TextUnit,
@@ -82,6 +85,8 @@ internal fun calorieRingLayoutSpec(size: DpSize): CalorieRingLayoutSpec {
         goalRows = goalRows,
         headerHeight = headerHeight,
         headerTextSize = if (large) 14.sp else 13.sp,
+        dateTextSize = if (large) 12.sp else 11.sp,
+        dateIconSize = headerHeight - 4.dp,
         ring = ring,
         stroke = stroke,
         ringValueTextSize = (ring.value * 0.2f).roundToInt().coerceIn(14, 28).sp,
