@@ -6,14 +6,13 @@ import com.maksimowiczm.foodyou.food.domain.usecase.AddPendingProductPhotoUseCas
 import com.maksimowiczm.foodyou.food.domain.usecase.AddFddbLinksToQueueUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CompletePendingProductUseCase
-import com.maksimowiczm.foodyou.food.domain.usecase.CompleteFoodSnapEntryUseCase
-import com.maksimowiczm.foodyou.food.domain.usecase.CompleteFoodSnapUseCase
-import com.maksimowiczm.foodyou.food.domain.usecase.CaptureFoodSnapPhotoUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.CaptureQuickCapturePhotoUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.CompleteQuickCaptureAfterUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreatePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.CreateRecipeUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFddbImportQueueItemUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeletePendingProductUseCase
-import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodSnapEntryUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DownloadProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncUseCase
@@ -24,8 +23,11 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObservePendingProductsUseCase
-import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodSnapEntriesUseCase
-import com.maksimowiczm.foodyou.food.domain.usecase.ProcessFoodSnapEntryUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.MarkQuickCaptureCompletedUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ObserveQuickCaptureUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.ProcessQuickCapturePhotoUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SaveQuickCaptureEntryUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.UpdateQuickCaptureLibraryUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductQuickCaptureUseCase
@@ -40,14 +42,13 @@ fun Module.foodDomainModule() {
     factoryOf(::AddFddbLinksToQueueUseCase)
     factoryOf(::AddPendingProductPhotoUseCase)
     factoryOf(::CompletePendingProductUseCase)
-    factoryOf(::CompleteFoodSnapEntryUseCase)
-    factoryOf(::CompleteFoodSnapUseCase)
-    factoryOf(::CaptureFoodSnapPhotoUseCase)
+    factoryOf(::CaptureQuickCapturePhotoUseCase)
+    factoryOf(::CompleteQuickCaptureAfterUseCase)
     factoryOf(::CreatePendingProductUseCase)
     factoryOf(::CreateProductUseCase)
     factoryOf(::CreateRecipeUseCase)
     factoryOf(::DeletePendingProductUseCase)
-    factoryOf(::DeleteFoodSnapEntryUseCase)
+    factoryOf(::DeleteQuickCaptureEntriesUseCase)
     factoryOf(::DeleteFoodUseCase)
     factoryOf(::DeleteFddbImportQueueItemUseCase)
     factoryOf(::DownloadProductUseCase)
@@ -74,8 +75,11 @@ fun Module.foodDomainModule() {
     factoryOf(::ObserveMeasurementSuggestionsUseCase)
     factoryOf(::ObservePendingProductUseCase)
     factoryOf(::ObservePendingProductsUseCase)
-    factoryOf(::ObserveFoodSnapEntriesUseCase)
-    factoryOf(::ProcessFoodSnapEntryUseCase)
+    factoryOf(::MarkQuickCaptureCompletedUseCase)
+    factoryOf(::ObserveQuickCaptureUseCase)
+    factoryOf(::ProcessQuickCapturePhotoUseCase)
+    factoryOf(::SaveQuickCaptureEntryUseCase)
+    factoryOf(::UpdateQuickCaptureLibraryUseCase)
     factoryOf(::ResyncFddbProductUseCase)
     factoryOf(::SetProductFavoriteUseCase)
     factoryOf(::SetProductQuickCaptureUseCase)

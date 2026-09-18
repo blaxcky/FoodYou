@@ -37,6 +37,7 @@ data class Settings(
     val todayEnergyGoalAdjustment: TodayEnergyGoalAdjustment? = null,
     val defaultLockedDaySurplusKcal: Double = DEFAULT_LOCKED_DAY_SURPLUS_KCAL,
     val lockedDaySurpluses: List<LockedDaySurplus> = emptyList(),
+    val quickCaptureAggregateSameFoods: Boolean = false,
 ) : UserPreferences
 
 data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)

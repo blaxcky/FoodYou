@@ -74,6 +74,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                     ?.takeIf { it.isFinite() && it >= 0.0 }
                     ?: DEFAULT_LOCKED_DAY_SURPLUS_KCAL,
             lockedDaySurpluses = this.getLockedDaySurpluses(),
+            quickCaptureAggregateSameFoods =
+                this[SettingsPreferencesKeys.quickCaptureAggregateSameFoods] ?: false,
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: Settings) {
@@ -135,6 +137,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             updated.defaultLockedDaySurplusKcal.takeIf { it.isFinite() && it >= 0.0 }
                 ?: DEFAULT_LOCKED_DAY_SURPLUS_KCAL
         setLockedDaySurpluses(updated.lockedDaySurpluses)
+        this[SettingsPreferencesKeys.quickCaptureAggregateSameFoods] =
+            updated.quickCaptureAggregateSameFoods
     }
 }
 
@@ -384,6 +388,8 @@ private object SettingsPreferencesKeys {
     val defaultLockedDaySurplusKcal =
         doublePreferencesKey("settings:defaultLockedDaySurplusKcal")
     val lockedDaySurpluses = stringPreferencesKey("settings:lockedDaySurpluses")
+    val quickCaptureAggregateSameFoods =
+        booleanPreferencesKey("settings:quickCaptureAggregateSameFoods")
     val firstLaunchEpoch = longPreferencesKey("first_launch_epoch")
     val firstLaunchCurrentVersionName = stringPreferencesKey("first_launch_current_version_name")
     val firstLaunchCurrentVersionEpoch = longPreferencesKey("first_launch_current_version_epoch")

@@ -32,7 +32,6 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.FddbDiarySyncEntryEntit
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbImportQueueItemEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbProductSyncStatusEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventTypeConverter
-import com.maksimowiczm.foodyou.food.infrastructure.room.FoodSnapEntryEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.LatestMeasurementSuggestion
 import com.maksimowiczm.foodyou.food.infrastructure.room.MeasurementSuggestionEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.PendingProductEntity
@@ -40,6 +39,8 @@ import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductFts
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.ProductPortionOverrideEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.QuickCaptureFoodNameEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.QuickCaptureLogEntryEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeFts
 import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeIngredientEntity
@@ -83,7 +84,8 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntit
             DailyStepSummaryEntity::class,
             StepExclusionPeriodEntity::class,
             PendingProductEntity::class,
-            FoodSnapEntryEntity::class,
+            QuickCaptureFoodNameEntity::class,
+            QuickCaptureLogEntryEntity::class,
             ProductFts::class,
             RecipeFts::class,
             FddbImportQueueItemEntity::class,
@@ -168,7 +170,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 48
+        const val VERSION = 49
 
         private val migrations: List<Migration> =
             listOf(
@@ -202,6 +204,7 @@ abstract class FoodYouDatabase :
                 ProductFavoriteMigration,
                 ProductQuickCaptureMigration,
                 StepExclusionMigration,
+                QuickCaptureMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -211,6 +214,76 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object QuickCaptureMigration : Migration(48, 49) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `QuickCaptureFoodName` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `normalizedName` TEXT NOT NULL,
+                `usageCount` INTEGER NOT NULL,
+                `lastUsedAt` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        connection.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_QuickCaptureFoodName_normalizedName` ON `QuickCaptureFoodName` (`normalizedName`)"
+        )
+        connection.execSQL(
+            """
+            INSERT INTO `QuickCaptureFoodName` (`name`, `normalizedName`, `usageCount`, `lastUsedAt`)
+            SELECT MIN(TRIM(`foodName`)), LOWER(TRIM(`foodName`)), COUNT(*), MAX(`createdAt`)
+            FROM `FoodSnapEntry`
+            WHERE `foodName` IS NOT NULL AND TRIM(`foodName`) != ''
+            GROUP BY LOWER(TRIM(`foodName`))
+            """.trimIndent()
+        )
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `QuickCaptureLogEntry` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `foodNameId` INTEGER,
+                `foodName` TEXT,
+                `weightMode` INTEGER NOT NULL,
+                `directWeightInGrams` REAL,
+                `beforeWeightInGrams` REAL,
+                `afterWeightInGrams` REAL,
+                `afterRequired` INTEGER NOT NULL,
+                `photoPath` TEXT,
+                `createdAt` INTEGER NOT NULL,
+                `completedAt` INTEGER,
+                FOREIGN KEY(`foodNameId`) REFERENCES `QuickCaptureFoodName`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        connection.execSQL(
+            """
+            INSERT INTO `QuickCaptureLogEntry` (
+                `id`, `foodNameId`, `foodName`, `weightMode`, `directWeightInGrams`,
+                `beforeWeightInGrams`, `afterWeightInGrams`, `afterRequired`, `photoPath`,
+                `createdAt`, `completedAt`
+            )
+            SELECT f.`id`, n.`id`, f.`foodName`, 0, f.`weightInGrams`, NULL, NULL, 0,
+                   f.`photoPath`, f.`createdAt`, NULL
+            FROM `FoodSnapEntry` f
+            LEFT JOIN `QuickCaptureFoodName` n
+                ON n.`normalizedName` = LOWER(TRIM(f.`foodName`))
+            """.trimIndent()
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_QuickCaptureLogEntry_foodNameId` ON `QuickCaptureLogEntry` (`foodNameId`)"
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_QuickCaptureLogEntry_createdAt` ON `QuickCaptureLogEntry` (`createdAt`)"
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_QuickCaptureLogEntry_completedAt` ON `QuickCaptureLogEntry` (`completedAt`)"
+        )
+        connection.execSQL("DROP TABLE `FoodSnapEntry`")
     }
 }
 
