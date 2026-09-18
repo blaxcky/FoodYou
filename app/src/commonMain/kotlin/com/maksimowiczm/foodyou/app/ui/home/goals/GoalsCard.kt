@@ -982,8 +982,8 @@ private fun SupplementalGoalRow(
     val remaining = summary.energyGoal - netEnergy
     val overflow = remaining < 0
     val accentColor = summary.mode.accentColor()
-    val progress =
-        calorieGoalProgress(netEnergy, summary.energyGoal, summary.percentageEnergyGoal).progress
+    val calorieProgress =
+        calorieGoalProgress(netEnergy, summary.energyGoal, summary.percentageEnergyGoal)
     val label =
         stringResource(
             if (summary.mode == GoalDisplayMode.Optimized) {
@@ -1022,10 +1022,12 @@ private fun SupplementalGoalRow(
         }
         Spacer(modifier = Modifier.height(8.dp))
         MacroProgressBar(
-            progress = if (overflow) 1f else progress,
+            progress = calorieProgress.progress,
             trackColor = GoalsTrackColor,
             color = accentColor,
             overflow = overflow,
+            overflowProgress = calorieProgress.overflowProgress,
+            overflowGapWidth = 2.dp,
             modifier = Modifier.fillMaxWidth(),
         )
     }
