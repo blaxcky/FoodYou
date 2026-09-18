@@ -53,7 +53,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -943,10 +942,49 @@ private fun SupplementalGoalsCard(
     summaries: List<GoalDisplaySummaryModel>,
     modifier: Modifier = Modifier,
 ) {
-    val energyFormatter = LocalEnergyFormatter.current
     val labelStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
     val valueStyle = labelStyle.copy(fontFamily = interNumberFontFamily())
-    val labels = summaries.map { summary ->
+
+    FoodYouHomeCard(
+        modifier = modifier,
+        color = GoalsCardColor,
+        shape = GoalsCardShape,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+            summaries.forEachIndexed { index, summary ->
+                if (index > 0) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = GoalsTrackColor,
+                    )
+                }
+                SupplementalGoalRow(
+                    netEnergy = netEnergy,
+                    summary = summary,
+                    labelStyle = labelStyle,
+                    valueStyle = valueStyle,
+                )
+            }
+        }
+    }
+}
+
+/** Label and remaining value share one line; the progress bar below spans the full width. */
+@Composable
+private fun SupplementalGoalRow(
+    netEnergy: Int,
+    summary: GoalDisplaySummaryModel,
+    labelStyle: TextStyle,
+    valueStyle: TextStyle,
+    modifier: Modifier = Modifier,
+) {
+    val energyFormatter = LocalEnergyFormatter.current
+    val remaining = summary.energyGoal - netEnergy
+    val overflow = remaining < 0
+    val accentColor = summary.mode.accentColor()
+    val progress =
+        calorieGoalProgress(netEnergy, summary.energyGoal, summary.percentageEnergyGoal).progress
+    val label =
         stringResource(
             if (summary.mode == GoalDisplayMode.Optimized) {
                 Res.string.label_optimized
@@ -954,99 +992,41 @@ private fun SupplementalGoalsCard(
                 Res.string.label_diet
             }
         )
-    }
-    val values = summaries.map { summary ->
-        val remaining = summary.energyGoal - netEnergy
+    val value =
         "${energyFormatter.formatEnergy(abs(remaining), withSuffix = false).groupDigits()} " +
             stringResource(Res.string.unit_kcal) +
-            if (remaining < 0) " ${stringResource(Res.string.goal_too_much)}" else ""
-    }
-    val textMeasurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    val labelWidth = with(density) {
-        (labels.maxOfOrNull {
-            textMeasurer.measure(it, style = labelStyle, maxLines = 1).size.width
-        } ?: 0).toDp()
-    }
-    val valueWidth = with(density) {
-        (values.maxOfOrNull {
-            textMeasurer.measure(it, style = valueStyle, maxLines = 1).size.width
-        } ?: 0).toDp()
-    }
+            " " +
+            stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
 
-    FoodYouHomeCard(
-        modifier = modifier,
-        color = GoalsCardColor,
-        shape = GoalsCardShape,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
-            summaries.forEachIndexed { index, summary ->
-                if (index > 0) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = GoalsTrackColor,
-                    )
-                }
-                SupplementalGoalRow(
-                    netEnergy = netEnergy,
-                    summary = summary,
-                    label = labels[index],
-                    value = values[index],
-                    labelStyle = labelStyle,
-                    valueStyle = valueStyle,
-                    labelWidth = labelWidth,
-                    valueWidth = valueWidth,
-                )
-            }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                color = accentColor,
+                style = labelStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = value,
+                color = if (overflow) GoalsErrorColor else GoalsTextColor,
+                style = valueStyle,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+            )
         }
-    }
-}
-
-@Composable
-private fun SupplementalGoalRow(
-    netEnergy: Int,
-    summary: GoalDisplaySummaryModel,
-    label: String,
-    value: String,
-    labelStyle: TextStyle,
-    valueStyle: TextStyle,
-    labelWidth: Dp,
-    valueWidth: Dp,
-    modifier: Modifier = Modifier,
-) {
-    val remaining = summary.energyGoal - netEnergy
-    val overflow = remaining < 0
-    val accentColor = summary.mode.accentColor()
-    val progress =
-        calorieGoalProgress(netEnergy, summary.energyGoal, summary.percentageEnergyGoal).progress
-
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.width(labelWidth),
-            color = accentColor,
-            style = labelStyle,
-            maxLines = 1,
-        )
+        Spacer(modifier = Modifier.height(8.dp))
         MacroProgressBar(
             progress = if (overflow) 1f else progress,
             trackColor = GoalsTrackColor,
             color = accentColor,
             overflow = overflow,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = value,
-            modifier = Modifier.width(valueWidth),
-            color = if (overflow) GoalsErrorColor else GoalsTextColor,
-            style = valueStyle,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
