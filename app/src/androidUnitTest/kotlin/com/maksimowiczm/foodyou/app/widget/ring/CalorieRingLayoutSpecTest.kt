@@ -12,6 +12,8 @@ class CalorieRingLayoutSpecTest {
         val spec = calorieRingLayoutSpec(DpSize(250.dp, 110.dp))
 
         assertEquals(GoalRowsMode.None, spec.goalRows)
+        assertEquals(10.dp, spec.padding)
+        assertEquals(14.dp, spec.horizontalPadding)
         assertEquals(66.dp, spec.ring)
         assertEquals(16.sp, spec.metricValueTextSize)
     }
@@ -21,6 +23,8 @@ class CalorieRingLayoutSpecTest {
         val spec = calorieRingLayoutSpec(DpSize(320.dp, 170.dp))
 
         assertEquals(GoalRowsMode.Bars, spec.goalRows)
+        assertEquals(12.dp, spec.padding)
+        assertEquals(16.dp, spec.horizontalPadding)
         assertEquals(70.dp, spec.ring)
         assertEquals(20.sp, spec.metricValueTextSize)
     }

@@ -7,27 +7,36 @@ import kotlin.test.assertTrue
 
 class RingArcsTest {
     @Test
-    fun progressWithoutOverflowRunsClockwiseFromTheTop() {
+    fun progressWithoutOverflowRunsClockwiseFromBottomLeft() {
         val arcs = ringArcs(progress = 0.5f, overflow = 0f)
 
-        assertEquals(-90f, arcs.progressStartDeg)
-        assertEquals(180f, arcs.progressSweepDeg)
+        assertEquals(135f, arcs.progressStartDeg)
+        assertEquals(135f, arcs.progressSweepDeg)
+        assertFalse(arcs.hasGap)
         assertFalse(arcs.hasOverflow)
     }
 
     @Test
-    fun overflowShareStartsAtTheTop() {
+    fun overflowShareTakesTheEndOfTheRingWithAGap() {
         val arcs = ringArcs(progress = 1f, overflow = 0.25f)
 
         assertTrue(arcs.hasOverflow)
-        assertEquals(-90f, arcs.overflowStartDeg)
-        assertEquals(90f, arcs.overflowSweepDeg)
+        assertEquals(135f, arcs.progressStartDeg)
+        assertEquals(202.5f - 2.5f, arcs.progressSweepDeg)
+        assertTrue(arcs.hasGap)
+        assertEquals(335f, arcs.gapStartDeg)
+        assertEquals(2.5f, arcs.gapSweepDeg)
+        assertEquals(337.5f, arcs.overflowStartDeg)
+        assertEquals(67.5f, arcs.overflowSweepDeg)
     }
 
     @Test
-    fun fullOverflowFillsTheRing() {
+    fun fullOverflowFillsTheRingWithoutGap() {
         val arcs = ringArcs(progress = 1f, overflow = 1f)
 
-        assertEquals(360f, arcs.overflowSweepDeg)
+        assertFalse(arcs.hasProgress)
+        assertFalse(arcs.hasGap)
+        assertEquals(135f, arcs.overflowStartDeg)
+        assertEquals(270f, arcs.overflowSweepDeg)
     }
 }

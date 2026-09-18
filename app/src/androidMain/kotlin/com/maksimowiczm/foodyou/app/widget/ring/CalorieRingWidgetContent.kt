@@ -1,8 +1,10 @@
 package com.maksimowiczm.foodyou.app.widget.ring
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -58,7 +60,7 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                 .appWidgetBackground()
                 .widgetCornerRadius()
                 .clickable(actionStartActivity(calorieWidgetLaunchIntent(context)))
-                .padding(spec.padding)
+                .padding(horizontal = spec.horizontalPadding, vertical = spec.padding)
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
             HeaderRow(context, model, spec)
@@ -269,8 +271,6 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
     val centerValue = context.formatWidgetNumber(abs(model.normalLeftKcal))
     val centerLabel =
         context.getString(if (over) R.string.widget_calories_over else R.string.widget_calories_left)
-    val trackColor = if (arcs.hasOverflow) GlanceTheme.colors.errorContainer else GlanceTheme.colors.primaryContainer
-
     Box(
         modifier =
             GlanceModifier.size(ring).semantics {
@@ -279,44 +279,53 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
             },
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            provider = ImageProvider(WidgetRingRenderer.track(sizePx, strokePx)),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(trackColor),
-            modifier = GlanceModifier.size(ring),
+        RingArc(
+            bitmap = WidgetRingRenderer.track(sizePx, strokePx),
+            color = GlanceTheme.colors.primaryContainer,
+            ring = ring,
         )
-        if (arcs.hasProgress && !arcs.hasOverflow) {
-            Image(
-                provider =
-                    ImageProvider(
-                        WidgetRingRenderer.arc(
-                            sizePx = sizePx,
-                            strokePx = strokePx,
-                            startDeg = arcs.progressStartDeg,
-                            sweepDeg = arcs.progressSweepDeg,
-                            roundCaps = true,
-                        )
+        if (arcs.hasProgress) {
+            RingArc(
+                bitmap =
+                    WidgetRingRenderer.arc(
+                        sizePx = sizePx,
+                        strokePx = strokePx,
+                        startDeg = arcs.progressStartDeg,
+                        sweepDeg = arcs.progressSweepDeg,
+                        roundStart = true,
+                        roundEnd = !arcs.hasGap,
                     ),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-                modifier = GlanceModifier.size(ring),
+                color = GlanceTheme.colors.primary,
+                ring = ring,
+            )
+        }
+        if (arcs.hasGap) {
+            RingArc(
+                bitmap =
+                    WidgetRingRenderer.arc(
+                        sizePx = sizePx,
+                        strokePx = strokePx,
+                        startDeg = arcs.gapStartDeg,
+                        sweepDeg = arcs.gapSweepDeg,
+                        roundStart = false,
+                    ),
+                color = GlanceTheme.colors.surface,
+                ring = ring,
             )
         }
         if (arcs.hasOverflow) {
-            Image(
-                provider =
-                    ImageProvider(
-                        WidgetRingRenderer.arc(
-                            sizePx = sizePx,
-                            strokePx = strokePx,
-                            startDeg = arcs.overflowStartDeg,
-                            sweepDeg = arcs.overflowSweepDeg,
-                            roundCaps = true,
-                        )
+            RingArc(
+                bitmap =
+                    WidgetRingRenderer.arc(
+                        sizePx = sizePx,
+                        strokePx = strokePx,
+                        startDeg = arcs.overflowStartDeg,
+                        sweepDeg = arcs.overflowSweepDeg,
+                        roundStart = !arcs.hasGap,
+                        roundEnd = true,
                     ),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.error),
-                modifier = GlanceModifier.size(ring),
+                color = GlanceTheme.colors.error,
+                ring = ring,
             )
         }
         Column(
@@ -346,6 +355,16 @@ private fun RingWithCenter(context: Context, model: CalorieWidgetModel, spec: Ca
             )
         }
     }
+}
+
+@Composable
+private fun RingArc(bitmap: Bitmap, color: ColorProvider, ring: Dp) {
+    Image(
+        provider = ImageProvider(bitmap),
+        contentDescription = null,
+        colorFilter = ColorFilter.tint(color),
+        modifier = GlanceModifier.size(ring),
+    )
 }
 
 @Composable

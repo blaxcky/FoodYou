@@ -19,6 +19,7 @@ internal enum class GoalRowsMode {
 /** Layout parameters derived from the widget's actual size so the content fills the cell. */
 internal data class CalorieRingLayoutSpec(
     val padding: Dp,
+    val horizontalPadding: Dp,
     val goalRows: GoalRowsMode,
     val headerHeight: Dp,
     val headerTextSize: TextUnit,
@@ -63,6 +64,7 @@ internal fun calorieRingLayoutSpec(size: DpSize): CalorieRingLayoutSpec {
     val goalRows = goalRowsMode(size.height)
     val large = goalRows != GoalRowsMode.None
     val padding = if (large) 12.dp else 10.dp
+    val horizontalPadding = padding + 4.dp
     val headerHeight = 20.dp
     val heroHeight =
         size.height - padding * 2 - headerHeight - CalorieRingWidgetSizes.HeaderSpacing -
@@ -71,6 +73,7 @@ internal fun calorieRingLayoutSpec(size: DpSize): CalorieRingLayoutSpec {
     val stroke = (ring / 11f).coerceIn(6.dp, 12.dp)
     return CalorieRingLayoutSpec(
         padding = padding,
+        horizontalPadding = horizontalPadding,
         goalRows = goalRows,
         headerHeight = headerHeight,
         headerTextSize = if (large) 14.sp else 13.sp,
