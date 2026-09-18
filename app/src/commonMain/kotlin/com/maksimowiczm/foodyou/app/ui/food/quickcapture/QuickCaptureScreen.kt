@@ -27,8 +27,9 @@ import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -490,22 +491,29 @@ internal fun QuickCaptureNameField(
         remember(value, names) {
             names.filter { value.isBlank() || it.name.contains(value, ignoreCase = true) }.take(8)
         }
-    Box(modifier.fillMaxWidth()) {
+    val menuExpanded = expanded && suggestions.isNotEmpty()
+    ExposedDropdownMenuBox(
+        expanded = menuExpanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier.fillMaxWidth(),
+    ) {
         OutlinedTextField(
             value = value,
             onValueChange = {
                 onValueChange(it)
                 expanded = true
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                    .fillMaxWidth(),
             label = { Text(stringResource(Res.string.product_name)) },
             singleLine = true,
             isError = isError,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { onNameConfirmed(value) }),
         )
-        DropdownMenu(
-            expanded = expanded && suggestions.isNotEmpty(),
+        ExposedDropdownMenu(
+            expanded = menuExpanded,
             onDismissRequest = { expanded = false },
         ) {
             suggestions.forEach { suggestion ->

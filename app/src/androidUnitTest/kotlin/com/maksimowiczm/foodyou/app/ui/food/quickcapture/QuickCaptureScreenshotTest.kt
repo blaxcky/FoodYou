@@ -6,11 +6,18 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureFoodName
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureWeightMode
@@ -130,6 +137,40 @@ class QuickCaptureScreenshotTest {
     fun library() {
         show { QuickCaptureLibrary(names = names, onRename = { _, _ -> }, onDelete = {}) }
         capture("library")
+    }
+
+    @Test
+    @OptIn(ExperimentalRoborazziApi::class)
+    fun autocompleteKeepsInputFocusedAndSelectionClosesMenu() {
+        var confirmed: String? = null
+        show {
+            var value by remember { mutableStateOf("") }
+            QuickCaptureNameField(
+                value = value,
+                onValueChange = { value = it },
+                names = names,
+                onNameConfirmed = {
+                    value = it
+                    confirmed = it
+                },
+            )
+        }
+
+        val nameField = compose.onNodeWithText("Name")
+        nameField.performTextInput("Sky")
+        nameField.assertIsFocused()
+        val suggestion = compose.onNode(hasText("Skyr Natur") and hasClickAction())
+        suggestion.assertExists()
+        compose.mainClock.advanceTimeBy(500)
+        compose.waitForIdle()
+        captureScreenRoboImage("QuickCaptureScreenshotTest.autocomplete.png")
+
+        suggestion.performSemanticsAction(SemanticsActions.OnClick) {
+            kotlin.test.assertTrue(it())
+        }
+        compose.waitForIdle()
+        compose.runOnIdle { kotlin.test.assertEquals("Skyr Natur", confirmed) }
+        compose.onAllNodesWithText("Skyr Natur").assertCountEquals(1)
     }
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {
