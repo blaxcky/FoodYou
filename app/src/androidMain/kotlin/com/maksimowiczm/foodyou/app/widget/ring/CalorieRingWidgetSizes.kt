@@ -30,6 +30,8 @@ internal data class CalorieRingLayoutSpec(
     val metricLabelTextSize: TextUnit,
     val metricValueTextSize: TextUnit,
     val goalRowHeight: Dp,
+    /** Width of the goal progress bar between label and value column. */
+    val goalBarWidth: Dp,
     val goalTextSize: TextUnit,
     val goalValueTextSize: TextUnit,
 )
@@ -39,6 +41,10 @@ internal object CalorieRingWidgetSizes {
     val InlineGoalsMinHeight = 134.dp
     val BarGoalsMinHeight = 158.dp
     val GoalRowHeight = 22.dp
+    val GoalLabelWidth = 66.dp
+    val GoalValueWidth = 80.dp
+    val GoalBarSpacing = 8.dp
+    val GoalBarOverflowGap = 2.dp
     val HeaderSpacing = 4.dp
     val LargeMetricsMinHeight = 90.dp
     val MediumMetricsMinHeight = 70.dp
@@ -89,6 +95,9 @@ internal fun calorieRingLayoutSpec(size: DpSize): CalorieRingLayoutSpec {
                 else -> 16.sp
             },
         goalRowHeight = CalorieRingWidgetSizes.GoalRowHeight,
+        goalBarWidth =
+            size.width - horizontalPadding * 2 - CalorieRingWidgetSizes.GoalLabelWidth -
+                CalorieRingWidgetSizes.GoalBarSpacing - CalorieRingWidgetSizes.GoalValueWidth,
         goalTextSize = if (large) 12.sp else 11.sp,
         goalValueTextSize = if (large) 13.sp else 12.sp,
     )

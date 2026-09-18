@@ -26,6 +26,7 @@ class CalorieRingLayoutSpecTest {
         assertEquals(12.dp, spec.padding)
         assertEquals(16.dp, spec.horizontalPadding)
         assertEquals(70.dp, spec.ring)
+        assertEquals(134.dp, spec.goalBarWidth)
         assertEquals(20.sp, spec.metricValueTextSize)
     }
 

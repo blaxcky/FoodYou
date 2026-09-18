@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +41,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
+import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProgress
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetLaunchIntent
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetProgress
 import com.maksimowiczm.foodyou.app.widget.formatWidgetDate
@@ -474,7 +476,7 @@ private fun GoalBarRow(
             style =
                 TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = spec.goalTextSize),
             maxLines = 1,
-            modifier = GlanceModifier.width(66.dp),
+            modifier = GlanceModifier.width(CalorieRingWidgetSizes.GoalLabelWidth),
         )
         if (goalKcal == null || leftKcal == null) {
             Text(
@@ -488,21 +490,67 @@ private fun GoalBarRow(
                 modifier = GlanceModifier.defaultWeight(),
             )
         } else {
-            val progress = calorieWidgetProgress(netKcal, goalKcal)
-            val overflowing = progress.overflow > 0f
-            Box(modifier = GlanceModifier.defaultWeight().height(8.dp).cornerRadius(4.dp)) {
+            GoalBar(
+                progress = calorieWidgetProgress(netKcal, goalKcal),
+                barWidth = spec.goalBarWidth,
+                modifier = GlanceModifier.defaultWeight(),
+            )
+            Spacer(modifier = GlanceModifier.width(CalorieRingWidgetSizes.GoalBarSpacing))
+            Box(
+                modifier = GlanceModifier.width(CalorieRingWidgetSizes.GoalValueWidth),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                GoalValue(context, spec, leftKcal)
+            }
+        }
+    }
+}
+
+/**
+ * Mirrors the in-app gauge on a bar: below the goal the primary share grows from the left. Once
+ * exceeded the bar stays full, with the primary share on the left, a small surface-colored gap and
+ * the overflow share in the error color pushing in from the right.
+ */
+@Composable
+private fun GoalBar(progress: CalorieWidgetProgress, barWidth: Dp, modifier: GlanceModifier) {
+    val overflow = progress.overflow.coerceIn(0f, 1f)
+    Box(modifier = modifier.height(8.dp).cornerRadius(4.dp)) {
+        if (overflow <= 0f) {
+            LinearProgressIndicator(
+                progress = progress.progress.coerceIn(0f, 1f),
+                modifier = GlanceModifier.fillMaxSize(),
+                color = GlanceTheme.colors.primary,
+                backgroundColor = GlanceTheme.colors.primaryContainer,
+            )
+        } else {
+            val visibleProgress = 1f - overflow
+            val gap =
+                if (visibleProgress > 0f && barWidth > 0.dp) {
+                    (CalorieRingWidgetSizes.GoalBarOverflowGap / barWidth).coerceAtMost(visibleProgress)
+                } else {
+                    0f
+                }
+            LinearProgressIndicator(
+                progress = 1f,
+                modifier = GlanceModifier.fillMaxSize(),
+                color = GlanceTheme.colors.error,
+                backgroundColor = GlanceTheme.colors.error,
+            )
+            if (gap > 0f) {
                 LinearProgressIndicator(
-                    progress = if (overflowing) progress.overflow else progress.progress,
+                    progress = visibleProgress,
                     modifier = GlanceModifier.fillMaxSize(),
-                    color = if (overflowing) GlanceTheme.colors.error else GlanceTheme.colors.primary,
-                    backgroundColor =
-                        if (overflowing) GlanceTheme.colors.errorContainer
-                        else GlanceTheme.colors.primaryContainer,
+                    color = GlanceTheme.colors.surface,
+                    backgroundColor = ColorProvider(Color.Transparent),
                 )
             }
-            Spacer(modifier = GlanceModifier.width(8.dp))
-            Box(modifier = GlanceModifier.width(80.dp), contentAlignment = Alignment.CenterEnd) {
-                GoalValue(context, spec, leftKcal)
+            if (visibleProgress - gap > 0f) {
+                LinearProgressIndicator(
+                    progress = visibleProgress - gap,
+                    modifier = GlanceModifier.fillMaxSize(),
+                    color = GlanceTheme.colors.primary,
+                    backgroundColor = ColorProvider(Color.Transparent),
+                )
             }
         }
     }
