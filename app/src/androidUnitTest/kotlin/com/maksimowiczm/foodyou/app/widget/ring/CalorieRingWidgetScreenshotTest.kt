@@ -66,11 +66,6 @@ class CalorieRingWidgetScreenshotTest {
         root.captureRoboImage(filePath = "CalorieRingWidgetScreenshotTest.preview-xxhdpi.png")
     }
 
-    @Test
-    @Config(sdk = [30])
-    fun cellLightFallbackTheme() =
-        capture("cell", 320, 170, night = false, case = "fallback", model = normal())
-
     private fun capture(
         size: String,
         width: Int,

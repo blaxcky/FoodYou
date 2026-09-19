@@ -114,15 +114,15 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 private val GoalsCardShape = RoundedCornerShape(24.dp)
-private val GoalsCardColor = Color(0xFFFFFFFF)
-private val GoalsTextColor = Color(0xFF202124)
-private val GoalsMutedTextColor = Color(0xFF5F6368)
-private val GoalsTrackColor = Color(0xFFE4EEF5)
-private val GoalsProgressColor = Color(0xFF006B9A)
-private val GoalsErrorColor = Color(0xFFC51F1F)
+internal val GoalsCardColor = Color(0xFFFFFFFF)
+internal val GoalsTextColor = Color(0xFF202124)
+internal val GoalsMutedTextColor = Color(0xFF5F6368)
+internal val GoalsTrackColor = Color(0xFFE4EEF5)
+internal val GoalsProgressColor = Color(0xFF006B9A)
+internal val GoalsErrorColor = Color(0xFFC51F1F)
 private val NormalGoalComparisonBorderColor = Color(0xFFDADCE0)
 private val OptimizedGoalAccentColor = GoalsProgressColor
-private val DietGoalAccentColor = Color(0xFFC98A00)
+internal val DietGoalAccentColor = Color(0xFFC98A00)
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)

@@ -40,6 +40,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.maksimowiczm.foodyou.R
+import com.maksimowiczm.foodyou.app.ui.home.goals.DietGoalAccentColor
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProgress
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetLaunchIntent
@@ -78,6 +79,7 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                     context = context,
                     spec = spec,
                     label = context.getString(R.string.widget_calories_optimized),
+                    accent = GlanceTheme.colors.primary,
                     goalKcal = model.optimizedGoalKcal,
                     leftKcal = model.optimizedLeftKcal,
                     netKcal = model.netKcal,
@@ -88,6 +90,7 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                     context = context,
                     spec = spec,
                     label = context.getString(R.string.widget_calories_diet),
+                    accent = ColorProvider(DietGoalAccentColor),
                     goalKcal = model.dietGoalKcal,
                     leftKcal = model.dietLeftKcal,
                     netKcal = model.netKcal,
@@ -188,7 +191,7 @@ private fun EatenMetric(
         modifier = modifier,
         label = context.getString(R.string.widget_calories_eaten),
         value = model.eatenKcal,
-        color = GlanceTheme.colors.primary,
+        color = GlanceTheme.colors.onSurface,
     )
 
 @Composable
@@ -204,7 +207,7 @@ private fun BurnedMetric(
         modifier = modifier,
         label = context.getString(R.string.widget_calories_burned),
         value = model.burnedKcal,
-        color = GlanceTheme.colors.tertiary,
+        color = GlanceTheme.colors.onSurface,
     )
 
 @Composable
@@ -462,6 +465,7 @@ private fun GoalBarRow(
     context: Context,
     spec: CalorieRingLayoutSpec,
     label: String,
+    accent: ColorProvider,
     goalKcal: Int?,
     leftKcal: Int?,
     netKcal: Int,
@@ -473,8 +477,7 @@ private fun GoalBarRow(
     ) {
         Text(
             text = label,
-            style =
-                TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = spec.goalTextSize),
+            style = TextStyle(color = accent, fontSize = spec.goalTextSize),
             maxLines = 1,
             modifier = GlanceModifier.width(CalorieRingWidgetSizes.GoalLabelWidth),
         )
@@ -492,6 +495,7 @@ private fun GoalBarRow(
         } else {
             GoalBar(
                 progress = calorieWidgetProgress(netKcal, goalKcal),
+                accent = accent,
                 barWidth = spec.goalBarWidth,
                 modifier = GlanceModifier.defaultWeight(),
             )
@@ -507,19 +511,24 @@ private fun GoalBarRow(
 }
 
 /**
- * Mirrors the in-app gauge on a bar: below the goal the primary share grows from the left. Once
- * exceeded the bar stays full, with the primary share on the left, a small surface-colored gap and
+ * Mirrors the in-app gauge on a bar: below the goal the accent share grows from the left. Once
+ * exceeded the bar stays full, with the accent share on the left, a small surface-colored gap and
  * the overflow share in the error color pushing in from the right.
  */
 @Composable
-private fun GoalBar(progress: CalorieWidgetProgress, barWidth: Dp, modifier: GlanceModifier) {
+private fun GoalBar(
+    progress: CalorieWidgetProgress,
+    accent: ColorProvider,
+    barWidth: Dp,
+    modifier: GlanceModifier,
+) {
     val overflow = progress.overflow.coerceIn(0f, 1f)
     Box(modifier = modifier.height(8.dp).cornerRadius(4.dp)) {
         if (overflow <= 0f) {
             LinearProgressIndicator(
                 progress = progress.progress.coerceIn(0f, 1f),
                 modifier = GlanceModifier.fillMaxSize(),
-                color = GlanceTheme.colors.primary,
+                color = accent,
                 backgroundColor = GlanceTheme.colors.primaryContainer,
             )
         } else {
@@ -548,7 +557,7 @@ private fun GoalBar(progress: CalorieWidgetProgress, barWidth: Dp, modifier: Gla
                 LinearProgressIndicator(
                     progress = visibleProgress - gap,
                     modifier = GlanceModifier.fillMaxSize(),
-                    color = GlanceTheme.colors.primary,
+                    color = accent,
                     backgroundColor = ColorProvider(Color.Transparent),
                 )
             }

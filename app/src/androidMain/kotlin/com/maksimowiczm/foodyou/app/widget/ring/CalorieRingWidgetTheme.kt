@@ -1,25 +1,31 @@
 package com.maksimowiczm.foodyou.app.widget.ring
 
-import android.os.Build
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceTheme
-import androidx.glance.LocalContext
 import androidx.glance.material3.ColorProviders
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsErrorColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsMutedTextColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsProgressColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTextColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTrackColor
 
 /**
- * Always-light theme: dynamic Material You tones on API 31+, the Material 3 baseline below, in
- * both cases ignoring the system's night mode.
+ * The fixed palette of the in-app goals card: white card, blue progress on a light blue track and
+ * red overflow. Deliberately ignores Material You wallpaper tones and the system's night mode so
+ * the widget always matches the app.
  */
 @Composable
 internal fun CalorieRingWidgetTheme(content: @Composable () -> Unit) {
-    val context = LocalContext.current
     val scheme =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            dynamicLightColorScheme(context)
-        } else {
-            lightColorScheme()
-        }
+        lightColorScheme(
+            surface = GoalsCardColor,
+            onSurface = GoalsTextColor,
+            onSurfaceVariant = GoalsMutedTextColor,
+            primary = GoalsProgressColor,
+            primaryContainer = GoalsTrackColor,
+            error = GoalsErrorColor,
+        )
     GlanceTheme(colors = ColorProviders(scheme), content = content)
 }
