@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -141,6 +142,16 @@ class HomeScreenScreenshotTest {
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
+            )
+            Icon(
+                imageVector = Icons.Default.Sync,
+                contentDescription = null,
+                modifier = Modifier.padding(12.dp).size(24.dp),
+            )
+            Icon(
+                imageVector = Icons.Outlined.Bolt,
+                contentDescription = null,
+                modifier = Modifier.padding(12.dp).size(24.dp),
             )
             Icon(
                 imageVector = Icons.Default.Settings,

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
@@ -199,6 +200,12 @@ fun HomeScreen(
                 },
                 actions = {
                     HomeSyncButton(state = homeSyncState, onClick = onHomeSyncClick)
+                    IconButton(onClick = onQuickCapture) {
+                        Icon(
+                            imageVector = Icons.Outlined.Bolt,
+                            contentDescription = stringResource(Res.string.headline_quick_capture),
+                        )
+                    }
                     IconButton(onClick = { showSettingsMenu = true }) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
