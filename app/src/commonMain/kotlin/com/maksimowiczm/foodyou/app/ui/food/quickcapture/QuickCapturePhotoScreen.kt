@@ -205,6 +205,7 @@ internal fun QuickCapturePhotoForm(
     val keyboardController = LocalSoftwareKeyboardController.current
     val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
     val valid = name.isNotBlank() && parsedWeight?.let { it.isFinite() && it > 0.0 } == true
+    val weightError = submitted && !valid
 
     LaunchedEffect(autoFocusKey, step) {
         if (autoFocusKey != null) {
@@ -236,12 +237,13 @@ internal fun QuickCapturePhotoForm(
                 suffix = { Text("g") },
                 singleLine = true,
                 enabled = !processing,
-                isError = submitted && parsedWeight?.let { !it.isFinite() || it <= 0.0 } != false,
-                supportingText = {
-                    if (submitted && !valid) {
-                        Text(stringResource(Res.string.error_quick_capture_weight))
-                    }
-                },
+                isError = weightError,
+                supportingText =
+                    if (weightError) {
+                        { Text(stringResource(Res.string.error_quick_capture_weight)) }
+                    } else {
+                        null
+                    },
                 keyboardOptions =
                     KeyboardOptions(
                         keyboardType = KeyboardType.Decimal,
