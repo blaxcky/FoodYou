@@ -405,6 +405,123 @@ class QuickCaptureScreenshotTest {
         compose.onAllNodesWithText("Skyr Natur").assertCountEquals(1)
     }
 
+    @Test
+    fun autocompleteWaitsForFirstNonBlankCharacter() {
+        show {
+            var value by remember { mutableStateOf("") }
+            QuickCaptureNameField(
+                value = value,
+                onValueChange = { value = it },
+                names = names,
+                onNameConfirmed = { value = it },
+            )
+        }
+
+        val nameField = compose.onNodeWithText("Name")
+        nameField.performClick()
+        compose.onNodeWithText("Skyr Natur").assertDoesNotExist()
+        nameField.performTextInput(" ")
+        compose.onNodeWithText("Skyr Natur").assertDoesNotExist()
+        nameField.performTextClearance()
+        nameField.performTextInput("S")
+        compose.onNode(hasText("Skyr Natur") and hasClickAction()).assertExists()
+    }
+
+    @Test
+    fun photoNameImeClosesSuggestionsAndFocusesWeight() {
+        show {
+            var name by remember { mutableStateOf("") }
+            var weight by remember { mutableStateOf("") }
+            QuickCapturePhotoForm(
+                name = name,
+                onNameChange = { name = it },
+                weight = weight,
+                onWeightChange = { weight = it },
+                names = names,
+                submitted = false,
+                processing = false,
+                autoFocusKey = 6,
+                onSubmit = {},
+            )
+        }
+
+        val nameField = compose.onNodeWithText("Name")
+        nameField.assertIsFocused()
+        nameField.performTextInput("Sky")
+        compose.onNode(hasText("Skyr Natur") and hasClickAction()).assertExists()
+        nameField.performImeAction()
+        compose.onNode(hasText("Skyr Natur") and hasClickAction()).assertDoesNotExist()
+        compose.onAllNodes(hasSetTextAction())[1].assertIsFocused()
+    }
+
+    @Test
+    fun photoWeightImeSubmitsOnlyOnce() {
+        var submitCount = 0
+        show {
+            QuickCapturePhotoEditor(
+                entryId = 6,
+                names = names,
+                onProcess = { _, _ ->
+                    submitCount += 1
+                },
+            )
+        }
+
+        compose.onNodeWithText("Name").apply {
+            performTextInput("Test")
+            performImeAction()
+        }
+        val weightField = compose.onAllNodes(hasSetTextAction())[1]
+        weightField.performTextInput("125")
+        weightField.performImeAction()
+        compose.runOnIdle { kotlin.test.assertEquals(1, submitCount) }
+        compose.onNode(hasText("Gewicht") and isNotEnabled()).assertExists()
+    }
+
+    @Test
+    fun invalidPhotoWeightStaysUnprocessed() {
+        var submitCount = 0
+        show {
+            QuickCapturePhotoEditor(
+                entryId = 6,
+                names = names,
+                onProcess = { _, _ -> submitCount += 1 },
+            )
+        }
+
+        compose.onNodeWithText("Name").apply {
+            performTextInput("Test")
+            performImeAction()
+        }
+        compose.onAllNodes(hasSetTextAction())[1].apply {
+            performTextInput("0")
+            performImeAction()
+            assertIsFocused()
+        }
+        compose.runOnIdle { kotlin.test.assertEquals(0, submitCount) }
+        compose.onNodeWithText("Ein gültiges positives Gewicht eingeben").assertExists()
+    }
+
+    @Test
+    fun photoFormHasNoVisibleProcessButton() {
+        show {
+            QuickCapturePhotoForm(
+                name = "Test",
+                onNameChange = {},
+                weight = "125",
+                onWeightChange = {},
+                names = names,
+                submitted = false,
+                processing = false,
+                onSubmit = {},
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+
+        compose.onNodeWithText("Foto bearbeiten").assertDoesNotExist()
+        capture("photo-form")
+    }
+
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {
         activity = Robolectric.buildActivity(ComponentActivity::class.java).setup()
         activity.get().setContent {

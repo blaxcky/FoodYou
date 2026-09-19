@@ -12,8 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.RotateLeft
 import androidx.compose.material.icons.automirrored.outlined.RotateRight
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -21,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -39,13 +39,13 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.pending.ZoomablePendingProductPhoto
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
+import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureFoodName
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ProcessQuickCapturePhotoUseCase
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_delete
-import foodyou.app.generated.resources.action_quick_capture_process_photo
 import foodyou.app.generated.resources.action_rotate_photo_left
 import foodyou.app.generated.resources.action_rotate_photo_right
 import foodyou.app.generated.resources.error_quick_capture_weight
@@ -71,25 +71,14 @@ fun QuickCapturePhotoScreen(
     val viewModel: QuickCapturePhotoViewModel = koinViewModel { parametersOf(entryId) }
     val entry by viewModel.entry.collectAsStateWithLifecycle()
     val names by viewModel.names.collectAsStateWithLifecycle()
-    var name by rememberSaveable { mutableStateOf("") }
-    var weight by rememberSaveable { mutableStateOf("") }
-    var submitted by rememberSaveable { mutableStateOf(false) }
     var rotation by rememberSaveable(entryId) { mutableIntStateOf(0) }
     var confirmDelete by rememberSaveable(entryId) { mutableStateOf(false) }
-    val weightFocus = remember { FocusRequester() }
-    val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
-    val valid = name.isNotBlank() && parsedWeight?.let { it.isFinite() && it > 0.0 } == true
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
         when (event) {
             is QuickCapturePhotoEvent.Processed -> onProcessed(event.nextEntryId)
             QuickCapturePhotoEvent.Deleted -> onBack()
         }
-    }
-
-    fun submit() {
-        submitted = true
-        if (valid) viewModel.process(name, requireNotNull(parsedWeight))
     }
 
     if (confirmDelete && entry != null) {
@@ -136,38 +125,113 @@ fun QuickCapturePhotoScreen(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                QuickCaptureNameField(
-                    value = name,
-                    onValueChange = { name = it },
+                QuickCapturePhotoEditor(
+                    entryId = current.id,
                     names = names,
-                    onNameConfirmed = {
-                        name = it
-                        weightFocus.requestFocus()
-                    },
-                    isError = submitted && name.isBlank(),
+                    onProcess = viewModel::process,
                 )
-                OutlinedTextField(
-                    value = weight,
-                    onValueChange = { weight = it },
-                    modifier = Modifier.fillMaxWidth().focusRequester(weightFocus),
-                    label = { Text(stringResource(Res.string.headline_quick_capture_direct)) },
-                    suffix = { Text("g") },
-                    singleLine = true,
-                    isError = submitted && parsedWeight?.let { !it.isFinite() || it <= 0.0 } != false,
-                    supportingText = {
-                        if (submitted && !valid) {
-                            Text(stringResource(Res.string.error_quick_capture_weight))
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { submit() }),
-                )
-                Button(onClick = { submit() }, enabled = valid, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.Save, contentDescription = null)
-                    Text(stringResource(Res.string.action_quick_capture_process_photo))
-                }
             }
         }
+    }
+}
+
+@Composable
+internal fun QuickCapturePhotoEditor(
+    entryId: Long,
+    names: List<QuickCaptureFoodName>,
+    onProcess: (String, Double) -> Unit,
+    modifier: Modifier = Modifier,
+    autoFocus: Boolean = true,
+) {
+    var name by rememberSaveable(entryId) { mutableStateOf("") }
+    var weight by rememberSaveable(entryId) { mutableStateOf("") }
+    var submitted by rememberSaveable(entryId) { mutableStateOf(false) }
+    var processing by remember(entryId) { mutableStateOf(false) }
+    val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
+    val valid = name.isNotBlank() && parsedWeight?.let { it.isFinite() && it > 0.0 } == true
+
+    fun submit() {
+        if (processing) return
+        submitted = true
+        if (valid) {
+            processing = true
+            onProcess(name, requireNotNull(parsedWeight))
+        }
+    }
+
+    QuickCapturePhotoForm(
+        name = name,
+        onNameChange = { name = it },
+        weight = weight,
+        onWeightChange = { weight = it },
+        names = names,
+        submitted = submitted,
+        processing = processing,
+        autoFocusKey = entryId.takeIf { autoFocus },
+        onSubmit = ::submit,
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun QuickCapturePhotoForm(
+    name: String,
+    onNameChange: (String) -> Unit,
+    weight: String,
+    onWeightChange: (String) -> Unit,
+    names: List<QuickCaptureFoodName>,
+    submitted: Boolean,
+    processing: Boolean,
+    onSubmit: () -> Unit,
+    modifier: Modifier = Modifier,
+    autoFocusKey: Long? = null,
+) {
+    val nameFocus = remember { FocusRequester() }
+    val weightFocus = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
+    val valid = name.isNotBlank() && parsedWeight?.let { it.isFinite() && it > 0.0 } == true
+
+    LaunchedEffect(autoFocusKey) {
+        if (autoFocusKey != null) {
+            nameFocus.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        QuickCaptureNameField(
+            value = name,
+            onValueChange = onNameChange,
+            names = names,
+            onNameConfirmed = {
+                onNameChange(it)
+                weightFocus.requestFocus()
+            },
+            isError = submitted && name.isBlank(),
+            textFieldModifier = Modifier.focusRequester(nameFocus),
+        )
+        OutlinedTextField(
+            value = weight,
+            onValueChange = onWeightChange,
+            modifier = Modifier.fillMaxWidth().focusRequester(weightFocus),
+            label = { Text(stringResource(Res.string.headline_quick_capture_direct)) },
+            suffix = { Text("g") },
+            singleLine = true,
+            enabled = !processing,
+            isError = submitted && parsedWeight?.let { !it.isFinite() || it <= 0.0 } != false,
+            supportingText = {
+                if (submitted && !valid) {
+                    Text(stringResource(Res.string.error_quick_capture_weight))
+                }
+            },
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done,
+                ),
+            keyboardActions = KeyboardActions(onDone = { if (!processing) onSubmit() }),
+        )
     }
 }
 

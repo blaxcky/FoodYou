@@ -73,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -742,30 +743,43 @@ internal fun QuickCaptureNameField(
     textFieldModifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
     val suggestions =
         remember(value, names) {
-            names.filter { value.isBlank() || it.name.contains(value, ignoreCase = true) }.take(8)
+            if (value.isBlank()) emptyList()
+            else names.filter { it.name.contains(value, ignoreCase = true) }.take(8)
         }
-    val menuExpanded = expanded && suggestions.isNotEmpty()
+    val menuExpanded = expanded && focused && suggestions.isNotEmpty()
     ExposedDropdownMenuBox(
         expanded = menuExpanded,
-        onExpandedChange = { expanded = it },
+        onExpandedChange = { expanded = it && value.isNotBlank() },
         modifier = modifier.fillMaxWidth(),
     ) {
         OutlinedTextField(
             value = value,
             onValueChange = {
                 onValueChange(it)
-                expanded = true
+                expanded = it.isNotBlank()
             },
             modifier =
-                textFieldModifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                textFieldModifier
+                    .onFocusChanged {
+                        focused = it.isFocused
+                        if (!it.isFocused) expanded = false
+                    }
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                     .fillMaxWidth(),
             label = { Text(stringResource(Res.string.product_name)) },
             singleLine = true,
             isError = isError,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { onNameConfirmed(value) }),
+            keyboardActions =
+                KeyboardActions(
+                    onNext = {
+                        expanded = false
+                        onNameConfirmed(value)
+                    }
+                ),
         )
         ExposedDropdownMenu(
             expanded = menuExpanded,
@@ -942,22 +956,24 @@ internal fun QuickCapturePhotos(
     }
     LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
         items(entries.sortedBy { it.createdAt }, key = { it.id }) { entry ->
-            ListItem(
-                modifier = Modifier.clickable { onPhoto(entry.id) },
-                headlineContent = { Text(stringResource(Res.string.action_quick_capture_process_photo)) },
-                leadingContent = {
-                    PendingProductPhoto(
-                        photoPath = requireNotNull(entry.photoPath),
-                        photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
-                        modifier = Modifier.size(72.dp),
-                    )
-                },
-                trailingContent = {
-                    IconButton(onClick = { deletePhoto = entry }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
-                    }
-                },
-            )
+            val processPhotoLabel = stringResource(Res.string.action_quick_capture_process_photo)
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .clickable(onClickLabel = processPhotoLabel) { onPhoto(entry.id) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PendingProductPhoto(
+                    photoPath = requireNotNull(entry.photoPath),
+                    photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
+                    modifier = Modifier.size(72.dp),
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { deletePhoto = entry }) {
+                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
+                }
+            }
         }
     }
 }
