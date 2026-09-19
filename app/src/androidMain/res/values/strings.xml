@@ -20,6 +20,8 @@
     <string name="widget_calorie_ring_title">Kalorien-Ring</string>
     <string name="widget_calorie_ring_description">Übrige Kalorien als Ring mit Optimiert- und Diät-Fortschritt</string>
     <string name="widget_calorie_ring_ring_description">%1$s von %2$s kcal gegessen, %3$s übrig</string>
+    <string name="shortcut_quick_capture_camera_short">Foto</string>
+    <string name="shortcut_quick_capture_camera_long">Foto-Schnellerfassung</string>
     <string name="shortcut_scan_barcode_short">Barcode</string>
     <string name="shortcut_scan_barcode_long">Barcode scannen</string>
 </resources>

@@ -6,4 +6,8 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
+    <style name="Theme.FoodYou.QuickCaptureCamera" parent="Theme.FoodYou">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
 </resources>

@@ -46,6 +46,14 @@
         </activity>
 
         <activity
+            android:name=".app.infrastructure.android.QuickCaptureCameraActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.quick_capture_camera"
+            android:theme="@style/Theme.FoodYou.QuickCaptureCamera" />
+
+        <activity
             android:name=".app.infrastructure.android.FullBackupActivity"
             android:exported="false"
             android:theme="@style/Theme.FoodYou" />

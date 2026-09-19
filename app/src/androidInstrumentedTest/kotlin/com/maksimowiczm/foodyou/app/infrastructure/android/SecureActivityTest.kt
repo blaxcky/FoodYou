@@ -48,6 +48,9 @@ class SecureActivityTest {
 
     @Test fun testSecureMainActivity() = testSecureFlag<MainActivity>()
 
+    @Test fun testSecureQuickCaptureCameraActivity() =
+        testSecureFlag<QuickCaptureCameraActivity>()
+
     @Test fun testSecureShareProductActivity() = testSecureFlag<ShareProductActivity>()
 
     @Test fun testSecureCrashReportActivity() = testSecureFlag<CrashReportActivity>()

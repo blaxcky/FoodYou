@@ -1,13 +1,8 @@
 package com.maksimowiczm.foodyou.app.infrastructure.android
 
 import android.content.Intent
-import android.content.pm.ShortcutInfo
-import android.content.pm.ShortcutManager
-import android.graphics.drawable.Icon
-import android.os.Build
 import android.os.Bundle
 import androidx.compose.runtime.mutableStateOf
-import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.app.ui.FoodYouApp
 import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchAction
 import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchRequest
@@ -19,7 +14,7 @@ class MainActivity : FoodYouAbstractActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        publishShortcuts()
+        publishAppShortcuts(this)
         if (savedInstanceState == null) {
             launchRequestState.value = intent.toLaunchRequest()
         }
@@ -51,25 +46,6 @@ class MainActivity : FoodYouAbstractActivity() {
         CalorieRingWidget.requestUpdateAll(this)
     }
 
-    private fun publishShortcuts() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return
-
-        val shortcutIntent =
-            Intent(this, MainActivity::class.java)
-                .setAction(ACTION_SCAN_BARCODE)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-
-        val shortcut =
-            ShortcutInfo.Builder(this, SHORTCUT_SCAN_BARCODE_ID)
-                .setShortLabel(getString(R.string.shortcut_scan_barcode_short))
-                .setLongLabel(getString(R.string.shortcut_scan_barcode_long))
-                .setIcon(Icon.createWithResource(this, R.drawable.ic_shortcut_scan_barcode))
-                .setIntent(shortcutIntent)
-                .build()
-
-        getSystemService(ShortcutManager::class.java).dynamicShortcuts = listOf(shortcut)
-    }
-
     private fun Intent?.toLaunchRequest(): FoodYouLaunchRequest? =
         when (this?.action) {
             ACTION_SCAN_BARCODE ->
@@ -80,9 +56,4 @@ class MainActivity : FoodYouAbstractActivity() {
 
             else -> null
         }
-
-    private companion object {
-        const val ACTION_SCAN_BARCODE = "com.maksimowiczm.foodyou.action.SCAN_BARCODE"
-        const val SHORTCUT_SCAN_BARCODE_ID = "scan_barcode"
-    }
 }
