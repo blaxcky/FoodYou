@@ -73,6 +73,10 @@ internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAd
                     ?: return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidNumber)
             }
 
+        if (values.any { !it.isFinite() }) {
+            return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidNumber)
+        }
+
         if (values.any { it < 0 }) {
             return QuickAddCsvParseResult.Failure(QuickAddCsvError.NegativeNumber)
         }

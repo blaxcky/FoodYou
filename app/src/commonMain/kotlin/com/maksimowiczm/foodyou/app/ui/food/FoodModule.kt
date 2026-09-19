@@ -4,14 +4,19 @@ import com.maksimowiczm.foodyou.app.ui.food.product.foodProduct
 import com.maksimowiczm.foodyou.app.ui.food.recipe.foodRecipe
 import com.maksimowiczm.foodyou.app.ui.food.search.FoodSearchViewModel
 import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCaptureCameraViewModel
+import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCaptureCsvImporter
+import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCaptureCsvImporterImpl
 import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCapturePhotoViewModel
 import com.maksimowiczm.foodyou.app.ui.food.quickcapture.QuickCaptureViewModel
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import org.koin.core.module.Module
+import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.bind
 
 fun Module.food() {
+    factoryOf(::QuickCaptureCsvImporterImpl).bind<QuickCaptureCsvImporter>()
     viewModel { QuickCaptureCameraViewModel(observe = get(), capture = get()) }
     viewModel {
         QuickCaptureViewModel(
@@ -22,6 +27,9 @@ fun Module.food() {
             deleteEntries = get(),
             updateLibrary = get(),
             settingsRepository = userPreferencesRepository(),
+            csvParser = get(),
+            csvImporter = get(),
+            savedStateHandle = get(),
         )
     }
     viewModel { (entryId: Long) ->

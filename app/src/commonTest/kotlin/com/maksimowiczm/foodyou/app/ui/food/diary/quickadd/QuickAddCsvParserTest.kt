@@ -200,6 +200,20 @@ class QuickAddCsvParserTest {
     }
 
     @Test
+    fun rejectsNonFiniteNumbers() = runBlocking {
+        val header = "name,energy,proteins,carbohydrates,fats\n"
+
+        assertEquals(
+            QuickAddCsvError.InvalidNumber,
+            parser.parse(header + "Reis,NaN,45,72,18").errorOrFail(),
+        )
+        assertEquals(
+            QuickAddCsvError.InvalidNumber,
+            parser.parse(header + "Reis,650,Infinity,72,18").errorOrFail(),
+        )
+    }
+
+    @Test
     fun rejectsNegativeValues() = runBlocking {
         val result =
             parser.parse(

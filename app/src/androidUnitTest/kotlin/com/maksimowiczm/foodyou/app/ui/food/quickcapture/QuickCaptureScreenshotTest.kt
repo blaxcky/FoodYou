@@ -3,7 +3,9 @@ package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -12,10 +14,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -69,6 +73,8 @@ class QuickCaptureScreenshotTest {
                 onDelete = {},
                 onClearCompleted = {},
                 onCopyPrompt = {},
+                hasCopiedBatch = true,
+                onQuickAdd = {},
                 onTransfer = {},
             )
         }
@@ -86,6 +92,8 @@ class QuickCaptureScreenshotTest {
                 onDelete = {},
                 onClearCompleted = {},
                 onCopyPrompt = {},
+                hasCopiedBatch = false,
+                onQuickAdd = {},
                 onTransfer = {},
             )
         }
@@ -103,6 +111,8 @@ class QuickCaptureScreenshotTest {
                 onDelete = {},
                 onClearCompleted = {},
                 onCopyPrompt = {},
+                hasCopiedBatch = false,
+                onQuickAdd = {},
                 onTransfer = {},
             )
         }
@@ -173,6 +183,8 @@ class QuickCaptureScreenshotTest {
                 onDelete = { deleted = true },
                 onClearCompleted = {},
                 onCopyPrompt = {},
+                hasCopiedBatch = false,
+                onQuickAdd = {},
                 onTransfer = {},
             )
         }
@@ -198,6 +210,8 @@ class QuickCaptureScreenshotTest {
                 onDelete = {},
                 onClearCompleted = { cleared = true },
                 onCopyPrompt = {},
+                hasCopiedBatch = false,
+                onQuickAdd = {},
                 onTransfer = {},
             )
         }
@@ -308,6 +322,53 @@ class QuickCaptureScreenshotTest {
             )
         }
         capture("delete-confirmation")
+    }
+
+    @Test
+    fun csvImportDialog() {
+        show {
+            Box(
+                Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                QuickCaptureCsvImportDialogCard(
+                    csv =
+                        "name,energy,proteins,carbohydrates,fats\n" +
+                            "Mittagessen,640,42,71,19",
+                    state = QuickCaptureCsvImportState.Idle,
+                    onCsvChange = {},
+                    onDismiss = {},
+                    onImport = {},
+                    autoFocus = false,
+                )
+            }
+        }
+        capture("csv-import")
+    }
+
+    @Test
+    fun quickAddRequiresCopiedBatchAndOpensImport() {
+        var opened = false
+        show {
+            var hasCopiedBatch by remember { mutableStateOf(false) }
+            QuickCaptureLog(
+                entries = listOf(direct(1, 1, "Skyr Natur", 200.0)),
+                aggregate = false,
+                onAggregateChange = {},
+                onCompleteAfter = { _, _ -> },
+                onDelete = {},
+                onClearCompleted = {},
+                onCopyPrompt = { hasCopiedBatch = true },
+                hasCopiedBatch = hasCopiedBatch,
+                onQuickAdd = { opened = true },
+                onTransfer = {},
+            )
+        }
+
+        compose.onNodeWithContentDescription("CSV als Schnelleintrag eintragen").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Prompt kopieren").performClick()
+        compose.onNodeWithContentDescription("CSV als Schnelleintrag eintragen").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(opened) }
     }
 
     @Test

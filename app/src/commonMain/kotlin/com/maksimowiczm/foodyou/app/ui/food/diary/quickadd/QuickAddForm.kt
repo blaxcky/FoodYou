@@ -276,7 +276,7 @@ private fun FormField<Double?, QuickAddFormFieldError>.TextField(
 }
 
 @Composable
-private fun QuickAddCsvError.stringResource(): String =
+internal fun QuickAddCsvError.stringResource(): String =
     when (this) {
         QuickAddCsvError.Empty -> stringResource(Res.string.error_quick_add_csv_empty)
         QuickAddCsvError.InvalidHeader -> stringResource(Res.string.error_quick_add_csv_header)

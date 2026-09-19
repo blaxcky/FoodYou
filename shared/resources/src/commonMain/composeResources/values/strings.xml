@@ -750,6 +750,8 @@
     <string name="action_quick_capture_add">Add to log</string>
     <string name="action_quick_capture_open_entry_form">Add log entry</string>
     <string name="action_quick_capture_copy_prompt">Copy prompt</string>
+    <string name="action_quick_capture_import_csv">Import CSV as quick add</string>
+    <string name="action_quick_capture_import_csv_confirm">Add</string>
     <string name="action_quick_capture_to_diary">Add to FoodYou</string>
     <string name="action_quick_capture_take_photo">Take photos</string>
     <string name="action_quick_capture_process_photo">Process photo</string>
@@ -768,6 +770,11 @@
     <string name="neutral_quick_capture_empty_photos">No photos waiting to be processed</string>
     <string name="neutral_quick_capture_empty_library">Names you use will appear here</string>
     <string name="neutral_quick_capture_prompt_copied">Prompt copied</string>
+    <string name="headline_quick_capture_csv_import">Import quick add</string>
+    <string name="description_quick_capture_csv_import">Paste the CSV returned by ChatGPT. It will be added to today’s matching meal, and the entries included in the copied prompt will be completed.</string>
+    <string name="neutral_quick_capture_csv_imported">Quick add created</string>
+    <string name="error_quick_capture_csv_no_meal">No meal is available for this quick add.</string>
+    <string name="error_quick_capture_csv_save">The quick add could not be saved. Nothing was changed.</string>
     <string name="error_quick_capture_name">Enter a food name</string>
     <string name="error_quick_capture_weight">Enter a valid positive weight</string>
     <string name="error_quick_capture_after">After must be zero or greater and smaller than before</string>

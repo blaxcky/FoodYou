@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
@@ -28,6 +32,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -47,6 +52,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -65,15 +71,21 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvError
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvParseResult
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvParser
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.stringResource
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhoto
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhotoCapture
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
@@ -96,7 +108,9 @@ import com.maksimowiczm.foodyou.food.domain.usecase.UpdateQuickCaptureLibraryUse
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -130,16 +144,26 @@ fun QuickCaptureScreen(
     val aggregate by viewModel.aggregateSameFoods.collectAsStateWithLifecycle()
     val formError by viewModel.formError.collectAsStateWithLifecycle()
     val cameraOpen by viewModel.cameraOpen.collectAsStateWithLifecycle()
+    val copiedEntryIds by viewModel.copiedEntryIds.collectAsStateWithLifecycle()
+    val csvImportState by viewModel.csvImportState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableStateOf(QuickCaptureTab.Log) }
     var showEntryForm by rememberSaveable { mutableStateOf(false) }
+    var showCsvImport by rememberSaveable { mutableStateOf(false) }
+    var csvText by rememberSaveable { mutableStateOf("") }
     val snackbar = remember { SnackbarHostState() }
     val clipboard = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
     val copiedMessage = stringResource(Res.string.neutral_quick_capture_prompt_copied)
+    val importedMessage = stringResource(Res.string.neutral_quick_capture_csv_imported)
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
         when (event) {
             QuickCaptureUiEvent.EntrySaved -> showEntryForm = false
+            QuickCaptureUiEvent.CsvImported -> {
+                showCsvImport = false
+                csvText = ""
+                coroutineScope.launch { snackbar.showSnackbar(importedMessage) }
+            }
         }
     }
 
@@ -152,6 +176,22 @@ fun QuickCaptureScreen(
                 showEntryForm = false
             },
             onSave = viewModel::save,
+        )
+    }
+    if (showCsvImport) {
+        QuickCaptureCsvImportDialog(
+            csv = csvText,
+            state = csvImportState,
+            onCsvChange = {
+                csvText = it
+                viewModel.resetCsvImportError()
+            },
+            onDismiss = {
+                viewModel.resetCsvImportError()
+                showCsvImport = false
+                csvText = ""
+            },
+            onImport = { viewModel.importCsv(csvText) },
         )
     }
 
@@ -223,8 +263,16 @@ fun QuickCaptureScreen(
                             val groups = entries.quickCaptureGroups(aggregate)
                             if (groups.isNotEmpty()) {
                                 clipboard.copy("FoodYou quick capture prompt", groups.quickCapturePrompt())
+                                viewModel.rememberCopiedBatch(
+                                    groups.flatMap { group -> group.entries.map { it.id } }
+                                )
                                 coroutineScope.launch { snackbar.showSnackbar(copiedMessage) }
                             }
+                        },
+                        hasCopiedBatch = copiedEntryIds.isNotEmpty(),
+                        onQuickAdd = {
+                            viewModel.resetCsvImportError()
+                            showCsvImport = true
                         },
                         onTransfer = { group ->
                             onTransfer(
@@ -292,6 +340,8 @@ internal fun QuickCaptureLog(
     onDelete: (QuickCaptureLogEntry) -> Unit,
     onClearCompleted: () -> Unit,
     onCopyPrompt: () -> Unit,
+    hasCopiedBatch: Boolean,
+    onQuickAdd: () -> Unit,
     onTransfer: (QuickCaptureLogGroup) -> Unit,
 ) {
     var completed by rememberSaveable { mutableStateOf(false) }
@@ -363,11 +413,20 @@ internal fun QuickCaptureLog(
                         Checkbox(checked = aggregate, onCheckedChange = onAggregateChange)
                     },
                     trailingContent = {
-                        IconButton(onClick = onCopyPrompt, enabled = groups.isNotEmpty()) {
-                            Icon(
-                                Icons.Outlined.ContentCopy,
-                                contentDescription = stringResource(Res.string.action_quick_capture_copy_prompt),
-                            )
+                        Row {
+                            IconButton(onClick = onCopyPrompt, enabled = groups.isNotEmpty()) {
+                                Icon(
+                                    Icons.Outlined.ContentCopy,
+                                    contentDescription = stringResource(Res.string.action_quick_capture_copy_prompt),
+                                )
+                            }
+                            IconButton(onClick = onQuickAdd, enabled = hasCopiedBatch) {
+                                Icon(
+                                    Icons.Outlined.Bolt,
+                                    contentDescription =
+                                        stringResource(Res.string.action_quick_capture_import_csv),
+                                )
+                            }
                         }
                     },
                 )
@@ -417,6 +476,108 @@ internal fun QuickCaptureLog(
                     onTransfer = { onTransfer(group) },
                     onDelete = { deleteEntry = it },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun QuickCaptureCsvImportDialog(
+    csv: String,
+    state: QuickCaptureCsvImportState,
+    onCsvChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onImport: () -> Unit,
+    autoFocus: Boolean = true,
+) {
+    val focusRequester = remember { FocusRequester() }
+    val isSubmitting = state == QuickCaptureCsvImportState.Submitting
+
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            delay(100)
+            val _ = runCatching { focusRequester.requestFocus() }
+        }
+    }
+
+    BasicAlertDialog(
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
+    ) {
+        QuickCaptureCsvImportDialogCard(
+            csv = csv,
+            state = state,
+            onCsvChange = onCsvChange,
+            onDismiss = onDismiss,
+            onImport = onImport,
+            focusRequester = focusRequester,
+            autoFocus = autoFocus,
+        )
+    }
+}
+
+@Composable
+internal fun QuickCaptureCsvImportDialogCard(
+    csv: String,
+    state: QuickCaptureCsvImportState,
+    onCsvChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onImport: () -> Unit,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    autoFocus: Boolean = true,
+) {
+    val isSubmitting = state == QuickCaptureCsvImportState.Submitting
+    val error =
+        when (state) {
+            is QuickCaptureCsvImportState.InvalidCsv -> state.error.stringResource()
+            QuickCaptureCsvImportState.NoMeal ->
+                stringResource(Res.string.error_quick_capture_csv_no_meal)
+            QuickCaptureCsvImportState.SavingFailed ->
+                stringResource(Res.string.error_quick_capture_csv_save)
+            QuickCaptureCsvImportState.Idle,
+            QuickCaptureCsvImportState.Submitting -> null
+        }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().widthIn(min = 280.dp, max = 560.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 6.dp,
+    ) {
+        Column(Modifier.padding(24.dp)) {
+            Text(
+                stringResource(Res.string.headline_quick_capture_csv_import),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Spacer(Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(Res.string.description_quick_capture_csv_import))
+                OutlinedTextField(
+                    value = csv,
+                    onValueChange = onCsvChange,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .focusProperties { canFocus = autoFocus }
+                            .focusRequester(focusRequester),
+                    label = { Text(stringResource(Res.string.headline_quick_add_csv)) },
+                    supportingText = error?.let { { Text(it) } },
+                    isError = error != null,
+                    minLines = 3,
+                    maxLines = 6,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { if (!isSubmitting) onImport() }),
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
+                TextButton(onClick = onImport, enabled = !isSubmitting) {
+                    Text(stringResource(Res.string.action_quick_capture_import_csv_confirm))
+                }
             }
         }
     }
@@ -990,6 +1151,9 @@ internal class QuickCaptureViewModel(
     private val deleteEntries: DeleteQuickCaptureEntriesUseCase,
     private val updateLibrary: UpdateQuickCaptureLibraryUseCase,
     private val settingsRepository: UserPreferencesRepository<Settings>,
+    private val csvParser: QuickAddCsvParser,
+    private val csvImporter: QuickCaptureCsvImporter,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val entries =
         observe.entries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -1001,6 +1165,8 @@ internal class QuickCaptureViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val cameraOpen = MutableStateFlow(false)
     val formError = MutableStateFlow<QuickCaptureFormError?>(null)
+    val copiedEntryIds = savedStateHandle.getStateFlow(CopiedEntryIdsKey, emptyList<Long>())
+    val csvImportState = MutableStateFlow<QuickCaptureCsvImportState>(QuickCaptureCsvImportState.Idle)
     private val eventChannel = Channel<QuickCaptureUiEvent>()
     val events = eventChannel.receiveAsFlow()
 
@@ -1045,6 +1211,48 @@ internal class QuickCaptureViewModel(
         formError.value = null
     }
 
+    fun rememberCopiedBatch(entryIds: List<Long>) {
+        savedStateHandle[CopiedEntryIdsKey] = entryIds.distinct()
+    }
+
+    fun resetCsvImportError() {
+        if (csvImportState.value != QuickCaptureCsvImportState.Submitting) {
+            csvImportState.value = QuickCaptureCsvImportState.Idle
+        }
+    }
+
+    fun importCsv(csv: String) {
+        if (csvImportState.value == QuickCaptureCsvImportState.Submitting) return
+        val entryIds = copiedEntryIds.value
+        if (entryIds.isEmpty()) return
+
+        csvImportState.value = QuickCaptureCsvImportState.Submitting
+        viewModelScope.launch {
+            try {
+                when (val parsed = csvParser.parse(csv)) {
+                    is QuickAddCsvParseResult.Failure -> {
+                        csvImportState.value = QuickCaptureCsvImportState.InvalidCsv(parsed.error)
+                    }
+                    is QuickAddCsvParseResult.Success -> {
+                        when (csvImporter.import(parsed.data, entryIds)) {
+                            QuickCaptureCsvImportResult.NoMeal ->
+                                csvImportState.value = QuickCaptureCsvImportState.NoMeal
+                            QuickCaptureCsvImportResult.Success -> {
+                                savedStateHandle[CopiedEntryIdsKey] = emptyList<Long>()
+                                csvImportState.value = QuickCaptureCsvImportState.Idle
+                                eventChannel.send(QuickCaptureUiEvent.CsvImported)
+                            }
+                        }
+                    }
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                csvImportState.value = QuickCaptureCsvImportState.SavingFailed
+            }
+        }
+    }
+
     fun completeAfter(id: Long, after: Double) {
         viewModelScope.launch { completeAfter.complete(id, after) }
     }
@@ -1070,6 +1278,22 @@ internal class QuickCaptureViewModel(
 
 internal sealed interface QuickCaptureUiEvent {
     data object EntrySaved : QuickCaptureUiEvent
+
+    data object CsvImported : QuickCaptureUiEvent
 }
+
+internal sealed interface QuickCaptureCsvImportState {
+    data object Idle : QuickCaptureCsvImportState
+
+    data object Submitting : QuickCaptureCsvImportState
+
+    data class InvalidCsv(val error: QuickAddCsvError) : QuickCaptureCsvImportState
+
+    data object NoMeal : QuickCaptureCsvImportState
+
+    data object SavingFailed : QuickCaptureCsvImportState
+}
+
+private const val CopiedEntryIdsKey = "quickCaptureCopiedEntryIds"
 
 internal const val QUICK_CAPTURE_PHOTO_DIRECTORY = "food-snap-photos"
