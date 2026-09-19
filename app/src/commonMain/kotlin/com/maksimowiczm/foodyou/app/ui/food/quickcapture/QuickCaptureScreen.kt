@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
@@ -37,16 +39,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -69,6 +73,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhoto
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhotoCapture
+import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.utility.LocalClipboardManager
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureFoodName
@@ -88,9 +93,11 @@ import com.maksimowiczm.foodyou.food.domain.usecase.UpdateQuickCaptureLibraryUse
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -102,7 +109,7 @@ data class QuickCaptureTransferRequest(
     val weightInGrams: Double,
 )
 
-private enum class QuickCaptureTab { Log, Photos, Library }
+internal enum class QuickCaptureTab { Log, Photos, Library }
 
 internal enum class QuickCaptureFormError { Name, Weight }
 
@@ -118,13 +125,31 @@ fun QuickCaptureScreen(
     val names by viewModel.names.collectAsStateWithLifecycle()
     val aggregate by viewModel.aggregateSameFoods.collectAsStateWithLifecycle()
     val formError by viewModel.formError.collectAsStateWithLifecycle()
-    val formSavedTick by viewModel.formSavedTick.collectAsStateWithLifecycle()
     val cameraOpen by viewModel.cameraOpen.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableStateOf(QuickCaptureTab.Log) }
+    var showEntryForm by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val clipboard = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
     val copiedMessage = stringResource(Res.string.neutral_quick_capture_prompt_copied)
+
+    LaunchedCollectWithLifecycle(viewModel.events) { event ->
+        when (event) {
+            QuickCaptureUiEvent.EntrySaved -> showEntryForm = false
+        }
+    }
+
+    if (showEntryForm) {
+        QuickCaptureEntrySheet(
+            names = names,
+            error = formError,
+            onDismiss = {
+                viewModel.resetFormError()
+                showEntryForm = false
+            },
+            onSave = viewModel::save,
+        )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -140,14 +165,15 @@ fun QuickCaptureScreen(
             )
         },
         floatingActionButton = {
-            if (selectedTab == QuickCaptureTab.Photos && !cameraOpen) {
-                FloatingActionButton(onClick = viewModel::openCamera) {
-                    Icon(
-                        Icons.Outlined.PhotoCamera,
-                        contentDescription = stringResource(Res.string.action_quick_capture_take_photo),
-                    )
-                }
-            }
+            QuickCaptureFloatingActionButton(
+                selectedTab = selectedTab,
+                cameraOpen = cameraOpen,
+                onAddEntry = {
+                    viewModel.resetFormError()
+                    showEntryForm = true
+                },
+                onOpenCamera = viewModel::openCamera,
+            )
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -184,12 +210,8 @@ fun QuickCaptureScreen(
                 selectedTab == QuickCaptureTab.Log ->
                     QuickCaptureLog(
                         entries = entries,
-                        names = names,
                         aggregate = aggregate,
-                        formError = formError,
-                        formSavedTick = formSavedTick,
                         onAggregateChange = viewModel::setAggregateSameFoods,
-                        onSave = viewModel::save,
                         onCompleteAfter = viewModel::completeAfter,
                         onDelete = { viewModel.delete(listOf(it)) },
                         onClearCompleted = { viewModel.delete(entries.filter { it.isCompleted }) },
@@ -228,14 +250,40 @@ fun QuickCaptureScreen(
 }
 
 @Composable
+internal fun QuickCaptureFloatingActionButton(
+    selectedTab: QuickCaptureTab,
+    cameraOpen: Boolean,
+    onAddEntry: () -> Unit,
+    onOpenCamera: () -> Unit,
+) {
+    if (cameraOpen) return
+
+    when (selectedTab) {
+        QuickCaptureTab.Log ->
+            FloatingActionButton(onClick = onAddEntry) {
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription =
+                        stringResource(Res.string.action_quick_capture_open_entry_form),
+                )
+            }
+        QuickCaptureTab.Photos ->
+            FloatingActionButton(onClick = onOpenCamera) {
+                Icon(
+                    Icons.Outlined.PhotoCamera,
+                    contentDescription =
+                        stringResource(Res.string.action_quick_capture_take_photo),
+                )
+            }
+        QuickCaptureTab.Library -> Unit
+    }
+}
+
+@Composable
 internal fun QuickCaptureLog(
     entries: List<QuickCaptureLogEntry>,
-    names: List<QuickCaptureFoodName>,
     aggregate: Boolean,
-    formError: QuickCaptureFormError?,
-    formSavedTick: Int,
     onAggregateChange: (Boolean) -> Unit,
-    onSave: (String, QuickCaptureWeightMode, Double?, Double?, Double?) -> Unit,
     onCompleteAfter: (Long, Double) -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
     onClearCompleted: () -> Unit,
@@ -264,16 +312,6 @@ internal fun QuickCaptureLog(
         contentPadding = PaddingValues(bottom = 96.dp),
     ) {
         item {
-            QuickCaptureEntryForm(
-                names = names,
-                error = formError,
-                savedTick = formSavedTick,
-                onSave = onSave,
-                modifier = Modifier.padding(16.dp),
-            )
-        }
-        item {
-            HorizontalDivider()
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -359,19 +397,58 @@ internal fun QuickCaptureLog(
 }
 
 @Composable
+internal fun QuickCaptureEntrySheet(
+    names: List<QuickCaptureFoodName>,
+    error: QuickCaptureFormError?,
+    onDismiss: () -> Unit,
+    onSave: (String, QuickCaptureWeightMode, Double?, Double?, Double?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.headline_quick_capture_new_entry),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            QuickCaptureEntryForm(
+                names = names,
+                error = error,
+                onSave = onSave,
+                requestInitialFocus = true,
+            )
+        }
+    }
+}
+
+@Composable
 internal fun QuickCaptureEntryForm(
     names: List<QuickCaptureFoodName>,
     error: QuickCaptureFormError?,
-    savedTick: Int,
     onSave: (String, QuickCaptureWeightMode, Double?, Double?, Double?) -> Unit,
     modifier: Modifier = Modifier,
+    requestInitialFocus: Boolean = false,
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var mode by rememberSaveable { mutableStateOf(QuickCaptureWeightMode.Direct) }
     var direct by rememberSaveable { mutableStateOf("") }
     var before by rememberSaveable { mutableStateOf("") }
     var after by rememberSaveable { mutableStateOf("") }
+    val nameFocus = remember { FocusRequester() }
     val weightFocus = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     fun submit() {
         onSave(
@@ -383,83 +460,80 @@ internal fun QuickCaptureEntryForm(
         )
     }
 
-    LaunchedEffect(savedTick) {
-        if (savedTick > 0) {
-            name = ""
-            direct = ""
-            before = ""
-            after = ""
+    LaunchedEffect(requestInitialFocus) {
+        if (requestInitialFocus) {
+            nameFocus.requestFocus()
+            keyboardController?.show()
         }
     }
 
-    Surface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, tonalElevation = 2.dp) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            QuickCaptureNameField(
-                value = name,
-                onValueChange = { name = it },
-                names = names,
-                onNameConfirmed = { selected ->
-                    name = selected
-                    weightFocus.requestFocus()
-                },
-                isError = error == QuickCaptureFormError.Name,
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        QuickCaptureNameField(
+            value = name,
+            onValueChange = { name = it },
+            names = names,
+            onNameConfirmed = { selected ->
+                name = selected
+                weightFocus.requestFocus()
+            },
+            isError = error == QuickCaptureFormError.Name,
+            textFieldModifier = Modifier.focusRequester(nameFocus),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = mode == QuickCaptureWeightMode.Direct,
+                onClick = { mode = QuickCaptureWeightMode.Direct },
+                label = { Text(stringResource(Res.string.headline_quick_capture_direct)) },
             )
+            FilterChip(
+                selected = mode == QuickCaptureWeightMode.BeforeAfter,
+                onClick = { mode = QuickCaptureWeightMode.BeforeAfter },
+                label = { Text(stringResource(Res.string.headline_quick_capture_before_after)) },
+            )
+        }
+        if (mode == QuickCaptureWeightMode.Direct) {
+            WeightField(
+                value = direct,
+                onValueChange = { direct = it },
+                label = stringResource(Res.string.headline_quick_capture_direct),
+                modifier = Modifier.focusRequester(weightFocus),
+                onDone = ::submit,
+                isError = error == QuickCaptureFormError.Weight,
+            )
+        } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = mode == QuickCaptureWeightMode.Direct,
-                    onClick = { mode = QuickCaptureWeightMode.Direct },
-                    label = { Text(stringResource(Res.string.headline_quick_capture_direct)) },
-                )
-                FilterChip(
-                    selected = mode == QuickCaptureWeightMode.BeforeAfter,
-                    onClick = { mode = QuickCaptureWeightMode.BeforeAfter },
-                    label = { Text(stringResource(Res.string.headline_quick_capture_before_after)) },
-                )
-            }
-            if (mode == QuickCaptureWeightMode.Direct) {
                 WeightField(
-                    value = direct,
-                    onValueChange = { direct = it },
-                    label = stringResource(Res.string.headline_quick_capture_direct),
-                    modifier = Modifier.focusRequester(weightFocus),
+                    value = before,
+                    onValueChange = { before = it },
+                    label = stringResource(Res.string.headline_quick_capture_before),
+                    modifier = Modifier.weight(1f).focusRequester(weightFocus),
+                )
+                WeightField(
+                    value = after,
+                    onValueChange = { after = it },
+                    label = stringResource(Res.string.headline_quick_capture_after),
+                    modifier = Modifier.weight(1f),
                     onDone = ::submit,
                     isError = error == QuickCaptureFormError.Weight,
                 )
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    WeightField(
-                        value = before,
-                        onValueChange = { before = it },
-                        label = stringResource(Res.string.headline_quick_capture_before),
-                        modifier = Modifier.weight(1f).focusRequester(weightFocus),
-                    )
-                    WeightField(
-                        value = after,
-                        onValueChange = { after = it },
-                        label = stringResource(Res.string.headline_quick_capture_after),
-                        modifier = Modifier.weight(1f),
-                        onDone = ::submit,
-                        isError = error == QuickCaptureFormError.Weight,
-                    )
-                }
             }
-            if (error != null) {
-                Text(
-                    stringResource(
-                        if (error == QuickCaptureFormError.Name) Res.string.error_quick_capture_name
-                        else Res.string.error_quick_capture_weight
-                    ),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            Button(onClick = ::submit, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.Add, contentDescription = null)
-                Text(stringResource(Res.string.action_quick_capture_add))
-            }
+        }
+        if (error != null) {
+            Text(
+                stringResource(
+                    if (error == QuickCaptureFormError.Name) Res.string.error_quick_capture_name
+                    else Res.string.error_quick_capture_weight
+                ),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        Button(onClick = ::submit, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Outlined.Add, contentDescription = null)
+            Text(stringResource(Res.string.action_quick_capture_add))
         }
     }
 }
@@ -472,6 +546,7 @@ internal fun QuickCaptureNameField(
     onNameConfirmed: (String) -> Unit,
     isError: Boolean = false,
     modifier: Modifier = Modifier,
+    textFieldModifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val suggestions =
@@ -491,7 +566,7 @@ internal fun QuickCaptureNameField(
                 expanded = true
             },
             modifier =
-                Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                textFieldModifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                     .fillMaxWidth(),
             label = { Text(stringResource(Res.string.product_name)) },
             singleLine = true,
@@ -815,7 +890,8 @@ internal class QuickCaptureViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val cameraOpen = MutableStateFlow(false)
     val formError = MutableStateFlow<QuickCaptureFormError?>(null)
-    val formSavedTick = MutableStateFlow(0)
+    private val eventChannel = Channel<QuickCaptureUiEvent>()
+    val events = eventChannel.receiveAsFlow()
 
     fun openCamera() { cameraOpen.value = true }
 
@@ -844,7 +920,7 @@ internal class QuickCaptureViewModel(
                 ) {
                     is SaveQuickCaptureEntryResult.Saved -> {
                         formError.value = null
-                        formSavedTick.value += 1
+                        eventChannel.send(QuickCaptureUiEvent.EntrySaved)
                     }
                     SaveQuickCaptureEntryResult.InvalidName ->
                         formError.value = QuickCaptureFormError.Name
@@ -852,6 +928,10 @@ internal class QuickCaptureViewModel(
                         formError.value = QuickCaptureFormError.Weight
                 }
         }
+    }
+
+    fun resetFormError() {
+        formError.value = null
     }
 
     fun completeAfter(id: Long, after: Double) {
@@ -875,6 +955,10 @@ internal class QuickCaptureViewModel(
             settingsRepository.update { copy(quickCaptureAggregateSameFoods = value) }
         }
     }
+}
+
+internal sealed interface QuickCaptureUiEvent {
+    data object EntrySaved : QuickCaptureUiEvent
 }
 
 internal const val QUICK_CAPTURE_PHOTO_DIRECTORY = "food-snap-photos"

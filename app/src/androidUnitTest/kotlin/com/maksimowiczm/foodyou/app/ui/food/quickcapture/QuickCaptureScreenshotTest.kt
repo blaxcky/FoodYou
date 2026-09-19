@@ -61,12 +61,8 @@ class QuickCaptureScreenshotTest {
                         direct(2, 1, "Skyr Natur", 150.0),
                         direct(3, 2, "Apfel", 125.5),
                     ),
-                names = names,
                 aggregate = true,
-                formError = null,
-                formSavedTick = 0,
                 onAggregateChange = {},
-                onSave = { _, _, _, _, _ -> },
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
@@ -82,12 +78,8 @@ class QuickCaptureScreenshotTest {
         show {
             QuickCaptureLog(
                 entries = listOf(beforeAfter(4, 3, "Haferflocken", 420.0)),
-                names = names,
                 aggregate = false,
-                formError = null,
-                formSavedTick = 0,
                 onAggregateChange = {},
-                onSave = { _, _, _, _, _ -> },
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
@@ -103,12 +95,8 @@ class QuickCaptureScreenshotTest {
         show {
             QuickCaptureLog(
                 entries = listOf(direct(5, 2, "Apfel", 180.0, completed = true)),
-                names = names,
                 aggregate = false,
-                formError = null,
-                formSavedTick = 0,
                 onAggregateChange = {},
-                onSave = { _, _, _, _, _ -> },
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
@@ -119,6 +107,76 @@ class QuickCaptureScreenshotTest {
         compose.onNodeWithText("Erledigt").performClick()
         compose.waitForIdle()
         capture("completed")
+    }
+
+    @Test
+    fun entrySheet() {
+        show {
+            QuickCaptureEntrySheet(
+                names = names,
+                error = null,
+                onDismiss = {},
+                onSave = { _, _, _, _, _ -> },
+            )
+        }
+        capture("entry-sheet")
+    }
+
+    @Test
+    fun invalidEntryKeepsSheetOpen() {
+        show {
+            var error by remember { mutableStateOf<QuickCaptureFormError?>(null) }
+            QuickCaptureEntrySheet(
+                names = names,
+                error = error,
+                onDismiss = {},
+                onSave = { _, _, _, _, _ -> error = QuickCaptureFormError.Name },
+            )
+        }
+
+        compose.onNodeWithText("Zum Log hinzufügen").performClick()
+        compose.onNodeWithText("Neuer Eintrag").assertExists()
+        compose.onNodeWithText("Lebensmittelname eingeben").assertExists()
+    }
+
+    @Test
+    fun successfulEntryClosesSheet() {
+        show {
+            var visible by remember { mutableStateOf(true) }
+            if (visible) {
+                QuickCaptureEntrySheet(
+                    names = names,
+                    error = null,
+                    onDismiss = { visible = false },
+                    onSave = { _, _, _, _, _ -> visible = false },
+                )
+            }
+        }
+
+        compose.onNode(hasText("Name") and hasSetTextAction()).performTextInput("Skyr Natur")
+        compose.onNode(hasText("Gewicht") and hasSetTextAction()).performTextInput("200")
+        compose.onNodeWithText("Zum Log hinzufügen").performClick()
+        compose.onNodeWithText("Neuer Eintrag").assertDoesNotExist()
+    }
+
+    @Test
+    fun floatingActionButtonMatchesContext() {
+        show {
+            var tab by remember { mutableStateOf(QuickCaptureTab.Log) }
+            Surface(Modifier.fillMaxSize()) {
+                QuickCaptureFloatingActionButton(
+                    selectedTab = tab,
+                    cameraOpen = false,
+                    onAddEntry = { tab = QuickCaptureTab.Photos },
+                    onOpenCamera = { tab = QuickCaptureTab.Library },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Log-Eintrag hinzufügen").performClick()
+        compose.onNodeWithContentDescription("Fotos aufnehmen").performClick()
+        compose.onNodeWithContentDescription("Log-Eintrag hinzufügen").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Fotos aufnehmen").assertDoesNotExist()
     }
 
     @Test
