@@ -430,18 +430,10 @@ class QuickCaptureScreenshotTest {
     @Test
     fun photoNameImeClosesSuggestionsAndFocusesWeight() {
         show {
-            var name by remember { mutableStateOf("") }
-            var weight by remember { mutableStateOf("") }
-            QuickCapturePhotoForm(
-                name = name,
-                onNameChange = { name = it },
-                weight = weight,
-                onWeightChange = { weight = it },
+            QuickCapturePhotoEditor(
+                entryId = 6,
                 names = names,
-                submitted = false,
-                processing = false,
-                autoFocusKey = 6,
-                onSubmit = {},
+                onProcess = { _, _ -> },
             )
         }
 
@@ -451,7 +443,26 @@ class QuickCaptureScreenshotTest {
         compose.onNode(hasText("Skyr Natur") and hasClickAction()).assertExists()
         nameField.performImeAction()
         compose.onNode(hasText("Skyr Natur") and hasClickAction()).assertDoesNotExist()
-        compose.onAllNodes(hasSetTextAction())[1].assertIsFocused()
+        compose.onNodeWithText("Name").assertDoesNotExist()
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+        compose.onAllNodes(hasSetTextAction())[0].assertIsFocused()
+    }
+
+    @Test
+    fun emptyPhotoNameDoesNotAdvance() {
+        show {
+            QuickCapturePhotoEditor(
+                entryId = 6,
+                names = names,
+                onProcess = { _, _ -> },
+            )
+        }
+
+        compose.onNodeWithText("Name").apply {
+            performImeAction()
+            assertIsFocused()
+        }
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
     }
 
     @Test
@@ -471,7 +482,7 @@ class QuickCaptureScreenshotTest {
             performTextInput("Test")
             performImeAction()
         }
-        val weightField = compose.onAllNodes(hasSetTextAction())[1]
+        val weightField = compose.onAllNodes(hasSetTextAction())[0]
         weightField.performTextInput("125")
         weightField.performImeAction()
         compose.runOnIdle { kotlin.test.assertEquals(1, submitCount) }
@@ -493,7 +504,7 @@ class QuickCaptureScreenshotTest {
             performTextInput("Test")
             performImeAction()
         }
-        compose.onAllNodes(hasSetTextAction())[1].apply {
+        compose.onAllNodes(hasSetTextAction())[0].apply {
             performTextInput("0")
             performImeAction()
             assertIsFocused()
@@ -505,21 +516,51 @@ class QuickCaptureScreenshotTest {
     @Test
     fun photoFormHasNoVisibleProcessButton() {
         show {
-            QuickCapturePhotoForm(
-                name = "Test",
-                onNameChange = {},
-                weight = "125",
-                onWeightChange = {},
-                names = names,
-                submitted = false,
-                processing = false,
-                onSubmit = {},
-                modifier = Modifier.padding(16.dp),
-            )
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
+                QuickCapturePhotoForm(
+                    step = QuickCapturePhotoStep.Weight,
+                    name = "Test",
+                    onNameChange = {},
+                    onNameConfirmed = {},
+                    weight = "125",
+                    onWeightChange = {},
+                    names = names,
+                    nameError = false,
+                    submitted = false,
+                    processing = false,
+                    onSubmit = {},
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
         }
 
         compose.onNodeWithText("Foto bearbeiten").assertDoesNotExist()
         capture("photo-form")
+    }
+
+    @Test
+    fun photoNameForm() {
+        show {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
+                QuickCapturePhotoForm(
+                    step = QuickCapturePhotoStep.Name,
+                    name = "",
+                    onNameChange = {},
+                    onNameConfirmed = {},
+                    weight = "",
+                    onWeightChange = {},
+                    names = names,
+                    nameError = false,
+                    submitted = false,
+                    processing = false,
+                    onSubmit = {},
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+        }
+
+        compose.onNodeWithText("Gewicht").assertDoesNotExist()
+        capture("photo-name-form")
     }
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {

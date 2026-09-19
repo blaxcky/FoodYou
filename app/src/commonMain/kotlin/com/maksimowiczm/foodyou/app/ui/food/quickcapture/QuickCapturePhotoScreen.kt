@@ -113,26 +113,26 @@ fun QuickCapturePhotoScreen(
         val current = entry ?: return@Scaffold
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).imePadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ZoomablePendingProductPhoto(
                 photoPath = requireNotNull(current.photoPath),
                 rotationDegrees = rotation.toFloat(),
                 photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
-                modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp),
             )
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                QuickCapturePhotoEditor(
-                    entryId = current.id,
-                    names = names,
-                    onProcess = viewModel::process,
-                )
-            }
+            QuickCapturePhotoEditor(
+                entryId = current.id,
+                names = names,
+                onProcess = viewModel::process,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            )
         }
     }
+}
+
+internal enum class QuickCapturePhotoStep {
+    Name,
+    Weight,
 }
 
 @Composable
@@ -145,6 +145,8 @@ internal fun QuickCapturePhotoEditor(
 ) {
     var name by rememberSaveable(entryId) { mutableStateOf("") }
     var weight by rememberSaveable(entryId) { mutableStateOf("") }
+    var step by rememberSaveable(entryId) { mutableStateOf(QuickCapturePhotoStep.Name) }
+    var nameSubmitted by rememberSaveable(entryId) { mutableStateOf(false) }
     var submitted by rememberSaveable(entryId) { mutableStateOf(false) }
     var processing by remember(entryId) { mutableStateOf(false) }
     val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
@@ -159,12 +161,21 @@ internal fun QuickCapturePhotoEditor(
         }
     }
 
+    fun confirmName(confirmedName: String) {
+        name = confirmedName
+        nameSubmitted = true
+        if (confirmedName.isNotBlank()) step = QuickCapturePhotoStep.Weight
+    }
+
     QuickCapturePhotoForm(
+        step = step,
         name = name,
         onNameChange = { name = it },
+        onNameConfirmed = ::confirmName,
         weight = weight,
         onWeightChange = { weight = it },
         names = names,
+        nameError = nameSubmitted && name.isBlank(),
         submitted = submitted,
         processing = processing,
         autoFocusKey = entryId.takeIf { autoFocus },
@@ -175,11 +186,14 @@ internal fun QuickCapturePhotoEditor(
 
 @Composable
 internal fun QuickCapturePhotoForm(
+    step: QuickCapturePhotoStep,
     name: String,
     onNameChange: (String) -> Unit,
+    onNameConfirmed: (String) -> Unit,
     weight: String,
     onWeightChange: (String) -> Unit,
     names: List<QuickCaptureFoodName>,
+    nameError: Boolean,
     submitted: Boolean,
     processing: Boolean,
     onSubmit: () -> Unit,
@@ -192,46 +206,49 @@ internal fun QuickCapturePhotoForm(
     val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
     val valid = name.isNotBlank() && parsedWeight?.let { it.isFinite() && it > 0.0 } == true
 
-    LaunchedEffect(autoFocusKey) {
+    LaunchedEffect(autoFocusKey, step) {
         if (autoFocusKey != null) {
-            nameFocus.requestFocus()
+            when (step) {
+                QuickCapturePhotoStep.Name -> nameFocus.requestFocus()
+                QuickCapturePhotoStep.Weight -> weightFocus.requestFocus()
+            }
             keyboardController?.show()
         }
     }
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        QuickCaptureNameField(
-            value = name,
-            onValueChange = onNameChange,
-            names = names,
-            onNameConfirmed = {
-                onNameChange(it)
-                weightFocus.requestFocus()
-            },
-            isError = submitted && name.isBlank(),
-            textFieldModifier = Modifier.focusRequester(nameFocus),
-        )
-        OutlinedTextField(
-            value = weight,
-            onValueChange = onWeightChange,
-            modifier = Modifier.fillMaxWidth().focusRequester(weightFocus),
-            label = { Text(stringResource(Res.string.headline_quick_capture_direct)) },
-            suffix = { Text("g") },
-            singleLine = true,
-            enabled = !processing,
-            isError = submitted && parsedWeight?.let { !it.isFinite() || it <= 0.0 } != false,
-            supportingText = {
-                if (submitted && !valid) {
-                    Text(stringResource(Res.string.error_quick_capture_weight))
-                }
-            },
-            keyboardOptions =
-                KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done,
-                ),
-            keyboardActions = KeyboardActions(onDone = { if (!processing) onSubmit() }),
-        )
+    when (step) {
+        QuickCapturePhotoStep.Name ->
+            QuickCaptureNameField(
+                value = name,
+                onValueChange = onNameChange,
+                names = names,
+                onNameConfirmed = onNameConfirmed,
+                isError = nameError,
+                modifier = modifier,
+                textFieldModifier = Modifier.focusRequester(nameFocus),
+            )
+        QuickCapturePhotoStep.Weight ->
+            OutlinedTextField(
+                value = weight,
+                onValueChange = onWeightChange,
+                modifier = modifier.fillMaxWidth().focusRequester(weightFocus),
+                label = { Text(stringResource(Res.string.headline_quick_capture_direct)) },
+                suffix = { Text("g") },
+                singleLine = true,
+                enabled = !processing,
+                isError = submitted && parsedWeight?.let { !it.isFinite() || it <= 0.0 } != false,
+                supportingText = {
+                    if (submitted && !valid) {
+                        Text(stringResource(Res.string.error_quick_capture_weight))
+                    }
+                },
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done,
+                    ),
+                keyboardActions = KeyboardActions(onDone = { if (!processing) onSubmit() }),
+            )
     }
 }
 
