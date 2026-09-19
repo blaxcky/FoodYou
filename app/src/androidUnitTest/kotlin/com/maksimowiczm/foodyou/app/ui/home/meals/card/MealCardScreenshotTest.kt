@@ -19,6 +19,7 @@ import com.github.takahirom.roborazzi.size
 import com.maksimowiczm.foodyou.app.ui.common.theme.LightNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import kotlinx.datetime.LocalTime
 import org.junit.After
 import org.junit.Test
@@ -97,7 +98,46 @@ class MealCardScreenshotTest {
         )
     }
 
-    private fun captureMealCard(filePath: String, height: Int, isCollapsed: Boolean) {
+    @Test
+    fun proteinOnlyEverywhere() {
+        captureMealCard(
+            filePath = "MealCardScreenshotTest.protein-only-everywhere.png",
+            height = 220,
+            isCollapsed = false,
+            displayedMacros = setOf(MealCardMacro.Proteins),
+            meal = PopulatedMealWithMissingHiddenMacros,
+        )
+    }
+
+    @Test
+    fun proteinOnlyInSummary() {
+        captureMealCard(
+            filePath = "MealCardScreenshotTest.protein-only-summary.png",
+            height = 220,
+            isCollapsed = false,
+            displayedMacros = setOf(MealCardMacro.Proteins),
+            showMacrosInFoodEntries = false,
+        )
+    }
+
+    @Test
+    fun noMacros() {
+        captureMealCard(
+            filePath = "MealCardScreenshotTest.no-macros.png",
+            height = 220,
+            isCollapsed = false,
+            displayedMacros = emptySet(),
+        )
+    }
+
+    private fun captureMealCard(
+        filePath: String,
+        height: Int,
+        isCollapsed: Boolean,
+        displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
+        showMacrosInFoodEntries: Boolean = true,
+        meal: MealModel = PopulatedMeal,
+    ) {
         captureRoboImage(
             filePath = filePath,
             roborazziComposeOptions =
@@ -114,7 +154,9 @@ class MealCardScreenshotTest {
                                 .padding(8.dp)
                     ) {
                         MealCard(
-                            meal = PopulatedMeal,
+                            meal = meal,
+                            displayedMacros = displayedMacros,
+                            showMacrosInFoodEntries = showMacrosInFoodEntries,
                             onAddFood = {},
                             onQuickAdd = {},
                             onBarcodeScan = {},
@@ -175,6 +217,17 @@ class MealCardScreenshotTest {
                 proteins = 14.0,
                 carbohydrates = 62.0,
                 fats = 11.0,
+            )
+
+        val PopulatedMealWithMissingHiddenMacros =
+            PopulatedMeal.copy(
+                foods =
+                    listOf(
+                        (PopulatedMeal.foods.single() as ManualMealEntryModel).copy(
+                            carbohydrates = null,
+                            fats = null,
+                        )
+                    )
             )
     }
 }

@@ -28,6 +28,7 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import foodyou.app.generated.resources.*
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
@@ -36,6 +37,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun MealFoodListItem(
     entry: MealEntryModel,
+    displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
     color: Color,
     contentColor: Color,
     shape: Shape,
@@ -45,6 +47,7 @@ internal fun MealFoodListItem(
         is FoodMealEntryModel ->
             MealFoodListItem(
                 entry = entry,
+                displayedMacros = displayedMacros,
                 color = color,
                 contentColor = contentColor,
                 shape = shape,
@@ -54,6 +57,7 @@ internal fun MealFoodListItem(
         is ManualMealEntryModel ->
             MealFoodListItem(
                 entry = entry,
+                displayedMacros = displayedMacros,
                 color = color,
                 contentColor = contentColor,
                 shape = shape,
@@ -65,19 +69,22 @@ internal fun MealFoodListItem(
 @Composable
 internal fun MealFoodListItem(
     entry: FoodMealEntryModel,
+    displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
     color: Color,
     contentColor: Color,
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
-    val g = stringResource(Res.string.unit_gram_short)
     val energyFormatter = LocalEnergyFormatter.current
     val energySuffix = energyFormatter.suffix()
 
-    val proteinsString = remember(entry.proteins, g) { entry.proteins?.formatGrams(g) }
-    val carbohydratesString =
-        remember(entry.carbohydrates, g) { entry.carbohydrates?.formatGrams(g) }
-    val fatsString = remember(entry.fats, g) { entry.fats?.formatGrams(g) }
+    val macros =
+        foodMacroSummaries(
+            proteins = entry.proteins,
+            carbohydrates = entry.carbohydrates,
+            fats = entry.fats,
+            displayedMacros = displayedMacros,
+        )
     val caloriesString =
         remember(entry.energy, energyFormatter, energySuffix) {
             entry.energy?.let { energyFormatter.formatEnergyString(it, energySuffix) }
@@ -97,12 +104,7 @@ internal fun MealFoodListItem(
             errorMessage = stringResource(Res.string.error_measurement_error),
             modifier = modifier,
         )
-    } else if (
-        proteinsString == null ||
-            carbohydratesString == null ||
-            fatsString == null ||
-            caloriesString == null
-    ) {
+    } else if (macros == null || caloriesString == null) {
         FoodErrorListItem(
             headline = entry.name,
             errorMessage = stringResource(Res.string.error_food_is_missing_required_fields),
@@ -111,9 +113,7 @@ internal fun MealFoodListItem(
     } else {
         LightweightMealFoodListItem(
             name = entry.name,
-            proteins = proteinsString,
-            carbohydrates = carbohydratesString,
-            fats = fatsString,
+            macros = macros,
             calories = caloriesString,
             measurement = measurementString,
             isRecipe = entry.isRecipe,
@@ -129,30 +129,28 @@ internal fun MealFoodListItem(
 @Composable
 internal fun MealFoodListItem(
     entry: ManualMealEntryModel,
+    displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
     color: Color,
     contentColor: Color,
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
-    val g = stringResource(Res.string.unit_gram_short)
     val energyFormatter = LocalEnergyFormatter.current
     val energySuffix = energyFormatter.suffix()
 
-    val proteinsString = remember(entry.proteins, g) { entry.proteins?.formatGrams(g) }
-    val carbohydratesString =
-        remember(entry.carbohydrates, g) { entry.carbohydrates?.formatGrams(g) }
-    val fatsString = remember(entry.fats, g) { entry.fats?.formatGrams(g) }
+    val macros =
+        foodMacroSummaries(
+            proteins = entry.proteins,
+            carbohydrates = entry.carbohydrates,
+            fats = entry.fats,
+            displayedMacros = displayedMacros,
+        )
     val caloriesString =
         remember(entry.energy, energyFormatter, energySuffix) {
             entry.energy?.let { energyFormatter.formatEnergyString(it, energySuffix) }
         }
 
-    if (
-        proteinsString == null ||
-            carbohydratesString == null ||
-            fatsString == null ||
-            caloriesString == null
-    ) {
+    if (macros == null || caloriesString == null) {
         FoodErrorListItem(
             headline = entry.name,
             errorMessage = stringResource(Res.string.error_food_is_missing_required_fields),
@@ -161,9 +159,7 @@ internal fun MealFoodListItem(
     } else {
         LightweightMealFoodListItem(
             name = entry.name,
-            proteins = proteinsString,
-            carbohydrates = carbohydratesString,
-            fats = fatsString,
+            macros = macros,
             calories = caloriesString,
             measurement = null,
             isRecipe = false,
@@ -185,11 +181,52 @@ private fun EnergyFormatter.formatEnergyString(
 ): String = fromKcal(energy.toDouble()).roundToInt().toString() + " " + suffix
 
 @Composable
+private fun foodMacroSummaries(
+    proteins: Double?,
+    carbohydrates: Double?,
+    fats: Double?,
+    displayedMacros: Set<MealCardMacro>,
+): List<FoodMacroSummary>? {
+    val gram = stringResource(Res.string.unit_gram_short)
+    val nutrientsPalette = LocalNutrientsPalette.current
+    val summaries = mutableListOf<FoodMacroSummary>()
+
+    MealCardMacro.entries.forEach { macro ->
+        if (macro !in displayedMacros) return@forEach
+
+        val value =
+            when (macro) {
+                MealCardMacro.Fats -> fats
+                MealCardMacro.Carbohydrates -> carbohydrates
+                MealCardMacro.Proteins -> proteins
+            } ?: return null
+        val label =
+            when (macro) {
+                MealCardMacro.Fats -> stringResource(Res.string.nutriment_fats_short)
+                MealCardMacro.Carbohydrates ->
+                    stringResource(Res.string.nutriment_carbohydrates_short)
+                MealCardMacro.Proteins -> stringResource(Res.string.nutriment_proteins_short)
+            }
+        val color =
+            when (macro) {
+                MealCardMacro.Fats -> nutrientsPalette.fatsOnSurfaceContainer
+                MealCardMacro.Carbohydrates ->
+                    nutrientsPalette.carbohydratesOnSurfaceContainer
+                MealCardMacro.Proteins -> nutrientsPalette.proteinsOnSurfaceContainer
+            }
+
+        summaries += FoodMacroSummary("${value.formatGrams(gram)} $label", color)
+    }
+
+    return summaries
+}
+
+private data class FoodMacroSummary(val text: String, val color: Color)
+
+@Composable
 private fun LightweightMealFoodListItem(
     name: String,
-    proteins: String,
-    carbohydrates: String,
-    fats: String,
+    macros: List<FoodMacroSummary>,
     calories: String,
     measurement: String?,
     isRecipe: Boolean,
@@ -200,10 +237,6 @@ private fun LightweightMealFoodListItem(
     shape: Shape,
     contentPadding: PaddingValues,
 ) {
-    val nutrientsPalette = LocalNutrientsPalette.current
-    val fatsShort = stringResource(Res.string.nutriment_fats_short)
-    val carbohydratesShort = stringResource(Res.string.nutriment_carbohydrates_short)
-    val proteinsShort = stringResource(Res.string.nutriment_proteins_short)
     val measurementParts = remember(measurement) { measurement?.splitMeasurementAndWeight() }
     val headline =
         remember(name, measurementParts) {
@@ -267,36 +300,30 @@ private fun LightweightMealFoodListItem(
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (supportingMeasurement != null) {
-                        Text(
-                            text = supportingMeasurement,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = " - ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
+                if (supportingMeasurement != null || macros.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (supportingMeasurement != null) {
+                            Text(
+                                text = supportingMeasurement,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (macros.isNotEmpty()) {
+                                Text(
+                                    text = " - ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                        macros.forEachIndexed { index, macro ->
+                            MacroText(text = macro.text, color = macro.color)
+                            if (index != macros.lastIndex) SeparatorText()
+                        }
                     }
-                    MacroText(
-                        text = "$fats $fatsShort",
-                        color = nutrientsPalette.fatsOnSurfaceContainer,
-                    )
-                    SeparatorText()
-                    MacroText(
-                        text = "$carbohydrates $carbohydratesShort",
-                        color = nutrientsPalette.carbohydratesOnSurfaceContainer,
-                    )
-                    SeparatorText()
-                    MacroText(
-                        text = "$proteins $proteinsShort",
-                        color = nutrientsPalette.proteinsOnSurfaceContainer,
-                    )
                 }
             }
         }

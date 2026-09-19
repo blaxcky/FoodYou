@@ -104,6 +104,9 @@
     <string name="nutriment_sugars">Sugars</string>
     <string name="nutriment_fats">Fats</string>
     <string name="nutriment_fats_short">F</string>
+    <string name="headline_displayed_macronutrients">Displayed macronutrients</string>
+    <string name="action_show_macros_in_food_entries">Show for individual foods</string>
+    <string name="description_show_macros_in_food_entries">Also show the selected macronutrients below each food</string>
     <string name="goal_eaten">eaten</string>
     <string name="goal_burned">burned</string>
     <string name="goal_left">left</string>

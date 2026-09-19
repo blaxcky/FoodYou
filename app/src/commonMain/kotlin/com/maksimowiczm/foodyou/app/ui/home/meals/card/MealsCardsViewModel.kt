@@ -26,6 +26,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodRecipe
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryMeal
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import com.maksimowiczm.foodyou.fooddiary.domain.event.FoodDiaryEntryCreatedEvent
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
@@ -111,6 +112,24 @@ internal class MealsCardsViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(2_000),
             initialValue = runBlocking { _layout.first() },
+        )
+
+    private val _displayedMacros =
+        mealsPreferencesRepository.observe().map { it.displayedMacros }
+    val displayedMacros =
+        _displayedMacros.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _displayedMacros.first() },
+        )
+
+    private val _showMacrosInFoodEntries =
+        mealsPreferencesRepository.observe().map { it.showMacrosInFoodEntries }
+    val showMacrosInFoodEntries =
+        _showMacrosInFoodEntries.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _showMacrosInFoodEntries.first() },
         )
 
     val quickCaptureProducts: StateFlow<List<QuickCaptureProductModel>> =

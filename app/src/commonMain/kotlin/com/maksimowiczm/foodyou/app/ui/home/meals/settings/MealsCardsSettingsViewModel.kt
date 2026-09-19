@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.meals.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -24,5 +25,22 @@ internal class MealsCardsSettingsViewModel(
 
     fun updatePreferences(preferences: MealsPreferences) {
         viewModelScope.launch { mealsPreferencesRepository.update { preferences } }
+    }
+
+    fun updateDisplayedMacro(macro: MealCardMacro, displayed: Boolean) {
+        viewModelScope.launch {
+            mealsPreferencesRepository.update {
+                copy(
+                    displayedMacros =
+                        if (displayed) displayedMacros + macro else displayedMacros - macro
+                )
+            }
+        }
+    }
+
+    fun updateShowMacrosInFoodEntries(show: Boolean) {
+        viewModelScope.launch {
+            mealsPreferencesRepository.update { copy(showMacrosInFoodEntries = show) }
+        }
     }
 }

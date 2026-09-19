@@ -32,6 +32,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import com.maksimowiczm.foodyou.fooddiary.domain.event.FoodDiaryEntryCreatedEvent
@@ -66,6 +67,32 @@ import kotlinx.datetime.TimeZone
 
 class MealsCardsViewModelTest {
     private val viewModels = mutableListOf<MealsCardsViewModel>()
+
+    @Test
+    fun macroDisplayPreferencesTrackRepositoryUpdates() = runViewModelTest {
+        val preferencesRepository = FakeMealsPreferencesRepository()
+        val viewModel = createViewModel(preferencesRepository = preferencesRepository)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.displayedMacros.collect()
+        }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.showMacrosInFoodEntries.collect()
+        }
+
+        assertEquals(MealCardMacro.default, viewModel.displayedMacros.value)
+        assertTrue(viewModel.showMacrosInFoodEntries.value)
+
+        preferencesRepository.update {
+            copy(
+                displayedMacros = setOf(MealCardMacro.Proteins),
+                showMacrosInFoodEntries = false,
+            )
+        }
+        advanceUntilIdle()
+
+        assertEquals(setOf(MealCardMacro.Proteins), viewModel.displayedMacros.value)
+        assertEquals(false, viewModel.showMacrosInFoodEntries.value)
+    }
 
     @Test
     fun toggleMealCollapsedPersistsAndReturnsToExpanded() = runViewModelTest {
@@ -642,7 +669,9 @@ class MealsCardsViewModelTest {
     }
 
     private class FakeMealsPreferencesRepository(
-        collapsedMealCards: Set<CollapsedMealCard> = emptySet()
+        collapsedMealCards: Set<CollapsedMealCard> = emptySet(),
+        displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
+        showMacrosInFoodEntries: Boolean = true,
     ) : UserPreferencesRepository<MealsPreferences> {
         private val state =
             MutableStateFlow(
@@ -651,6 +680,8 @@ class MealsCardsViewModelTest {
                     useTimeBasedSorting = false,
                     ignoreAllDayMeals = false,
                     collapsedMealCards = collapsedMealCards,
+                    displayedMacros = displayedMacros,
+                    showMacrosInFoodEntries = showMacrosInFoodEntries,
                 )
             )
         val value: MealsPreferences
