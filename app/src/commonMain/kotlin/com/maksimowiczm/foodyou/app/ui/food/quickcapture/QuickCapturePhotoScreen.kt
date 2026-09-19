@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.RotateLeft
+import androidx.compose.material.icons.automirrored.outlined.RotateRight
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Button
@@ -20,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,7 +37,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
-import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhotoPager
+import com.maksimowiczm.foodyou.app.ui.food.pending.ZoomablePendingProductPhoto
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUseCase
@@ -43,7 +46,8 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ProcessQuickCapturePhotoUseC
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_delete
 import foodyou.app.generated.resources.action_quick_capture_process_photo
-import foodyou.app.generated.resources.description_quick_capture_photo_flow
+import foodyou.app.generated.resources.action_rotate_photo_left
+import foodyou.app.generated.resources.action_rotate_photo_right
 import foodyou.app.generated.resources.error_quick_capture_weight
 import foodyou.app.generated.resources.headline_quick_capture_direct
 import foodyou.app.generated.resources.headline_quick_capture_photos
@@ -70,6 +74,8 @@ fun QuickCapturePhotoScreen(
     var name by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
     var submitted by rememberSaveable { mutableStateOf(false) }
+    var rotation by rememberSaveable(entryId) { mutableIntStateOf(0) }
+    var confirmDelete by rememberSaveable(entryId) { mutableStateOf(false) }
     val weightFocus = remember { FocusRequester() }
     val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
     val valid = name.isNotBlank() && parsedWeight?.let { it.isFinite() && it > 0.0 } == true
@@ -86,6 +92,17 @@ fun QuickCapturePhotoScreen(
         if (valid) viewModel.process(name, requireNotNull(parsedWeight))
     }
 
+    if (confirmDelete && entry != null) {
+        QuickCaptureDeleteConfirmationDialog(
+            target = QuickCaptureDeleteTarget.Photo,
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                viewModel.delete()
+            },
+        )
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -93,8 +110,12 @@ fun QuickCapturePhotoScreen(
                 title = { Text(stringResource(Res.string.headline_quick_capture_photos)) },
                 navigationIcon = { ArrowBackIconButton(onBack) },
                 actions = {
-                    IconButton(onClick = viewModel::delete) {
-                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
+                    if (entry != null) {
+                        QuickCapturePhotoActions(
+                            onRotateLeft = { rotation = (rotation + 270) % 360 },
+                            onRotateRight = { rotation = (rotation + 90) % 360 },
+                            onDelete = { confirmDelete = true },
+                        )
                     }
                 },
             )
@@ -105,8 +126,9 @@ fun QuickCapturePhotoScreen(
             modifier = Modifier.fillMaxSize().padding(padding).imePadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            PendingProductPhotoPager(
-                photoPaths = listOf(requireNotNull(current.photoPath)),
+            ZoomablePendingProductPhoto(
+                photoPath = requireNotNull(current.photoPath),
+                rotationDegrees = rotation.toFloat(),
                 photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
                 modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp),
             )
@@ -114,7 +136,6 @@ fun QuickCapturePhotoScreen(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(stringResource(Res.string.description_quick_capture_photo_flow))
                 QuickCaptureNameField(
                     value = name,
                     onValueChange = { name = it },
@@ -147,6 +168,32 @@ fun QuickCapturePhotoScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun QuickCapturePhotoActions(
+    onRotateLeft: () -> Unit,
+    onRotateRight: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    IconButton(onClick = onRotateLeft) {
+        Icon(
+            Icons.AutoMirrored.Outlined.RotateLeft,
+            contentDescription = stringResource(Res.string.action_rotate_photo_left),
+        )
+    }
+    IconButton(onClick = onRotateRight) {
+        Icon(
+            Icons.AutoMirrored.Outlined.RotateRight,
+            contentDescription = stringResource(Res.string.action_rotate_photo_right),
+        )
+    }
+    IconButton(onClick = onDelete) {
+        Icon(
+            Icons.Outlined.Delete,
+            contentDescription = stringResource(Res.string.action_delete),
+        )
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -43,6 +44,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -59,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -96,6 +99,7 @@ import foodyou.app.generated.resources.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -292,6 +296,8 @@ internal fun QuickCaptureLog(
 ) {
     var completed by rememberSaveable { mutableStateOf(false) }
     var afterEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
+    var deleteEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
+    var confirmClearCompleted by remember { mutableStateOf(false) }
     val expandedGroups = remember { mutableStateListOf<String>() }
     val visibleEntries = entries.filter { it.isCompleted == completed && !it.isPendingPhoto }
     val groups = if (completed) emptyList() else entries.quickCaptureGroups(aggregate)
@@ -303,6 +309,26 @@ internal fun QuickCaptureLog(
             onSave = {
                 onCompleteAfter(entry.id, it)
                 afterEntry = null
+            },
+        )
+    }
+    deleteEntry?.let { entry ->
+        QuickCaptureDeleteConfirmationDialog(
+            target = QuickCaptureDeleteTarget.Entry,
+            onDismiss = { deleteEntry = null },
+            onConfirm = {
+                deleteEntry = null
+                onDelete(entry)
+            },
+        )
+    }
+    if (confirmClearCompleted) {
+        QuickCaptureDeleteConfirmationDialog(
+            target = QuickCaptureDeleteTarget.CompletedEntries(visibleEntries.size),
+            onDismiss = { confirmClearCompleted = false },
+            onConfirm = {
+                confirmClearCompleted = false
+                onClearCompleted()
             },
         )
     }
@@ -352,7 +378,7 @@ internal fun QuickCaptureLog(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = onClearCompleted) {
+                    TextButton(onClick = { confirmClearCompleted = true }) {
                         Icon(Icons.Outlined.Delete, contentDescription = null)
                         Text(stringResource(Res.string.action_quick_capture_clear_completed))
                     }
@@ -369,7 +395,7 @@ internal fun QuickCaptureLog(
             }
         } else if (completed) {
             items(visibleEntries, key = { it.id }) { entry ->
-                QuickCaptureCompletedRow(entry = entry, onDelete = { onDelete(entry) })
+                QuickCaptureCompletedRow(entry = entry, onDelete = { deleteEntry = entry })
             }
         } else {
             val pending = visibleEntries.filter { !it.isReady }
@@ -377,7 +403,7 @@ internal fun QuickCaptureLog(
                 QuickCapturePendingRow(
                     entry = entry,
                     onCompleteAfter = { afterEntry = entry },
-                    onDelete = { onDelete(entry) },
+                    onDelete = { deleteEntry = entry },
                 )
             }
             items(groups, key = { it.key }) { group ->
@@ -389,7 +415,7 @@ internal fun QuickCaptureLog(
                         if (expanded) expandedGroups.remove(group.key) else expandedGroups.add(group.key)
                     },
                     onTransfer = { onTransfer(group) },
-                    onDelete = onDelete,
+                    onDelete = { deleteEntry = it },
                 )
             }
         }
@@ -405,17 +431,23 @@ internal fun QuickCaptureEntrySheet(
     modifier: Modifier = Modifier,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var requestInitialFocus by remember { mutableStateOf(false) }
+
+    LaunchedEffect(sheetState) {
+        snapshotFlow { sheetState.currentValue }.first { it == SheetValue.Expanded }
+        requestInitialFocus = true
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        modifier = modifier,
+        modifier = modifier.fillMaxHeight(),
         sheetState = sheetState,
     ) {
         Column(
             modifier =
-                Modifier.fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                Modifier.fillMaxSize()
                     .imePadding()
+                    .verticalScroll(rememberScrollState())
                     .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -427,7 +459,7 @@ internal fun QuickCaptureEntrySheet(
                 names = names,
                 error = error,
                 onSave = onSave,
-                requestInitialFocus = true,
+                requestInitialFocus = requestInitialFocus,
             )
         }
     }
@@ -729,6 +761,17 @@ internal fun QuickCapturePhotos(
     onPhoto: (Long) -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
 ) {
+    var deletePhoto by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
+    deletePhoto?.let { entry ->
+        QuickCaptureDeleteConfirmationDialog(
+            target = QuickCaptureDeleteTarget.Photo,
+            onDismiss = { deletePhoto = null },
+            onConfirm = {
+                deletePhoto = null
+                onDelete(entry)
+            },
+        )
+    }
     if (entries.isEmpty()) {
         EmptyQuickCaptureState(
             text = stringResource(Res.string.neutral_quick_capture_empty_photos),
@@ -741,7 +784,6 @@ internal fun QuickCapturePhotos(
             ListItem(
                 modifier = Modifier.clickable { onPhoto(entry.id) },
                 headlineContent = { Text(stringResource(Res.string.action_quick_capture_process_photo)) },
-                supportingContent = { Text(stringResource(Res.string.description_quick_capture_photo_flow)) },
                 leadingContent = {
                     PendingProductPhoto(
                         photoPath = requireNotNull(entry.photoPath),
@@ -750,7 +792,7 @@ internal fun QuickCapturePhotos(
                     )
                 },
                 trailingContent = {
-                    IconButton(onClick = { onDelete(entry) }) {
+                    IconButton(onClick = { deletePhoto = entry }) {
                         Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
                     }
                 },
@@ -766,6 +808,7 @@ internal fun QuickCaptureLibrary(
     onDelete: (Long) -> Unit,
 ) {
     var editing by remember { mutableStateOf<QuickCaptureFoodName?>(null) }
+    var deleteName by remember { mutableStateOf<QuickCaptureFoodName?>(null) }
     editing?.let { name ->
         RenameFoodNameDialog(
             name = name,
@@ -773,6 +816,16 @@ internal fun QuickCaptureLibrary(
             onSave = {
                 onRename(name.id, it)
                 editing = null
+            },
+        )
+    }
+    deleteName?.let { name ->
+        QuickCaptureDeleteConfirmationDialog(
+            target = QuickCaptureDeleteTarget.FoodName(name.name),
+            onDismiss = { deleteName = null },
+            onConfirm = {
+                deleteName = null
+                onDelete(name.id)
             },
         )
     }
@@ -795,7 +848,7 @@ internal fun QuickCaptureLibrary(
                         IconButton(onClick = { editing = name }) {
                             Icon(Icons.Outlined.Edit, contentDescription = stringResource(Res.string.action_quick_capture_rename))
                         }
-                        IconButton(onClick = { onDelete(name.id) }) {
+                        IconButton(onClick = { deleteName = name }) {
                             Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
                         }
                     }
@@ -803,6 +856,64 @@ internal fun QuickCaptureLibrary(
             )
         }
     }
+}
+
+internal sealed interface QuickCaptureDeleteTarget {
+    data object Entry : QuickCaptureDeleteTarget
+
+    data class CompletedEntries(val count: Int) : QuickCaptureDeleteTarget
+
+    data object Photo : QuickCaptureDeleteTarget
+
+    data class FoodName(val name: String) : QuickCaptureDeleteTarget
+}
+
+@Composable
+internal fun QuickCaptureDeleteConfirmationDialog(
+    target: QuickCaptureDeleteTarget,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val title =
+        when (target) {
+            QuickCaptureDeleteTarget.Entry ->
+                stringResource(Res.string.headline_quick_capture_delete_entry)
+            is QuickCaptureDeleteTarget.CompletedEntries ->
+                stringResource(Res.string.headline_quick_capture_delete_completed)
+            QuickCaptureDeleteTarget.Photo ->
+                stringResource(Res.string.headline_quick_capture_delete_photo)
+            is QuickCaptureDeleteTarget.FoodName ->
+                stringResource(Res.string.headline_quick_capture_delete_name)
+        }
+    val description =
+        when (target) {
+            QuickCaptureDeleteTarget.Entry ->
+                stringResource(Res.string.description_quick_capture_delete_entry)
+            is QuickCaptureDeleteTarget.CompletedEntries ->
+                stringResource(
+                    Res.string.description_quick_capture_delete_completed,
+                    target.count,
+                )
+            QuickCaptureDeleteTarget.Photo ->
+                stringResource(Res.string.description_quick_capture_delete_photo)
+            is QuickCaptureDeleteTarget.FoodName ->
+                stringResource(
+                    Res.string.description_quick_capture_delete_name,
+                    target.name,
+                )
+        }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(description) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(Res.string.action_delete)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+        },
+    )
 }
 
 @Composable

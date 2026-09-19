@@ -5,6 +5,9 @@ import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.graphics.Paint
 import android.net.Uri
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -66,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
@@ -165,11 +169,11 @@ internal actual fun PendingProductPhotoPager(
 }
 
 @Composable
-private fun ZoomablePendingProductPhoto(
+internal actual fun ZoomablePendingProductPhoto(
     photoPath: String,
     rotationDegrees: Float,
     photoDirectory: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 ) {
     val context = LocalContext.current
     val file = remember(photoPath) {
@@ -182,125 +186,128 @@ private fun ZoomablePendingProductPhoto(
     val density = LocalDensity.current
 
     val imageBitmap = bitmap
-    if (imageBitmap != null) {
-        val layout =
-            PhotoTransform.layout(
-                photoSize =
-                    PhotoTransformSize(
-                        width = imageBitmap.width.toFloat(),
-                        height = imageBitmap.height.toFloat(),
-                    ),
-                containerSize =
-                    PhotoTransformSize(
-                        width = containerSize.width.toFloat(),
-                        height = containerSize.height.toFloat(),
-                    ),
-                rotationDegrees = rotationDegrees,
-            )
-        val translationBounds =
-            PhotoTransform.translationBounds(
-                displayedImageSize = layout.displayedImageSize,
-                containerSize =
-                    PhotoTransformSize(
-                        width = containerSize.width.toFloat(),
-                        height = containerSize.height.toFloat(),
-                    ),
-                scale = scale,
-            )
+    if (imageBitmap == null) {
+        Box(modifier = modifier.clipToBounds().onSizeChanged { containerSize = it })
+        return
+    }
 
-        LaunchedEffect(rotationDegrees) {
-            scale = 1f
-            offset = Offset.Zero
-        }
-        LaunchedEffect(translationBounds, scale) {
-            offset =
-                PhotoTransform.clampOffset(
-                    offset = PhotoTransformOffset(offset.x, offset.y),
-                    bounds = translationBounds,
-                ).let { Offset(it.x, it.y) }
-        }
+    val layout =
+        PhotoTransform.layout(
+            photoSize =
+                PhotoTransformSize(
+                    width = imageBitmap.width.toFloat(),
+                    height = imageBitmap.height.toFloat(),
+                ),
+            containerSize =
+                PhotoTransformSize(
+                    width = containerSize.width.toFloat(),
+                    height = containerSize.height.toFloat(),
+                ),
+            rotationDegrees = rotationDegrees,
+        )
+    val translationBounds =
+        PhotoTransform.translationBounds(
+            displayedImageSize = layout.displayedImageSize,
+            containerSize =
+                PhotoTransformSize(
+                    width = containerSize.width.toFloat(),
+                    height = containerSize.height.toFloat(),
+                ),
+            scale = scale,
+        )
 
-        Box(
-            modifier =
-                modifier
-                    .clipToBounds()
-                    .onSizeChanged { containerSize = it }
-                    .pointerInput(photoPath, containerSize, rotationDegrees) {
-                        detectTapGestures(
-                            onDoubleTap = {
-                                scale = 1f
-                                offset = Offset.Zero
-                            }
-                        )
-                    }
-                    .pointerInput(photoPath, containerSize, rotationDegrees) {
-                        awaitEachGesture {
-                            awaitFirstDown(requireUnconsumed = false)
-                            do {
-                                val event = awaitPointerEvent(PointerEventPass.Main)
-                                val pressed = event.changes.filter { it.pressed }
-                                val canPan =
-                                    PhotoTransform.canPan(
-                                        displayedImageSize = layout.displayedImageSize,
-                                        containerSize =
-                                            PhotoTransformSize(
-                                                containerSize.width.toFloat(),
-                                                containerSize.height.toFloat(),
-                                            ),
-                                        scale = scale,
-                                    )
-                                val shouldHandleZoom = pressed.size > 1 || (scale > 1f && canPan)
-                                if (shouldHandleZoom) {
-                                    val newScale = (scale * event.calculateZoom()).coerceIn(1f, 5f)
-                                    val pan = event.calculatePan()
-                                    scale = newScale
-                                    offset =
-                                        if (newScale == 1f) {
-                                            Offset.Zero
-                                        } else {
-                                            PhotoTransform.clampOffset(
-                                                offset =
-                                                    PhotoTransformOffset(
-                                                        x = offset.x + pan.x,
-                                                        y = offset.y + pan.y,
-                                                    ),
-                                                bounds =
-                                                    PhotoTransform.translationBounds(
-                                                        displayedImageSize = layout.displayedImageSize,
-                                                        containerSize =
-                                                            PhotoTransformSize(
-                                                                containerSize.width.toFloat(),
-                                                                containerSize.height.toFloat(),
-                                                            ),
-                                                        scale = newScale,
-                                                    ),
-                                            ).let { Offset(it.x, it.y) }
-                                        }
-                                    event.changes.forEach { if (it.pressed) it.consume() }
-                                }
-                            } while (pressed.isNotEmpty())
+    LaunchedEffect(rotationDegrees) {
+        scale = 1f
+        offset = Offset.Zero
+    }
+    LaunchedEffect(translationBounds, scale) {
+        offset =
+            PhotoTransform.clampOffset(
+                offset = PhotoTransformOffset(offset.x, offset.y),
+                bounds = translationBounds,
+            ).let { Offset(it.x, it.y) }
+    }
+
+    Box(
+        modifier =
+            modifier
+                .clipToBounds()
+                .onSizeChanged { containerSize = it }
+                .pointerInput(photoPath, containerSize, rotationDegrees) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            scale = 1f
+                            offset = Offset.Zero
                         }
+                    )
+                }
+                .pointerInput(photoPath, containerSize, rotationDegrees) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val pressed = event.changes.filter { it.pressed }
+                            val canPan =
+                                PhotoTransform.canPan(
+                                    displayedImageSize = layout.displayedImageSize,
+                                    containerSize =
+                                        PhotoTransformSize(
+                                            containerSize.width.toFloat(),
+                                            containerSize.height.toFloat(),
+                                        ),
+                                    scale = scale,
+                                )
+                            val shouldHandleZoom = pressed.size > 1 || (scale > 1f && canPan)
+                            if (shouldHandleZoom) {
+                                val newScale = (scale * event.calculateZoom()).coerceIn(1f, 5f)
+                                val pan = event.calculatePan()
+                                scale = newScale
+                                offset =
+                                    if (newScale == 1f) {
+                                        Offset.Zero
+                                    } else {
+                                        PhotoTransform.clampOffset(
+                                            offset =
+                                                PhotoTransformOffset(
+                                                    x = offset.x + pan.x,
+                                                    y = offset.y + pan.y,
+                                                ),
+                                            bounds =
+                                                PhotoTransform.translationBounds(
+                                                    displayedImageSize = layout.displayedImageSize,
+                                                    containerSize =
+                                                        PhotoTransformSize(
+                                                            containerSize.width.toFloat(),
+                                                            containerSize.height.toFloat(),
+                                                        ),
+                                                    scale = newScale,
+                                                ),
+                                        ).let { Offset(it.x, it.y) }
+                                    }
+                                event.changes.forEach { if (it.pressed) it.consume() }
+                            }
+                        } while (pressed.isNotEmpty())
+                    }
+                },
+    ) {
+        Image(
+            bitmap = imageBitmap,
+            contentDescription = null,
+            contentScale = ContentScale.FillBounds,
+            modifier =
+                Modifier.align(Alignment.Center)
+                    .size(
+                        with(density) { layout.imageSizeBeforeRotation.width.toDp() },
+                        with(density) { layout.imageSizeBeforeRotation.height.toDp() },
+                    )
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                        rotationZ = rotationDegrees
                     },
-        ) {
-            Image(
-                bitmap = imageBitmap,
-                contentDescription = null,
-                contentScale = ContentScale.FillBounds,
-                modifier =
-                    Modifier.align(Alignment.Center)
-                        .size(
-                            with(density) { layout.imageSizeBeforeRotation.width.toDp() },
-                            with(density) { layout.imageSizeBeforeRotation.height.toDp() },
-                        )
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            translationX = offset.x
-                            translationY = offset.y
-                            rotationZ = rotationDegrees
-                        },
-            )
-        }
+        )
     }
 }
 
@@ -316,7 +323,7 @@ private fun rememberPendingProductImageBitmap(
             }
     }
 
-private fun decodeSampledBitmap(file: File, maxSizePx: Int): android.graphics.Bitmap? {
+internal fun decodeSampledBitmap(file: File, maxSizePx: Int): android.graphics.Bitmap? {
     val path = file.absolutePath
     val bounds =
         BitmapFactory.Options().apply {
@@ -331,13 +338,72 @@ private fun decodeSampledBitmap(file: File, maxSizePx: Int): android.graphics.Bi
         sampleSize *= 2
     }
 
-    return BitmapFactory.decodeFile(
-        path,
-        BitmapFactory.Options().apply {
-            inSampleSize = sampleSize
-            inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-        },
-    )
+    val bitmap =
+        BitmapFactory.decodeFile(
+            path,
+            BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+            },
+        ) ?: return null
+    val orientation =
+        runCatching {
+                ExifInterface(file).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL,
+                )
+            }
+            .getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+    return applyExifOrientation(bitmap, orientation)
+}
+
+internal fun applyExifOrientation(
+    bitmap: android.graphics.Bitmap,
+    orientation: Int,
+): android.graphics.Bitmap {
+    val matrix = Matrix()
+    val width = bitmap.width.toFloat()
+    val height = bitmap.height.toFloat()
+    when (orientation) {
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL ->
+            matrix.setValues(floatArrayOf(-1f, 0f, width, 0f, 1f, 0f, 0f, 0f, 1f))
+        ExifInterface.ORIENTATION_ROTATE_180 ->
+            matrix.setValues(floatArrayOf(-1f, 0f, width, 0f, -1f, height, 0f, 0f, 1f))
+        ExifInterface.ORIENTATION_FLIP_VERTICAL ->
+            matrix.setValues(floatArrayOf(1f, 0f, 0f, 0f, -1f, height, 0f, 0f, 1f))
+        ExifInterface.ORIENTATION_TRANSPOSE ->
+            matrix.setValues(floatArrayOf(0f, 1f, 0f, 1f, 0f, 0f, 0f, 0f, 1f))
+        ExifInterface.ORIENTATION_ROTATE_90 ->
+            matrix.setValues(floatArrayOf(0f, -1f, height, 1f, 0f, 0f, 0f, 0f, 1f))
+        ExifInterface.ORIENTATION_TRANSVERSE ->
+            matrix.setValues(floatArrayOf(0f, -1f, height, -1f, 0f, width, 0f, 0f, 1f))
+        ExifInterface.ORIENTATION_ROTATE_270 ->
+            matrix.setValues(floatArrayOf(0f, 1f, 0f, -1f, 0f, width, 0f, 0f, 1f))
+        else -> return bitmap
+    }
+    val swapsDimensions =
+        when (orientation) {
+            ExifInterface.ORIENTATION_TRANSPOSE,
+            ExifInterface.ORIENTATION_ROTATE_90,
+            ExifInterface.ORIENTATION_TRANSVERSE,
+            ExifInterface.ORIENTATION_ROTATE_270 -> true
+            else -> false
+        }
+
+    val targetWidth = if (swapsDimensions) bitmap.height else bitmap.width
+    val targetHeight = if (swapsDimensions) bitmap.width else bitmap.height
+    return android.graphics.Bitmap.createBitmap(
+            targetWidth,
+            targetHeight,
+            bitmap.config ?: android.graphics.Bitmap.Config.ARGB_8888,
+        )
+        .also { transformed ->
+            Canvas(transformed).drawBitmap(
+                bitmap,
+                matrix,
+                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG),
+            )
+        }
 }
 
 @Composable

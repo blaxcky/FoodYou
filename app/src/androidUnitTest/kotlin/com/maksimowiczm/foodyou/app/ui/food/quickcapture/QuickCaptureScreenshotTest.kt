@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -160,6 +162,54 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
+    fun entryDeleteRequiresConfirmation() {
+        var deleted = false
+        show {
+            QuickCaptureLog(
+                entries = listOf(direct(1, 1, "Skyr Natur", 200.0)),
+                aggregate = false,
+                onAggregateChange = {},
+                onCompleteAfter = { _, _ -> },
+                onDelete = { deleted = true },
+                onClearCompleted = {},
+                onCopyPrompt = {},
+                onTransfer = {},
+            )
+        }
+
+        compose.onNodeWithContentDescription("Löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertFalse(deleted) }
+        compose.onNodeWithText("Abbrechen").performClick()
+        compose.runOnIdle { kotlin.test.assertFalse(deleted) }
+        compose.onNodeWithContentDescription("Löschen").performClick()
+        compose.onNodeWithText("Löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(deleted) }
+    }
+
+    @Test
+    fun clearingCompletedEntriesRequiresConfirmation() {
+        var cleared = false
+        show {
+            QuickCaptureLog(
+                entries = listOf(direct(1, 1, "Skyr Natur", 200.0, completed = true)),
+                aggregate = false,
+                onAggregateChange = {},
+                onCompleteAfter = { _, _ -> },
+                onDelete = {},
+                onClearCompleted = { cleared = true },
+                onCopyPrompt = {},
+                onTransfer = {},
+            )
+        }
+
+        compose.onNodeWithText("Erledigt").performClick()
+        compose.onNodeWithText("Alle erledigten löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertFalse(cleared) }
+        compose.onNodeWithText("Löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(cleared) }
+    }
+
+    @Test
     fun floatingActionButtonMatchesContext() {
         show {
             var tab by remember { mutableStateOf(QuickCaptureTab.Log) }
@@ -192,9 +242,72 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
+    fun photoDeleteRequiresConfirmation() {
+        var deleted = false
+        show {
+            QuickCapturePhotos(
+                entries = listOf(pendingPhoto(6)),
+                onPhoto = {},
+                onDelete = { deleted = true },
+            )
+        }
+
+        compose.onNodeWithContentDescription("Löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertFalse(deleted) }
+        compose.onNodeWithText("Löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(deleted) }
+    }
+
+    @Test
     fun library() {
         show { QuickCaptureLibrary(names = names, onRename = { _, _ -> }, onDelete = {}) }
         capture("library")
+    }
+
+    @Test
+    fun libraryDeleteRequiresConfirmation() {
+        var deletedId: Long? = null
+        show {
+            QuickCaptureLibrary(
+                names = listOf(names.first()),
+                onRename = { _, _ -> },
+                onDelete = { deletedId = it },
+            )
+        }
+
+        compose.onNodeWithContentDescription("Löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertNull(deletedId) }
+        compose.onNodeWithText("Löschen").performClick()
+        compose.runOnIdle { kotlin.test.assertEquals(1L, deletedId) }
+    }
+
+    @Test
+    fun photoActions() {
+        show {
+            TopAppBar(
+                title = { Text("Fotos") },
+                actions = {
+                    QuickCapturePhotoActions(
+                        onRotateLeft = {},
+                        onRotateRight = {},
+                        onDelete = {},
+                    )
+                },
+            )
+        }
+        capture("photo-actions")
+    }
+
+    @Test
+    fun deleteConfirmation() {
+        show {
+            QuickCaptureDeleteConfirmationDialog(
+                target = QuickCaptureDeleteTarget.Photo,
+                onDismiss = {},
+                onConfirm = {},
+            )
+        }
+        capture("delete-confirmation")
     }
 
     @Test

@@ -756,6 +756,14 @@
     <string name="action_quick_capture_clear_completed">Delete all completed</string>
     <string name="action_quick_capture_save_after">Save after weight</string>
     <string name="action_quick_capture_rename">Rename</string>
+    <string name="headline_quick_capture_delete_entry">Delete entry?</string>
+    <string name="headline_quick_capture_delete_completed">Delete completed entries?</string>
+    <string name="headline_quick_capture_delete_photo">Delete photo?</string>
+    <string name="headline_quick_capture_delete_name">Delete name?</string>
+    <string name="description_quick_capture_delete_entry">Do you really want to delete this entry? This action cannot be undone.</string>
+    <string name="description_quick_capture_delete_completed">Do you really want to delete all completed entries? Affected: %1$d. This action cannot be undone.</string>
+    <string name="description_quick_capture_delete_photo">Do you really want to delete this photo? This action cannot be undone.</string>
+    <string name="description_quick_capture_delete_name">Do you really want to delete “%1$s” from the library?</string>
     <string name="neutral_quick_capture_empty_log">No quick-capture entries yet</string>
     <string name="neutral_quick_capture_empty_photos">No photos waiting to be processed</string>
     <string name="neutral_quick_capture_empty_library">Names you use will appear here</string>
@@ -763,6 +771,5 @@
     <string name="error_quick_capture_name">Enter a food name</string>
     <string name="error_quick_capture_weight">Enter a valid positive weight</string>
     <string name="error_quick_capture_after">After must be zero or greater and smaller than before</string>
-    <string name="description_quick_capture_photo_flow">Name the food, then enter its weight. The photo remains attached to the log.</string>
     <string name="description_quick_capture_pending_excluded">Incomplete entries are excluded from copying and transfer.</string>
 </resources>

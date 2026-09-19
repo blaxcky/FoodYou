@@ -630,6 +630,14 @@
     <string name="action_quick_capture_clear_completed">Alle erledigten löschen</string>
     <string name="action_quick_capture_save_after">After-Gewicht speichern</string>
     <string name="action_quick_capture_rename">Umbenennen</string>
+    <string name="headline_quick_capture_delete_entry">Eintrag löschen?</string>
+    <string name="headline_quick_capture_delete_completed">Erledigte Einträge löschen?</string>
+    <string name="headline_quick_capture_delete_photo">Foto löschen?</string>
+    <string name="headline_quick_capture_delete_name">Name löschen?</string>
+    <string name="description_quick_capture_delete_entry">Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="description_quick_capture_delete_completed">Möchtest du wirklich alle erledigten Einträge löschen? Betroffen: %1$d. Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="description_quick_capture_delete_photo">Möchtest du dieses Foto wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="description_quick_capture_delete_name">Möchtest du „%1$s“ wirklich aus der Library löschen?</string>
     <string name="neutral_quick_capture_empty_log">Noch keine Schnellerfassungs-Einträge</string>
     <string name="neutral_quick_capture_empty_photos">Keine Fotos zur Nachbearbeitung</string>
     <string name="neutral_quick_capture_empty_library">Verwendete Namen erscheinen hier</string>
@@ -637,6 +645,5 @@
     <string name="error_quick_capture_name">Lebensmittelname eingeben</string>
     <string name="error_quick_capture_weight">Ein gültiges positives Gewicht eingeben</string>
     <string name="error_quick_capture_after">After muss mindestens null und kleiner als Before sein</string>
-    <string name="description_quick_capture_photo_flow">Lebensmittel benennen und danach das Gewicht eintragen. Das Foto bleibt am Log-Eintrag.</string>
     <string name="description_quick_capture_pending_excluded">Unvollständige Einträge werden beim Kopieren und Übertragen ausgelassen.</string>
 </resources>

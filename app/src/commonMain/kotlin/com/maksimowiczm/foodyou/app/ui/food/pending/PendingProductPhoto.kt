@@ -19,6 +19,14 @@ internal expect fun PendingProductPhotoPager(
 )
 
 @Composable
+internal expect fun ZoomablePendingProductPhoto(
+    photoPath: String,
+    rotationDegrees: Float,
+    photoDirectory: String = "pending-product-photos",
+    modifier: Modifier = Modifier,
+)
+
+@Composable
 internal expect fun TakeNutritionPhotoButton(
     onPhotoTaken: (String) -> Unit,
     modifier: Modifier = Modifier,
