@@ -1,7 +1,9 @@
 package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -39,6 +44,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -70,6 +76,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -954,23 +961,31 @@ internal fun QuickCapturePhotos(
         )
         return
     }
-    LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
-        items(entries.sortedBy { it.createdAt }, key = { it.id }) { entry ->
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 96.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        gridItems(entries.sortedBy { it.createdAt }, key = { it.id }) { entry ->
             val processPhotoLabel = stringResource(Res.string.action_quick_capture_process_photo)
-            Row(
+            Box(
                 modifier =
                     Modifier.fillMaxWidth()
+                        .aspectRatio(3f / 4f)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                         .clickable(onClickLabel = processPhotoLabel) { onPhoto(entry.id) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
             ) {
                 PendingProductPhoto(
                     photoPath = requireNotNull(entry.photoPath),
                     photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier.fillMaxSize().padding(4.dp),
                 )
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { deletePhoto = entry }) {
+                FilledTonalIconButton(
+                    onClick = { deletePhoto = entry },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+                ) {
                     Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
                 }
             }

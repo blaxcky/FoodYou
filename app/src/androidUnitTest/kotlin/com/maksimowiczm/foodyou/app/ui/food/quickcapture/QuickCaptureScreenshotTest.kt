@@ -247,7 +247,7 @@ class QuickCaptureScreenshotTest {
     fun photoInbox() {
         show {
             QuickCapturePhotos(
-                entries = listOf(pendingPhoto(6), pendingPhoto(7)),
+                entries = listOf(pendingPhoto(6), pendingPhoto(7), pendingPhoto(8)),
                 onPhoto = {},
                 onDelete = {},
             )
