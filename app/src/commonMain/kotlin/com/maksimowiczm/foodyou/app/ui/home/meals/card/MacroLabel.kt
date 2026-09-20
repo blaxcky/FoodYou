@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Egg
 import androidx.compose.material.icons.outlined.Grain
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.Icon
@@ -14,7 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,15 +23,17 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-internal val MealCardMacro.icon: ImageVector
-    get() =
-        when (this) {
-            MealCardMacro.Fats -> Icons.Outlined.WaterDrop
-            MealCardMacro.Carbohydrates -> Icons.Outlined.Grain
-            MealCardMacro.Proteins -> Icons.Outlined.Egg
-        }
+/** Icon for a macro. Proteins use the Lucide "drumstick" icon (ISC), the rest Material icons. */
+@Composable
+internal fun MealCardMacro.iconPainter(): Painter =
+    when (this) {
+        MealCardMacro.Fats -> rememberVectorPainter(Icons.Outlined.WaterDrop)
+        MealCardMacro.Carbohydrates -> rememberVectorPainter(Icons.Outlined.Grain)
+        MealCardMacro.Proteins -> painterResource(Res.drawable.ic_drumstick)
+    }
 
 internal val MealCardMacro.labelResource: StringResource
     get() =
@@ -77,7 +79,7 @@ internal fun MacroValueLabel(
             val iconSize = with(LocalDensity.current) { textStyle.fontSize.toDp() + 2.dp }
             Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = macro.icon,
+                    painter = macro.iconPainter(),
                     contentDescription = stringResource(macro.labelResource),
                     tint = color,
                     modifier = Modifier.size(iconSize),

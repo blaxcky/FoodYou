@@ -34,7 +34,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
-import com.maksimowiczm.foodyou.app.ui.home.meals.card.icon
+import com.maksimowiczm.foodyou.app.ui.home.meals.card.iconPainter
 import com.maksimowiczm.foodyou.app.ui.home.meals.card.labelResource
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.extension.performToggle
@@ -296,7 +296,7 @@ private fun MacroStylePicker(
                             Spacer(Modifier.width(8.dp))
                             MealCardMacro.entries.forEach { macro ->
                                 Icon(
-                                    imageVector = macro.icon,
+                                    painter = macro.iconPainter(),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
                                 )
