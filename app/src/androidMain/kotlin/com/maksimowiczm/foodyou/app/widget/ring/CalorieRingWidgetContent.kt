@@ -40,6 +40,8 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.maksimowiczm.foodyou.R
+import com.maksimowiczm.foodyou.app.infrastructure.android.barcodeScanIntent
+import com.maksimowiczm.foodyou.app.infrastructure.android.quickCaptureCameraIntent
 import com.maksimowiczm.foodyou.app.ui.home.goals.DietGoalAccentColor
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProgress
@@ -188,7 +190,7 @@ private fun EatenMetric(
     SideMetric(
         context = context,
         spec = spec,
-        modifier = modifier,
+        modifier = modifier.clickable(actionStartActivity(quickCaptureCameraIntent(context))),
         label = context.getString(R.string.widget_calories_eaten),
         value = model.eatenKcal,
         color = GlanceTheme.colors.onSurface,
@@ -204,7 +206,7 @@ private fun BurnedMetric(
     SideMetric(
         context = context,
         spec = spec,
-        modifier = modifier,
+        modifier = modifier.clickable(actionStartActivity(barcodeScanIntent(context))),
         label = context.getString(R.string.widget_calories_burned),
         value = model.burnedKcal,
         color = GlanceTheme.colors.onSurface,

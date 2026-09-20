@@ -68,6 +68,7 @@
         android:paddingEnd="14dp">
 
         <LinearLayout
+            android:id="@+id/widget_calories_eaten_section"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -121,6 +122,7 @@
             android:includeFontPadding="false" />
 
         <LinearLayout
+            android:id="@+id/widget_calories_burned_section"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"

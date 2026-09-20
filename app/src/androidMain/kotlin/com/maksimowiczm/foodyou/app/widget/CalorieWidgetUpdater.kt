@@ -10,6 +10,8 @@ import android.widget.RemoteViews
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.app.infrastructure.android.MainActivity
+import com.maksimowiczm.foodyou.app.infrastructure.android.barcodeScanIntent
+import com.maksimowiczm.foodyou.app.infrastructure.android.quickCaptureCameraIntent
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalEnergyOptimizationDay
 import com.maksimowiczm.foodyou.app.ui.home.goals.startOfWeek
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
@@ -144,6 +146,14 @@ private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
         R.id.widget_calories_root,
         calorieWidgetLaunchPendingIntent(context),
     )
+    setOnClickPendingIntent(
+        R.id.widget_calories_eaten_section,
+        calorieWidgetQuickCapturePendingIntent(context),
+    )
+    setOnClickPendingIntent(
+        R.id.widget_calories_burned_section,
+        calorieWidgetScanBarcodePendingIntent(context),
+    )
     setTextViewText(R.id.widget_calories_date, context.formatWidgetDate(model.date))
     val steps = context.formatWidgetNumber(model.countedSteps)
     setTextViewText(R.id.widget_calories_steps, steps)
@@ -242,10 +252,23 @@ private fun RemoteViews.setLeftColors(
 }
 
 internal fun calorieWidgetLaunchPendingIntent(context: Context): PendingIntent =
+    widgetPendingIntent(context, REQUEST_CODE_LAUNCH, calorieWidgetLaunchIntent(context))
+
+internal fun calorieWidgetQuickCapturePendingIntent(context: Context): PendingIntent =
+    widgetPendingIntent(context, REQUEST_CODE_QUICK_CAPTURE, quickCaptureCameraIntent(context))
+
+internal fun calorieWidgetScanBarcodePendingIntent(context: Context): PendingIntent =
+    widgetPendingIntent(context, REQUEST_CODE_SCAN_BARCODE, barcodeScanIntent(context))
+
+private const val REQUEST_CODE_LAUNCH = 0
+private const val REQUEST_CODE_QUICK_CAPTURE = 1
+private const val REQUEST_CODE_SCAN_BARCODE = 2
+
+private fun widgetPendingIntent(context: Context, requestCode: Int, intent: Intent): PendingIntent =
     PendingIntent.getActivity(
         context,
-        0,
-        calorieWidgetLaunchIntent(context),
+        requestCode,
+        intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 

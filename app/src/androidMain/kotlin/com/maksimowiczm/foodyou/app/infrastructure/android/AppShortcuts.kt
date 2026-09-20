@@ -34,7 +34,7 @@ internal fun createAppShortcuts(context: Context): List<ShortcutInfo> =
             .build(),
     )
 
-private fun barcodeScanIntent(context: Context): Intent =
+internal fun barcodeScanIntent(context: Context): Intent =
     Intent(context, MainActivity::class.java)
         .setAction(ACTION_SCAN_BARCODE)
         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
