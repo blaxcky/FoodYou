@@ -24,7 +24,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
@@ -202,7 +202,7 @@ fun HomeScreen(
                     HomeSyncButton(state = homeSyncState, onClick = onHomeSyncClick)
                     IconButton(onClick = onQuickCapture) {
                         Icon(
-                            imageVector = Icons.Outlined.Bolt,
+                            imageVector = Icons.Outlined.AddAPhoto,
                             contentDescription = stringResource(Res.string.headline_quick_capture),
                         )
                     }
@@ -221,13 +221,6 @@ fun HomeScreen(
                             onClick = {
                                 showSettingsMenu = false
                                 onPendingProducts()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.headline_quick_capture)) },
-                            onClick = {
-                                showSettingsMenu = false
-                                onQuickCapture()
                             },
                         )
                         DropdownMenuItem(
