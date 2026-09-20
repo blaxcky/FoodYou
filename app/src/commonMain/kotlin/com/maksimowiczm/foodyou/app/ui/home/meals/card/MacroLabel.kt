@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Grain
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -26,13 +25,13 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Icon for a macro. Proteins use the Lucide "drumstick" icon (ISC), the rest Material icons. */
+/** Icon for a macro. Carbohydrates and proteins use Tabler icons (MIT), fats a Material icon. */
 @Composable
 internal fun MealCardMacro.iconPainter(): Painter =
     when (this) {
         MealCardMacro.Fats -> rememberVectorPainter(Icons.Outlined.WaterDrop)
-        MealCardMacro.Carbohydrates -> rememberVectorPainter(Icons.Outlined.Grain)
-        MealCardMacro.Proteins -> painterResource(Res.drawable.ic_drumstick)
+        MealCardMacro.Carbohydrates -> painterResource(Res.drawable.ic_wheat)
+        MealCardMacro.Proteins -> painterResource(Res.drawable.ic_meat)
     }
 
 internal val MealCardMacro.labelResource: StringResource
