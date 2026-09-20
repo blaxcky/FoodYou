@@ -47,4 +47,5 @@ internal expect fun PendingProductPhotoCapture(
     onPhotoTaken: (String) -> Unit,
     modifier: Modifier = Modifier,
     photoDirectory: String = "pending-product-photos",
+    onClose: (() -> Unit)? = null,
 )

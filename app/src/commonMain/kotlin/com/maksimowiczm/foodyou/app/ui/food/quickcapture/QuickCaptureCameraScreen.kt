@@ -42,6 +42,7 @@ fun QuickCaptureCameraScreen(onClose: () -> Unit, modifier: Modifier = Modifier)
             photoCount = photoCount,
             photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
             onPhotoTaken = viewModel::capturePhoto,
+            onClose = onClose,
             modifier = Modifier.fillMaxSize().padding(padding),
         )
     }

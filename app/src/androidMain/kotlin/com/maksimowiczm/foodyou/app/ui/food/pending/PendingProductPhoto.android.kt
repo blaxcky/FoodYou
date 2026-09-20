@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -40,8 +41,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.RotateLeft
 import androidx.compose.material.icons.automirrored.outlined.RotateRight
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -538,6 +541,7 @@ internal actual fun PendingProductPhotoCapture(
     onPhotoTaken: (String) -> Unit,
     modifier: Modifier,
     photoDirectory: String,
+    onClose: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -697,6 +701,23 @@ internal actual fun PendingProductPhotoCapture(
                 imageVector = Icons.Outlined.PhotoCamera,
                 contentDescription = stringResource(Res.string.neutral_take_nutrition_photo),
             )
+        }
+
+        if (onClose != null) {
+            // Sits to the right of the shutter: half the large FAB width (48dp) plus a gap.
+            FilledTonalIconButton(
+                onClick = onClose,
+                modifier =
+                    Modifier.align(Alignment.BottomCenter)
+                        .padding(bottom = 48.dp)
+                        .offset(x = 48.dp + 16.dp + 24.dp)
+                        .size(48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = stringResource(Res.string.action_close),
+                )
+            }
         }
 
         if (photoSaveError) {

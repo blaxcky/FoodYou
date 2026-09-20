@@ -257,6 +257,7 @@ fun QuickCaptureScreen(
                         photoCount = entries.count { it.isPendingPhoto },
                         photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
                         onPhotoTaken = viewModel::capturePhoto,
+                        onClose = viewModel::closeCamera,
                         modifier = Modifier.fillMaxSize(),
                     )
                 selectedTab == QuickCaptureTab.Log ->
