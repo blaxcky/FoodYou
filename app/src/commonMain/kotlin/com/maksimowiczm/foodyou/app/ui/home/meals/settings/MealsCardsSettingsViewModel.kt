@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -42,5 +43,9 @@ internal class MealsCardsSettingsViewModel(
         viewModelScope.launch {
             mealsPreferencesRepository.update { copy(showMacrosInFoodEntries = show) }
         }
+    }
+
+    fun updateMacroStyle(style: MealCardMacroStyle) {
+        viewModelScope.launch { mealsPreferencesRepository.update { copy(macroStyle = style) } }
     }
 }

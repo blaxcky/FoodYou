@@ -15,6 +15,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import org.junit.After
 import org.junit.Test
@@ -56,6 +57,8 @@ class MealsCardsSettingsScreenScreenshotTest {
                         displayedMacros = setOf(MealCardMacro.Proteins),
                         onMacroDisplayChange = { _, _ -> },
                         showMacrosInFoodEntries = true,
+                        macroStyle = MealCardMacroStyle.Icons,
+                        onMacroStyleChange = {},
                         toggleShowMacrosInFoodEntries = {},
                         onMealsSettings = {},
                         onBack = {},

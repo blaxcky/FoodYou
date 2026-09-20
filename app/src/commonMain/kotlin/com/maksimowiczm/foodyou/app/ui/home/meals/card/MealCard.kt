@@ -75,6 +75,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -85,6 +86,7 @@ internal fun MealCard(
     meal: MealModel,
     displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
     showMacrosInFoodEntries: Boolean = true,
+    macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
     onAddFood: () -> Unit,
     onQuickAdd: () -> Unit,
     onBarcodeScan: () -> Unit,
@@ -151,6 +153,7 @@ internal fun MealCard(
                 MealNutritionSummary(
                     meal = meal,
                     displayedMacros = displayedMacros,
+                    macroStyle = macroStyle,
                     modifier = Modifier.padding(top = 2.dp).widthIn(min = 130.dp),
                 )
 
@@ -217,6 +220,7 @@ internal fun MealCard(
                     foods = meal.foods,
                     displayedMacros =
                         if (showMacrosInFoodEntries) displayedMacros else emptySet(),
+                    macroStyle = macroStyle,
                     onEditEntry = onEditEntry,
                     onEditFood = onEditFood,
                     onAddToEntry = onAddToEntry,
@@ -239,6 +243,7 @@ internal fun MealCard(
 private fun MealNutritionSummary(
     meal: MealModel,
     displayedMacros: Set<MealCardMacro>,
+    macroStyle: MealCardMacroStyle,
     modifier: Modifier = Modifier,
 ) {
     val nutrientsPalette = LocalNutrientsPalette.current
@@ -260,21 +265,18 @@ private fun MealNutritionSummary(
                     listOf(
                         MacroSummary(
                             macro = MealCardMacro.Fats,
-                            label = stringResource(Res.string.nutriment_fats_short),
                             value = meal.fats,
                             suffix = gram,
                             color = nutrientsPalette.fatsOnSurfaceContainer,
                         ),
                         MacroSummary(
                             macro = MealCardMacro.Carbohydrates,
-                            label = stringResource(Res.string.nutriment_carbohydrates_short),
                             value = meal.carbohydrates,
                             suffix = gram,
                             color = nutrientsPalette.carbohydratesOnSurfaceContainer,
                         ),
                         MacroSummary(
                             macro = MealCardMacro.Proteins,
-                            label = stringResource(Res.string.nutriment_proteins_short),
                             value = meal.proteins,
                             suffix = gram,
                             color = nutrientsPalette.proteinsOnSurfaceContainer,
@@ -282,7 +284,7 @@ private fun MealNutritionSummary(
                     ).filter { it.macro in displayedMacros }
 
                 macros.forEachIndexed { index, macro ->
-                    MacroSummaryText(macro)
+                    MacroSummaryText(macro, macroStyle)
                     if (index != macros.lastIndex) {
                         Text(
                             text = ", ",
@@ -299,19 +301,18 @@ private fun MealNutritionSummary(
 }
 
 @Composable
-private fun MacroSummaryText(macro: MacroSummary) {
-    Text(
-        text = "${macro.value.formatClipZeros("%.1f")}${macro.suffix} ${macro.label}",
+private fun MacroSummaryText(macro: MacroSummary, style: MealCardMacroStyle) {
+    MacroValueLabel(
+        macro = macro.macro,
+        value = "${macro.value.formatClipZeros("%.1f")}${macro.suffix}",
+        style = style,
         color = macro.color,
-        style = MaterialTheme.typography.labelMedium,
-        maxLines = 1,
-        overflow = TextOverflow.Clip,
+        textStyle = MaterialTheme.typography.labelMedium,
     )
 }
 
 private data class MacroSummary(
     val macro: MealCardMacro,
-    val label: String,
     val value: Double,
     val suffix: String,
     val color: Color,
@@ -321,6 +322,7 @@ private data class MacroSummary(
 private fun FoodContainer(
     foods: List<MealEntryModel>,
     displayedMacros: Set<MealCardMacro>,
+    macroStyle: MealCardMacroStyle,
     onEditEntry: (MealEntryModel) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, EntryAddition) -> Unit,
@@ -346,6 +348,7 @@ private fun FoodContainer(
                 FoodContainerItem(
                     entry = entry,
                     displayedMacros = displayedMacros,
+                    macroStyle = macroStyle,
                     onEditEntry = onEditEntry,
                     onEditFood = onEditFood,
                     onAddToEntry = onAddToEntry,
@@ -375,6 +378,7 @@ private fun foodItemShape(index: Int, lastIndex: Int): Shape {
 private fun FoodContainerItem(
     entry: MealEntryModel,
     displayedMacros: Set<MealCardMacro>,
+    macroStyle: MealCardMacroStyle,
     onEditEntry: (MealEntryModel) -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (MealEntryModel, EntryAddition) -> Unit,
@@ -396,6 +400,7 @@ private fun FoodContainerItem(
             BottomSheetContent(
                 entry = entry,
                 displayedMacros = displayedMacros,
+                macroStyle = macroStyle,
                 onEdit = {
                     coroutineScope.launch {
                         onEditEntry(entry)
@@ -431,6 +436,7 @@ private fun FoodContainerItem(
     SelectableMealFoodListItem(
         entry = entry,
         displayedMacros = displayedMacros,
+        macroStyle = macroStyle,
         selected = selected,
         isSelectionMode = isSelectionMode,
         onClick = {
@@ -451,6 +457,7 @@ private fun FoodContainerItem(
 private fun SelectableMealFoodListItem(
     entry: MealEntryModel,
     displayedMacros: Set<MealCardMacro>,
+    macroStyle: MealCardMacroStyle,
     selected: Boolean,
     isSelectionMode: Boolean,
     onClick: () -> Unit,
@@ -472,6 +479,7 @@ private fun SelectableMealFoodListItem(
         MealFoodListItem(
             entry = entry,
             displayedMacros = displayedMacros,
+            macroStyle = macroStyle,
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = shape,
@@ -484,6 +492,7 @@ private fun SelectableMealFoodListItem(
 private fun BottomSheetContent(
     entry: MealEntryModel,
     displayedMacros: Set<MealCardMacro>,
+    macroStyle: MealCardMacroStyle,
     onEdit: () -> Unit,
     onEditFood: (FoodId.Product) -> Unit,
     onAddToEntry: (EntryAddition) -> Unit,
@@ -518,6 +527,7 @@ private fun BottomSheetContent(
         MealFoodListItem(
             entry = entry,
             displayedMacros = displayedMacros,
+            macroStyle = macroStyle,
             color = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = RectangleShape,

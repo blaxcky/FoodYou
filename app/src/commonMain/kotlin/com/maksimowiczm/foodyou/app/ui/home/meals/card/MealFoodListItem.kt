@@ -29,6 +29,7 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
 import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import foodyou.app.generated.resources.*
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
@@ -38,6 +39,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun MealFoodListItem(
     entry: MealEntryModel,
     displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
+    macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
     color: Color,
     contentColor: Color,
     shape: Shape,
@@ -48,6 +50,7 @@ internal fun MealFoodListItem(
             MealFoodListItem(
                 entry = entry,
                 displayedMacros = displayedMacros,
+                macroStyle = macroStyle,
                 color = color,
                 contentColor = contentColor,
                 shape = shape,
@@ -58,6 +61,7 @@ internal fun MealFoodListItem(
             MealFoodListItem(
                 entry = entry,
                 displayedMacros = displayedMacros,
+                macroStyle = macroStyle,
                 color = color,
                 contentColor = contentColor,
                 shape = shape,
@@ -70,6 +74,7 @@ internal fun MealFoodListItem(
 internal fun MealFoodListItem(
     entry: FoodMealEntryModel,
     displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
+    macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
     color: Color,
     contentColor: Color,
     shape: Shape,
@@ -114,6 +119,7 @@ internal fun MealFoodListItem(
         LightweightMealFoodListItem(
             name = entry.name,
             macros = macros,
+            macroStyle = macroStyle,
             calories = caloriesString,
             measurement = measurementString,
             isRecipe = entry.isRecipe,
@@ -130,6 +136,7 @@ internal fun MealFoodListItem(
 internal fun MealFoodListItem(
     entry: ManualMealEntryModel,
     displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
+    macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
     color: Color,
     contentColor: Color,
     shape: Shape,
@@ -160,6 +167,7 @@ internal fun MealFoodListItem(
         LightweightMealFoodListItem(
             name = entry.name,
             macros = macros,
+            macroStyle = macroStyle,
             calories = caloriesString,
             measurement = null,
             isRecipe = false,
@@ -200,13 +208,6 @@ private fun foodMacroSummaries(
                 MealCardMacro.Carbohydrates -> carbohydrates
                 MealCardMacro.Proteins -> proteins
             } ?: return null
-        val label =
-            when (macro) {
-                MealCardMacro.Fats -> stringResource(Res.string.nutriment_fats_short)
-                MealCardMacro.Carbohydrates ->
-                    stringResource(Res.string.nutriment_carbohydrates_short)
-                MealCardMacro.Proteins -> stringResource(Res.string.nutriment_proteins_short)
-            }
         val color =
             when (macro) {
                 MealCardMacro.Fats -> nutrientsPalette.fatsOnSurfaceContainer
@@ -215,18 +216,23 @@ private fun foodMacroSummaries(
                 MealCardMacro.Proteins -> nutrientsPalette.proteinsOnSurfaceContainer
             }
 
-        summaries += FoodMacroSummary("${value.formatGrams(gram)} $label", color)
+        summaries += FoodMacroSummary(macro, value.formatGrams(gram), color)
     }
 
     return summaries
 }
 
-private data class FoodMacroSummary(val text: String, val color: Color)
+private data class FoodMacroSummary(
+    val macro: MealCardMacro,
+    val value: String,
+    val color: Color,
+)
 
 @Composable
 private fun LightweightMealFoodListItem(
     name: String,
     macros: List<FoodMacroSummary>,
+    macroStyle: MealCardMacroStyle,
     calories: String,
     measurement: String?,
     isRecipe: Boolean,
@@ -320,7 +326,13 @@ private fun LightweightMealFoodListItem(
                             }
                         }
                         macros.forEachIndexed { index, macro ->
-                            MacroText(text = macro.text, color = macro.color)
+                            MacroValueLabel(
+                                macro = macro.macro,
+                                value = macro.value,
+                                style = macroStyle,
+                                color = macro.color,
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                            )
                             if (index != macros.lastIndex) SeparatorText()
                         }
                     }
@@ -328,17 +340,6 @@ private fun LightweightMealFoodListItem(
             }
         }
     }
-}
-
-@Composable
-private fun MacroText(text: String, color: Color) {
-    Text(
-        text = text,
-        color = color,
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = 1,
-        overflow = TextOverflow.Clip,
-    )
 }
 
 @Composable

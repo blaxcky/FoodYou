@@ -10,6 +10,7 @@ data class MealsPreferences(
     val collapsedMealCards: Set<CollapsedMealCard> = emptySet(),
     val displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
     val showMacrosInFoodEntries: Boolean = true,
+    val macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
 ) : UserPreferences
 
 data class CollapsedMealCard(val date: LocalDate, val mealId: Long)
@@ -22,5 +23,15 @@ enum class MealCardMacro {
     companion object {
         val default: Set<MealCardMacro>
             get() = entries.toSet()
+    }
+}
+
+enum class MealCardMacroStyle {
+    Letters,
+    Icons;
+
+    companion object {
+        val default: MealCardMacroStyle
+            get() = Letters
     }
 }

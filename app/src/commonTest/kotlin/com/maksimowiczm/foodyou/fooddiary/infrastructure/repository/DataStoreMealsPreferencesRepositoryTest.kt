@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.fooddiary.infrastructure.repository
 
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.CollapsedMealCard
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -40,6 +41,15 @@ class DataStoreMealsPreferencesRepositoryTest {
     fun foodEntryMacrosDefaultToVisibleAndPreserveExplicitChoice() {
         assertTrue(decodeShowMacrosInFoodEntries(null))
         assertEquals(false, decodeShowMacrosInFoodEntries(false))
+    }
+
+    @Test
+    fun macroStyleCodecRoundTripsAndFallsBackToLetters() {
+        MealCardMacroStyle.entries.forEach { style ->
+            assertEquals(style, decodeMacroStyle(encodeMacroStyle(style)))
+        }
+        assertEquals(MealCardMacroStyle.Letters, decodeMacroStyle(null))
+        assertEquals(MealCardMacroStyle.Letters, decodeMacroStyle("Emoji"))
     }
 
     @Test

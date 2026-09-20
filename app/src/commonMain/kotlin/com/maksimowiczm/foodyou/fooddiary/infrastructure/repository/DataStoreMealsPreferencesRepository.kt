@@ -5,10 +5,12 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStoreUserPreferencesRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.CollapsedMealCard
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import kotlinx.datetime.LocalDate
@@ -30,6 +32,7 @@ internal class DataStoreMealsPreferencesRepository(dataStore: DataStore<Preferen
                 decodeShowMacrosInFoodEntries(
                     this[MealsPreferencesDataStoreKeys.showMacrosInFoodEntries]
                 ),
+            macroStyle = decodeMacroStyle(this[MealsPreferencesDataStoreKeys.macroStyle]),
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: MealsPreferences) {
@@ -42,6 +45,7 @@ internal class DataStoreMealsPreferencesRepository(dataStore: DataStore<Preferen
             encodeDisplayedMacros(updated.displayedMacros)
         this[MealsPreferencesDataStoreKeys.showMacrosInFoodEntries] =
             updated.showMacrosInFoodEntries
+        this[MealsPreferencesDataStoreKeys.macroStyle] = encodeMacroStyle(updated.macroStyle)
     }
 }
 
@@ -72,6 +76,12 @@ internal fun decodeDisplayedMacros(values: Set<String>?): Set<MealCardMacro> =
 
 internal fun decodeShowMacrosInFoodEntries(value: Boolean?): Boolean = value ?: true
 
+internal fun encodeMacroStyle(style: MealCardMacroStyle): String = style.name
+
+internal fun decodeMacroStyle(value: String?): MealCardMacroStyle =
+    value?.let { name -> runCatching { MealCardMacroStyle.valueOf(name) }.getOrNull() }
+        ?: MealCardMacroStyle.default
+
 private fun Preferences.getLayout(): MealsCardsLayout =
     runCatching { this[MealsPreferencesDataStoreKeys.layout]?.let { MealsCardsLayout.entries[it] } }
         .getOrNull() ?: MealsCardsLayout.default
@@ -88,4 +98,5 @@ private object MealsPreferencesDataStoreKeys {
         stringSetPreferencesKey("fooddiary:meals_preferences:displayed_macros")
     val showMacrosInFoodEntries =
         booleanPreferencesKey("fooddiary:meals_preferences:show_macros_in_food_entries")
+    val macroStyle = stringPreferencesKey("fooddiary:meals_preferences:macro_style")
 }

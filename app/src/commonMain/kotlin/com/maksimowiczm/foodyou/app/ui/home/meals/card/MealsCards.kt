@@ -33,6 +33,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -53,6 +54,7 @@ internal fun rememberMealsCardsState(
     val displayedMacros by viewModel.displayedMacros.collectAsStateWithLifecycle()
     val showMacrosInFoodEntries by
         viewModel.showMacrosInFoodEntries.collectAsStateWithLifecycle()
+    val macroStyle by viewModel.macroStyle.collectAsStateWithLifecycle()
     val selectedEntries by viewModel.selectedEntries.collectAsStateWithLifecycle()
     val collapsedMealIds by viewModel.collapsedMealIds.collectAsStateWithLifecycle()
     val quickCaptureProducts by viewModel.quickCaptureProducts.collectAsStateWithLifecycle()
@@ -108,6 +110,7 @@ internal fun rememberMealsCardsState(
         layout = layout,
         displayedMacros = displayedMacros,
         showMacrosInFoodEntries = showMacrosInFoodEntries,
+        macroStyle = macroStyle,
         selectedEntries = selectedEntries,
         collapsedMealIds = collapsedMealIds,
         onAdd = { mealId -> onAdd(homeState.selectedDate.toEpochDays(), mealId) },
@@ -231,6 +234,7 @@ internal class MealsCardsState(
     val layout: MealsCardsLayout,
     val displayedMacros: Set<MealCardMacro>,
     val showMacrosInFoodEntries: Boolean,
+    val macroStyle: MealCardMacroStyle,
     val selectedEntries: Set<MealEntrySelectionKey>,
     val collapsedMealIds: Set<Long>,
     val onAdd: (mealId: Long) -> Unit,
@@ -265,6 +269,7 @@ internal fun LazyListScope.mealsCards(
                     meals = state.meals,
                     displayedMacros = state.displayedMacros,
                     showMacrosInFoodEntries = state.showMacrosInFoodEntries,
+                    macroStyle = state.macroStyle,
                     onAdd = state.onAdd,
                     onQuickAdd = state.onQuickAdd,
                     onBarcodeScan = state.onBarcodeScan,
@@ -315,6 +320,7 @@ internal fun LazyListScope.mealsCards(
                         meal = meal,
                         displayedMacros = state.displayedMacros,
                         showMacrosInFoodEntries = state.showMacrosInFoodEntries,
+                        macroStyle = state.macroStyle,
                         onAddFood = { state.onAdd(meal.id) },
                         onQuickAdd = { state.onQuickAdd(meal.id) },
                         onBarcodeScan = { state.onBarcodeScan(meal.id) },

@@ -13,12 +13,14 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 
 @Composable
 internal fun HorizontalMealsCards(
     meals: List<MealModel>?,
     displayedMacros: Set<MealCardMacro>,
     showMacrosInFoodEntries: Boolean,
+    macroStyle: MealCardMacroStyle,
     onAdd: (mealId: Long) -> Unit,
     onQuickAdd: (mealId: Long) -> Unit,
     onBarcodeScan: (mealId: Long) -> Unit,
@@ -61,6 +63,7 @@ internal fun HorizontalMealsCards(
                 meal = meal,
                 displayedMacros = displayedMacros,
                 showMacrosInFoodEntries = showMacrosInFoodEntries,
+                macroStyle = macroStyle,
                 onAddFood = { onAdd(meal.id) },
                 onQuickAdd = { onQuickAdd(meal.id) },
                 onBarcodeScan = { onBarcodeScan(meal.id) },

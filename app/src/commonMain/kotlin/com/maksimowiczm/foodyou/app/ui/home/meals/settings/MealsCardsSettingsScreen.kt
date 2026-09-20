@@ -1,6 +1,10 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -8,15 +12,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -25,9 +34,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.app.ui.home.meals.card.icon
+import com.maksimowiczm.foodyou.app.ui.home.meals.card.labelResource
 import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.extension.performToggle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -47,6 +59,7 @@ fun MealsCardsSettingsScreen(
     val ignoreAllDayMeals = preferences.ignoreAllDayMeals
     val displayedMacros = preferences.displayedMacros
     val showMacrosInFoodEntries = preferences.showMacrosInFoodEntries
+    val macroStyle = preferences.macroStyle
 
     MealCardSettings(
         layout = layout,
@@ -63,6 +76,8 @@ fun MealsCardsSettingsScreen(
         onMacroDisplayChange = viewModel::updateDisplayedMacro,
         showMacrosInFoodEntries = showMacrosInFoodEntries,
         toggleShowMacrosInFoodEntries = viewModel::updateShowMacrosInFoodEntries,
+        macroStyle = macroStyle,
+        onMacroStyleChange = viewModel::updateMacroStyle,
         onMealsSettings = onMealSettings,
         onBack = onBack,
         modifier = modifier,
@@ -81,6 +96,8 @@ internal fun MealCardSettings(
     onMacroDisplayChange: (MealCardMacro, Boolean) -> Unit,
     showMacrosInFoodEntries: Boolean,
     toggleShowMacrosInFoodEntries: (Boolean) -> Unit,
+    macroStyle: MealCardMacroStyle,
+    onMacroStyleChange: (MealCardMacroStyle) -> Unit,
     onMealsSettings: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -127,6 +144,13 @@ internal fun MealCardSettings(
                     hapticFeedback.performToggle(it)
                     toggleShowMacrosInFoodEntries(it)
                 },
+                macroStyle = macroStyle,
+                onMacroStyleChange = {
+                    if (macroStyle != it) {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                        onMacroStyleChange(it)
+                    }
+                },
             )
 
             item { HorizontalDivider() }
@@ -161,6 +185,8 @@ private fun LazyListScope.macroDisplaySettings(
     toggleMacro: (MealCardMacro, Boolean) -> Unit,
     showMacrosInFoodEntries: Boolean,
     toggleShowMacrosInFoodEntries: (Boolean) -> Unit,
+    macroStyle: MealCardMacroStyle,
+    onMacroStyleChange: (MealCardMacroStyle) -> Unit,
 ) {
     item {
         Text(
@@ -220,15 +246,67 @@ private fun LazyListScope.macroDisplaySettings(
                 ),
         )
     }
+
+    item {
+        val enabled = displayedMacros.isNotEmpty()
+        val contentColor =
+            if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+
+        ListItem(
+            headlineContent = {
+                Text(stringResource(Res.string.headline_macronutrient_label_style))
+            },
+            supportingContent = {
+                MacroStylePicker(
+                    macroStyle = macroStyle,
+                    onMacroStyleChange = onMacroStyleChange,
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            },
+            colors = ListItemDefaults.colors(headlineColor = contentColor),
+        )
+    }
 }
 
-private val MealCardMacro.labelResource
-    get() =
-        when (this) {
-            MealCardMacro.Fats -> Res.string.nutriment_fats
-            MealCardMacro.Carbohydrates -> Res.string.nutriment_carbohydrates
-            MealCardMacro.Proteins -> Res.string.nutriment_proteins
+@Composable
+private fun MacroStylePicker(
+    macroStyle: MealCardMacroStyle,
+    onMacroStyleChange: (MealCardMacroStyle) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val styles = MealCardMacroStyle.entries
+
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
+        styles.forEachIndexed { index, style ->
+            SegmentedButton(
+                selected = style == macroStyle,
+                onClick = { onMacroStyleChange(style) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = styles.size),
+                enabled = enabled,
+            ) {
+                when (style) {
+                    MealCardMacroStyle.Letters ->
+                        Text(stringResource(Res.string.action_macro_style_letters))
+
+                    MealCardMacroStyle.Icons ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(Res.string.action_macro_style_icons))
+                            Spacer(Modifier.width(8.dp))
+                            MealCardMacro.entries.forEach { macro ->
+                                Icon(
+                                    imageVector = macro.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+                }
+            }
         }
+    }
+}
 
 private fun LazyListScope.advancedLayoutSettings(
     useTimeBasedSorting: Boolean,

@@ -20,6 +20,7 @@ import com.maksimowiczm.foodyou.app.ui.common.theme.LightNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import kotlinx.datetime.LocalTime
 import org.junit.After
 import org.junit.Test
@@ -121,6 +122,16 @@ class MealCardScreenshotTest {
     }
 
     @Test
+    fun iconsEverywhere() {
+        captureMealCard(
+            filePath = "MealCardScreenshotTest.icons-everywhere.png",
+            height = 220,
+            isCollapsed = false,
+            macroStyle = MealCardMacroStyle.Icons,
+        )
+    }
+
+    @Test
     fun noMacros() {
         captureMealCard(
             filePath = "MealCardScreenshotTest.no-macros.png",
@@ -136,6 +147,7 @@ class MealCardScreenshotTest {
         isCollapsed: Boolean,
         displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
         showMacrosInFoodEntries: Boolean = true,
+        macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
         meal: MealModel = PopulatedMeal,
     ) {
         captureRoboImage(
@@ -157,6 +169,7 @@ class MealCardScreenshotTest {
                             meal = meal,
                             displayedMacros = displayedMacros,
                             showMacrosInFoodEntries = showMacrosInFoodEntries,
+                            macroStyle = macroStyle,
                             onAddFood = {},
                             onQuickAdd = {},
                             onBarcodeScan = {},

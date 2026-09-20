@@ -33,6 +33,7 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntryId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import com.maksimowiczm.foodyou.fooddiary.domain.event.FoodDiaryEntryCreatedEvent
@@ -78,20 +79,26 @@ class MealsCardsViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.showMacrosInFoodEntries.collect()
         }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.macroStyle.collect()
+        }
 
         assertEquals(MealCardMacro.default, viewModel.displayedMacros.value)
         assertTrue(viewModel.showMacrosInFoodEntries.value)
+        assertEquals(MealCardMacroStyle.Letters, viewModel.macroStyle.value)
 
         preferencesRepository.update {
             copy(
                 displayedMacros = setOf(MealCardMacro.Proteins),
                 showMacrosInFoodEntries = false,
+                macroStyle = MealCardMacroStyle.Icons,
             )
         }
         advanceUntilIdle()
 
         assertEquals(setOf(MealCardMacro.Proteins), viewModel.displayedMacros.value)
         assertEquals(false, viewModel.showMacrosInFoodEntries.value)
+        assertEquals(MealCardMacroStyle.Icons, viewModel.macroStyle.value)
     }
 
     @Test

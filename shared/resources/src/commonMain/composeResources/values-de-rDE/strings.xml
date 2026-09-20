@@ -223,6 +223,9 @@
     <string name="headline_displayed_macronutrients">Angezeigte Makronährstoffe</string>
     <string name="action_show_macros_in_food_entries">Bei einzelnen Lebensmitteln anzeigen</string>
     <string name="description_show_macros_in_food_entries">Zeigt die ausgewählten Makronährstoffe zusätzlich unter jedem Lebensmittel an</string>
+    <string name="headline_macronutrient_label_style">Beschriftung der Makronährstoffe</string>
+    <string name="action_macro_style_letters">Buchstaben</string>
+    <string name="action_macro_style_icons">Icons</string>
     <string name="goal_eaten">gegessen</string>
     <string name="goal_burned">verbrannt</string>
     <string name="goal_left">übrig</string>
