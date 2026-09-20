@@ -60,6 +60,8 @@ class MealsCardsSettingsScreenScreenshotTest {
                         macroStyle = MealCardMacroStyle.Icons,
                         onMacroStyleChange = {},
                         toggleShowMacrosInFoodEntries = {},
+                        showMealTimes = true,
+                        toggleShowMealTimes = {},
                         onMealsSettings = {},
                         onBack = {},
                         modifier = Modifier.fillMaxSize(),

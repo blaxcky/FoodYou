@@ -140,6 +140,14 @@ internal class MealsCardsViewModel(
             initialValue = runBlocking { _macroStyle.first() },
         )
 
+    private val _showMealTimes = mealsPreferencesRepository.observe().map { it.showMealTimes }
+    val showMealTimes =
+        _showMealTimes.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _showMealTimes.first() },
+        )
+
     val quickCaptureProducts: StateFlow<List<QuickCaptureProductModel>> =
         productRepository
             .observeQuickCaptureProducts()

@@ -11,6 +11,7 @@ data class MealsPreferences(
     val displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
     val showMacrosInFoodEntries: Boolean = true,
     val macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
+    val showMealTimes: Boolean = true,
 ) : UserPreferences
 
 data class CollapsedMealCard(val date: LocalDate, val mealId: Long)

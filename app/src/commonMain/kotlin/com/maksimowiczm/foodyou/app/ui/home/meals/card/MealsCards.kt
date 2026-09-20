@@ -55,6 +55,7 @@ internal fun rememberMealsCardsState(
     val showMacrosInFoodEntries by
         viewModel.showMacrosInFoodEntries.collectAsStateWithLifecycle()
     val macroStyle by viewModel.macroStyle.collectAsStateWithLifecycle()
+    val showMealTimes by viewModel.showMealTimes.collectAsStateWithLifecycle()
     val selectedEntries by viewModel.selectedEntries.collectAsStateWithLifecycle()
     val collapsedMealIds by viewModel.collapsedMealIds.collectAsStateWithLifecycle()
     val quickCaptureProducts by viewModel.quickCaptureProducts.collectAsStateWithLifecycle()
@@ -111,6 +112,7 @@ internal fun rememberMealsCardsState(
         displayedMacros = displayedMacros,
         showMacrosInFoodEntries = showMacrosInFoodEntries,
         macroStyle = macroStyle,
+        showMealTimes = showMealTimes,
         selectedEntries = selectedEntries,
         collapsedMealIds = collapsedMealIds,
         onAdd = { mealId -> onAdd(homeState.selectedDate.toEpochDays(), mealId) },
@@ -235,6 +237,7 @@ internal class MealsCardsState(
     val displayedMacros: Set<MealCardMacro>,
     val showMacrosInFoodEntries: Boolean,
     val macroStyle: MealCardMacroStyle,
+    val showMealTimes: Boolean,
     val selectedEntries: Set<MealEntrySelectionKey>,
     val collapsedMealIds: Set<Long>,
     val onAdd: (mealId: Long) -> Unit,
@@ -270,6 +273,7 @@ internal fun LazyListScope.mealsCards(
                     displayedMacros = state.displayedMacros,
                     showMacrosInFoodEntries = state.showMacrosInFoodEntries,
                     macroStyle = state.macroStyle,
+                    showMealTimes = state.showMealTimes,
                     onAdd = state.onAdd,
                     onQuickAdd = state.onQuickAdd,
                     onBarcodeScan = state.onBarcodeScan,
@@ -321,6 +325,7 @@ internal fun LazyListScope.mealsCards(
                         displayedMacros = state.displayedMacros,
                         showMacrosInFoodEntries = state.showMacrosInFoodEntries,
                         macroStyle = state.macroStyle,
+                        showTime = state.showMealTimes,
                         onAddFood = { state.onAdd(meal.id) },
                         onQuickAdd = { state.onQuickAdd(meal.id) },
                         onBarcodeScan = { state.onBarcodeScan(meal.id) },

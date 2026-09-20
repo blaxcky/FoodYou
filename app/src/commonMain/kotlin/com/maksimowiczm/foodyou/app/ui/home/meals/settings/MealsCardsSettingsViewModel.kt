@@ -48,4 +48,8 @@ internal class MealsCardsSettingsViewModel(
     fun updateMacroStyle(style: MealCardMacroStyle) {
         viewModelScope.launch { mealsPreferencesRepository.update { copy(macroStyle = style) } }
     }
+
+    fun updateShowMealTimes(show: Boolean) {
+        viewModelScope.launch { mealsPreferencesRepository.update { copy(showMealTimes = show) } }
+    }
 }

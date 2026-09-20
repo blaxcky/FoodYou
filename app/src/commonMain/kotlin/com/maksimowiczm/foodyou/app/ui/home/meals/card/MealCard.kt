@@ -87,6 +87,7 @@ internal fun MealCard(
     displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
     showMacrosInFoodEntries: Boolean = true,
     macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
+    showTime: Boolean = true,
     onAddFood: () -> Unit,
     onQuickAdd: () -> Unit,
     onBarcodeScan: () -> Unit,
@@ -140,14 +141,16 @@ internal fun MealCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = timeString,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.outline,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (showTime) {
+                        Text(
+                            text = timeString,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.outline,
+                            fontWeight = FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
 
                 MealNutritionSummary(

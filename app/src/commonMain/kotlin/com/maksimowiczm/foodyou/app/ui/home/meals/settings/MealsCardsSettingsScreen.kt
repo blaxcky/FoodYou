@@ -60,6 +60,7 @@ fun MealsCardsSettingsScreen(
     val displayedMacros = preferences.displayedMacros
     val showMacrosInFoodEntries = preferences.showMacrosInFoodEntries
     val macroStyle = preferences.macroStyle
+    val showMealTimes = preferences.showMealTimes
 
     MealCardSettings(
         layout = layout,
@@ -78,6 +79,8 @@ fun MealsCardsSettingsScreen(
         toggleShowMacrosInFoodEntries = viewModel::updateShowMacrosInFoodEntries,
         macroStyle = macroStyle,
         onMacroStyleChange = viewModel::updateMacroStyle,
+        showMealTimes = showMealTimes,
+        toggleShowMealTimes = viewModel::updateShowMealTimes,
         onMealsSettings = onMealSettings,
         onBack = onBack,
         modifier = modifier,
@@ -98,6 +101,8 @@ internal fun MealCardSettings(
     toggleShowMacrosInFoodEntries: (Boolean) -> Unit,
     macroStyle: MealCardMacroStyle,
     onMacroStyleChange: (MealCardMacroStyle) -> Unit,
+    showMealTimes: Boolean,
+    toggleShowMealTimes: (Boolean) -> Unit,
     onMealsSettings: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -132,6 +137,31 @@ internal fun MealCardSettings(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 )
             }
+
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(Res.string.action_show_meal_times)) },
+                    modifier =
+                        Modifier.clickable {
+                            hapticFeedback.performToggle(!showMealTimes)
+                            toggleShowMealTimes(!showMealTimes)
+                        },
+                    supportingContent = {
+                        Text(stringResource(Res.string.description_show_meal_times))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = showMealTimes,
+                            onCheckedChange = {
+                                hapticFeedback.performToggle(it)
+                                toggleShowMealTimes(it)
+                            },
+                        )
+                    },
+                )
+            }
+
+            item { HorizontalDivider() }
 
             macroDisplaySettings(
                 displayedMacros = displayedMacros,

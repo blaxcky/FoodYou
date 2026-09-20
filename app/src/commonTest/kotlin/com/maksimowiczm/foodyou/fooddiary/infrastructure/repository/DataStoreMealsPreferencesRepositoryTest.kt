@@ -44,6 +44,13 @@ class DataStoreMealsPreferencesRepositoryTest {
     }
 
     @Test
+    fun showMealTimesDefaultsToTrue() {
+        assertTrue(decodeShowMealTimes(null))
+        assertTrue(decodeShowMealTimes(true))
+        assertEquals(false, decodeShowMealTimes(false))
+    }
+
+    @Test
     fun macroStyleCodecRoundTripsAndFallsBackToLetters() {
         MealCardMacroStyle.entries.forEach { style ->
             assertEquals(style, decodeMacroStyle(encodeMacroStyle(style)))

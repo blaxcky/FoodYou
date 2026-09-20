@@ -132,6 +132,16 @@ class MealCardScreenshotTest {
     }
 
     @Test
+    fun hiddenTime() {
+        captureMealCard(
+            filePath = "MealCardScreenshotTest.hidden-time.png",
+            height = 220,
+            isCollapsed = false,
+            showTime = false,
+        )
+    }
+
+    @Test
     fun noMacros() {
         captureMealCard(
             filePath = "MealCardScreenshotTest.no-macros.png",
@@ -148,6 +158,7 @@ class MealCardScreenshotTest {
         displayedMacros: Set<MealCardMacro> = MealCardMacro.default,
         showMacrosInFoodEntries: Boolean = true,
         macroStyle: MealCardMacroStyle = MealCardMacroStyle.default,
+        showTime: Boolean = true,
         meal: MealModel = PopulatedMeal,
     ) {
         captureRoboImage(
@@ -170,6 +181,7 @@ class MealCardScreenshotTest {
                             displayedMacros = displayedMacros,
                             showMacrosInFoodEntries = showMacrosInFoodEntries,
                             macroStyle = macroStyle,
+                            showTime = showTime,
                             onAddFood = {},
                             onQuickAdd = {},
                             onBarcodeScan = {},

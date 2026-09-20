@@ -33,6 +33,7 @@ internal class DataStoreMealsPreferencesRepository(dataStore: DataStore<Preferen
                     this[MealsPreferencesDataStoreKeys.showMacrosInFoodEntries]
                 ),
             macroStyle = decodeMacroStyle(this[MealsPreferencesDataStoreKeys.macroStyle]),
+            showMealTimes = decodeShowMealTimes(this[MealsPreferencesDataStoreKeys.showMealTimes]),
         )
 
     override fun MutablePreferences.applyUserPreferences(updated: MealsPreferences) {
@@ -46,6 +47,7 @@ internal class DataStoreMealsPreferencesRepository(dataStore: DataStore<Preferen
         this[MealsPreferencesDataStoreKeys.showMacrosInFoodEntries] =
             updated.showMacrosInFoodEntries
         this[MealsPreferencesDataStoreKeys.macroStyle] = encodeMacroStyle(updated.macroStyle)
+        this[MealsPreferencesDataStoreKeys.showMealTimes] = updated.showMealTimes
     }
 }
 
@@ -76,6 +78,8 @@ internal fun decodeDisplayedMacros(values: Set<String>?): Set<MealCardMacro> =
 
 internal fun decodeShowMacrosInFoodEntries(value: Boolean?): Boolean = value ?: true
 
+internal fun decodeShowMealTimes(value: Boolean?): Boolean = value ?: true
+
 internal fun encodeMacroStyle(style: MealCardMacroStyle): String = style.name
 
 internal fun decodeMacroStyle(value: String?): MealCardMacroStyle =
@@ -99,4 +103,5 @@ private object MealsPreferencesDataStoreKeys {
     val showMacrosInFoodEntries =
         booleanPreferencesKey("fooddiary:meals_preferences:show_macros_in_food_entries")
     val macroStyle = stringPreferencesKey("fooddiary:meals_preferences:macro_style")
+    val showMealTimes = booleanPreferencesKey("fooddiary:meals_preferences:show_meal_times")
 }

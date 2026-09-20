@@ -82,16 +82,21 @@ class MealsCardsViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.macroStyle.collect()
         }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.showMealTimes.collect()
+        }
 
         assertEquals(MealCardMacro.default, viewModel.displayedMacros.value)
         assertTrue(viewModel.showMacrosInFoodEntries.value)
         assertEquals(MealCardMacroStyle.Letters, viewModel.macroStyle.value)
+        assertTrue(viewModel.showMealTimes.value)
 
         preferencesRepository.update {
             copy(
                 displayedMacros = setOf(MealCardMacro.Proteins),
                 showMacrosInFoodEntries = false,
                 macroStyle = MealCardMacroStyle.Icons,
+                showMealTimes = false,
             )
         }
         advanceUntilIdle()
@@ -99,6 +104,7 @@ class MealsCardsViewModelTest {
         assertEquals(setOf(MealCardMacro.Proteins), viewModel.displayedMacros.value)
         assertEquals(false, viewModel.showMacrosInFoodEntries.value)
         assertEquals(MealCardMacroStyle.Icons, viewModel.macroStyle.value)
+        assertEquals(false, viewModel.showMealTimes.value)
     }
 
     @Test
