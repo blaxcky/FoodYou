@@ -24,6 +24,25 @@ import kotlinx.datetime.LocalDate
 
 class DataStoreSettingsRepositoryTest {
     @Test
+    fun weightBackfillCursorAndCompletionRoundTrip() = runTest {
+        val store = InMemoryPreferencesDataStore()
+        val repository = DataStoreSettingsRepository(store)
+        assertNull(repository.observe().first().healthConnectWeightBackfillBeforeEpochSeconds)
+        assertEquals(false, repository.observe().first().healthConnectWeightBackfillComplete)
+
+        repository.update {
+            copy(
+                healthConnectWeightBackfillBeforeEpochSeconds = 1_700_000_000,
+                healthConnectWeightBackfillComplete = true,
+            )
+        }
+
+        val reloaded = DataStoreSettingsRepository(store).observe().first()
+        assertEquals(1_700_000_000, reloaded.healthConnectWeightBackfillBeforeEpochSeconds)
+        assertEquals(true, reloaded.healthConnectWeightBackfillComplete)
+    }
+
+    @Test
     fun goalCardVisibilityDefaultsAndIndependentUpdatesRoundTrip() = runTest {
         val dataStore = InMemoryPreferencesDataStore()
         val repository = DataStoreSettingsRepository(dataStore)

@@ -24,6 +24,8 @@ data class Settings(
     val healthConnectWeightEnabled: Boolean = false,
     val healthConnectStepsLastSyncedEpochSeconds: Long?,
     val healthConnectWeightLastSyncedEpochSeconds: Long? = null,
+    val healthConnectWeightBackfillBeforeEpochSeconds: Long? = null,
+    val healthConnectWeightBackfillComplete: Boolean = false,
     val homeSyncHealthConnectEnabled: Boolean = true,
     val homeSyncFddbDiaryEnabled: Boolean = false,
     val fddbDiarySyncLastImported: Int? = null,

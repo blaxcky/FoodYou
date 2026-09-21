@@ -52,6 +52,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds],
             healthConnectWeightLastSyncedEpochSeconds =
                 this[SettingsPreferencesKeys.healthConnectWeightLastSyncedEpochSeconds],
+            healthConnectWeightBackfillBeforeEpochSeconds =
+                this[SettingsPreferencesKeys.healthConnectWeightBackfillBeforeEpochSeconds],
+            healthConnectWeightBackfillComplete =
+                this[SettingsPreferencesKeys.healthConnectWeightBackfillComplete] ?: false,
             homeSyncHealthConnectEnabled =
                 this[SettingsPreferencesKeys.homeSyncHealthConnectEnabled] ?: true,
             homeSyncFddbDiaryEnabled =
@@ -104,6 +108,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             updated.healthConnectStepsLastSyncedEpochSeconds
         this[SettingsPreferencesKeys.healthConnectWeightLastSyncedEpochSeconds] =
             updated.healthConnectWeightLastSyncedEpochSeconds
+        this[SettingsPreferencesKeys.healthConnectWeightBackfillBeforeEpochSeconds] =
+            updated.healthConnectWeightBackfillBeforeEpochSeconds
+        this[SettingsPreferencesKeys.healthConnectWeightBackfillComplete] =
+            updated.healthConnectWeightBackfillComplete
         this[SettingsPreferencesKeys.homeSyncHealthConnectEnabled] =
             updated.homeSyncHealthConnectEnabled
         this[SettingsPreferencesKeys.homeSyncFddbDiaryEnabled] = updated.homeSyncFddbDiaryEnabled
@@ -367,6 +375,10 @@ private object SettingsPreferencesKeys {
         longPreferencesKey("settings:healthConnectStepsLastSyncedEpochSeconds")
     val healthConnectWeightLastSyncedEpochSeconds =
         longPreferencesKey("settings:healthConnectWeightLastSyncedEpochSeconds")
+    val healthConnectWeightBackfillBeforeEpochSeconds =
+        longPreferencesKey("settings:healthConnectWeightBackfillBeforeEpochSeconds")
+    val healthConnectWeightBackfillComplete =
+        booleanPreferencesKey("settings:healthConnectWeightBackfillComplete")
     val homeSyncHealthConnectEnabled =
         booleanPreferencesKey("settings:homeSyncHealthConnectEnabled")
     val homeSyncFddbDiaryEnabled = booleanPreferencesKey("settings:homeSyncFddbDiaryEnabled")
