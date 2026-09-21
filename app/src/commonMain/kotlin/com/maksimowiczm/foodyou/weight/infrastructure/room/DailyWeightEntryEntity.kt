@@ -6,12 +6,16 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "DailyWeightEntry",
-    indices = [Index("measuredEpochSeconds")],
+    indices = [Index("dateEpochDay"), Index("measuredEpochSeconds")],
 )
 data class DailyWeightEntryEntity(
-    @PrimaryKey val dateEpochDay: Long,
+    @PrimaryKey val id: String,
+    val dateEpochDay: Long,
     val measuredEpochSeconds: Long,
     val weightKg: Double,
     val healthConnectRecordId: String?,
     val isFoodYouRecord: Boolean,
+    val sourcePackageName: String?,
+    val sourceDeviceType: Int?,
+    val isHidden: Boolean,
 )

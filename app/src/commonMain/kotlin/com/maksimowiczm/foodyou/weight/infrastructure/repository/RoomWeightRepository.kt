@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.goals.domain.repository.BasalMetabolicRateProfil
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import com.maksimowiczm.foodyou.weight.domain.entity.WeightGoal
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
+import com.maksimowiczm.foodyou.weight.domain.usecase.latestWeightEntryPerDay
 import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryDao
 import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntity
 import kotlin.time.Clock
@@ -24,10 +25,15 @@ internal class RoomWeightRepository(
     private val basalMetabolicRateProfileRepository: BasalMetabolicRateProfileRepository,
 ) : WeightRepository {
     override fun observeEntries(): Flow<List<DailyWeightEntry>> =
+        observeMeasurements().map { measurements ->
+            latestWeightEntryPerDay(measurements).sortedByDescending { it.date }
+        }
+
+    override fun observeMeasurements(): Flow<List<DailyWeightEntry>> =
         dao.observeAll().map { entries -> entries.map { it.toModel() } }
 
     override fun observeToday(): Flow<DailyWeightEntry?> =
-        dao.observe(today().toEpochDays()).map { it?.toModel() }
+        observeEntries().map { entries -> entries.firstOrNull { it.date == today() } }
 
     override fun observeGoal(): Flow<WeightGoal> =
         dataStore.data.map { preferences ->
@@ -36,30 +42,39 @@ internal class RoomWeightRepository(
 
     override suspend fun upsertToday(weightKg: Double) {
         val now = Clock.System.now()
+        val date = today()
         val entry =
             DailyWeightEntry(
-                date = today(),
+                date = date,
                 weightKg = weightKg,
                 measuredAt = now,
-                healthConnectRecordId =
-                    entry(today())?.takeIf { it.isFoodYouRecord }?.healthConnectRecordId,
+                healthConnectRecordId = entry(date)?.healthConnectRecordId,
                 isFoodYouRecord = true,
             )
-        upsert(entry)
-        val profile = basalMetabolicRateProfileRepository.observeProfile().first()
-        basalMetabolicRateProfileRepository.updateProfile(profile.copy(weightKg = weightKg))
+        val previous = latestVisibleWeight()
+        dao.upsert(entry.toEntity())
+        updateProfileWeight(previous, force = true)
     }
 
     override suspend fun upsert(entry: DailyWeightEntry) {
-        dao.upsert(entry.toEntity())
+        upsertAll(listOf(entry))
     }
 
     override suspend fun upsertAll(entries: List<DailyWeightEntry>) {
-        dao.upsertAll(entries.map { it.toEntity() })
+        if (entries.isEmpty()) return
+        val previous = latestVisibleWeight()
+        dao.upsertImportedPreservingHidden(entries.map { it.toEntity() })
+        updateProfileWeight(previous)
     }
 
     override suspend fun entry(date: LocalDate): DailyWeightEntry? =
-        dao.find(date.toEpochDays())?.toModel()
+        dao.find("local:${date.toEpochDays()}")?.toModel()
+
+    override suspend fun setHidden(id: String, hidden: Boolean) {
+        val previous = latestVisibleWeight()
+        dao.setHidden(id, hidden)
+        updateProfileWeight(previous)
+    }
 
     override suspend fun updateGoal(goal: WeightGoal) {
         dataStore.updateData {
@@ -76,26 +91,59 @@ internal class RoomWeightRepository(
 
     private fun today(): LocalDate =
         Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+    private suspend fun latestVisibleWeight(): Double? =
+        latestWeightEntryPerDay(dao.observeAll().first().map { it.toModel() })
+            .maxByOrNull { it.measuredAt }
+            ?.weightKg
+
+    private suspend fun updateProfileWeight(previous: Double?, force: Boolean = false) {
+        val next = latestVisibleWeight()
+        val profile = basalMetabolicRateProfileRepository.observeProfile().first()
+        val lastAutoApplied = dataStore.data.first()[WeightPreferencesKeys.autoAppliedWeightKg]
+        val owned =
+            force ||
+                (lastAutoApplied != null && profile.weightKg == lastAutoApplied) ||
+                (lastAutoApplied == null && previous != null && profile.weightKg == previous) ||
+                (lastAutoApplied == null && profile.weightKg == null)
+        if (!owned || next == profile.weightKg) return
+        basalMetabolicRateProfileRepository.updateProfile(profile.copy(weightKg = next))
+        dataStore.updateData { preferences ->
+            preferences.toMutablePreferences().apply {
+                if (next == null) remove(WeightPreferencesKeys.autoAppliedWeightKg)
+                else this[WeightPreferencesKeys.autoAppliedWeightKg] = next
+            }
+        }
+    }
 }
 
 private object WeightPreferencesKeys {
     val targetWeightKg = doublePreferencesKey("weight:targetWeightKg")
+    val autoAppliedWeightKg = doublePreferencesKey("weight:autoAppliedWeightKg")
 }
 
 private fun DailyWeightEntryEntity.toModel(): DailyWeightEntry =
     DailyWeightEntry(
+        id = id,
         date = LocalDate.fromEpochDays(dateEpochDay),
         weightKg = weightKg,
         measuredAt = Instant.fromEpochSeconds(measuredEpochSeconds),
         healthConnectRecordId = healthConnectRecordId,
         isFoodYouRecord = isFoodYouRecord,
+        sourcePackageName = sourcePackageName,
+        sourceDeviceType = sourceDeviceType,
+        isHidden = isHidden,
     )
 
 private fun DailyWeightEntry.toEntity(): DailyWeightEntryEntity =
     DailyWeightEntryEntity(
+        id = id,
         dateEpochDay = date.toEpochDays(),
         measuredEpochSeconds = measuredAt.epochSeconds,
         weightKg = weightKg,
         healthConnectRecordId = healthConnectRecordId,
         isFoodYouRecord = isFoodYouRecord,
+        sourcePackageName = sourcePackageName,
+        sourceDeviceType = sourceDeviceType,
+        isHidden = isHidden,
     )

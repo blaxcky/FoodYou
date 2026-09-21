@@ -22,6 +22,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
@@ -36,6 +40,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +80,7 @@ private val ReportSoftButton = Color(0xFFD8ECFA)
 private val ReportCardShape = RoundedCornerShape(26.dp)
 private const val WeightAdjustRepeatStartMillis = 550L
 private const val WeightAdjustRepeatMillis = 175L
+private const val HealthConnectScaleDeviceType = 3
 
 @Composable
 internal fun WeightReportScreen(
@@ -91,6 +98,7 @@ internal fun WeightReportScreen(
         onMinus = { viewModel.adjustWeight(-0.1) },
         onPlus = { viewModel.adjustWeight(0.1) },
         onHealthConnectClick = permissionRequester::request,
+        onToggleHidden = viewModel::setHidden,
         modifier = modifier,
     )
 }
@@ -102,6 +110,7 @@ internal fun WeightReportContent(
     onMinus: () -> Unit,
     onPlus: () -> Unit,
     onHealthConnectClick: () -> Unit,
+    onToggleHidden: (String, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     Scaffold(modifier = modifier, containerColor = ReportBackground) { paddingValues ->
@@ -157,8 +166,28 @@ internal fun WeightReportContent(
                     HistoryCard(
                         entries = state.entries,
                         heightCm = state.heightCm,
+                        onToggleHidden = onToggleHidden,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     )
+                }
+            }
+            if (state.hiddenEntries.isNotEmpty()) {
+                item {
+                    var expanded by remember { mutableStateOf(false) }
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Button(onClick = { expanded = !expanded }) {
+                            Text("Ausgeblendete Werte (${state.hiddenEntries.size})")
+                        }
+                        if (expanded) {
+                            HistoryCard(
+                                entries = state.hiddenEntries,
+                                heightCm = state.heightCm,
+                                onToggleHidden = onToggleHidden,
+                                showChanges = false,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -605,7 +634,9 @@ private fun WeightGoalProgress(
 private fun HistoryCard(
     entries: List<DailyWeightEntry>,
     heightCm: Double?,
+    onToggleHidden: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    showChanges: Boolean = true,
 ) {
     val changesByDate = remember(entries) {
         entries
@@ -623,8 +654,9 @@ private fun HistoryCard(
             entries.forEachIndexed { index, entry ->
                 HistoryRow(
                     entry = entry,
-                    changeKg = changesByDate[entry.date],
+                    changeKg = if (showChanges) changesByDate[entry.date] else null,
                     heightCm = heightCm,
+                    onToggleHidden = onToggleHidden,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (index != entries.lastIndex) {
@@ -640,11 +672,12 @@ private fun HistoryRow(
     entry: DailyWeightEntry,
     changeKg: Double?,
     heightCm: Double?,
+    onToggleHidden: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -654,11 +687,25 @@ private fun HistoryRow(
                 color = ReportText,
                 fontWeight = FontWeight.Medium,
             )
-            Text(
-                text = germanWeekday(entry.date.dayOfWeek),
-                style = MaterialTheme.typography.bodySmall,
-                color = ReportMutedText,
-            )
+            Text(text = germanWeekday(entry.date.dayOfWeek), style = MaterialTheme.typography.bodySmall, color = ReportMutedText)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector =
+                        if (entry.isFoodYouRecord) Icons.Filled.Edit
+                        else if (entry.sourceDeviceType == HealthConnectScaleDeviceType) Icons.Filled.MonitorWeight
+                        else Icons.Filled.Sync,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = ReportMutedText,
+                )
+                Spacer(Modifier.width(3.dp))
+                val appName = entry.sourcePackageName?.let { sourceAppLabel(it) }
+                Text(
+                    text = if (entry.isFoodYouRecord) "FoodYou" else appName ?: "Health Connect",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ReportMutedText,
+                )
+            }
         }
         Column(modifier = Modifier.width(54.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             val bmi = calculateBmi(entry.weightKg, heightCm)
@@ -690,6 +737,14 @@ private fun HistoryRow(
                     color = ReportMutedText,
                 )
             }
+        }
+        IconButton(onClick = { onToggleHidden(entry.id, !entry.isHidden) }, modifier = Modifier.size(40.dp)) {
+            Icon(
+                imageVector = if (entry.isHidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                contentDescription = if (entry.isHidden) "Wieder einblenden" else "Ausblenden",
+                modifier = Modifier.size(20.dp),
+                tint = ReportMutedText,
+            )
         }
     }
 }

@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.home.master
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.HealthConnectActivitySync
+import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
 import com.maksimowiczm.foodyou.activity.HealthConnectSyncResult
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
@@ -85,6 +86,7 @@ private const val BURNED_ENERGY_SYNC_DELTA_VISIBLE_MILLIS = 120_000L
 internal class HomeViewModel(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val healthConnectActivitySync: HealthConnectActivitySync,
+    private val healthConnectWeightSync: HealthConnectWeightSync,
     private val activityRepository: ActivityRepository,
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     private val fddbCredentialsRepository: FddbCredentialsRepository,
@@ -184,6 +186,7 @@ internal class HomeViewModel(
             )
 
     init {
+        viewModelScope.launch { healthConnectWeightSync.syncHistorical() }
         viewModelScope.launch {
             while (true) {
                 nowEpochSeconds.value = Clock.System.now().epochSeconds
@@ -259,6 +262,7 @@ internal class HomeViewModel(
                         }
                     },
                 )
+            healthConnectWeightSync.syncHistorical()
             if (result.healthConnectSynced || result.fddbDiarySynced) {
                 updateCalorieWidgetValues()
             }

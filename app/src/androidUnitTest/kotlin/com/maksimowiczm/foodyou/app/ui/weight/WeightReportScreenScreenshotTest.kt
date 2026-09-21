@@ -61,6 +61,15 @@ class WeightReportScreenScreenshotTest {
                     state =
                         WeightReportUiState(
                             entries = WeightEntries,
+                            hiddenEntries = listOf(
+                                weight("2025-08-08", 106.0, "2025-08-08T05:30:00Z").copy(
+                                    id = "hc:hidden",
+                                    isFoodYouRecord = false,
+                                    sourcePackageName = "com.fitbit.FitbitMobile",
+                                    sourceDeviceType = 3,
+                                    isHidden = true,
+                                )
+                            ),
                             chartEntries = ChartEntries,
                             todayWeightKg = 101.3,
                             suggestedWeightKg = 101.3,
@@ -83,7 +92,12 @@ class WeightReportScreenScreenshotTest {
         val WeightEntries =
             listOf(
                 weight("2026-06-07", 101.3, "2026-06-07T06:30:00Z"),
-                weight("2025-08-08", 104.4, "2025-08-08T06:35:00Z"),
+                weight("2025-08-08", 104.4, "2025-08-08T06:35:00Z").copy(
+                    id = "hc:fitbit",
+                    isFoodYouRecord = false,
+                    sourcePackageName = "com.fitbit.FitbitMobile",
+                    sourceDeviceType = 3,
+                ),
                 weight("2025-08-07", 105.0, "2025-08-07T06:20:00Z"),
             )
 

@@ -170,7 +170,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 49
+        const val VERSION = 50
 
         private val migrations: List<Migration> =
             listOf(
@@ -205,6 +205,7 @@ abstract class FoodYouDatabase :
                 ProductQuickCaptureMigration,
                 StepExclusionMigration,
                 QuickCaptureMigration,
+                WeightMeasurementsMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -214,6 +215,45 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object WeightMeasurementsMigration : Migration(49, 50) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `DailyWeightEntry_new` (
+                `id` TEXT NOT NULL PRIMARY KEY,
+                `dateEpochDay` INTEGER NOT NULL,
+                `measuredEpochSeconds` INTEGER NOT NULL,
+                `weightKg` REAL NOT NULL,
+                `healthConnectRecordId` TEXT,
+                `isFoodYouRecord` INTEGER NOT NULL,
+                `sourcePackageName` TEXT,
+                `sourceDeviceType` INTEGER,
+                `isHidden` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        connection.execSQL(
+            """
+            INSERT INTO `DailyWeightEntry_new` (
+                `id`, `dateEpochDay`, `measuredEpochSeconds`, `weightKg`,
+                `healthConnectRecordId`, `isFoodYouRecord`, `sourcePackageName`,
+                `sourceDeviceType`, `isHidden`
+            )
+            SELECT CASE WHEN `isFoodYouRecord` = 1 THEN 'local:' || `dateEpochDay`
+                        WHEN `healthConnectRecordId` IS NOT NULL THEN 'hc:' || `healthConnectRecordId`
+                        ELSE 'legacy:' || `dateEpochDay` END,
+                   `dateEpochDay`, `measuredEpochSeconds`, `weightKg`,
+                   `healthConnectRecordId`, `isFoodYouRecord`, NULL, NULL, 0
+            FROM `DailyWeightEntry`
+            """.trimIndent()
+        )
+        connection.execSQL("DROP TABLE `DailyWeightEntry`")
+        connection.execSQL("ALTER TABLE `DailyWeightEntry_new` RENAME TO `DailyWeightEntry`")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_DailyWeightEntry_dateEpochDay` ON `DailyWeightEntry` (`dateEpochDay`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_DailyWeightEntry_measuredEpochSeconds` ON `DailyWeightEntry` (`measuredEpochSeconds`)")
     }
 }
 

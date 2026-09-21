@@ -17,6 +17,7 @@ fun Module.home() {
         HomeViewModel(
             settingsRepository = userPreferencesRepository(),
             healthConnectActivitySync = get(),
+            healthConnectWeightSync = get(),
             activityRepository = get(),
             manualFddbDiarySyncUseCase = get(),
             fddbCredentialsRepository = get<FddbCredentialsRepository>(),

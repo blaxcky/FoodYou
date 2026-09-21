@@ -8,6 +8,8 @@ import kotlinx.datetime.LocalDate
 interface WeightRepository {
     fun observeEntries(): Flow<List<DailyWeightEntry>>
 
+    fun observeMeasurements(): Flow<List<DailyWeightEntry>>
+
     fun observeToday(): Flow<DailyWeightEntry?>
 
     fun observeGoal(): Flow<WeightGoal>
@@ -19,6 +21,8 @@ interface WeightRepository {
     suspend fun upsertAll(entries: List<DailyWeightEntry>)
 
     suspend fun entry(date: LocalDate): DailyWeightEntry?
+
+    suspend fun setHidden(id: String, hidden: Boolean)
 
     suspend fun updateGoal(goal: WeightGoal)
 }

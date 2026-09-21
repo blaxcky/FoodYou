@@ -15,12 +15,13 @@ import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesReposi
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
-import com.maksimowiczm.foodyou.weight.domain.usecase.latestWeightEntryPerDay
-import com.maksimowiczm.foodyou.weight.domain.usecase.resolveWeightConflict
+import com.maksimowiczm.foodyou.weight.domain.usecase.foodYouHealthConnectDate
 import java.io.IOException
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -43,6 +44,8 @@ private class AndroidHealthConnectWeightSync(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val context: Context,
 ) : HealthConnectWeightSync {
+    private val syncMutex = Mutex()
+
     override suspend fun availability(): HealthConnectAvailability =
         when (HealthConnectClient.getSdkStatus(context)) {
             HealthConnectClient.SDK_AVAILABLE -> HealthConnectAvailability.Available
@@ -84,23 +87,27 @@ private class AndroidHealthConnectWeightSync(
         }
         return try {
             if (!hasWeightPermission()) return HealthConnectSyncResult.MissingPermission
-            entry.healthConnectRecordId?.let { id ->
-                client()
-                    .deleteRecords(
+            syncMutex.withLock {
+                entry.healthConnectRecordId?.let { id ->
+                    client().deleteRecords(
                         recordType = WeightRecord::class,
                         recordIdsList = listOf(id),
                         clientRecordIdsList = emptyList(),
                     )
+                }
+                val metadata = Metadata.manualEntry(clientRecordId = foodYouClientRecordId(entry.date))
+                val record =
+                    WeightRecord(
+                        time = entry.measuredAt.toJavaInstant(),
+                        zoneOffset = java.time.ZoneId.systemDefault().rules.getOffset(entry.measuredAt.toJavaInstant()),
+                        weight = androidx.health.connect.client.units.Mass.kilograms(entry.weightKg),
+                        metadata = metadata,
+                    )
+                val insertedId = client().insertRecords(listOf(record)).recordIdsList.singleOrNull()
+                if (insertedId != null) {
+                    repository.upsert(entry.copy(healthConnectRecordId = insertedId))
+                }
             }
-            val metadata = Metadata.manualEntry(clientRecordId = foodYouClientRecordId(entry.date))
-            val record =
-                WeightRecord(
-                    time = entry.measuredAt.toJavaInstant(),
-                    zoneOffset = null,
-                    weight = androidx.health.connect.client.units.Mass.kilograms(entry.weightKg),
-                    metadata = metadata,
-                )
-            client().insertRecords(listOf(record))
             syncHistorical()
         } catch (_: SecurityException) {
             HealthConnectSyncResult.MissingPermission
@@ -116,41 +123,46 @@ private class AndroidHealthConnectWeightSync(
     private suspend fun syncAvailableHistorical(): HealthConnectSyncResult {
         return try {
             if (!hasWeightPermission()) return HealthConnectSyncResult.MissingPermission
-            val records =
-                client()
-                    .readRecords(
+            syncMutex.withLock {
+                val records = mutableListOf<WeightRecord>()
+                var pageToken: String? = null
+                val end = java.time.Instant.now().plusSeconds(60)
+                val start = end.minusSeconds(30L * 24 * 60 * 60)
+                do {
+                    val response = client().readRecords(
                         ReadRecordsRequest(
                             recordType = WeightRecord::class,
-                            timeRangeFilter =
-                                TimeRangeFilter.between(
-                                    java.time.Instant.EPOCH,
-                                    java.time.Instant.now().plusSeconds(60),
-                                ),
+                            timeRangeFilter = TimeRangeFilter.between(start, end),
+                            pageToken = pageToken,
                         )
                     )
-                    .records
-            val timeZone = TimeZone.currentSystemDefault()
-            val entries =
-                latestWeightEntryPerDay(
-                    records.map {
-                        val date = it.time.toKotlinInstant().toLocalDateTime(timeZone).date
-                        DailyWeightEntry(
-                            date = date,
-                            weightKg = it.weight.inKilograms,
-                            measuredAt = it.time.toKotlinInstant(),
-                            healthConnectRecordId = it.metadata.id,
-                            isFoodYouRecord =
-                                it.metadata.clientRecordId == foodYouClientRecordId(date),
-                        )
-                    }
-                )
-                    .map { incoming ->
-                        val local = repository.entry(incoming.date)
-                        resolveWeightConflict(local, incoming)
-                    }
-            repository.upsertAll(entries)
-            settingsRepository.update {
-                copy(healthConnectWeightLastSyncedEpochSeconds = Clock.System.now().epochSeconds)
+                    records += response.records
+                    pageToken = response.pageToken
+                } while (!pageToken.isNullOrEmpty())
+                val timeZone = TimeZone.currentSystemDefault()
+                val entries = records.map { record ->
+                    val ownDate = foodYouHealthConnectDate(
+                        originPackage = record.metadata.dataOrigin.packageName,
+                        ownPackage = context.packageName,
+                        clientRecordId = record.metadata.clientRecordId,
+                    )
+                    val date = ownDate ?: record.time.toKotlinInstant().toLocalDateTime(timeZone).date
+                    val ownRecord = ownDate != null
+                    DailyWeightEntry(
+                        date = date,
+                        weightKg = record.weight.inKilograms,
+                        measuredAt = record.time.toKotlinInstant(),
+                        healthConnectRecordId = record.metadata.id,
+                        isFoodYouRecord = ownRecord,
+                        id = if (ownRecord) "local:${date.toEpochDays()}" else "hc:${record.metadata.id}",
+                        sourcePackageName = record.metadata.dataOrigin.packageName,
+                        sourceDeviceType = record.metadata.device?.type,
+                    )
+                }
+                repository.upsertAll(entries)
+                settingsRepository.update {
+                    copy(healthConnectWeightLastSyncedEpochSeconds = Clock.System.now().epochSeconds)
+                }
             }
             HealthConnectSyncResult.Synced
         } catch (_: SecurityException) {

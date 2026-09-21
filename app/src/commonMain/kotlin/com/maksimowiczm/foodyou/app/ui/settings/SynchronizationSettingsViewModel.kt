@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.activity.HealthConnectAvailability
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.result.Result
@@ -10,6 +11,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ManualFddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbDiarySyncStatus
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
+import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,18 +26,30 @@ internal class SynchronizationSettingsViewModel(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     fddbCredentialsRepository: FddbCredentialsRepository,
+    private val healthConnectWeightSync: HealthConnectWeightSync,
 ) : ViewModel() {
 
     private val fddbSyncInProgress = MutableStateFlow(false)
+    private val weightSyncAvailable = MutableStateFlow(false)
+
+    init {
+        viewModelScope.launch {
+            weightSyncAvailable.value =
+                healthConnectWeightSync.availability() == HealthConnectAvailability.Available
+        }
+    }
 
     val model: StateFlow<SynchronizationSettingsModel?> =
         combine(
                 settingsRepository.observe(),
                 fddbCredentialsRepository.hasCredentials(),
                 fddbSyncInProgress,
-            ) { settings, hasFddbCredentials, fddbSyncing ->
+                weightSyncAvailable,
+            ) { settings, hasFddbCredentials, fddbSyncing, weightAvailable ->
                 SynchronizationSettingsModel(
                     homeSyncHealthConnectEnabled = settings.homeSyncHealthConnectEnabled,
+                    weightSyncEnabled = settings.healthConnectWeightEnabled,
+                    weightSyncAvailable = weightAvailable,
                     homeSyncFddbDiaryEnabled = settings.homeSyncFddbDiaryEnabled,
                     fddbDiarySyncStatus = settings.fddbDiarySyncStatus(),
                     hasFddbCredentials = hasFddbCredentials,
@@ -52,6 +66,13 @@ internal class SynchronizationSettingsViewModel(
     fun setHomeSyncHealthConnectEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.update { copy(homeSyncHealthConnectEnabled = enabled) }
+        }
+    }
+
+    fun setWeightSyncEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.update { copy(healthConnectWeightEnabled = enabled) }
+            if (enabled) healthConnectWeightSync.syncHistorical()
         }
     }
 
@@ -84,6 +105,8 @@ internal class SynchronizationSettingsViewModel(
 
 internal data class SynchronizationSettingsModel(
     val homeSyncHealthConnectEnabled: Boolean,
+    val weightSyncEnabled: Boolean,
+    val weightSyncAvailable: Boolean,
     val homeSyncFddbDiaryEnabled: Boolean,
     val fddbDiarySyncStatus: FddbDiarySyncStatus?,
     val hasFddbCredentials: Boolean,

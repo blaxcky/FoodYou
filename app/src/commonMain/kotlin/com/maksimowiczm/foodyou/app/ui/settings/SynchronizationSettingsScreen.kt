@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.home.master.FddbLoginDialog
+import com.maksimowiczm.foodyou.app.ui.weight.rememberHealthConnectWeightPermissionRequester
 import com.maksimowiczm.foodyou.common.compose.utility.LocalClipboardManager
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -48,11 +49,19 @@ internal fun SynchronizationSettingsScreen(
 ) {
     val model = viewModel.model.collectAsStateWithLifecycle().value
     var showFddbLoginDialog by remember { mutableStateOf(false) }
+    val weightPermissionRequester =
+        rememberHealthConnectWeightPermissionRequester { granted ->
+            if (granted) viewModel.setWeightSyncEnabled(true)
+        }
 
     SynchronizationSettingsContent(
         model = model,
         onBack = onBack,
         onHomeSyncHealthConnectEnabledChange = viewModel::setHomeSyncHealthConnectEnabled,
+        onWeightSyncEnabledChange = { enabled ->
+            if (enabled && model?.weightSyncAvailable == true) weightPermissionRequester.request()
+            else viewModel.setWeightSyncEnabled(false)
+        },
         onHomeSyncFddbDiaryEnabledChange = viewModel::setHomeSyncFddbDiaryEnabled,
         onFddbSync = {
             if (model?.hasFddbCredentials == true) {
@@ -75,6 +84,7 @@ private fun SynchronizationSettingsContent(
     model: SynchronizationSettingsModel?,
     onBack: () -> Unit,
     onHomeSyncHealthConnectEnabledChange: (Boolean) -> Unit,
+    onWeightSyncEnabledChange: (Boolean) -> Unit,
     onHomeSyncFddbDiaryEnabledChange: (Boolean) -> Unit,
     onFddbSync: () -> Unit,
     onFddbProductSyncQueue: () -> Unit,
@@ -112,6 +122,7 @@ private fun SynchronizationSettingsContent(
                     headlineContent = {
                         Text(stringResource(Res.string.action_sync_health_connect))
                     },
+                    supportingContent = { Text("Schritte und Kalorien beim Home-Sync abgleichen") },
                     trailingContent = {
                         Switch(
                             checked = checked,
@@ -122,6 +133,24 @@ private fun SynchronizationSettingsContent(
                         Modifier.clickable {
                             onHomeSyncHealthConnectEnabledChange(!checked)
                         },
+                )
+            }
+
+            item {
+                val checked = model?.weightSyncEnabled ?: false
+                ListItem(
+                    headlineContent = { Text("Gewicht mit Health Connect synchronisieren") },
+                    supportingContent = { Text("Waagenwerte übernehmen und FoodYou-Einträge übertragen") },
+                    trailingContent = {
+                        Switch(
+                            checked = checked,
+                            enabled = checked || model?.weightSyncAvailable == true,
+                            onCheckedChange = onWeightSyncEnabledChange,
+                        )
+                    },
+                    modifier = Modifier.clickable(enabled = checked || model?.weightSyncAvailable == true) {
+                        onWeightSyncEnabledChange(!checked)
+                    },
                 )
             }
 

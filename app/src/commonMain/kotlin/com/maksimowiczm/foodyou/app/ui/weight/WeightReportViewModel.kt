@@ -37,6 +37,7 @@ internal class WeightReportViewModel(
         combine(
             repository.observeEntries(),
             repository.observeToday(),
+            repository.observeMeasurements(),
             repository.observeGoal(),
             basalMetabolicRateProfileRepository.observeProfile(),
             ::createReportState,
@@ -60,7 +61,6 @@ internal class WeightReportViewModel(
             availability.value = healthConnectWeightSync.availability()
             healthConnectPermissionGranted.value = healthConnectWeightSync.hasWeightPermission()
             if (healthConnectPermissionGranted.value) {
-                settingsRepository.update { copy(healthConnectWeightEnabled = true) }
                 healthConnectWeightSync.syncHistorical()
             }
         }
@@ -84,6 +84,10 @@ internal class WeightReportViewModel(
         viewModelScope.launch { repository.updateGoal(WeightGoal(weightKg)) }
     }
 
+    fun setHidden(id: String, hidden: Boolean) {
+        viewModelScope.launch { repository.setHidden(id, hidden) }
+    }
+
     fun onHealthConnectPermissionResult(granted: Boolean) {
         healthConnectPermissionGranted.value = granted
         if (granted) {
@@ -97,6 +101,7 @@ internal class WeightReportViewModel(
     private fun createReportState(
         entries: List<DailyWeightEntry>,
         todayEntry: DailyWeightEntry?,
+        measurements: List<DailyWeightEntry>,
         goal: WeightGoal,
         profile: BasalMetabolicRateProfile,
     ): WeightReportUiState {
@@ -104,6 +109,7 @@ internal class WeightReportViewModel(
         val chartStart = today().minus(1, DateTimeUnit.YEAR)
         return WeightReportUiState(
             entries = entries,
+            hiddenEntries = measurements.filter { it.isHidden }.sortedByDescending { it.measuredAt },
             chartEntries = entries.filter { it.date >= chartStart }.sortedBy { it.date },
             todayWeightKg = todayEntry?.weightKg,
             suggestedWeightKg = current?.weightKg,
@@ -120,6 +126,7 @@ internal class WeightReportViewModel(
 
 internal data class WeightReportUiState(
     val entries: List<DailyWeightEntry> = emptyList(),
+    val hiddenEntries: List<DailyWeightEntry> = emptyList(),
     val chartEntries: List<DailyWeightEntry> = emptyList(),
     val todayWeightKg: Double? = null,
     val suggestedWeightKg: Double? = null,

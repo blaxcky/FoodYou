@@ -3,6 +3,8 @@ package com.maksimowiczm.foodyou.weight.domain.usecase
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 
@@ -23,14 +25,21 @@ class WeightSyncRulesTest {
     }
 
     @Test
-    fun newestTimestampWinsConflict() {
+    fun hiddenLatestMeasurementFallsBackToEarlierSameDay() {
         val date = LocalDate(2026, 6, 7)
-        val local = weight(date, 81.2, "2026-06-07T20:00:00Z")
-        val olderIncoming = weight(date, 80.9, "2026-06-07T06:00:00Z")
-        val newerIncoming = weight(date, 80.7, "2026-06-07T21:00:00Z")
+        val earlier = weight(date, 81.2, "2026-06-07T06:00:00Z")
+        val hidden = weight(date, 80.9, "2026-06-07T20:00:00Z").copy(isHidden = true)
 
-        assertEquals(local, resolveWeightConflict(local, olderIncoming))
-        assertEquals(newerIncoming, resolveWeightConflict(local, newerIncoming))
+        assertEquals(earlier, latestWeightEntryPerDay(listOf(earlier, hidden)).single())
+    }
+
+    @Test
+    fun onlyOwnPackageAndClientIdAreRecognizedAsFoodYouEcho() {
+        val date = LocalDate(2026, 6, 7)
+        val id = "foodyou-weight-${date.toEpochDays()}"
+        assertEquals(date, foodYouHealthConnectDate("com.foodyou", "com.foodyou", id))
+        assertEquals(null, foodYouHealthConnectDate("com.fitbit", "com.foodyou", id))
+        assertEquals(null, foodYouHealthConnectDate("com.foodyou", "com.foodyou", "other"))
     }
 }
 
