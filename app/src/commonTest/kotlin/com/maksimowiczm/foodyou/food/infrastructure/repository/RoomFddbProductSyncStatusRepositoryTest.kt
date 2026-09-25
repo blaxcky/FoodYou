@@ -46,14 +46,29 @@ class RoomFddbProductSyncStatusRepositoryTest {
         assertEquals(listOf(7L), dao.cleared)
     }
 
+    @Test
+    fun markAttemptDelegatesBeforeAResultExists() = runBlocking {
+        val dao = FakeDao()
+        val repository = RoomFddbProductSyncStatusRepository(dao)
+
+        repository.markAttempt(FoodId.Product(7), Instant.fromEpochSeconds(123))
+
+        assertEquals(listOf(7L to 123L), dao.attempts)
+    }
+
     private class FakeDao : FddbProductSyncStatusDao {
         val queue = MutableStateFlow<List<FddbProductSyncQueueEntity>>(emptyList())
         val cleared = mutableListOf<Long>()
+        val attempts = mutableListOf<Pair<Long, Long>>()
 
         override fun observeQueue(): Flow<List<FddbProductSyncQueueEntity>> = queue
 
         override suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueEntity> =
             queue.value.take(limit)
+
+        override suspend fun markAttempt(productId: Long, attemptedAt: Long) {
+            attempts += productId to attemptedAt
+        }
 
         override suspend fun markSuccess(productId: Long, syncedAt: Long) = Unit
 

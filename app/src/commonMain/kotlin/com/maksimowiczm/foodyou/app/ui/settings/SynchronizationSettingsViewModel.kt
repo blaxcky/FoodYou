@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.HealthConnectAvailability
+import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.result.Result
@@ -27,6 +28,7 @@ internal class SynchronizationSettingsViewModel(
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     fddbCredentialsRepository: FddbCredentialsRepository,
     private val healthConnectWeightSync: HealthConnectWeightSync,
+    dateProvider: DateProvider,
 ) : ViewModel() {
 
     private val fddbSyncInProgress = MutableStateFlow(false)
@@ -45,7 +47,8 @@ internal class SynchronizationSettingsViewModel(
                 fddbCredentialsRepository.hasCredentials(),
                 fddbSyncInProgress,
                 weightSyncAvailable,
-            ) { settings, hasFddbCredentials, fddbSyncing, weightAvailable ->
+                dateProvider.observeInstant(),
+            ) { settings, hasFddbCredentials, fddbSyncing, weightAvailable, now ->
                 SynchronizationSettingsModel(
                     homeSyncHealthConnectEnabled = settings.homeSyncHealthConnectEnabled,
                     weightSyncEnabled = settings.healthConnectWeightEnabled,
@@ -54,7 +57,8 @@ internal class SynchronizationSettingsViewModel(
                     fddbDiarySyncStatus = settings.fddbDiarySyncStatus(),
                     hasFddbCredentials = hasFddbCredentials,
                     fddbSyncInProgress = fddbSyncing,
-                    fddbProductSyncProgress = settings.fddbProductSyncManualCount.coerceIn(0, 2),
+                    nextAutomaticFddbProductSyncAt =
+                        settings.nextAutomaticFddbProductSyncAt(now),
                 )
             }
             .stateIn(
@@ -111,5 +115,5 @@ internal data class SynchronizationSettingsModel(
     val fddbDiarySyncStatus: FddbDiarySyncStatus?,
     val hasFddbCredentials: Boolean,
     val fddbSyncInProgress: Boolean,
-    val fddbProductSyncProgress: Int,
+    val nextAutomaticFddbProductSyncAt: kotlin.time.Instant?,
 )

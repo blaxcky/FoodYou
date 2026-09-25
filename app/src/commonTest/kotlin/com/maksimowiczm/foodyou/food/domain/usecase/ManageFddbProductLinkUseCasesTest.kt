@@ -154,6 +154,8 @@ class ManageFddbProductLinkUseCasesTest {
 
         override suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueItem> = emptyList()
 
+        override suspend fun markAttempt(productId: FoodId.Product, attemptedAt: Instant) = Unit
+
         override suspend fun markSuccess(productId: FoodId.Product, syncedAt: Instant) = Unit
 
         override suspend fun markFailure(

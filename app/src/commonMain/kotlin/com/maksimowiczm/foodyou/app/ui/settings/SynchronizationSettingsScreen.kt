@@ -36,7 +36,11 @@ import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.home.master.FddbLoginDialog
 import com.maksimowiczm.foodyou.app.ui.weight.rememberHealthConnectWeightPermissionRequester
 import com.maksimowiczm.foodyou.common.compose.utility.LocalClipboardManager
+import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import foodyou.app.generated.resources.*
+import kotlin.time.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -246,12 +250,7 @@ private fun SynchronizationSettingsContent(
                         Text(stringResource(Res.string.headline_fddb_product_sync_queue))
                     },
                     supportingContent = {
-                        Text(
-                            stringResource(
-                                Res.string.neutral_fddb_product_sync_progress,
-                                model?.fddbProductSyncProgress ?: 0,
-                            )
-                        )
+                        Text(model?.nextAutomaticFddbProductSyncAt.automaticSyncStatusText())
                     },
                     modifier = Modifier.clickable(onClick = onFddbProductSyncQueue),
                 )
@@ -259,6 +258,17 @@ private fun SynchronizationSettingsContent(
         }
     }
 }
+
+@Composable
+private fun Instant?.automaticSyncStatusText(): String =
+    this?.let {
+        stringResource(
+            Res.string.neutral_fddb_product_sync_next_at,
+            LocalDateFormatter.current.formatDateTime(
+                toLocalDateTime(TimeZone.currentSystemDefault())
+            ),
+        )
+    } ?: stringResource(Res.string.neutral_fddb_product_sync_ready)
 
 @Composable
 private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {

@@ -118,7 +118,8 @@
     <string name="neutral_fddb_sync_failed_with_message">FDDB-Tagebuch-Sync fehlgeschlagen: %1$s</string>
     <string name="neutral_fddb_sync_never_run">FDDB-Tagebuch-Sync wurde noch nicht ausgeführt</string>
     <string name="headline_fddb_product_sync_queue">FDDB-Produktabgleich-Warteschlange</string>
-    <string name="neutral_fddb_product_sync_progress">%1$d/3 bis zum nächsten Produktabgleich</string>
+    <string name="neutral_fddb_product_sync_ready">Beim nächsten Öffnen bereit</string>
+    <string name="neutral_fddb_product_sync_next_at">Nächster automatischer Abgleich frühestens %1$s</string>
     <string name="neutral_fddb_product_sync_empty">Keine FDDB-Produkte mit Quell-URL gefunden</string>
     <string name="neutral_fddb_product_sync_next">Nächste zwei</string>
     <string name="neutral_fddb_product_sync_never">Letzter erfolgreicher Abgleich: noch nie</string>

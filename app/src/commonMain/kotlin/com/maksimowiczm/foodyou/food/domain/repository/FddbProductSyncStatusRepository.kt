@@ -10,6 +10,8 @@ interface FddbProductSyncStatusRepository {
 
     suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueItem>
 
+    suspend fun markAttempt(productId: FoodId.Product, attemptedAt: Instant)
+
     suspend fun markSuccess(productId: FoodId.Product, syncedAt: Instant)
 
     suspend fun markFailure(productId: FoodId.Product, attemptedAt: Instant, error: String)

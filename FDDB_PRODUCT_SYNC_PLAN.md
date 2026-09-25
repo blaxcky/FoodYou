@@ -1,94 +1,33 @@
-# FDDB-Produktabgleich mit gedrosselter Warteschlange
+# Automatischer FDDB-Produktabgleich im 30-Minuten-Takt
 
-## Zusammenfassung
+## Verhalten
 
-Bei jedem manuell ausgelösten FDDB-Tagebuch-Sync – sowohl über die
-Synchronisations-Einstellungen als auch über den manuellen Home-Sync – wird ein
-persistenter Zähler erhöht. Ab dem dritten gestarteten Sync werden nach einem
-erfolgreich abgeschlossenen Tagebuch-Sync höchstens zwei FDDB-Produkte neu
-geladen und vollständig aktualisiert.
+- Der FDDB-Produktabgleich ist vom manuellen Tagebuch-Sync getrennt.
+- Bei jedem `MainActivity.onStart()` wird passiv geprüft, ob der letzte
+  Produktabruf mindestens 30 Minuten zurückliegt.
+- Ein fälliger Lauf verarbeitet höchstens die nächsten zwei Produkte direkt
+  nacheinander. Bei einer FDDB-Sperre wird der Lauf sofort beendet.
+- Es gibt keinen Dauertimer, WorkManager, Vordergrunddienst und keine
+  Benachrichtigung. Bleibt die App geöffnet, erfolgt kein weiterer Lauf.
+- Der Abrufzeitpunkt wird vor jeder Netzwerkanfrage gespeichert. Wird der
+  Prozess währenddessen beendet, kann derselbe Eintrag beim nächsten
+  Vordergrundwechsel nach Ablauf der 30 Minuten erneut versucht werden.
 
-## Implementierung
+## Manuelle Aktionen
 
-- Eine interne, gemeinsame Orchestrierung für beide manuellen
-  Sync-Einstiegspunkte einführen:
-  - Zähler in den Settings/DataStore persistieren.
-  - Sync 1 und 2: nur Tagebuch synchronisieren.
-  - Ab Sync 3: nach erfolgreichem Tagebuch-Sync die zwei fälligsten
-    FDDB-Produkte abgleichen und den Zähler zurücksetzen.
-  - Schlägt der Tagebuch-Sync fehl, keine zusätzlichen Produktanfragen starten
-    und den fälligen Zyklus beibehalten.
-  - Automatische oder nicht manuell ausgelöste Abläufe bleiben unverändert.
+- Der manuelle FDDB-Tagebuch-Sync bleibt unverändert und löst keinen
+  Produktabgleich mehr aus.
+- Der Sofortabruf eines Warteschlangenprodukts darf die Wartezeit umgehen,
+  läuft aber serialisiert mit automatischen Abrufen und startet den
+  30-Minuten-Zeitraum neu.
+- Der Warteschlangenbildschirm zeigt statt des früheren `x/3`-Zählers, ob der
+  nächste Lauf bereit ist oder ab welchem Zeitpunkt er frühestens möglich ist.
 
-- Einen separaten internen Statusspeicher für FDDB-Produktabgleiche in Room
-  ergänzen, statt das öffentliche `Product`-Modell zu erweitern:
-  - Produkt-ID, letzter erfolgreicher Abgleich, letzter Versuch und letzter
-    Fehler.
-  - Datenbankmigration und DAO-Abfragen ergänzen.
-  - Fällige Produkte: nur FDDB-Produkte mit gültiger FDDB-URL; zuerst noch nie
-    erfolgreich abgeglichene, danach nach ältestem Erfolgsdatum, stabil nach
-    Produkt-ID.
-  - Erfolg setzt das Erfolgsdatum und löscht den Fehler; Fehler speichert
-    Versuch und Fehler, lässt das Erfolgsdatum unverändert.
-  - Bei einer FDDB-Sperre den aktuellen Zwei-Produkte-Lauf sofort stoppen; bei
-    anderen einzelnen Produktfehlern den zweiten Kandidaten weiter prüfen.
+## Persistenz
 
-- Den vorhandenen Einzelprodukt-Resync wiederverwenden, damit Nährwerte,
-  Gewichte, Flüssigkeitsstatus und FDDB-Portionen identisch zum bestehenden
-  manuellen Produkt-Resync aktualisiert werden.
-
-- Eine neue, schreibgeschützte Unterseite unter den
-  Synchronisations-Einstellungen hinzufügen:
-  - Navigationseintrag in den Synchronisations-Einstellungen.
-  - Gesamte priorisierte FDDB-Warteschlange anzeigen, inklusive Produktname/
-    Marke, „noch nie“ bzw. letztem erfolgreichen Abgleich, letztem Versuch und
-    Fehlerstatus.
-  - Die ersten zwei Einträge klar als „Nächste zwei“ markieren.
-  - Den aktuellen Fortschritt bis zum nächsten Produktabgleich (`x/3`)
-    anzeigen.
-  - Neue Strings zunächst auf Englisch und Deutsch ergänzen; übrige
-    Lokalisierungen verwenden die vorhandene Fallback-Sprache.
-
-## Schnittstellen und Daten
-
-- Keine externen oder öffentlichen APIs ändern.
-- Interne Repository-/Use-Case-Schnittstellen für Statusliste,
-  Kandidatenauswahl, Erfolg/Fehler-Markierung und den manuellen
-  Drei-Sync-Rhythmus ergänzen.
-- Die bestehende FDDB-Tagebuch-Sync-Statusanzeige bleibt erhalten; der
-  Produktabgleich erhält keine eigene globale Fehlermeldung, sondern zeigt
-  Fehler pro Produkt in der neuen Liste.
-
-## Tests und Verifikation
-
-- Unit-Tests für:
-  - Auswahlreihenfolge: nie abgeglichen vor ältestem erfolgreichen Abgleich.
-  - Genau zwei zusätzliche Produktanfragen beim dritten manuellen Sync.
-  - Zählerpersistenz, Reset nach behandeltem Lauf und Beibehaltung bei
-    Tagebuch-Sync-Fehler.
-  - Erfolgs- und Fehlerstatus sowie erneute Priorisierung fehlerhafter
-    Produkte.
-  - Abbruch nach `FddbAccessBlockedException`.
-  - Beide manuellen Einstiegspunkte verwenden dieselbe Orchestrierung.
-
-- Room-Migrationstest für die neue Status-Tabelle und ihre
-  Fremdschlüssel-/Indexstruktur.
-
-- UI-/ViewModel-Tests für die Warteschlangenansicht mit nächsten zwei
-  Einträgen, „noch nie“-Status und Fehleranzeige.
-
-- Alle bestehenden `ProductRepository`-Test-Fakes an die bereits vorhandene
-  abstrakte Methode `observeProductsBySource(...)` anpassen; sie blockieren
-  aktuell die Android-Test-Kompilierung.
-
-- Mit JDK 21 und Workspace-Gradle-Cache kompilieren und relevante Tests
-  ausführen; nach der zusammenhängenden Änderung committen und per GitHub CLI
-  pushen.
-
-## Annahmen
-
-- „2 Werte“ bedeutet zwei FDDB-Lebensmittel pro fälligem Lauf.
-- Ein „gestarteter“ manueller Sync zählt, auch wenn keine neuen
-  Tagebucheinträge importiert werden.
-- Ein fehlgeschlagenes Produkt wird erst beim nächsten fälligen
-  Drei-Sync-Lauf erneut versucht, nicht sofort wiederholt.
+- Der letzte begonnene Produktabruf wird als Epoch-Zeitstempel in den Settings
+  gespeichert.
+- Produktspezifische Versuche, Erfolge und Fehler bleiben in
+  `FddbProductSyncStatus` gespeichert.
+- Der frühere DataStore-Key `settings:fddbProductSyncManualCount` wird ignoriert;
+  eine Room-Migration ist nicht erforderlich.

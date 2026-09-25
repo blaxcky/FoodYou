@@ -18,6 +18,10 @@ internal class RoomFddbProductSyncStatusRepository(
     override suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueItem> =
         dao.getDueProducts(limit).map { it.toModel() }
 
+    override suspend fun markAttempt(productId: FoodId.Product, attemptedAt: Instant) {
+        dao.markAttempt(productId = productId.id, attemptedAt = attemptedAt.epochSeconds)
+    }
+
     override suspend fun markSuccess(productId: FoodId.Product, syncedAt: Instant) {
         dao.markSuccess(productId = productId.id, syncedAt = syncedAt.epochSeconds)
     }

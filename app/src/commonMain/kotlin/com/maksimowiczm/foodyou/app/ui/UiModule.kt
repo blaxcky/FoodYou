@@ -29,13 +29,15 @@ val uiModule = module {
             manualFddbDiarySyncUseCase = get(),
             fddbCredentialsRepository = get<FddbCredentialsRepository>(),
             healthConnectWeightSync = get(),
+            dateProvider = get(),
         )
     }
     viewModel {
         FddbProductSyncQueueViewModel(
             statusRepository = get(),
             settingsRepository = userPreferencesRepository(),
-            syncFddbProductUseCase = get(),
+            dateProvider = get(),
+            fddbProductSyncCoordinator = get(),
             updateFddbProductLinkUseCase = get(),
             unlinkFddbProductUseCase = get(),
         )

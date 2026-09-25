@@ -18,6 +18,8 @@ import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncCoordinator
+import com.maksimowiczm.foodyou.food.domain.usecase.SyncDueFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateFddbProductLinkUseCase
@@ -32,8 +34,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -43,6 +47,43 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class FddbProductSyncQueueViewModelTest {
+    @Test
+    fun modelShowsNextAutomaticSyncOnlyWhileCooldownIsActive() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val fixture = Fixture()
+        val viewModel = fixture.viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.model.collect()
+        }
+        try {
+            fixture.settings.update {
+                copy(
+                    fddbProductSyncLastAttemptEpochSeconds =
+                        FixedDateProvider.nowInstant().epochSeconds
+                )
+            }
+            advanceUntilIdle()
+
+            assertEquals(
+                Instant.parse("2026-09-25T12:30:00Z"),
+                viewModel.model.value.nextAutomaticSyncAt,
+            )
+
+            fixture.settings.update {
+                copy(
+                    fddbProductSyncLastAttemptEpochSeconds =
+                        FixedDateProvider.nowInstant().epochSeconds - 1_800
+                )
+            }
+            advanceUntilIdle()
+
+            assertNull(viewModel.model.value.nextAutomaticSyncAt)
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test
     fun changingLinkImmediatelySyncsExactlyOnce() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
@@ -102,14 +143,25 @@ class FddbProductSyncQueueViewModelTest {
         val products = FakeProductRepository(product())
         val status = FakeStatusRepository()
         val gateway = FakeGateway()
+        val settings = FakeSettingsRepository()
 
         fun viewModel(): FddbProductSyncQueueViewModel {
             val resync =
                 ResyncFddbProductUseCase(products, gateway, ImmediateTransactionProvider, NoopLogger)
+            val sync = SyncFddbProductUseCase(status, resync, FixedDateProvider, settings)
+            val coordinator =
+                FddbProductSyncCoordinator(
+                    settingsRepository = settings,
+                    statusRepository = status,
+                    syncDueFddbProductsUseCase = SyncDueFddbProductsUseCase(status, sync),
+                    syncFddbProductUseCase = sync,
+                    dateProvider = FixedDateProvider,
+                )
             return FddbProductSyncQueueViewModel(
                 statusRepository = status,
-                settingsRepository = FakeSettingsRepository(),
-                syncFddbProductUseCase = SyncFddbProductUseCase(status, resync, FixedDateProvider),
+                settingsRepository = settings,
+                dateProvider = FixedDateProvider,
+                fddbProductSyncCoordinator = coordinator,
                 updateFddbProductLinkUseCase =
                     UpdateFddbProductLinkUseCase(products, ImmediateTransactionProvider),
                 unlinkFddbProductUseCase =
@@ -143,6 +195,8 @@ class FddbProductSyncQueueViewModelTest {
         override fun observeQueue(): Flow<List<FddbProductSyncQueueItem>> = flowOf(emptyList())
 
         override suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueItem> = emptyList()
+
+        override suspend fun markAttempt(productId: FoodId.Product, attemptedAt: Instant) = Unit
 
         override suspend fun markSuccess(productId: FoodId.Product, syncedAt: Instant) {
             successes += productId

@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.food.domain
 
 import com.maksimowiczm.foodyou.common.infrastructure.koin.eventHandlerOf
+import com.maksimowiczm.foodyou.common.infrastructure.koin.applicationCoroutineScope
 import com.maksimowiczm.foodyou.food.domain.event.FoodDiaryEntryCreatedEventHandler
 import com.maksimowiczm.foodyou.food.domain.usecase.AddPendingProductPhotoUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.AddFddbLinksToQueueUseCase
@@ -16,6 +17,8 @@ import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUse
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.DownloadProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncCoordinator
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncForegroundLauncher
 import com.maksimowiczm.foodyou.food.domain.usecase.ImportFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ManualFddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFddbImportQueueUseCase
@@ -60,7 +63,6 @@ fun Module.foodDomainModule() {
         ManualFddbDiarySyncUseCase(
             settingsRepository = userPreferencesRepository(),
             diarySyncUseCase = get(),
-            syncDueFddbProductsUseCase = get(),
         )
     }
     factory {
@@ -86,8 +88,31 @@ fun Module.foodDomainModule() {
     factoryOf(::ResyncFddbProductUseCase)
     factoryOf(::SetProductFavoriteUseCase)
     factoryOf(::SetProductQuickCaptureUseCase)
-    factoryOf(::SyncFddbProductUseCase)
+    factory {
+        SyncFddbProductUseCase(
+            statusRepository = get(),
+            resyncFddbProductUseCase = get(),
+            dateProvider = get(),
+            settingsRepository = userPreferencesRepository(),
+        )
+    }
     factoryOf(::SyncDueFddbProductsUseCase)
+    single {
+        FddbProductSyncCoordinator(
+            settingsRepository = userPreferencesRepository(),
+            statusRepository = get(),
+            syncDueFddbProductsUseCase = get(),
+            syncFddbProductUseCase = get(),
+            dateProvider = get(),
+        )
+    }
+    single {
+        FddbProductSyncForegroundLauncher(
+            applicationScope = applicationCoroutineScope(),
+            coordinator = get(),
+            logger = get(),
+        )
+    }
     factoryOf(::UnlinkFddbProductUseCase)
     factoryOf(::UpdateFddbProductLinkUseCase)
     factoryOf(::UpdateProductUseCase)

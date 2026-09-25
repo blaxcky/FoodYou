@@ -24,6 +24,25 @@ import kotlinx.datetime.LocalDate
 
 class DataStoreSettingsRepositoryTest {
     @Test
+    fun fddbProductSyncLastAttemptRoundTrips() = runTest {
+        val store = InMemoryPreferencesDataStore()
+        val repository = DataStoreSettingsRepository(store)
+        assertNull(repository.observe().first().fddbProductSyncLastAttemptEpochSeconds)
+
+        repository.update {
+            copy(fddbProductSyncLastAttemptEpochSeconds = 1_800_000_000)
+        }
+
+        assertEquals(
+            1_800_000_000,
+            DataStoreSettingsRepository(store)
+                .observe()
+                .first()
+                .fddbProductSyncLastAttemptEpochSeconds,
+        )
+    }
+
+    @Test
     fun weightBackfillCursorAndCompletionRoundTrip() = runTest {
         val store = InMemoryPreferencesDataStore()
         val repository = DataStoreSettingsRepository(store)

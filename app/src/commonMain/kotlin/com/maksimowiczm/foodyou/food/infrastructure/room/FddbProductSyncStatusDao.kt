@@ -15,6 +15,16 @@ interface FddbProductSyncStatusDao {
     @Query(
         """
         INSERT INTO FddbProductSyncStatus(productId, lastSyncedAt, lastAttemptAt, lastError)
+        VALUES(:productId, NULL, :attemptedAt, NULL)
+        ON CONFLICT(productId) DO UPDATE SET
+            lastAttemptAt = excluded.lastAttemptAt
+        """
+    )
+    suspend fun markAttempt(productId: Long, attemptedAt: Long)
+
+    @Query(
+        """
+        INSERT INTO FddbProductSyncStatus(productId, lastSyncedAt, lastAttemptAt, lastError)
         VALUES(:productId, :syncedAt, :syncedAt, NULL)
         ON CONFLICT(productId) DO UPDATE SET
             lastSyncedAt = excluded.lastSyncedAt,

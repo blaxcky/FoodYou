@@ -7,7 +7,7 @@ import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductError
-import com.maksimowiczm.foodyou.food.domain.usecase.SyncFddbProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncCoordinator
 import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductError
 import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateFddbProductLinkError
@@ -15,6 +15,8 @@ import com.maksimowiczm.foodyou.food.domain.usecase.UpdateFddbProductLinkUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.toStatusMessage
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +28,8 @@ import kotlinx.coroutines.launch
 internal class FddbProductSyncQueueViewModel(
     statusRepository: FddbProductSyncStatusRepository,
     settingsRepository: UserPreferencesRepository<Settings>,
-    private val syncFddbProductUseCase: SyncFddbProductUseCase,
+    dateProvider: DateProvider,
+    private val fddbProductSyncCoordinator: FddbProductSyncCoordinator,
     private val updateFddbProductLinkUseCase: UpdateFddbProductLinkUseCase,
     private val unlinkFddbProductUseCase: UnlinkFddbProductUseCase,
 ) : ViewModel() {
@@ -34,21 +37,26 @@ internal class FddbProductSyncQueueViewModel(
     val actionState: StateFlow<FddbProductSyncActionState> = mutableActionState.asStateFlow()
 
     val model: StateFlow<FddbProductSyncQueueModel> =
-        combine(statusRepository.observeQueue(), settingsRepository.observe()) { queue, settings ->
+        combine(
+            statusRepository.observeQueue(),
+            settingsRepository.observe(),
+            dateProvider.observeInstant(),
+        ) { queue, settings, now ->
                 FddbProductSyncQueueModel(
-                    progress = settings.fddbProductSyncManualCount.coerceIn(0, 2),
+                    nextAutomaticSyncAt = settings.nextAutomaticFddbProductSyncAt(now),
                     queue = queue,
                 )
             }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(2_000),
-                initialValue = FddbProductSyncQueueModel(progress = 0, queue = emptyList()),
+                initialValue =
+                    FddbProductSyncQueueModel(nextAutomaticSyncAt = null, queue = emptyList()),
             )
 
     fun retry(productId: FoodId.Product) {
         launchAction(productId) {
-            syncFddbProductUseCase.sync(productId).syncErrorOrNull()
+            fddbProductSyncCoordinator.syncNow(productId).syncErrorOrNull()
         }
     }
 
@@ -57,7 +65,7 @@ internal class FddbProductSyncQueueViewModel(
             when (val update = updateFddbProductLinkUseCase.update(productId, input)) {
                 is Result.Error -> update.error.toUiError()
                 is Result.Success ->
-                    syncFddbProductUseCase.sync(productId).syncErrorOrNull()
+                    fddbProductSyncCoordinator.syncNow(productId).syncErrorOrNull()
             }
         }
     }
@@ -93,9 +101,15 @@ internal class FddbProductSyncQueueViewModel(
 }
 
 internal data class FddbProductSyncQueueModel(
-    val progress: Int,
+    val nextAutomaticSyncAt: Instant?,
     val queue: List<FddbProductSyncQueueItem>,
 )
+
+internal fun Settings.nextAutomaticFddbProductSyncAt(now: Instant): Instant? =
+    fddbProductSyncLastAttemptEpochSeconds
+        ?.let(Instant::fromEpochSeconds)
+        ?.plus(FddbProductSyncCoordinator.AUTOMATIC_SYNC_INTERVAL)
+        ?.takeIf { it > now }
 
 internal data class FddbProductSyncActionState(
     val productId: FoodId.Product? = null,

@@ -551,7 +551,8 @@
     <string name="neutral_fddb_sync_failed_with_message">FDDB diary sync failed: %1$s</string>
     <string name="neutral_fddb_sync_never_run">FDDB diary sync has not run yet</string>
     <string name="headline_fddb_product_sync_queue">FDDB product sync queue</string>
-    <string name="neutral_fddb_product_sync_progress">%1$d/3 until the next product sync</string>
+    <string name="neutral_fddb_product_sync_ready">Ready on the next app open</string>
+    <string name="neutral_fddb_product_sync_next_at">Next automatic sync no earlier than %1$s</string>
     <string name="neutral_fddb_product_sync_empty">No FDDB products with source URL found</string>
     <string name="neutral_fddb_product_sync_next">Next two</string>
     <string name="neutral_fddb_product_sync_never">Last successful sync: never</string>

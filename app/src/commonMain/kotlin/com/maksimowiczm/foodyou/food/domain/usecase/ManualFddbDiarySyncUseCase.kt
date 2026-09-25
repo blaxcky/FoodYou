@@ -6,23 +6,15 @@ import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.time.Clock
-import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
 
 class ManualFddbDiarySyncUseCase(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val diarySyncUseCase: FddbDiarySyncUseCase,
-    private val syncDueFddbProductsUseCase: SyncDueFddbProductsUseCase,
 ) {
     suspend fun hasCredentials(): Boolean = diarySyncUseCase.hasCredentials()
 
     suspend fun sync(referenceDate: LocalDate): Result<FddbDiarySyncResult, Throwable> {
-        val countAfterStart =
-            settingsRepository.observe().first().fddbProductSyncManualCount + 1
-        settingsRepository.update {
-            copy(fddbProductSyncManualCount = countAfterStart)
-        }
-
         val diaryResult =
             try {
                 diarySyncUseCase.sync(referenceDate)
@@ -33,17 +25,7 @@ class ManualFddbDiarySyncUseCase(
 
         settingsRepository.recordFddbDiarySyncResult(diaryResult)
 
-        if (countAfterStart >= MANUAL_SYNCS_PER_PRODUCT_SYNC) {
-            syncDueFddbProductsUseCase.sync(limit = PRODUCT_SYNC_LIMIT)
-            settingsRepository.update { copy(fddbProductSyncManualCount = 0) }
-        }
-
         return Ok(diaryResult)
-    }
-
-    private companion object {
-        const val MANUAL_SYNCS_PER_PRODUCT_SYNC = 3
-        const val PRODUCT_SYNC_LIMIT = 2
     }
 }
 

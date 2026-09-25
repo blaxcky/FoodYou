@@ -2,18 +2,26 @@ package com.maksimowiczm.foodyou.food.domain.usecase
 
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.result.Result
+import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 
 class SyncFddbProductUseCase(
     private val statusRepository: FddbProductSyncStatusRepository,
     private val resyncFddbProductUseCase: ResyncFddbProductUseCase,
     private val dateProvider: DateProvider,
+    private val settingsRepository: UserPreferencesRepository<Settings>,
 ) {
     suspend fun sync(
         productId: FoodId.Product
     ): Result<Unit, ResyncFddbProductError> {
         val attemptedAt = dateProvider.nowInstant()
+        settingsRepository.update {
+            copy(fddbProductSyncLastAttemptEpochSeconds = attemptedAt.epochSeconds)
+        }
+        statusRepository.markAttempt(productId, attemptedAt)
+
         return when (val result = resyncFddbProductUseCase.resync(productId)) {
             is Result.Success -> {
                 statusRepository.markSuccess(productId, attemptedAt)

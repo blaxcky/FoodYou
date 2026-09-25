@@ -64,7 +64,11 @@ class FddbProductSyncQueueScreenScreenshotTest {
                         .background(Color(0xFFF9F9FF))
             ) {
                 FddbProductSyncQueueContent(
-                    model = FddbProductSyncQueueModel(progress = 2, queue = listOf(Item)),
+                    model =
+                        FddbProductSyncQueueModel(
+                            nextAutomaticSyncAt = Instant.parse("2026-09-25T12:30:00Z"),
+                            queue = listOf(Item),
+                        ),
                     actionState = FddbProductSyncActionState(),
                     onBack = {},
                     onOpenUrl = {},

@@ -6,6 +6,7 @@ import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
@@ -18,19 +19,152 @@ import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
+import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
+import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
+import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
+import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class SyncDueFddbProductsUseCaseTest {
+    @Test
+    fun automaticSyncImmediatelyProcessesOnlyTheFirstTwoProducts() = runTest {
+        val fixture = coordinatorFixture(now = Instant.fromEpochSeconds(10_000))
+
+        val result = fixture.coordinator.syncDueIfAllowed()
+
+        assertEquals(
+            AutomaticFddbProductSyncResult.Completed(
+                SyncDueFddbProductsResult(synced = 2, failed = 0, blocked = false)
+            ),
+            result,
+        )
+        assertEquals(listOf(Url(1), Url(2)), fixture.gateway.requestedUrls)
+        assertEquals(10_000, fixture.settings.current.fddbProductSyncLastAttemptEpochSeconds)
+    }
+
+    @Test
+    fun automaticSyncWaitsThirtyMinutesAndRunsAtTheBoundary() = runTest {
+        val now = Instant.fromEpochSeconds(10_000)
+        val fixture = coordinatorFixture(now = now, lastAttempt = 10_000)
+
+        fixture.date.now = Instant.fromEpochSeconds(11_799)
+        assertEquals(
+            AutomaticFddbProductSyncResult.NotDue,
+            fixture.coordinator.syncDueIfAllowed(),
+        )
+        assertEquals(emptyList(), fixture.gateway.requestedUrls)
+
+        fixture.date.now = Instant.fromEpochSeconds(11_800)
+        assertEquals(
+            AutomaticFddbProductSyncResult.Completed(
+                SyncDueFddbProductsResult(synced = 2, failed = 0, blocked = false)
+            ),
+            fixture.coordinator.syncDueIfAllowed(),
+        )
+        assertEquals(listOf(Url(1), Url(2)), fixture.gateway.requestedUrls)
+    }
+
+    @Test
+    fun emptyQueueDoesNotStartCooldown() = runTest {
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                dueProducts = emptyList(),
+            )
+
+        assertEquals(
+            AutomaticFddbProductSyncResult.NoProducts,
+            fixture.coordinator.syncDueIfAllowed(),
+        )
+        assertEquals(null, fixture.settings.current.fddbProductSyncLastAttemptEpochSeconds)
+    }
+
+    @Test
+    fun manualSyncBypassesCooldownAndRestartsIt() = runTest {
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                lastAttempt = 9_999,
+            )
+
+        fixture.coordinator.syncNow(FoodId.Product(3))
+
+        assertEquals(listOf(Url(3)), fixture.gateway.requestedUrls)
+        assertEquals(10_000, fixture.settings.current.fddbProductSyncLastAttemptEpochSeconds)
+        assertEquals(
+            AutomaticFddbProductSyncResult.NotDue,
+            fixture.coordinator.syncDueIfAllowed(),
+        )
+    }
+
+    @Test
+    fun interruptedRequestHasAlreadyStartedTheCooldown() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                beforeResponse = {
+                    started.complete(Unit)
+                    awaitCancellation()
+                },
+            )
+
+        val job = launch { fixture.coordinator.syncNow(FoodId.Product(1)) }
+        started.await()
+
+        assertEquals(10_000, fixture.settings.current.fddbProductSyncLastAttemptEpochSeconds)
+        assertEquals(listOf(FoodId.Product(1)), fixture.statusRepository.attempts)
+        job.cancelAndJoin()
+    }
+
+    @Test
+    fun concurrentAutomaticTriggersProduceOneBatch() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val firstRequestStarted = CompletableDeferred<Unit>()
+        var requestCount = 0
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                beforeResponse = {
+                    requestCount += 1
+                    if (requestCount == 1) {
+                        firstRequestStarted.complete(Unit)
+                        release.await()
+                    }
+                },
+            )
+
+        val first = launch { fixture.coordinator.syncDueIfAllowed() }
+        firstRequestStarted.await()
+        val second = launch { fixture.coordinator.syncDueIfAllowed() }
+        runCurrent()
+        assertEquals(listOf(Url(1)), fixture.gateway.requestedUrls)
+
+        release.complete(Unit)
+        first.join()
+        second.join()
+
+        assertEquals(listOf(Url(1), Url(2)), fixture.gateway.requestedUrls)
+    }
+
     @Test
     fun syncsAtMostTwoDueProducts() = runBlocking {
         val statusRepository = FakeFddbProductSyncStatusRepository(dueProducts = dueItems(1, 2, 3))
@@ -118,21 +252,77 @@ class SyncDueFddbProductsUseCaseTest {
         statusRepository: FakeFddbProductSyncStatusRepository,
         gateway: FddbProductGateway,
     ) =
-        SyncDueFddbProductsUseCase(
-            statusRepository = statusRepository,
-            syncFddbProductUseCase =
-                SyncFddbProductUseCase(
+        FakeSettingsRepository().let { settingsRepository ->
+            SyncDueFddbProductsUseCase(
+                statusRepository = statusRepository,
+                syncFddbProductUseCase =
+                    SyncFddbProductUseCase(
+                        statusRepository = statusRepository,
+                        resyncFddbProductUseCase =
+                            ResyncFddbProductUseCase(
+                                productRepository = FakeProductRepository(products(1, 2, 3, 4)),
+                                fddbProductGateway = gateway,
+                                transactionProvider = ImmediateTransactionProvider,
+                                logger = NoopLogger,
+                            ),
+                        dateProvider = FixedDateProvider,
+                        settingsRepository = settingsRepository,
+                    ),
+            )
+        }
+
+    private fun coordinatorFixture(
+        now: Instant,
+        lastAttempt: Long? = null,
+        dueProducts: List<FddbProductSyncQueueItem> = dueItems(1, 2, 3),
+        beforeResponse: suspend (String) -> Unit = {},
+    ): CoordinatorFixture {
+        val statusRepository = FakeFddbProductSyncStatusRepository(dueProducts)
+        val gateway = FakeFddbProductGateway(beforeResponse = beforeResponse)
+        val date = MutableDateProvider(now)
+        val settings =
+            FakeSettingsRepository(
+                defaultSettings().copy(
+                    fddbProductSyncLastAttemptEpochSeconds = lastAttempt
+                )
+            )
+        val sync =
+            SyncFddbProductUseCase(
+                statusRepository = statusRepository,
+                resyncFddbProductUseCase =
+                    ResyncFddbProductUseCase(
+                        productRepository = FakeProductRepository(products(1, 2, 3, 4)),
+                        fddbProductGateway = gateway,
+                        transactionProvider = ImmediateTransactionProvider,
+                        logger = NoopLogger,
+                    ),
+                dateProvider = date,
+                settingsRepository = settings,
+            )
+        return CoordinatorFixture(
+            coordinator =
+                FddbProductSyncCoordinator(
+                    settingsRepository = settings,
                     statusRepository = statusRepository,
-                    resyncFddbProductUseCase =
-                        ResyncFddbProductUseCase(
-                            productRepository = FakeProductRepository(products(1, 2, 3, 4)),
-                            fddbProductGateway = gateway,
-                            transactionProvider = ImmediateTransactionProvider,
-                            logger = NoopLogger,
-                        ),
-                    dateProvider = FixedDateProvider,
+                    syncDueFddbProductsUseCase =
+                        SyncDueFddbProductsUseCase(statusRepository, sync),
+                    syncFddbProductUseCase = sync,
+                    dateProvider = date,
                 ),
+            settings = settings,
+            statusRepository = statusRepository,
+            gateway = gateway,
+            date = date,
         )
+    }
+
+    private data class CoordinatorFixture(
+        val coordinator: FddbProductSyncCoordinator,
+        val settings: FakeSettingsRepository,
+        val statusRepository: FakeFddbProductSyncStatusRepository,
+        val gateway: FakeFddbProductGateway,
+        val date: MutableDateProvider,
+    )
 
     private class FakeFddbProductSyncStatusRepository(
         private val dueProducts: List<FddbProductSyncQueueItem>
@@ -141,11 +331,16 @@ class SyncDueFddbProductsUseCaseTest {
         val successTimes = mutableMapOf<FoodId.Product, Instant>()
         val failures = mutableMapOf<FoodId.Product, String>()
         val failureTimes = mutableMapOf<FoodId.Product, Instant>()
+        val attempts = mutableListOf<FoodId.Product>()
 
         override fun observeQueue(): Flow<List<FddbProductSyncQueueItem>> = flowOf(dueProducts)
 
         override suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueItem> =
             dueProducts.take(limit)
+
+        override suspend fun markAttempt(productId: FoodId.Product, attemptedAt: Instant) {
+            attempts += productId
+        }
 
         override suspend fun markSuccess(productId: FoodId.Product, syncedAt: Instant) {
             successes += productId
@@ -164,15 +359,30 @@ class SyncDueFddbProductsUseCaseTest {
         override suspend fun clear(productId: FoodId.Product) = Unit
     }
 
+    private class FakeSettingsRepository(initialSettings: Settings = defaultSettings()) :
+        UserPreferencesRepository<Settings> {
+        private val settings = MutableStateFlow(initialSettings)
+        val current: Settings
+            get() = settings.value
+
+        override fun observe(): Flow<Settings> = settings
+
+        override suspend fun update(transform: Settings.() -> Settings) {
+            settings.value = transform(settings.value)
+        }
+    }
+
     private class FakeFddbProductGateway(
         private val failingUrls: Set<String> = emptySet(),
         private val blockedUrls: Set<String> = emptySet(),
         private val errorsByUrl: Map<String, Throwable> = emptyMap(),
+        private val beforeResponse: suspend (String) -> Unit = {},
     ) : FddbProductGateway {
         val requestedUrls = mutableListOf<String>()
 
         override suspend fun getProduct(url: String): FddbProduct {
             requestedUrls += url
+            beforeResponse(url)
             if (url in blockedUrls) throw FddbAccessBlockedException("Blocked")
             errorsByUrl[url]?.let { throw it }
             if (url in failingUrls) error("Failed")
@@ -280,6 +490,15 @@ class SyncDueFddbProductsUseCaseTest {
             flowOf(LocalDate(2026, 6, 22))
     }
 
+    private class MutableDateProvider(var now: Instant) : DateProvider {
+        override fun nowInstant(): Instant = now
+
+        override fun observeInstant(interval: Duration): Flow<Instant> = flowOf(now)
+
+        override fun observeDate(timeZone: TimeZone): Flow<LocalDate> =
+            flowOf(LocalDate(2026, 6, 22))
+    }
+
     private object NoopLogger : Logger {
         override fun d(tag: String, throwable: Throwable?, message: () -> String) = Unit
 
@@ -329,6 +548,25 @@ class SyncDueFddbProductsUseCaseTest {
                 proteins = NutrientValue.Complete(1.0),
                 carbohydrates = NutrientValue.Complete(2.0),
                 fats = NutrientValue.Complete(3.0),
+            )
+
+        fun defaultSettings() =
+            Settings(
+                lastRememberedVersion = null,
+                hidePreviewDialog = false,
+                showTranslationWarning = false,
+                nutrientsOrder = NutrientsOrder.defaultOrder,
+                secureScreen = false,
+                homeCardOrder = HomeCard.defaultOrder,
+                expandGoalCard = false,
+                goalDisplayMode = GoalDisplayMode.Normal,
+                dietEnergyDeficitKcal = null,
+                onboardingFinished = true,
+                energyFormat = EnergyFormat.DEFAULT,
+                appLaunchInfo = AppLaunchInfo(null, null, 0),
+                stepsCaloriesPerStepKcal = null,
+                healthConnectStepsEnabled = false,
+                healthConnectStepsLastSyncedEpochSeconds = null,
             )
     }
 }

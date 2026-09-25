@@ -101,12 +101,7 @@ internal fun FddbProductSyncQueueContent(
             item {
                 ListItem(
                     headlineContent = {
-                        Text(
-                            stringResource(
-                                Res.string.neutral_fddb_product_sync_progress,
-                                model.progress,
-                            )
-                        )
+                        Text(model.nextAutomaticSyncAt.automaticSyncStatusText())
                     }
                 )
             }
@@ -366,3 +361,9 @@ private fun FddbProductSyncQueueItem.lastSuccessText(): String =
 @Composable
 private fun Instant.formatDateTime(): String =
     LocalDateFormatter.current.formatDateTime(toLocalDateTime(TimeZone.currentSystemDefault()))
+
+@Composable
+private fun Instant?.automaticSyncStatusText(): String =
+    this?.let {
+        stringResource(Res.string.neutral_fddb_product_sync_next_at, it.formatDateTime())
+    } ?: stringResource(Res.string.neutral_fddb_product_sync_ready)

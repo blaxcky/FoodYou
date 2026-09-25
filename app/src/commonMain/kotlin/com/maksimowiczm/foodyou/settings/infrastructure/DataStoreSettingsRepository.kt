@@ -67,8 +67,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 this[SettingsPreferencesKeys.fddbDiarySyncLastErrorMessage],
             fddbDiarySyncLastAttemptEpochSeconds =
                 this[SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds],
-            fddbProductSyncManualCount =
-                this[SettingsPreferencesKeys.fddbProductSyncManualCount] ?: 0,
+            fddbProductSyncLastAttemptEpochSeconds =
+                this[SettingsPreferencesKeys.fddbProductSyncLastAttemptEpochSeconds],
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
@@ -135,8 +135,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds,
             updated.fddbDiarySyncLastAttemptEpochSeconds,
         )
-        this[SettingsPreferencesKeys.fddbProductSyncManualCount] =
-            updated.fddbProductSyncManualCount
+        setWithNull(
+            SettingsPreferencesKeys.fddbProductSyncLastAttemptEpochSeconds,
+            updated.fddbProductSyncLastAttemptEpochSeconds,
+        )
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
@@ -389,7 +391,8 @@ private object SettingsPreferencesKeys {
         stringPreferencesKey("settings:fddbDiarySyncLastErrorMessage")
     val fddbDiarySyncLastAttemptEpochSeconds =
         longPreferencesKey("settings:fddbDiarySyncLastAttemptEpochSeconds")
-    val fddbProductSyncManualCount = intPreferencesKey("settings:fddbProductSyncManualCount")
+    val fddbProductSyncLastAttemptEpochSeconds =
+        longPreferencesKey("settings:fddbProductSyncLastAttemptEpochSeconds")
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
