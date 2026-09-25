@@ -32,6 +32,9 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncDueFddbProductsUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SyncFddbProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.UpdateFddbProductLinkUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateRecipeUseCase
 import org.koin.core.module.Module
@@ -83,7 +86,10 @@ fun Module.foodDomainModule() {
     factoryOf(::ResyncFddbProductUseCase)
     factoryOf(::SetProductFavoriteUseCase)
     factoryOf(::SetProductQuickCaptureUseCase)
+    factoryOf(::SyncFddbProductUseCase)
     factoryOf(::SyncDueFddbProductsUseCase)
+    factoryOf(::UnlinkFddbProductUseCase)
+    factoryOf(::UpdateFddbProductLinkUseCase)
     factoryOf(::UpdateProductUseCase)
     factoryOf(::UpdateRecipeUseCase)
 

@@ -4,6 +4,7 @@ import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
+import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 
 class FddbProductParser {
     fun parse(html: String): FddbProduct {
@@ -13,7 +14,9 @@ class FddbProductParser {
         val portions = lines.findPortions()
 
         return FddbProduct(
-            name = html.tagText("h1", "fddb-headline1") ?: error("FDDB product name not found"),
+            name =
+                html.tagText("h1", "fddb-headline1")
+                    ?: throw FddbParseException("FDDB product name not found"),
             brand = html.tagText("h2", "fddb-headline2")?.toBrand(),
             barcode = lines.findBarcode(),
             isLiquid = servingUnit == "ml",

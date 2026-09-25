@@ -35,6 +35,9 @@ val uiModule = module {
         FddbProductSyncQueueViewModel(
             statusRepository = get(),
             settingsRepository = userPreferencesRepository(),
+            syncFddbProductUseCase = get(),
+            updateFddbProductLinkUseCase = get(),
+            unlinkFddbProductUseCase = get(),
         )
     }
 

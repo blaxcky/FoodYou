@@ -558,6 +558,19 @@
     <string name="neutral_fddb_product_sync_last_success">Last successful sync: %1$s</string>
     <string name="neutral_fddb_product_sync_last_attempt">Last attempt: %1$s</string>
     <string name="neutral_fddb_product_sync_error">Error: %1$s</string>
+    <string name="headline_fddb_product_sync_details">FDDB sync details</string>
+    <string name="headline_change_fddb_link">Change FDDB link</string>
+    <string name="headline_unlink_fddb_product">Remove FDDB link?</string>
+    <string name="neutral_fddb_source_url">FDDB source URL</string>
+    <string name="action_open_fddb_page">Open FDDB page</string>
+    <string name="action_change_fddb_link">Change link</string>
+    <string name="action_retry_fddb_product">Try sync now</string>
+    <string name="action_unlink_fddb_product">Remove FDDB link</string>
+    <string name="description_unlink_fddb_product">The product and all its data remain stored. Only the source URL and sync status are removed.</string>
+    <string name="error_invalid_fddb_url">Enter a complete FDDB product URL.</string>
+    <string name="error_fddb_url_already_linked">This FDDB URL is already linked to another product.</string>
+    <string name="error_fddb_product_unavailable">The product is no longer available or is not an FDDB product.</string>
+    <string name="neutral_fddb_product_sync_running">Synchronizing…</string>
     <string name="neutral_home_sync_settings">Choose what the sync button on the home screen runs.</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>

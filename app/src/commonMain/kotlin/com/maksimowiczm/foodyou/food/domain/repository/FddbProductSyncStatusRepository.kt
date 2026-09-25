@@ -13,4 +13,6 @@ interface FddbProductSyncStatusRepository {
     suspend fun markSuccess(productId: FoodId.Product, syncedAt: Instant)
 
     suspend fun markFailure(productId: FoodId.Product, attemptedAt: Instant, error: String)
+
+    suspend fun clear(productId: FoodId.Product)
 }

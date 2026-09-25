@@ -25,6 +25,10 @@ internal class RoomFddbProductSyncStatusRepository(
     override suspend fun markFailure(productId: FoodId.Product, attemptedAt: Instant, error: String) {
         dao.markFailure(productId = productId.id, attemptedAt = attemptedAt.epochSeconds, error = error)
     }
+
+    override suspend fun clear(productId: FoodId.Product) {
+        dao.clear(productId.id)
+    }
 }
 
 private fun FddbProductSyncQueueEntity.toModel(): FddbProductSyncQueueItem =
@@ -32,6 +36,7 @@ private fun FddbProductSyncQueueEntity.toModel(): FddbProductSyncQueueItem =
         productId = FoodId.Product(productId),
         name = name,
         brand = brand,
+        sourceUrl = sourceUrl,
         lastSyncedAt = lastSyncedAt?.let(Instant::fromEpochSeconds),
         lastAttemptAt = lastAttemptAt?.let(Instant::fromEpochSeconds),
         lastError = lastError,

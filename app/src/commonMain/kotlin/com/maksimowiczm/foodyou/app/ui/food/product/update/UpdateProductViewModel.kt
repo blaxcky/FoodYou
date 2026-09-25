@@ -132,6 +132,7 @@ private fun ResyncFddbProductError.toUiError(): ResyncFddbProductUiError =
         ResyncFddbProductError.NotFddbProduct -> ResyncFddbProductUiError.NotFddbProduct
         ResyncFddbProductError.MissingSourceUrl -> ResyncFddbProductUiError.MissingSourceUrl
         ResyncFddbProductError.Blocked -> ResyncFddbProductUiError.Blocked
-        ResyncFddbProductError.NetworkOrParseFailed ->
-            ResyncFddbProductUiError.NetworkOrParseFailed
+        is ResyncFddbProductError.HttpFailed,
+        is ResyncFddbProductError.NetworkFailed,
+        is ResyncFddbProductError.ParseFailed -> ResyncFddbProductUiError.NetworkOrParseFailed
     }

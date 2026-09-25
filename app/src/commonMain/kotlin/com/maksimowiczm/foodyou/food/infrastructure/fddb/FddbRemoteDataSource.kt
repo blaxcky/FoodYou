@@ -9,6 +9,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.isSuccess
 import io.ktor.http.userAgent
 
 internal class FddbRemoteDataSource(
@@ -32,6 +33,12 @@ internal class FddbRemoteDataSource(
 
         if (html.isFddbBlockPage()) {
             throw FddbAccessBlockedException(message = "FDDB request blocked")
+        }
+
+        if (!response.status.isSuccess()) {
+            throw com.maksimowiczm.foodyou.food.domain.repository.FddbHttpException(
+                response.status.value
+            )
         }
 
         return parser.parse(html)

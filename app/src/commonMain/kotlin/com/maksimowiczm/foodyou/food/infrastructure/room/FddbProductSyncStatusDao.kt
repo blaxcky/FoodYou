@@ -35,6 +35,9 @@ interface FddbProductSyncStatusDao {
     )
     suspend fun markFailure(productId: Long, attemptedAt: Long, error: String)
 
+    @Query("DELETE FROM FddbProductSyncStatus WHERE productId = :productId")
+    suspend fun clear(productId: Long)
+
     private companion object {
         const val QUEUE_QUERY =
             """
@@ -42,6 +45,7 @@ interface FddbProductSyncStatusDao {
                 Product.id AS productId,
                 Product.name AS name,
                 Product.brand AS brand,
+                Product.sourceUrl AS sourceUrl,
                 FddbProductSyncStatus.lastSyncedAt AS lastSyncedAt,
                 FddbProductSyncStatus.lastAttemptAt AS lastAttemptAt,
                 FddbProductSyncStatus.lastError AS lastError

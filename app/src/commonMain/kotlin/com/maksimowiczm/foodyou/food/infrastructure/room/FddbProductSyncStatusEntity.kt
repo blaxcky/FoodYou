@@ -29,6 +29,7 @@ data class FddbProductSyncQueueEntity(
     val productId: Long,
     val name: String,
     val brand: String?,
+    val sourceUrl: String,
     val lastSyncedAt: Long?,
     val lastAttemptAt: Long?,
     val lastError: String?,

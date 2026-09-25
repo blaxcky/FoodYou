@@ -10,3 +10,8 @@ class FddbAccessBlockedException(
     message: String,
     val retryAfterMillis: Long? = null,
 ) : Exception(message)
+
+class FddbHttpException(val statusCode: Int) :
+    Exception("FDDB request failed with HTTP $statusCode")
+
+class FddbParseException(message: String) : Exception(message)

@@ -12,6 +12,8 @@ import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbHttpException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import kotlin.test.Test
@@ -128,7 +130,7 @@ class ResyncFddbProductUseCaseTest {
     }
 
     @Test
-    fun mapsNetworkOrParseFailure() = runBlocking {
+    fun mapsNetworkFailureWithSafeDetail() = runBlocking {
         val repository = FakeProductRepository(product(sourceUrl = Url))
         val useCase =
             useCase(repository = repository, gateway = FakeFddbProductGateway(failing = true))
@@ -136,7 +138,7 @@ class ResyncFddbProductUseCaseTest {
         val result = useCase.resync(ProductId)
 
         assertEquals(
-            ResyncFddbProductError.NetworkOrParseFailed,
+            ResyncFddbProductError.NetworkFailed("Failed"),
             assertIs<Result.Error<Unit, ResyncFddbProductError>>(result).error,
         )
     }
@@ -151,6 +153,37 @@ class ResyncFddbProductUseCaseTest {
 
         assertEquals(
             ResyncFddbProductError.Blocked,
+            assertIs<Result.Error<Unit, ResyncFddbProductError>>(result).error,
+        )
+    }
+
+    @Test
+    fun mapsHttpFailureWithStatusCode() = runBlocking {
+        val useCase =
+            useCase(gateway = FakeFddbProductGateway(throwable = FddbHttpException(404)))
+
+        val result = useCase.resync(ProductId)
+
+        assertEquals(
+            ResyncFddbProductError.HttpFailed(404),
+            assertIs<Result.Error<Unit, ResyncFddbProductError>>(result).error,
+        )
+    }
+
+    @Test
+    fun mapsParseFailureWithBoundedDetail() = runBlocking {
+        val useCase =
+            useCase(
+                gateway =
+                    FakeFddbProductGateway(
+                        throwable = FddbParseException("Product name missing")
+                    )
+            )
+
+        val result = useCase.resync(ProductId)
+
+        assertEquals(
+            ResyncFddbProductError.ParseFailed("Product name missing"),
             assertIs<Result.Error<Unit, ResyncFddbProductError>>(result).error,
         )
     }
@@ -170,8 +203,10 @@ class ResyncFddbProductUseCaseTest {
         private val product: FddbProduct = fddbProduct(),
         private val blocked: Boolean = false,
         private val failing: Boolean = false,
+        private val throwable: Throwable? = null,
     ) : FddbProductGateway {
         override suspend fun getProduct(url: String): FddbProduct {
+            throwable?.let { throw it }
             if (blocked) {
                 throw FddbAccessBlockedException("Blocked")
             }

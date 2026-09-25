@@ -13,6 +13,8 @@ import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbHttpException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
@@ -40,6 +42,13 @@ class SyncDueFddbProductsUseCaseTest {
         assertEquals(SyncDueFddbProductsResult(synced = 2, failed = 0, blocked = false), result)
         assertEquals(listOf(Url(1), Url(2)), gateway.requestedUrls)
         assertEquals(listOf(FoodId.Product(1), FoodId.Product(2)), statusRepository.successes)
+        assertEquals(
+            mapOf(
+                FoodId.Product(1) to FixedDateProvider.nowInstant(),
+                FoodId.Product(2) to FixedDateProvider.nowInstant(),
+            ),
+            statusRepository.successTimes,
+        )
     }
 
     @Test
@@ -53,7 +62,14 @@ class SyncDueFddbProductsUseCaseTest {
         assertEquals(SyncDueFddbProductsResult(synced = 1, failed = 1, blocked = false), result)
         assertEquals(listOf(Url(1), Url(2)), gateway.requestedUrls)
         assertEquals(listOf(FoodId.Product(2)), statusRepository.successes)
-        assertEquals(mapOf(FoodId.Product(1) to "Network or parse failed"), statusRepository.failures)
+        assertEquals(
+            mapOf(FoodId.Product(1) to "Network request failed: Failed"),
+            statusRepository.failures,
+        )
+        assertEquals(
+            mapOf(FoodId.Product(1) to FixedDateProvider.nowInstant()),
+            statusRepository.failureTimes,
+        )
     }
 
     @Test
@@ -69,27 +85,62 @@ class SyncDueFddbProductsUseCaseTest {
         assertEquals(mapOf(FoodId.Product(1) to "FDDB access blocked"), statusRepository.failures)
     }
 
+    @Test
+    fun storesDistinctHttpParseAndTransportDiagnostics() = runBlocking {
+        val statusRepository =
+            FakeFddbProductSyncStatusRepository(dueProducts = dueItems(1, 2, 3, 4))
+        val gateway =
+            FakeFddbProductGateway(
+                errorsByUrl =
+                    mapOf(
+                        Url(1) to FddbHttpException(404),
+                        Url(2) to FddbHttpException(502),
+                        Url(3) to FddbParseException("Product name missing"),
+                        Url(4) to IllegalStateException("Connection reset"),
+                    )
+            )
+
+        val result = useCase(statusRepository = statusRepository, gateway = gateway).sync(limit = 4)
+
+        assertEquals(SyncDueFddbProductsResult(synced = 0, failed = 4, blocked = false), result)
+        assertEquals(
+            mapOf(
+                FoodId.Product(1) to "FDDB page not found (HTTP 404)",
+                FoodId.Product(2) to "FDDB request failed (HTTP 502)",
+                FoodId.Product(3) to "FDDB page could not be parsed: Product name missing",
+                FoodId.Product(4) to "Network request failed: Connection reset",
+            ),
+            statusRepository.failures,
+        )
+    }
+
     private fun useCase(
         statusRepository: FakeFddbProductSyncStatusRepository,
         gateway: FddbProductGateway,
     ) =
         SyncDueFddbProductsUseCase(
             statusRepository = statusRepository,
-            resyncFddbProductUseCase =
-                ResyncFddbProductUseCase(
-                    productRepository = FakeProductRepository(products(1, 2, 3)),
-                    fddbProductGateway = gateway,
-                    transactionProvider = ImmediateTransactionProvider,
-                    logger = NoopLogger,
+            syncFddbProductUseCase =
+                SyncFddbProductUseCase(
+                    statusRepository = statusRepository,
+                    resyncFddbProductUseCase =
+                        ResyncFddbProductUseCase(
+                            productRepository = FakeProductRepository(products(1, 2, 3, 4)),
+                            fddbProductGateway = gateway,
+                            transactionProvider = ImmediateTransactionProvider,
+                            logger = NoopLogger,
+                        ),
+                    dateProvider = FixedDateProvider,
                 ),
-            dateProvider = FixedDateProvider,
         )
 
     private class FakeFddbProductSyncStatusRepository(
         private val dueProducts: List<FddbProductSyncQueueItem>
     ) : FddbProductSyncStatusRepository {
         val successes = mutableListOf<FoodId.Product>()
+        val successTimes = mutableMapOf<FoodId.Product, Instant>()
         val failures = mutableMapOf<FoodId.Product, String>()
+        val failureTimes = mutableMapOf<FoodId.Product, Instant>()
 
         override fun observeQueue(): Flow<List<FddbProductSyncQueueItem>> = flowOf(dueProducts)
 
@@ -98,6 +149,7 @@ class SyncDueFddbProductsUseCaseTest {
 
         override suspend fun markSuccess(productId: FoodId.Product, syncedAt: Instant) {
             successes += productId
+            successTimes[productId] = syncedAt
         }
 
         override suspend fun markFailure(
@@ -106,18 +158,23 @@ class SyncDueFddbProductsUseCaseTest {
             error: String,
         ) {
             failures[productId] = error
+            failureTimes[productId] = attemptedAt
         }
+
+        override suspend fun clear(productId: FoodId.Product) = Unit
     }
 
     private class FakeFddbProductGateway(
         private val failingUrls: Set<String> = emptySet(),
         private val blockedUrls: Set<String> = emptySet(),
+        private val errorsByUrl: Map<String, Throwable> = emptyMap(),
     ) : FddbProductGateway {
         val requestedUrls = mutableListOf<String>()
 
         override suspend fun getProduct(url: String): FddbProduct {
             requestedUrls += url
             if (url in blockedUrls) throw FddbAccessBlockedException("Blocked")
+            errorsByUrl[url]?.let { throw it }
             if (url in failingUrls) error("Failed")
             return FddbProduct(
                 name = "Remote",
@@ -242,6 +299,7 @@ class SyncDueFddbProductsUseCaseTest {
                     productId = FoodId.Product(id),
                     name = "Product $id",
                     brand = null,
+                    sourceUrl = Url(id),
                     lastSyncedAt = null,
                     lastAttemptAt = null,
                     lastError = null,

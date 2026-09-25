@@ -6,6 +6,7 @@ data class FddbProductSyncQueueItem(
     val productId: FoodId.Product,
     val name: String,
     val brand: String?,
+    val sourceUrl: String,
     val lastSyncedAt: Instant?,
     val lastAttemptAt: Instant?,
     val lastError: String?,

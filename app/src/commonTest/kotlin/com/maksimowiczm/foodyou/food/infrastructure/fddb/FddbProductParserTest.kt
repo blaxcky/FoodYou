@@ -2,10 +2,12 @@ package com.maksimowiczm.foodyou.food.infrastructure.fddb
 
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
+import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
 
 class FddbProductParserTest {
     private val parser = FddbProductParser()
@@ -95,6 +97,11 @@ class FddbProductParserTest {
 
         assertEquals(NutrientValue.Incomplete(null), product.nutritionFacts.vitaminB1)
         assertEquals(12.0, product.nutritionFacts.vitaminB12.value)
+    }
+
+    @Test
+    fun reportsMalformedPageAsParseFailure() {
+        assertFailsWith<FddbParseException> { parser.parse("<html><body>Not a product</body></html>") }
     }
 
     private companion object {

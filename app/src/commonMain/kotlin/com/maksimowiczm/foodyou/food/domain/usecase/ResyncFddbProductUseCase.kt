@@ -8,8 +8,11 @@ import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbHttpException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
 sealed interface ResyncFddbProductError {
@@ -21,7 +24,11 @@ sealed interface ResyncFddbProductError {
 
     data object Blocked : ResyncFddbProductError
 
-    data object NetworkOrParseFailed : ResyncFddbProductError
+    data class HttpFailed(val statusCode: Int) : ResyncFddbProductError
+
+    data class ParseFailed(val detail: String) : ResyncFddbProductError
+
+    data class NetworkFailed(val detail: String) : ResyncFddbProductError
 }
 
 class ResyncFddbProductUseCase(
@@ -67,10 +74,26 @@ class ResyncFddbProductUseCase(
                     throwable = exception,
                     message = { "FDDB blocked product resync for $sourceUrl." },
                 )
+            } catch (exception: FddbHttpException) {
+                return logger.logAndReturnFailure(
+                    tag = TAG,
+                    error = ResyncFddbProductError.HttpFailed(exception.statusCode),
+                    throwable = exception,
+                    message = { "FDDB returned HTTP ${exception.statusCode} for $sourceUrl." },
+                )
+            } catch (exception: FddbParseException) {
+                return logger.logAndReturnFailure(
+                    tag = TAG,
+                    error = ResyncFddbProductError.ParseFailed(exception.safeDetail()),
+                    throwable = exception,
+                    message = { "Failed to parse FDDB product from $sourceUrl." },
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (throwable: Throwable) {
                 return logger.logAndReturnFailure(
                     tag = TAG,
-                    error = ResyncFddbProductError.NetworkOrParseFailed,
+                    error = ResyncFddbProductError.NetworkFailed(throwable.safeDetail()),
                     throwable = throwable,
                     message = { "Failed to resync FDDB product from $sourceUrl." },
                 )
@@ -108,3 +131,6 @@ class ResyncFddbProductUseCase(
         const val TAG = "ResyncFddbProductUseCase"
     }
 }
+
+private fun Throwable.safeDetail(): String =
+    (message ?: "Unknown error").replace(Regex("\\s+"), " ").trim().take(240)
