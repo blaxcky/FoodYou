@@ -11,7 +11,7 @@ interface HealthConnectWeightSync {
 
     suspend fun syncHistorical(): HealthConnectSyncResult
 
-    suspend fun writeToday(entry: DailyWeightEntry): HealthConnectSyncResult
+    suspend fun writeFoodYouEntry(entry: DailyWeightEntry): HealthConnectSyncResult
 }
 
 expect fun org.koin.core.module.Module.healthConnectWeightSync()

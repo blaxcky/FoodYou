@@ -16,6 +16,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
 import com.maksimowiczm.foodyou.weight.domain.usecase.foodYouHealthConnectDate
+import com.maksimowiczm.foodyou.weight.domain.usecase.isExportableFoodYouWeightEntry
 import java.io.IOException
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -82,7 +83,10 @@ private class AndroidHealthConnectWeightSync(
         }
     }
 
-    override suspend fun writeToday(entry: DailyWeightEntry): HealthConnectSyncResult {
+    override suspend fun writeFoodYouEntry(entry: DailyWeightEntry): HealthConnectSyncResult {
+        if (!isExportableFoodYouWeightEntry(entry, context.packageName)) {
+            return HealthConnectSyncResult.Failed
+        }
         if (!settingsRepository.observe().first().healthConnectWeightEnabled) {
             return HealthConnectSyncResult.Disabled
         }

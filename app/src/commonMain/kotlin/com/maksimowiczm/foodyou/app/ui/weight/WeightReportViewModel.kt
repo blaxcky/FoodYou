@@ -11,7 +11,6 @@ import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import com.maksimowiczm.foodyou.weight.domain.entity.WeightGoal
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
-import kotlin.math.round
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,9 +68,9 @@ internal class WeightReportViewModel(
     fun setWeight(weightKg: Double) {
         if (weightKg <= 0.0) return
         viewModelScope.launch {
-            val rounded = round(weightKg * 10.0) / 10.0
-            repository.upsertToday(rounded)
-            repository.entry(today())?.let { healthConnectWeightSync.writeToday(it) }
+            repository.upsertToday(weightKg)?.let { entry ->
+                healthConnectWeightSync.writeFoodYouEntry(entry)
+            }
         }
     }
 

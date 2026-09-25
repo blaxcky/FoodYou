@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryDao
 import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -55,11 +56,78 @@ class RoomWeightRepositoryTest {
             )
         )
 
-        repository.upsertToday(79.8)
+        val created = repository.upsertToday(79.8)
 
         val saved = dao.entries.value.getValue("local:${todayEpochDay()}")
+        assertNotNull(created)
         assertNull(saved.healthConnectRecordId)
         assertTrue(saved.isFoodYouRecord)
+    }
+
+    @Test
+    fun unchangedImportedTodayWeightIsNotPromotedToFoodYouEntry() = runTest {
+        val dao = InMemoryDailyWeightEntryDao()
+        val repository =
+            RoomWeightRepository(dao, InMemoryPreferencesDataStore(), FakeBmrRepository())
+        dao.upsert(
+            DailyWeightEntryEntity(
+                id = "hc:foreign",
+                dateEpochDay = todayEpochDay(),
+                measuredEpochSeconds = 1,
+                weightKg = 79.84,
+                healthConnectRecordId = "foreign",
+                isFoodYouRecord = false,
+                sourcePackageName = "com.fitbit.FitbitMobile",
+                sourceDeviceType = 3,
+                isHidden = false,
+            )
+        )
+
+        val created = repository.upsertToday(79.8)
+
+        assertNull(created)
+        assertEquals(setOf("hc:foreign"), dao.entries.value.keys)
+    }
+
+    @Test
+    fun unchangedFoodYouWeightIsNotWrittenAgain() = runTest {
+        val dao = InMemoryDailyWeightEntryDao()
+        val repository =
+            RoomWeightRepository(dao, InMemoryPreferencesDataStore(), FakeBmrRepository())
+
+        val first = repository.upsertToday(80.0)
+        val unchanged = repository.upsertToday(80.04)
+
+        assertNotNull(first)
+        assertNull(unchanged)
+        assertEquals(1, dao.entries.value.size)
+    }
+
+    @Test
+    fun changedFoodYouWeightKeepsExistingHealthConnectIdentity() = runTest {
+        val dao = InMemoryDailyWeightEntryDao()
+        val repository =
+            RoomWeightRepository(dao, InMemoryPreferencesDataStore(), FakeBmrRepository())
+        dao.upsert(
+            DailyWeightEntryEntity(
+                id = "local:${todayEpochDay()}",
+                dateEpochDay = todayEpochDay(),
+                measuredEpochSeconds = 1,
+                weightKg = 80.0,
+                healthConnectRecordId = "own-id",
+                isFoodYouRecord = true,
+                sourcePackageName = "com.maksimowiczm.foodyou",
+                sourceDeviceType = null,
+                isHidden = false,
+            )
+        )
+
+        val changed = repository.upsertToday(79.9)
+
+        assertNotNull(changed)
+        assertEquals("own-id", changed.healthConnectRecordId)
+        assertEquals(79.9, changed.weightKg)
+        assertTrue(changed.isFoodYouRecord)
     }
 
     @Test

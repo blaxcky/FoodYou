@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
 import com.maksimowiczm.foodyou.weight.domain.usecase.latestWeightEntryPerDay
 import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryDao
 import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntity
+import kotlin.math.round
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -40,13 +41,20 @@ internal class RoomWeightRepository(
             WeightGoal(targetWeightKg = preferences[WeightPreferencesKeys.targetWeightKg])
         }
 
-    override suspend fun upsertToday(weightKg: Double) {
+    override suspend fun upsertToday(weightKg: Double): DailyWeightEntry? {
         val now = Clock.System.now()
         val date = today()
+        val roundedWeightKg = round(weightKg * 10.0) / 10.0
+        val current =
+            latestWeightEntryPerDay(dao.observeAll().first().map { it.toModel() })
+                .firstOrNull { it.date == date }
+        if (current != null && round(current.weightKg * 10.0) / 10.0 == roundedWeightKg) {
+            return null
+        }
         val entry =
             DailyWeightEntry(
                 date = date,
-                weightKg = weightKg,
+                weightKg = roundedWeightKg,
                 measuredAt = now,
                 healthConnectRecordId = entry(date)?.healthConnectRecordId,
                 isFoodYouRecord = true,
@@ -54,6 +62,7 @@ internal class RoomWeightRepository(
         val previous = latestVisibleWeight()
         dao.upsert(entry.toEntity())
         updateProfileWeight(previous, force = true)
+        return entry
     }
 
     override suspend fun upsert(entry: DailyWeightEntry) {

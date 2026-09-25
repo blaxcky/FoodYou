@@ -41,6 +41,42 @@ class WeightSyncRulesTest {
         assertEquals(null, foodYouHealthConnectDate("com.fitbit", "com.foodyou", id))
         assertEquals(null, foodYouHealthConnectDate("com.foodyou", "com.foodyou", "other"))
     }
+
+    @Test
+    fun onlyCanonicalFoodYouEntriesAreExportable() {
+        val date = LocalDate(2026, 6, 7)
+        val imported = weight(date, 80.0, "2026-06-07T08:00:00Z")
+        val canonical =
+            imported.copy(
+                id = "local:${date.toEpochDays()}",
+                healthConnectRecordId = "own-id",
+                isFoodYouRecord = true,
+            )
+
+        assertTrue(isExportableFoodYouWeightEntry(canonical, "com.foodyou"))
+        assertTrue(
+            isExportableFoodYouWeightEntry(
+                canonical.copy(sourcePackageName = "com.foodyou"),
+                "com.foodyou",
+            )
+        )
+        assertFalse(isExportableFoodYouWeightEntry(imported, "com.foodyou"))
+        assertFalse(
+            isExportableFoodYouWeightEntry(canonical.copy(id = "hc:own-id"), "com.foodyou")
+        )
+        assertFalse(
+            isExportableFoodYouWeightEntry(
+                canonical.copy(sourcePackageName = "com.fitbit"),
+                "com.foodyou",
+            )
+        )
+        assertFalse(
+            isExportableFoodYouWeightEntry(
+                canonical.copy(isFoodYouRecord = false),
+                "com.foodyou",
+            )
+        )
+    }
 }
 
 private fun weight(date: LocalDate, kg: Double, measuredAt: String) =

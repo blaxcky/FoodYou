@@ -14,7 +14,7 @@ interface WeightRepository {
 
     fun observeGoal(): Flow<WeightGoal>
 
-    suspend fun upsertToday(weightKg: Double)
+    suspend fun upsertToday(weightKg: Double): DailyWeightEntry?
 
     suspend fun upsert(entry: DailyWeightEntry)
 

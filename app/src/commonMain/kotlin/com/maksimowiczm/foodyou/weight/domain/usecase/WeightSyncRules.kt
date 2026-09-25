@@ -23,3 +23,11 @@ fun latestWeightEntryPerDay(entries: List<DailyWeightEntry>): List<DailyWeightEn
     entries.filterNot { it.isHidden }.groupBy { it.date }.values.mapNotNull { dayEntries ->
         dayEntries.maxWithOrNull(compareBy<DailyWeightEntry> { it.measuredAt }.thenBy { it.id })
     }
+
+fun isExportableFoodYouWeightEntry(
+    entry: DailyWeightEntry,
+    ownPackage: String,
+): Boolean =
+    entry.isFoodYouRecord &&
+        entry.id == "local:${entry.date.toEpochDays()}" &&
+        (entry.sourcePackageName == null || entry.sourcePackageName == ownPackage)
