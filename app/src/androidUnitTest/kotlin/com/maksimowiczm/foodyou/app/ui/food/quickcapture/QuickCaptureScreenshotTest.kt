@@ -246,11 +246,16 @@ class QuickCaptureScreenshotTest {
     @Test
     fun photoInbox() {
         show {
-            QuickCapturePhotos(
-                entries = listOf(pendingPhoto(6), pendingPhoto(7), pendingPhoto(8)),
-                onPhoto = {},
-                onDelete = {},
-            )
+            androidx.compose.foundation.layout.Column {
+                com.maksimowiczm.foodyou.ai.AiAnalysisControls(
+                    com.maksimowiczm.foodyou.ai.AiProvider.Local,
+                    com.maksimowiczm.foodyou.ai.AnalysisProgress(), true, true, {}, {}, {}, {},
+                )
+                QuickCapturePhotos(
+                    entries = listOf(pendingPhoto(6), pendingPhoto(7), pendingPhoto(8)),
+                    onPhoto = {}, onDelete = {},
+                )
+            }
         }
         capture("photo-inbox")
     }
@@ -463,6 +468,32 @@ class QuickCaptureScreenshotTest {
             assertIsFocused()
         }
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+    }
+
+    @Test
+    fun aiSuggestionRequiresConfirmationAndNeverOverwritesManualInput() {
+        val suggestion = mutableStateOf<Double?>(125.0)
+        var submitted: Double? = null
+        show {
+            androidx.compose.foundation.layout.Column {
+                QuickCapturePhotoEditor(entryId = 6, names = names,
+                    suggestedWeight = suggestion.value, analysisStatus = "recognized",
+                    onProcess = { _, weight -> submitted = weight })
+            }
+        }
+        compose.onNodeWithText("Name").apply {
+            performTextInput("Test")
+            performImeAction()
+        }
+        val weight = compose.onAllNodes(hasSetTextAction())[0]
+        weight.assertTextContains("125")
+        compose.runOnIdle { kotlin.test.assertNull(submitted) }
+        capture("ai-weight-suggestion")
+        weight.performTextReplacement("126")
+        compose.runOnIdle { suggestion.value = 999.0 }
+        weight.assertTextContains("126")
+        weight.performImeAction()
+        compose.runOnIdle { kotlin.test.assertEquals(126.0, submitted) }
     }
 
     @Test

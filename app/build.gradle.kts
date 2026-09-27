@@ -91,6 +91,7 @@ kotlin {
         }
 
         androidMain.dependencies {
+            implementation("com.google.ai.edge.litertlm:litertlm-android:0.16.1")
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.appcompat)
             implementation(libs.androidx.camera.camera2)

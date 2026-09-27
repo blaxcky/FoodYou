@@ -144,8 +144,13 @@ fun QuickCaptureScreen(
     onBack: () -> Unit,
     onPhoto: (Long) -> Unit,
     onTransfer: (QuickCaptureTransferRequest) -> Unit,
+    onAiSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val ai: com.maksimowiczm.foodyou.ai.AiController = org.koin.compose.koinInject()
+    val aiSettings by ai.settings.collectAsStateWithLifecycle()
+    val aiDownload by ai.download.collectAsStateWithLifecycle()
+    val aiProgress by ai.analysis.collectAsStateWithLifecycle()
     val viewModel: QuickCaptureViewModel = koinViewModel()
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val names by viewModel.names.collectAsStateWithLifecycle()
@@ -294,11 +299,20 @@ fun QuickCaptureScreen(
                         },
                     )
                 selectedTab == QuickCaptureTab.Photos ->
-                    QuickCapturePhotos(
-                        entries = entries.filter { it.isPendingPhoto },
-                        onPhoto = onPhoto,
-                        onDelete = { viewModel.delete(listOf(it)) },
-                    )
+                    Column(Modifier.fillMaxSize()) {
+                        com.maksimowiczm.foodyou.ai.AiAnalysisControls(
+                            provider = aiSettings.provider, progress = aiProgress,
+                            canStart = !aiDownload.running && if (aiSettings.provider == com.maksimowiczm.foodyou.ai.AiProvider.Local) aiDownload.ready else aiSettings.hasApiKey,
+                            hasPhotos = entries.any { it.isPendingPhoto },
+                            onStart = { ai.startAnalysis() }, onReanalyze = { ai.startAnalysis(true) },
+                            onCancel = ai::cancelAnalysis, onSettings = onAiSettings,
+                        )
+                        QuickCapturePhotos(
+                            entries = entries.filter { it.isPendingPhoto },
+                            onPhoto = onPhoto,
+                            onDelete = { viewModel.delete(listOf(it)) },
+                        )
+                    }
                 else ->
                     QuickCaptureLibrary(
                         names = names,

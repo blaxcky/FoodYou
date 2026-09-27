@@ -26,6 +26,11 @@ data class QuickCaptureLogEntry(
     val photoPath: String?,
     val createdAt: Instant,
     val completedAt: Instant?,
+    val suggestedWeightInGrams: Double? = null,
+    val aiAnalysisStatus: String? = null,
+    val aiAnalysisProvider: String? = null,
+    val aiAnalysisModel: String? = null,
+    val aiAnalyzedAt: Long? = null,
 ) {
     val effectiveWeightInGrams: Double?
         get() =

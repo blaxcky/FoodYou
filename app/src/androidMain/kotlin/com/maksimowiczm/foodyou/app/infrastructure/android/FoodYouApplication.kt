@@ -35,6 +35,9 @@ class FoodYouApplication : Application() {
             androidContext(this@FoodYouApplication)
             modules(
                 module {
+                    single<com.maksimowiczm.foodyou.ai.AiController> {
+                        com.maksimowiczm.foodyou.ai.AndroidAiController(this@FoodYouApplication, get(), get())
+                    }
                     factory {
                         CalorieWidgetUpdater(
                             observeDiaryMealsUseCase = get(),
@@ -57,6 +60,21 @@ class FoodYouApplication : Application() {
                 openFoodFacts = GlobalContext.get().get(),
             )
         }
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            private var started = 0
+            override fun onActivityStarted(activity: android.app.Activity) { started++ }
+            override fun onActivityStopped(activity: android.app.Activity) {
+                started--
+                if (started == 0 && !activity.isChangingConfigurations) {
+                    GlobalContext.get().get<com.maksimowiczm.foodyou.ai.AiController>().onBackground()
+                }
+            }
+            override fun onActivityCreated(activity: android.app.Activity, state: android.os.Bundle?) = Unit
+            override fun onActivityResumed(activity: android.app.Activity) = Unit
+            override fun onActivityPaused(activity: android.app.Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: android.app.Activity, state: android.os.Bundle) = Unit
+            override fun onActivityDestroyed(activity: android.app.Activity) = Unit
+        })
         publishLaunchEvent()
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()

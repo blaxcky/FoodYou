@@ -128,4 +128,9 @@ private fun QuickCaptureLogEntryEntity.toModel(): QuickCaptureLogEntry =
         photoPath = photoPath,
         createdAt = Instant.fromEpochMilliseconds(createdAt),
         completedAt = completedAt?.let(Instant::fromEpochMilliseconds),
+        suggestedWeightInGrams = suggestedWeightInGrams,
+        aiAnalysisStatus = aiAnalysisStatus,
+        aiAnalysisProvider = aiAnalysisProvider,
+        aiAnalysisModel = aiAnalysisModel,
+        aiAnalyzedAt = aiAnalyzedAt,
     )

@@ -33,6 +33,9 @@
         android:theme="@style/Theme.FoodYou"
         tools:targetApi="36">
 
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+
         <activity
             android:name=".app.infrastructure.android.MainActivity"
             android:exported="true"

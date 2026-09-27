@@ -44,6 +44,7 @@ fun SettingsScreen(
     onLanguage: () -> Unit,
     onGoals: () -> Unit,
     onSynchronization: () -> Unit,
+    onAi: () -> Unit,
     onActivities: () -> Unit,
     onPersonalization: () -> Unit,
     onDatabase: () -> Unit,
@@ -135,6 +136,14 @@ fun SettingsScreen(
                 )
             }
 
+            item {
+                SettingsListItem(
+                    icon = { Icon(Icons.Outlined.PhotoCamera, null) },
+                    label = { Text("KI") },
+                    supportingContent = { Text("Gemma lokal oder Google AI Studio · Waagengewichte erkennen") },
+                    onClick = onAi, shape = shape, color = color, contentColor = contentColor,
+                )
+            }
             item {
                 PendingProductPhotoQualitySettingsListItem(
                     value = settings?.pendingProductPhotoQuality,

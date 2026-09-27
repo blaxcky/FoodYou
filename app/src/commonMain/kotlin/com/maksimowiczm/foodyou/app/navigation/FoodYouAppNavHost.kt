@@ -166,6 +166,7 @@ fun FoodYouAppNavHost(
                 onMeals = { navController.navigateSingleTop(MealSetup) },
                 onLanguage = { navController.navigateSingleTop(Language) },
                 onGoals = { navController.navigateSingleTop(GoalsSetup) },
+                onAi = { navController.navigateSingleTop(AiSettings) },
                 onSynchronization = { navController.navigateSingleTop(SynchronizationSettings) },
                 onActivities = { navController.navigateSingleTop(ActivitySettings) },
                 onPersonalization = { navController.navigateSingleTop(Personalization) },
@@ -181,6 +182,7 @@ fun FoodYouAppNavHost(
         }
         forwardBackwardComposable<QuickCapture> {
             QuickCaptureScreen(
+                onAiSettings = { navController.navigateSingleTop(AiSettings) },
                 onBack = { navController.popBackStackInclusive<QuickCapture>() },
                 onPhoto = { navController.navigate(QuickCapturePhoto(it)) },
                 onTransfer = { request ->
@@ -270,6 +272,9 @@ fun FoodYouAppNavHost(
                 onBack = { navController.popBackStackInclusive<GoalsSetup>() },
                 onSave = { navController.popBackStackInclusive<GoalsSetup>() },
             )
+        }
+        forwardBackwardComposable<AiSettings> {
+            com.maksimowiczm.foodyou.ai.AiSettingsScreen(onBack = { navController.popBackStackInclusive<AiSettings>() })
         }
         forwardBackwardComposable<SynchronizationSettings> {
             SynchronizationSettingsScreen(
@@ -629,6 +634,8 @@ fun FoodYouAppNavHost(
 @Serializable private data class Goals(val epochDay: Long)
 
 @Serializable private object GoalsSetup
+
+@Serializable private object AiSettings
 
 @Serializable private object SynchronizationSettings
 

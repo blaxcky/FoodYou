@@ -92,6 +92,30 @@ class QuickCaptureDaoTest {
         assertEquals(listOf(first), dao.observeEntries().first().map { it.id })
     }
 
+    @Test
+    fun aiSuggestionsNeverConfirmPhotosOrOverwriteProcessedEntries() = runTest {
+        val pending = QuickCaptureLogEntryEntity(foodNameId = null, foodName = null, weightMode = 0,
+            directWeightInGrams = null, beforeWeightInGrams = null, afterWeightInGrams = null,
+            afterRequired = false, photoPath = "scale.jpg", createdAt = 100, completedAt = null)
+        val id = dao.insertEntry(pending)
+        dao.saveAiResult(id, "scale.jpg", 123.0, "recognized", "Local", "Gemma", 200)
+        val suggested = dao.getEntry(id)!!
+        assertEquals(123.0, suggested.suggestedWeightInGrams)
+        assertNull(suggested.directWeightInGrams)
+        assertNull(suggested.foodName)
+        dao.saveAiResult(id, "scale.jpg", null, "error", "Local", "Gemma", 250)
+        assertEquals(123.0, dao.getEntry(id)?.suggestedWeightInGrams)
+        val name = dao.resolveFoodName("Apfel", "apfel", 300)
+        dao.processPhoto(id, name.id, name.name, 124.0)
+        dao.saveAiResult(id, "scale.jpg", 999.0, "recognized", "Gemini", "test", 400)
+        assertEquals(124.0, dao.getEntry(id)?.directWeightInGrams)
+        assertEquals(123.0, dao.getEntry(id)?.suggestedWeightInGrams)
+        val deletedId = dao.insertEntry(pending)
+        dao.deleteEntries(listOf(deletedId))
+        dao.saveAiResult(deletedId, "scale.jpg", 999.0, "recognized", "Local", "Gemma", 400)
+        assertNull(dao.getEntry(deletedId))
+    }
+
     private fun entry(
         name: QuickCaptureFoodNameEntity,
         weight: Double,

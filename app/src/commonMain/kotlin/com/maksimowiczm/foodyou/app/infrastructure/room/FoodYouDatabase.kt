@@ -170,7 +170,7 @@ abstract class FoodYouDatabase :
         }
 
     companion object {
-        const val VERSION = 50
+        const val VERSION = 51
 
         private val migrations: List<Migration> =
             listOf(
@@ -206,6 +206,7 @@ abstract class FoodYouDatabase :
                 StepExclusionMigration,
                 QuickCaptureMigration,
                 WeightMeasurementsMigration,
+                QuickCaptureAiMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -619,5 +620,15 @@ private object PendingProductMultiplePhotosMigration : Migration(35, 36) {
         connection.execSQL(
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_PendingProduct_barcode` ON `PendingProduct` (`barcode`)"
         )
+    }
+}
+
+internal object QuickCaptureAiMigration : Migration(50, 51) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN suggestedWeightInGrams REAL")
+        connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiAnalysisStatus TEXT")
+        connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiAnalysisProvider TEXT")
+        connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiAnalysisModel TEXT")
+        connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiAnalyzedAt INTEGER")
     }
 }

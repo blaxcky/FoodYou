@@ -39,6 +39,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.pending.ZoomablePendingProductPhoto
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
+import com.maksimowiczm.foodyou.food.domain.entity.formatQuickCaptureWeight
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureFoodName
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUseCase
@@ -122,6 +123,8 @@ fun QuickCapturePhotoScreen(
             )
             QuickCapturePhotoEditor(
                 entryId = current.id,
+                suggestedWeight = current.suggestedWeightInGrams,
+                analysisStatus = current.aiAnalysisStatus,
                 names = names,
                 onProcess = viewModel::process,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -142,9 +145,17 @@ internal fun QuickCapturePhotoEditor(
     onProcess: (String, Double) -> Unit,
     modifier: Modifier = Modifier,
     autoFocus: Boolean = true,
+    suggestedWeight: Double? = null,
+    analysisStatus: String? = null,
 ) {
     var name by rememberSaveable(entryId) { mutableStateOf("") }
     var weight by rememberSaveable(entryId) { mutableStateOf("") }
+    var weightEdited by rememberSaveable(entryId) { mutableStateOf(false) }
+    LaunchedEffect(entryId, suggestedWeight) {
+        if (!weightEdited) weight = suggestedWeight?.let {
+            it.formatQuickCaptureWeight()
+        }.orEmpty()
+    }
     var step by rememberSaveable(entryId) { mutableStateOf(QuickCapturePhotoStep.Name) }
     var nameSubmitted by rememberSaveable(entryId) { mutableStateOf(false) }
     var submitted by rememberSaveable(entryId) { mutableStateOf(false) }
@@ -167,13 +178,25 @@ internal fun QuickCapturePhotoEditor(
         if (confirmedName.isNotBlank()) step = QuickCapturePhotoStep.Weight
     }
 
+    if (suggestedWeight != null || analysisStatus != null) {
+        Text(
+            when {
+                suggestedWeight != null && !weightEdited -> "KI-Vorschlag · Gewicht bitte prüfen und bestätigen"
+                suggestedWeight != null -> "Gewicht manuell geändert"
+                analysisStatus == "unreadable" -> "Keine eindeutig lesbare Waagenanzeige erkannt"
+                else -> "KI-Analyse fehlgeschlagen · Gewicht manuell eingeben"
+            },
+            modifier = Modifier.padding(horizontal = 16.dp),
+            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+        )
+    }
     QuickCapturePhotoForm(
         step = step,
         name = name,
         onNameChange = { name = it },
         onNameConfirmed = ::confirmName,
         weight = weight,
-        onWeightChange = { weight = it },
+        onWeightChange = { weightEdited = true; weight = it },
         names = names,
         nameError = nameSubmitted && name.isBlank(),
         submitted = submitted,
