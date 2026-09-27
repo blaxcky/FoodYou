@@ -31,7 +31,7 @@ class AiSettingsScreenshotTest {
     @Test fun geminiSettings() = showSettings(AiSettings(AiProvider.Gemini, hasApiKey = true), ModelDownloadState(), "gemini")
 
     @Test fun diagnosticReport() {
-        show { AiDiagnosticDialog("LiteRT-LM: 0.16.1\nGerät: Nothing Phone (2)\nUrsache unbekannt.\nphase=generation_start availableMiB=4096", {}, {}) }
+        show { AiDiagnosticDialog("LiteRT-LM: 0.16.1\nGerät: Nothing Phone (2)\nLaufzeiten (monotone Uhr):\nModellladen=4.200 s\nFoto 1: Gesamt=20.000 s\nErste Antwort=14.500 s\nStatus=Completed", {}, {}) }
         compose.onNodeWithText("Kopieren").assertExists()
         compose.onNodeWithText("KI-Diagnosebericht").assertExists()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.diagnostics.png")

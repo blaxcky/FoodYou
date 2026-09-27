@@ -41,7 +41,7 @@ internal class GeminiScaleWeightRecognizer(
                                 put("data", Base64.encodeToString(photo, Base64.NO_WRAP))
                             }
                         }
-                        addJsonObject { put("text", if (photo == null) "Return exactly {\"readable\":false}" else SCALE_PROMPT) }
+                        addJsonObject { put("text", if (photo == null) "Return exactly {\"value\":null}" else SCALE_PROMPT) }
                     }
                 }
             }

@@ -58,6 +58,18 @@ class LocalAiProtocolTest {
         assertEquals(1, killed)
     }
 
+    @Test fun diagnosticReportRetainsTimingInSecondsAcrossInstances() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        val worker = AiDiagnostics(context, worker = true)
+        worker.recordTiming(AiTimingRecord(100, null, 4200, null, AiTimingOutcome.Completed))
+        worker.recordTiming(AiTimingRecord(100, 1, 20000, 14500, AiTimingOutcome.Completed))
+        worker.recordTiming(AiTimingRecord(100, 2, 5000, null, AiTimingOutcome.Cancelled))
+        val report = AiDiagnostics(context).report()
+        assertTrue(report.contains("Modellladen=4.200 s"))
+        assertTrue(report.contains("Foto 1: Gesamt=20.000 s; Erste Antwort=14.500 s"))
+        assertTrue(report.contains("Foto 2: Gesamt=5.000 s; Erste Antwort=nicht empfangen; Status=Cancelled"))
+    }
+
     @Test fun ambiguousSignalDoesNotClaimMemoryExhaustion() {
         assertTrue(exitReasonLabel(ApplicationExitInfo.REASON_LOW_MEMORY).contains("Speichermangel"))
         assertEquals("Nativer Absturz", exitReasonLabel(ApplicationExitInfo.REASON_CRASH_NATIVE))

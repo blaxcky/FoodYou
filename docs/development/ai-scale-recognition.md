@@ -43,7 +43,7 @@ Mit `JAVA_HOME=/usr/lib/jvm/java-21-openjdk` und
 ./gradlew :app:testDevReleaseUnitTest \
   --tests '*ScaleRecognitionTest' --tests '*AiInfrastructureTest' \
   --tests '*ScalePhotoDecoderTest' --tests '*NativeGenerationTest' \
-  --tests '*LocalAiProtocolTest' --tests '*LocalAiClientTest' \
+  --tests '*LocalAiProtocolTest' --tests '*LocalAiClientTest' --tests '*AiRunTimingsTest' \
   --tests '*QuickCaptureAiMigrationTest' --tests '*QuickCaptureDaoTest' \
   --tests '*QuickCaptureViewModelTest' \
   --tests '*AiSettingsScreenshotTest' --tests '*QuickCaptureScreenshotTest' \
@@ -100,7 +100,7 @@ Abstürze werden unterschieden; SIGKILL allein oder fehlende Informationen ergeb
 keine RAM-Diagnose. Frühere Datensätze sind über Zeitstempel und PID zuzuordnen.
 
 Antwortformatfehler und abgeschnittene Antworten sind technische Fehler; nur ein
-explizites `readable:false` bedeutet unlesbar. Zusatzanzeigen wie Timer sind kein
+explizites `{"value":null}` bedeutet unlesbar. Zusatzanzeigen wie Timer sind kein
 zweites Gewicht. Runtime 0.16.1 und Kontext 4096 bleiben zur Diagnose unverändert.
 
 ### Reproduzierbarer Gerätetest: 269 g
@@ -133,3 +133,40 @@ ANDROID_SERIAL=<Nothing-Phone-Seriennummer> ./gradlew -I dev/ai-device-test.init
 Das optionale Init-Skript wählt nur für diesen Aufruf `devRelease` als Testvariante.
 Es startet keinen Emulator. Ein Testfehler darf nicht durch Änderung des Sollwerts
 oder automatisches Umschalten auf Google umgangen werden.
+
+
+## Ganze Gramm und Laufzeiten
+
+Beide Anbieter verwenden den kürzeren Prompt und das kompakte Antwortformat
+`{"value":161,"unit":"g"}` bzw. `{"value":null}` für unlesbare Anzeigen. Es werden
+nur positive ganze Gramm vorgeschlagen. `16.1 g` wird als `NonWholeGrams` verworfen,
+weder gerundet noch in `161 g` umgeschrieben. kg-Anzeigen bleiben erlaubt, wenn ihre
+exakte Umrechnung ganze Gramm ergibt (z. B. `1.001 kg` → `1001 g`). Die Verschiebung
+des Dezimalpunkts erfolgt vor der Double-Konvertierung, um Rundungsfehler zu vermeiden.
+Der persistierte Status `error_whole_grams` benötigt keine Room-Migration und bewahrt
+bei erneuter Analyse vorhandene Vorschläge. Kein automatischer Wiederholungsversuch.
+
+Die lokale Messung verwendet `SystemClock.elapsedRealtime()`. Ein Modell-Ladevorgang
+und fortlaufende Fotonummern gehören jeweils zu einem Durchlauf. Der Diagnosebericht
+zeigt drei Nachkommastellen in Sekunden:
+
+- Modellladen: eigener Zeitraum, nicht in der Fotozeit enthalten.
+- Foto-Gesamtzeit: Dekodieren, Sitzung erstellen, Generierung und Sitzung schließen.
+- Erste Antwort: vom Generierungsstart bis zum ersten nicht leeren Antwortteil.
+
+`timings.log` enthält höchstens 80 Datensätze im bestehenden privaten No-Backup-Ordner,
+ohne Dateinamen, Bildinhalte, Antworten oder Schlüssel. Abbrüche und Fehler bekommen
+einen eigenen Status; nach einem Prozessverlust fehlende Abschlusszeiten gelten
+nicht als abgeschlossene Messung. Die Diagnose verwendet nur Metadaten, und die
+Antwort-Callbacks schreiben selbst keine Dateien.
+
+Für den Vorher/Nachher-Vergleich denselben Stapel auf dem Nothing Phone verwenden:
+Modellstart getrennt erfassen und Zeiten der Folgefotos vergleichen. Die vorherige
+Version enthält Phasenzeitstempel; alternativ den Ausgangslauf mit einer Stoppuhr
+messen. Bedingungen (Gerätetemperatur, Hintergrund-Apps) möglichst konstant halten.
+Thinking bleibt aus, Runtime 0.16.1, Kontext 4096, GPU und Bildauflösung unverändert.
+Ein kürzerer Prompt und weniger Antworttext sind keine Garantie für eine bestimmte
+Beschleunigung. Der reale Vergleich steht aus, weil kein Nothing Phone verbunden ist.
+Das vorhandene 269-g-Testbild bleibt unverändert; für den zusätzlichen Fall 161 g
+wird das betreffende Originalfoto noch benötigt. Parser-Tests ersetzen diese
+Bilderkennungstests nicht.

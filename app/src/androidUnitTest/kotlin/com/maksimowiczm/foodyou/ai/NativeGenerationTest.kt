@@ -8,7 +8,7 @@ import org.junit.Test
 class NativeGenerationTest {
     @Test fun successfulGenerationDoesNotCancelAndIgnoresLateCallbacks() = runTest {
         val generation = NativeGeneration(backgroundScope) { error("Must not cancel completed generation") }
-        generation.chunk("""{"readable":true,"value":269,"unit":"g"}""")
+        generation.chunk("""{"value":269,"unit":"g"}""")
         generation.finish()
         generation.cancel()
         generation.chunk("late text")

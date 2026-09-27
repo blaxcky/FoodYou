@@ -30,11 +30,24 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
                 " availableMiB=${memory.availMem / 1048576} lowMemory=${memory.lowMemory}" +
                 " pssKiB=${processMemory.totalPss} nativeHeapKiB=${Debug.getNativeHeapAllocatedSize() / 1024}" +
                 if (width != null && height != null) " image=${width}x$height" else ""
-            val previous = if (logFile.isFile) logFile.readLines().takeLast(79) else emptyList()
-            val temp = File(directory, "${logFile.name}.tmp")
-            temp.writeText((previous + line).joinToString("\n", postfix = "\n"))
-            temp.renameTo(logFile)
+            append(logFile, line)
         } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
+    }
+
+    @Synchronized
+    fun recordTiming(timing: AiTimingRecord) {
+        try {
+            append(File(directory, "timings.log"),
+                "${System.currentTimeMillis()} pid=${Process.myPid()} ${timing.reportLine()}")
+        } catch (_: Exception) { /* Timing diagnostics must not interrupt a batch. */ }
+    }
+
+    private fun append(file: File, line: String) {
+        directory.mkdirs()
+        val previous = if (file.isFile) file.readLines().takeLast(79) else emptyList()
+        val temp = File(directory, "${file.name}.tmp")
+        temp.writeText((previous + line).joinToString("\n", postfix = "\n"))
+        temp.renameTo(file)
     }
 
     suspend fun report(): String = withContext(Dispatchers.IO) {
@@ -44,6 +57,11 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
             appendLine("LiteRT-LM: $LOCAL_AI_RUNTIME · Gemma 4 E4B · $GEMMA_REVISION")
             appendLine("Backend: GPU / Vision GPU · Kontext: 4096 · Ausgabe: 128")
             appendLine("Zeitangaben: Unix-Millisekunden; keine Fotos, Modellantworten oder API-Schlüssel.")
+            appendLine()
+            appendLine("Laufzeiten (monotone Uhr, Sekunden):")
+            appendLine("Modellladen separat; Foto-Gesamtzeit enthält Bildvorbereitung, Sitzung und Aufräumen.")
+            appendLine("Erste Antwort: ab Generierungsstart. Fehlende Werte nach Prozessabbruch sind keine abgeschlossenen Messungen.")
+            appendLine(readLog("timings.log"))
             appendLine()
             appendLine("Android-Prozessabbruchinformationen:")
             if (Build.VERSION.SDK_INT >= 30) {
@@ -63,12 +81,15 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
             } else appendLine("Vor Android 11 nicht verfügbar; Ursache unbekannt.")
             for (name in listOf("client.log", "worker.log")) {
                 appendLine("\n$name:")
-                val file = File(directory, name)
-                appendLine(try { if (file.isFile) file.readText().takeLast(32_000) else "Noch keine Aufzeichnung." }
-                    catch (_: Exception) { "Aufzeichnung nicht lesbar." })
+                appendLine(readLog(name))
             }
         }
     }
+    private fun readLog(name: String): String = try {
+        val file = File(directory, name)
+        if (file.isFile) file.readText().takeLast(32_000) else "Noch keine Aufzeichnung."
+    } catch (_: Exception) { "Aufzeichnung nicht lesbar." }
+
 }
 
 internal fun exitReasonLabel(reason: Int): String = when (reason) {

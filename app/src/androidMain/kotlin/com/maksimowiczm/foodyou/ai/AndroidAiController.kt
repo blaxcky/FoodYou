@@ -121,6 +121,7 @@ internal class AndroidAiController(
                                 ScaleRecognitionResult.Unreadable -> "unreadable"
                                 is ScaleRecognitionResult.Error -> when (result.kind) {
                                     ScaleErrorKind.ResponseFormat -> "error_format"
+                                    ScaleErrorKind.NonWholeGrams -> "error_whole_grams"
                                     ScaleErrorKind.Truncated -> "error_truncated"
                                     else -> "error"
                                 }

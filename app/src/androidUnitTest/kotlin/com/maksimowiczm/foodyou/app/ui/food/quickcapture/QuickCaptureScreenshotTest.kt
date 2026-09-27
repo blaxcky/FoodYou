@@ -471,6 +471,25 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
+    fun fractionalAiWeightIsExplainedWithoutPrefillingWeight() {
+        show {
+            androidx.compose.foundation.layout.Column {
+                QuickCapturePhotoEditor(entryId = 6, names = names,
+                    analysisStatus = "error_whole_grams", onProcess = { _, _ -> })
+            }
+        }
+        compose.onNodeWithText("Name").apply {
+            performTextInput("Test")
+            performImeAction()
+        }
+        compose.onNodeWithText("Kein gültiger Vorschlag in ganzen Gramm").assertExists()
+        compose.onAllNodes(hasSetTextAction())[0].assert(
+            SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.EditableText,
+                androidx.compose.ui.text.AnnotatedString("")))
+        capture("ai-whole-grams-error")
+    }
+
+    @Test
     fun aiSuggestionRequiresConfirmationAndNeverOverwritesManualInput() {
         val suggestion = mutableStateOf<Double?>(125.0)
         var submitted: Double? = null

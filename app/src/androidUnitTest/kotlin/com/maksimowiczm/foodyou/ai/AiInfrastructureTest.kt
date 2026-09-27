@@ -23,12 +23,18 @@ class AiInfrastructureTest {
         } finally { file.delete() }
     }
 
+    @Test fun geminiUsesCompactUnreadableAndWholeGramResponses() {
+        assertEquals(ScaleRecognitionResult.Unreadable, parseGeminiResponse("""{"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"{\"value\":null}"}]}}]}"""))
+        val result = parseGeminiResponse("""{"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"{\"value\":16.1,\"unit\":\"g\"}"}]}}]}""")
+        assertEquals(ScaleErrorKind.NonWholeGrams, assertIs<ScaleRecognitionResult.Error>(result).kind)
+    }
+
     @Test fun geminiErrorsAreSafeAndActionable() {
         listOf(400,401,403,404,429,500).forEach { assertTrue(geminiHttpError(it).fatal) }
         assertTrue(geminiHttpError(429).message.contains("Kontingent"))
         assertTrue(parseGeminiResponse("""{"promptFeedback":{"blockReason":"SAFETY"}}""" ) is ScaleRecognitionResult.Error)
         assertTrue(parseGeminiResponse("not json") is ScaleRecognitionResult.Error)
         assertTrue(parseGeminiResponse("""{"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[{"text":"{}"}]}}]}""" ) is ScaleRecognitionResult.Error)
-        assertEquals(ScaleRecognitionResult.Recognized(42.0), parseGeminiResponse("""{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"reasoning"},{"text":"{\"readable\":true,\"value\":42,\"unit\":\"g\"}"}]}}]}"""))
+        assertEquals(ScaleRecognitionResult.Recognized(42.0), parseGeminiResponse("""{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"reasoning"},{"text":"{\"value\":42,\"unit\":\"g\"}"}]}}]}"""))
     }
 }

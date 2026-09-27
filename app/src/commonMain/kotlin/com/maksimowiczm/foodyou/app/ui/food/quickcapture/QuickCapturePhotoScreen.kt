@@ -183,6 +183,7 @@ internal fun QuickCapturePhotoEditor(
             when {
                 suggestedWeight != null && !weightEdited -> "KI-Vorschlag · Gewicht bitte prüfen und bestätigen"
                 suggestedWeight != null -> "Gewicht manuell geändert"
+                analysisStatus == "error_whole_grams" -> "Kein gültiger Vorschlag in ganzen Gramm"
                 analysisStatus == "error_format" -> "Ungültiges KI-Antwortformat – bitte erneut analysieren"
                 analysisStatus == "error_truncated" -> "KI-Antwort wurde abgeschnitten – bitte erneut analysieren"
                 analysisStatus == "unreadable" -> "Keine eindeutig lesbare Waagenanzeige erkannt"

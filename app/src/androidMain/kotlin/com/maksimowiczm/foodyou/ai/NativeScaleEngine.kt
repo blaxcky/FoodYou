@@ -15,7 +15,7 @@ import kotlinx.coroutines.*
 
 /** Native calls are owned exclusively by LocalAiService's worker, except the SDK cancellation API. */
 internal interface NativeScaleEngine {
-    suspend fun recognize(bytes: ByteArray): ScaleRecognitionResult
+    suspend fun recognize(bytes: ByteArray, timing: PhotoTiming): ScaleRecognitionResult
     fun cancel()
     fun close()
 }
@@ -77,7 +77,7 @@ internal class LiteRtScaleEngine private constructor(
     @Volatile private var generation: NativeGeneration? = null
     @Volatile private var cancellationRequested = false
 
-    override suspend fun recognize(bytes: ByteArray): ScaleRecognitionResult {
+    override suspend fun recognize(bytes: ByteArray, timing: PhotoTiming): ScaleRecognitionResult {
         diagnostics.record("conversation_create")
         val conversation = engine.createConversation(ConversationConfig(
             maxOutputToken = 128,
@@ -88,10 +88,15 @@ internal class LiteRtScaleEngine private constructor(
         try {
             diagnostics.record("generation_start")
             try {
+                timing.generationStarted()
                 conversation.sendMessageAsync(
                     Contents.of(Content.ImageBytes(bytes), Content.Text(SCALE_PROMPT)),
                     object : MessageCallback {
-                        override fun onMessage(message: Message) { current.chunk(message.toString()) }
+                        override fun onMessage(message: Message) {
+                            val text = message.toString()
+                            timing.responseReceived(text)
+                            current.chunk(text)
+                        }
                         override fun onDone() { current.finish() }
                         override fun onError(throwable: Throwable) { current.finish(error = true) }
                     },

@@ -103,7 +103,7 @@ class QuickCaptureDaoTest {
         assertEquals(123.0, suggested.suggestedWeightInGrams)
         assertNull(suggested.directWeightInGrams)
         assertNull(suggested.foodName)
-        for (status in listOf("error", "error_format", "error_truncated")) {
+        for (status in listOf("error", "error_format", "error_truncated", "error_whole_grams")) {
             dao.saveAiResult(id, "scale.jpg", null, status, "Local", "Gemma", 250)
             assertEquals(123.0, dao.getEntry(id)?.suggestedWeightInGrams)
         }

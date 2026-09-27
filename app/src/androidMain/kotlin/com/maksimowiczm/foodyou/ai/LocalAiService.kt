@@ -16,6 +16,7 @@ class LocalAiService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + worker)
     private val cancellationScope = CoroutineScope(SupervisorJob() + cancellation)
     private lateinit var diagnostics: AiDiagnostics
+    private lateinit var timings: AiRunTimings
     @Volatile private var engine: NativeScaleEngine? = null
     private var operation: Job? = null
     private var shutdown: Job? = null
@@ -34,6 +35,7 @@ class LocalAiService : Service() {
             "LocalAiService must never run in the UI process"
         }
         diagnostics = AiDiagnostics(this, worker = true)
+        timings = AiRunTimings(diagnostics::recordTiming)
         diagnostics.record("service_created")
     }
 
@@ -62,10 +64,13 @@ class LocalAiService : Service() {
                     send(reply, id, failure("Die KI-Sitzung ist bereits belegt.")); return
                 }
                 startOperation(reply, id) {
+                    val finishLoading = timings.modelLoading()
+                    var outcome = AiTimingOutcome.Error
                     try {
                         engine = LiteRtScaleEngine.open(
                             File(noBackupFilesDir, "ai/models/$GEMMA_FILE"), File(cacheDir, "gemma"), cancellationScope, diagnostics,
                         )
+                        outcome = if (stopping) AiTimingOutcome.Cancelled else AiTimingOutcome.Completed
                         Bundle().apply { putString(LocalAiProtocol.RESULT, "ready") }
                     } catch (_: Exception) {
                         diagnostics.record("initialization_failed")
@@ -73,7 +78,7 @@ class LocalAiService : Service() {
                     } catch (_: LinkageError) {
                         diagnostics.record("native_library_failed")
                         failure("Die native KI-Bibliothek ist auf diesem Gerät nicht verfügbar.")
-                    }
+                    } finally { finishLoading(outcome) }
                 }
             }
             LocalAiProtocol.RECOGNIZE -> {
@@ -85,17 +90,25 @@ class LocalAiService : Service() {
                     send(reply, id, failure("Die KI-Sitzung ist nicht bereit.")); return
                 }
                 startOperation(reply, id) {
+                    val timing = timings.photo()
+                    var outcome = AiTimingOutcome.Error
                     try {
                         val bytes = ParcelFileDescriptor.AutoCloseInputStream(photo).use {
                             diagnostics.record("photo_decode")
                             decodeScalePhoto(it) { width, height -> diagnostics.record("photo_decoded", width, height) }
                         }
                         if (stopping) failure("Analyse abgebrochen.")
-                        else requireNotNull(engine).recognize(bytes).toIpcBundle()
+                        else requireNotNull(engine).recognize(bytes, timing).also { result ->
+                            outcome = when (result) {
+                                is ScaleRecognitionResult.Recognized -> AiTimingOutcome.Completed
+                                ScaleRecognitionResult.Unreadable -> AiTimingOutcome.Unreadable
+                                is ScaleRecognitionResult.Error -> AiTimingOutcome.Error
+                            }
+                        }.toIpcBundle()
                     } catch (_: Exception) {
                         diagnostics.record("recognition_failed")
                         failure("Lokale Analyse fehlgeschlagen. Bitte den KI-Diagnosebericht prüfen.")
-                    }
+                    } finally { timing.finish(if (stopping) AiTimingOutcome.Cancelled else outcome) }
                 }
             }
         }
