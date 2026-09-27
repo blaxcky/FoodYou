@@ -49,7 +49,6 @@
     <string name="headline_daily_goals_settings">Daily goals settings</string>
     <string name="headline_synchronization">Synchronization</string>
     <string name="headline_home_sync">Home sync</string>
-    <string name="headline_fddb_sync_status">FDDB sync status</string>
     <string name="headline_api_key">API key</string>
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Source</string>
     <string name="headline_features">Features</string>
@@ -541,8 +540,6 @@
     <string name="description_fddb_skip_barcode">Skipped because a product with this barcode already exists</string>
     <string name="description_fddb_skip_product">Skipped because this FDDB product already exists</string>
     <string name="description_fddb_updated_weights">Existing product updated with package or serving weight</string>
-    <string name="action_sync_fddb_diary">Sync FDDB diary</string>
-    <string name="action_sync_health_connect">Sync Health Connect</string>
     <string name="action_sync_home">Sync home</string>
     <string name="error_fddb_failed_to_authenticate">Could not sign in to FDDB</string>
     <string name="neutral_fddb_sync_not_configured">FDDB diary sync is not configured</string>
@@ -600,6 +597,21 @@
     <string name="neutral_fddb_product_sync_last_success_short">Last synced %1$s</string>
     <string name="neutral_fddb_product_sync_never_short">Never synced</string>
     <string name="neutral_home_sync_settings">Choose what the sync button on the home screen runs.</string>
+    <string name="headline_home_sync_steps">Steps &amp; calories</string>
+    <string name="description_home_sync_steps">Import from Health Connect</string>
+    <string name="headline_home_sync_weight">Weight</string>
+    <string name="description_home_sync_weight">Sync scale readings with Health Connect</string>
+    <string name="headline_home_sync_fddb_diary">FDDB diary</string>
+    <string name="description_home_sync_fddb_diary">Import entries from your FDDB diary</string>
+    <string name="headline_fddb_diary">FDDB diary</string>
+    <string name="neutral_fddb_last_sync">Last sync: %1$s</string>
+    <string name="label_fddb_sync_stat_imported">Imported</string>
+    <string name="label_fddb_sync_stat_skipped">Skipped</string>
+    <string name="label_fddb_sync_stat_failed">Failed</string>
+    <string name="action_sync_now">Sync now</string>
+    <string name="action_show_error_details">Error details</string>
+    <string name="headline_fddb_product_sync_automatic">Automatic sync</string>
+    <string name="description_fddb_product_sync_queue_entry">View products and sync them manually</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>
     <string name="description_export_csv_food_products">Export food products to CSV file</string>

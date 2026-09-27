@@ -293,17 +293,17 @@ private fun FddbProductSyncOverviewCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(modifier = Modifier.fillMaxWidth()) {
-                FddbProductSyncStat(
+                SyncStat(
                     value = model.queue.size,
                     label = stringResource(Res.string.label_fddb_product_sync_stat_total),
                     modifier = Modifier.weight(1f),
                 )
-                FddbProductSyncStat(
+                SyncStat(
                     value = neverSynced,
                     label = stringResource(Res.string.label_fddb_product_sync_stat_never),
                     modifier = Modifier.weight(1f),
                 )
-                FddbProductSyncStat(
+                SyncStat(
                     value = failed,
                     label = stringResource(Res.string.label_fddb_product_sync_stat_failed),
                     isError = failed > 0,
@@ -335,7 +335,7 @@ private fun FddbProductSyncOverviewCard(
 }
 
 @Composable
-private fun FddbProductSyncStat(
+internal fun SyncStat(
     value: Int,
     label: String,
     modifier: Modifier = Modifier,

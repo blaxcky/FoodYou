@@ -5,23 +5,39 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.MonitorWeight
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -30,8 +46,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -45,6 +63,8 @@ import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFreq
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import foodyou.app.generated.resources.*
 import kotlin.time.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -101,7 +121,7 @@ internal fun SynchronizationSettingsScreen(
 }
 
 @Composable
-private fun SynchronizationSettingsContent(
+internal fun SynchronizationSettingsContent(
     model: SynchronizationSettingsModel?,
     onBack: () -> Unit,
     onHomeSyncHealthConnectEnabledChange: (Boolean) -> Unit,
@@ -111,9 +131,9 @@ private fun SynchronizationSettingsContent(
     onFddbProductSyncQueue: () -> Unit,
     onFddbProductSyncPolicy: () -> Unit,
     modifier: Modifier = Modifier,
+    initialErrorDetailsExpanded: Boolean = false,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val clipboardManager = LocalClipboardManager.current
 
     Scaffold(
         modifier = modifier,
@@ -130,158 +150,282 @@ private fun SynchronizationSettingsContent(
             contentPadding = paddingValues,
         ) {
             item {
+                SynchronizationSectionHeader(
+                    title = stringResource(Res.string.headline_home_sync),
+                    description = stringResource(Res.string.neutral_home_sync_settings),
+                )
+            }
+            item {
+                val checked = model?.homeSyncHealthConnectEnabled ?: false
+                SynchronizationSwitchItem(
+                    icon = Icons.AutoMirrored.Outlined.DirectionsWalk,
+                    headline = stringResource(Res.string.headline_home_sync_steps),
+                    supporting = stringResource(Res.string.description_home_sync_steps),
+                    checked = checked,
+                    onCheckedChange = onHomeSyncHealthConnectEnabledChange,
+                )
+            }
+            item {
+                val checked = model?.weightSyncEnabled ?: false
+                SynchronizationSwitchItem(
+                    icon = Icons.Outlined.MonitorWeight,
+                    headline = stringResource(Res.string.headline_home_sync_weight),
+                    supporting = stringResource(Res.string.description_home_sync_weight),
+                    checked = checked,
+                    enabled = checked || model?.weightSyncAvailable == true,
+                    onCheckedChange = onWeightSyncEnabledChange,
+                )
+            }
+            item {
+                val checked = model?.homeSyncFddbDiaryEnabled ?: false
+                SynchronizationSwitchItem(
+                    icon = Icons.AutoMirrored.Outlined.MenuBook,
+                    headline = stringResource(Res.string.headline_home_sync_fddb_diary),
+                    supporting = stringResource(Res.string.description_home_sync_fddb_diary),
+                    checked = checked,
+                    onCheckedChange = onHomeSyncFddbDiaryEnabledChange,
+                )
+            }
+
+            item { SynchronizationSectionHeader(stringResource(Res.string.headline_fddb_diary)) }
+            item {
+                FddbDiarySyncCard(
+                    model = model,
+                    onSync = onFddbSync,
+                    initialErrorDetailsExpanded = initialErrorDetailsExpanded,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+
+            item {
+                SynchronizationSectionHeader(
+                    stringResource(Res.string.headline_fddb_product_sync_settings)
+                )
+            }
+            item {
                 ListItem(
                     headlineContent = {
-                        Text(stringResource(Res.string.headline_fddb_product_sync_settings))
+                        Text(stringResource(Res.string.headline_fddb_product_sync_automatic))
                     },
                     supportingContent = { Text(model.fddbProductSyncPolicySummary()) },
+                    leadingContent = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
                     modifier = Modifier.clickable(onClick = onFddbProductSyncPolicy),
                 )
             }
-
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(Res.string.headline_home_sync)) },
-                    supportingContent = {
-                        Text(stringResource(Res.string.neutral_home_sync_settings))
-                    },
-                )
-            }
-
-            item {
-                val checked = model?.homeSyncHealthConnectEnabled ?: false
-                ListItem(
-                    headlineContent = {
-                        Text(stringResource(Res.string.action_sync_health_connect))
-                    },
-                    supportingContent = { Text("Schritte und Kalorien beim Home-Sync abgleichen") },
-                    trailingContent = {
-                        Switch(
-                            checked = checked,
-                            onCheckedChange = onHomeSyncHealthConnectEnabledChange,
-                        )
-                    },
-                    modifier =
-                        Modifier.clickable {
-                            onHomeSyncHealthConnectEnabledChange(!checked)
-                        },
-                )
-            }
-
-            item {
-                val checked = model?.weightSyncEnabled ?: false
-                ListItem(
-                    headlineContent = { Text("Gewicht mit Health Connect synchronisieren") },
-                    supportingContent = { Text("Waagenwerte übernehmen und FoodYou-Einträge übertragen") },
-                    trailingContent = {
-                        Switch(
-                            checked = checked,
-                            enabled = checked || model?.weightSyncAvailable == true,
-                            onCheckedChange = onWeightSyncEnabledChange,
-                        )
-                    },
-                    modifier = Modifier.clickable(enabled = checked || model?.weightSyncAvailable == true) {
-                        onWeightSyncEnabledChange(!checked)
-                    },
-                )
-            }
-
-            item {
-                val checked = model?.homeSyncFddbDiaryEnabled ?: false
-                ListItem(
-                    headlineContent = { Text(stringResource(Res.string.action_sync_fddb_diary)) },
-                    trailingContent = {
-                        Switch(
-                            checked = checked,
-                            onCheckedChange = onHomeSyncFddbDiaryEnabledChange,
-                        )
-                    },
-                    modifier =
-                        Modifier.clickable {
-                            onHomeSyncFddbDiaryEnabledChange(!checked)
-                        },
-                )
-            }
-
-            item {
-                val errorMessage = model?.fddbDiarySyncStatus?.errorMessage
-                ListItem(
-                    headlineContent = {
-                        Text(stringResource(Res.string.headline_fddb_sync_status))
-                    },
-                    supportingContent = {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(model.fddbSyncStatusText())
-                            errorMessage?.let { debugText ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                ) {
-                                    IconButton(
-                                        onClick = {
-                                            clipboardManager.copy(
-                                                label = "FDDB sync debug",
-                                                text = debugText,
-                                            )
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.ContentCopy,
-                                            contentDescription =
-                                                stringResource(Res.string.action_copy),
-                                        )
-                                    }
-                                }
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp),
-                                    shape = MaterialTheme.shapes.small,
-                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    border =
-                                        BorderStroke(
-                                            width = 1.dp,
-                                            color = MaterialTheme.colorScheme.outlineVariant,
-                                        ),
-                                ) {
-                                    Text(
-                                        text = debugText,
-                                        modifier =
-                                            Modifier.verticalScroll(rememberScrollState())
-                                                .padding(12.dp),
-                                        style =
-                                            MaterialTheme.typography.bodySmall.copy(
-                                                fontFamily = FontFamily.Monospace
-                                            ),
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    trailingContent = {
-                        FilledTonalButton(
-                            onClick = onFddbSync,
-                            enabled = model?.fddbSyncInProgress != true,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.CloudSync,
-                                contentDescription =
-                                    stringResource(Res.string.action_sync_fddb_diary),
-                            )
-                        }
-                    },
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-
             item {
                 ListItem(
                     headlineContent = {
                         Text(stringResource(Res.string.headline_fddb_product_sync_queue))
                     },
                     supportingContent = {
-                        Text(model.fddbProductSyncQueueStatus())
+                        Text(stringResource(Res.string.description_fddb_product_sync_queue_entry))
+                    },
+                    leadingContent = {
+                        Icon(Icons.AutoMirrored.Outlined.List, contentDescription = null)
+                    },
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            contentDescription = null,
+                        )
                     },
                     modifier = Modifier.clickable(onClick = onFddbProductSyncQueue),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SynchronizationSectionHeader(title: String, description: String? = null) {
+    Column(
+        modifier =
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        description?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SynchronizationSwitchItem(
+    icon: ImageVector,
+    headline: String,
+    supporting: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+) {
+    ListItem(
+        headlineContent = { Text(headline) },
+        supportingContent = { Text(supporting) },
+        leadingContent = { Icon(icon, contentDescription = null) },
+        trailingContent = {
+            Switch(checked = checked, enabled = enabled, onCheckedChange = onCheckedChange)
+        },
+        modifier = Modifier.clickable(enabled = enabled) { onCheckedChange(!checked) },
+    )
+}
+
+@Composable
+private fun FddbDiarySyncCard(
+    model: SynchronizationSettingsModel?,
+    onSync: () -> Unit,
+    initialErrorDetailsExpanded: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val clipboardManager = LocalClipboardManager.current
+    val inProgress = model?.fddbSyncInProgress == true
+    val status = model?.fddbDiarySyncStatus.takeIf { model?.hasFddbCredentials != false }
+    var errorDetailsExpanded by rememberSaveable {
+        mutableStateOf(initialErrorDetailsExpanded)
+    }
+
+    OutlinedCard(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            when {
+                inProgress -> {
+                    Text(
+                        text = stringResource(Res.string.neutral_fddb_sync_running),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                model?.hasFddbCredentials == false ->
+                    Text(
+                        text = stringResource(Res.string.neutral_fddb_sync_not_configured),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                status == null ->
+                    Text(
+                        text = stringResource(Res.string.neutral_fddb_sync_never_run),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                else -> {
+                    status.attemptEpochSeconds?.let { seconds ->
+                        Text(
+                            text =
+                                stringResource(
+                                    Res.string.neutral_fddb_last_sync,
+                                    LocalDateFormatter.current.formatDateTime(
+                                        Instant.fromEpochSeconds(seconds)
+                                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                                    ),
+                                ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        SyncStat(
+                            value = status.imported,
+                            label = stringResource(Res.string.label_fddb_sync_stat_imported),
+                            modifier = Modifier.weight(1f),
+                        )
+                        SyncStat(
+                            value = status.skipped,
+                            label = stringResource(Res.string.label_fddb_sync_stat_skipped),
+                            modifier = Modifier.weight(1f),
+                        )
+                        SyncStat(
+                            value = status.failed,
+                            label = stringResource(Res.string.label_fddb_sync_stat_failed),
+                            isError = status.failed > 0,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+
+            FilledTonalButton(
+                onClick = onSync,
+                enabled = !inProgress,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CloudSync,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(stringResource(Res.string.action_sync_now))
+            }
+
+            status?.errorMessage?.let { debugText ->
+                HorizontalDivider()
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth().clickable {
+                            errorDetailsExpanded = !errorDetailsExpanded
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ErrorOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = stringResource(Res.string.action_show_error_details),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    )
+                    IconButton(
+                        onClick = {
+                            clipboardManager.copy(label = "FDDB sync debug", text = debugText)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ContentCopy,
+                            contentDescription = stringResource(Res.string.action_copy),
+                        )
+                    }
+                    Icon(
+                        imageVector =
+                            if (errorDetailsExpanded) Icons.Outlined.ExpandLess
+                            else Icons.Outlined.ExpandMore,
+                        contentDescription = null,
+                    )
+                }
+                if (errorDetailsExpanded) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp),
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        border =
+                            BorderStroke(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            ),
+                    ) {
+                        Text(
+                            text = debugText,
+                            modifier = Modifier.verticalScroll(rememberScrollState()).padding(12.dp),
+                            style =
+                                MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                        )
+                    }
+                }
             }
         }
     }
@@ -387,39 +531,6 @@ private fun FddbProductSyncPolicyOption(
         }
     }
 }
-
-@Composable
-private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {
-    if (this?.fddbSyncInProgress == true) {
-        return stringResource(Res.string.neutral_fddb_sync_running)
-    }
-    if (this?.hasFddbCredentials == false) {
-        return stringResource(Res.string.neutral_fddb_sync_not_configured)
-    }
-
-    val status = this?.fddbDiarySyncStatus
-        ?: return stringResource(Res.string.neutral_fddb_sync_never_run)
-
-    if (status.errorMessage != null) {
-        return stringResource(
-            Res.string.neutral_fddb_import_summary,
-            status.imported,
-            status.skipped,
-            status.failed,
-        )
-    }
-
-    return stringResource(
-        Res.string.neutral_fddb_import_summary,
-        status.imported,
-        status.skipped,
-        status.failed,
-    )
-}
-
-@Composable
-private fun SynchronizationSettingsModel?.fddbProductSyncQueueStatus(): String =
-    fddbProductSyncPolicySummary()
 
 @Composable
 private fun SynchronizationSettingsModel?.fddbProductSyncPolicySummary(): String =

@@ -45,7 +45,6 @@
     <string name="headline_daily_goals_settings">Einstellung der Tagesziele</string>
     <string name="headline_synchronization">Synchronisation</string>
     <string name="headline_home_sync">Startseiten-Sync</string>
-    <string name="headline_fddb_sync_status">FDDB-Sync-Status</string>
     <string name="headline_api_key">API Schlüssel</string>
     <string name="headline_source" description="Source of the food product, e.g. Open Food Facts, USDA, Swiss Food Composition Database">Quelle</string>
     <string name="headline_features">Funktionen</string>
@@ -108,8 +107,6 @@
     <string name="description_fddb_skip_barcode">Übersprungen, weil ein Produkt mit diesem Barcode bereits existiert</string>
     <string name="description_fddb_skip_product">Übersprungen, weil dieses FDDB-Produkt bereits existiert</string>
     <string name="description_fddb_updated_weights">Vorhandenes Produkt mit Packungs- oder Portionsgewicht ergänzt</string>
-    <string name="action_sync_fddb_diary">FDDB-Tagebuch synchronisieren</string>
-    <string name="action_sync_health_connect">Health Connect synchronisieren</string>
     <string name="action_sync_home">Startseite synchronisieren</string>
     <string name="error_fddb_failed_to_authenticate">Anmeldung bei FDDB fehlgeschlagen</string>
     <string name="neutral_fddb_sync_not_configured">FDDB-Tagebuch-Sync ist nicht eingerichtet</string>
@@ -167,6 +164,21 @@
     <string name="neutral_fddb_product_sync_last_success_short">Zuletzt %1$s</string>
     <string name="neutral_fddb_product_sync_never_short">Noch nie abgeglichen</string>
     <string name="neutral_home_sync_settings">Wähle aus, was der Sync-Button auf der Startseite ausführt.</string>
+    <string name="headline_home_sync_steps">Schritte &amp; Kalorien</string>
+    <string name="description_home_sync_steps">Aus Health Connect übernehmen</string>
+    <string name="headline_home_sync_weight">Gewicht</string>
+    <string name="description_home_sync_weight">Waagenwerte mit Health Connect abgleichen</string>
+    <string name="headline_home_sync_fddb_diary">FDDB-Tagebuch</string>
+    <string name="description_home_sync_fddb_diary">Einträge aus dem FDDB-Tagebuch importieren</string>
+    <string name="headline_fddb_diary">FDDB-Tagebuch</string>
+    <string name="neutral_fddb_last_sync">Letzter Sync: %1$s</string>
+    <string name="label_fddb_sync_stat_imported">Importiert</string>
+    <string name="label_fddb_sync_stat_skipped">Übersprungen</string>
+    <string name="label_fddb_sync_stat_failed">Fehler</string>
+    <string name="action_sync_now">Jetzt synchronisieren</string>
+    <string name="action_show_error_details">Fehlerdetails</string>
+    <string name="headline_fddb_product_sync_automatic">Automatischer Abgleich</string>
+    <string name="description_fddb_product_sync_queue_entry">Produkte ansehen und manuell abgleichen</string>
     <string name="action_export_csv_food_products">Export in CSV-Datei</string>
     <string name="description_export_csv_food_products">Lebensmittel in CSV-Datei exportieren</string>
     <string name="headline_database_backup">Sicherung der Datenbank</string>
