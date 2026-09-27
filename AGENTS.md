@@ -75,3 +75,29 @@ Do not run `./gradlew ktfmtFormat`; it will fail with "Task 'ktfmtFormat' not fo
 
 For formatting verification, run `git diff --check` plus only the verification task, if any, selected
 under Verification Scope.
+
+## Local Android Emulator
+
+This host has a persistent, KVM-accelerated Pixel 7 AVD named `FoodYou_API_36`. It uses the stable
+Android 16 / API 36 Google APIs x86_64 image. Manage it only through the repository helper so that a
+physical device or unrelated emulator is never selected accidentally:
+
+```bash
+./dev/android-emulator.sh start
+./dev/android-emulator.sh install
+./dev/android-emulator.sh inspect
+./dev/android-emulator.sh stop
+```
+
+The emulator runs headlessly on demand and preserves its app data and Quick Boot state. Use
+`cold-start` if a saved emulator snapshot is unhealthy. When Codex invokes the helper, all commands
+need host access because the filesystem sandbox exposes neither `/dev/kvm` nor the ADB server socket.
+The helper waits for Android to finish booting, pins Gradle deployment to the matching emulator
+serial, and uses the required system JDK 21 and workspace Gradle cache. Its headless start uses the
+AMD host GPU with Vulkan disabled; the software renderer crashes on this Fedora/Btrfs host. The AVD
+runs in the transient `foodyou-emulator.service` user unit so it remains available between separate
+Codex commands without starting automatically at login.
+
+`inspect` writes the current UI layout plus normal and annotated screenshots to
+`captures/android-emulator/`, which is ignored by Git. Prefer layout inspection first and use the
+screenshots for visual details or UI that is absent from the accessibility hierarchy.
