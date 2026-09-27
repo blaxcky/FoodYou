@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsWalk
@@ -29,6 +33,7 @@ import androidx.compose.material.icons.outlined.MonitorWeight
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,6 +57,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -443,53 +452,48 @@ internal fun FddbProductSyncPolicyDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.CloudSync, contentDescription = null) },
         title = { Text(stringResource(Res.string.headline_fddb_product_sync_settings)) },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()).selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.description_fddb_product_sync_settings),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 FddbProductSyncPolicyOption(
                     selected = selectedMode == FddbProductSyncMode.WithManualFddbSync,
                     headline =
-                        stringResource(
-                            Res.string.option_fddb_product_sync_with_manual_sync
-                        ),
+                        stringResource(Res.string.option_fddb_product_sync_with_manual_sync),
+                    supporting =
+                        stringResource(Res.string.description_fddb_product_sync_mode_manual),
                     onClick = { selectedMode = FddbProductSyncMode.WithManualFddbSync },
-                )
-                if (selectedMode == FddbProductSyncMode.WithManualFddbSync) {
-                    FddbProductSyncPolicyOption(
-                        selected =
-                            selectedFrequency == FddbProductSyncManualFrequency.EverySync,
-                        headline =
-                            stringResource(Res.string.option_fddb_product_sync_every_sync),
-                        onClick = {
-                            selectedFrequency = FddbProductSyncManualFrequency.EverySync
-                        },
-                        modifier = Modifier.padding(start = 24.dp),
-                    )
-                    FddbProductSyncPolicyOption(
-                        selected =
-                            selectedFrequency == FddbProductSyncManualFrequency.EveryThirdSync,
-                        headline =
-                            stringResource(
-                                Res.string.option_fddb_product_sync_every_third_sync
-                            ),
-                        onClick = {
-                            selectedFrequency = FddbProductSyncManualFrequency.EveryThirdSync
-                        },
-                        modifier = Modifier.padding(start = 24.dp),
-                    )
+                ) {
+                    AnimatedVisibility(
+                        visible = selectedMode == FddbProductSyncMode.WithManualFddbSync
+                    ) {
+                        FddbProductSyncFrequencyToggle(
+                            frequency = selectedFrequency,
+                            onFrequencyChange = { selectedFrequency = it },
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        )
+                    }
                 }
                 FddbProductSyncPolicyOption(
                     selected = selectedMode == FddbProductSyncMode.Disabled,
                     headline = stringResource(Res.string.option_fddb_product_sync_disabled),
+                    supporting =
+                        stringResource(Res.string.description_fddb_product_sync_mode_disabled),
                     onClick = { selectedMode = FddbProductSyncMode.Disabled },
                 )
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onSave(selectedMode, selectedFrequency) },
-                modifier = Modifier.padding(start = 8.dp),
-            ) {
+            TextButton(onClick = { onSave(selectedMode, selectedFrequency) }) {
                 Text(stringResource(Res.string.action_save))
             }
         },
@@ -505,27 +509,93 @@ internal fun FddbProductSyncPolicyDialog(
 private fun FddbProductSyncPolicyOption(
     selected: Boolean,
     headline: String,
+    supporting: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    supporting: String? = null,
+    content: @Composable () -> Unit = {},
 ) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.Top,
+    val containerColor by
+        animateColorAsState(
+            if (selected) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.surfaceContainerHighest
+        )
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = containerColor,
     ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Column(modifier = Modifier.padding(start = 12.dp, top = 10.dp)) {
-            Text(headline, style = MaterialTheme.typography.bodyLarge)
-            supporting?.let {
+        Column {
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .selectable(
+                            selected = selected,
+                            onClick = onClick,
+                            role = Role.RadioButton,
+                        )
+                        .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(headline, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = supporting,
+                        modifier = Modifier.padding(top = 2.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                RadioButton(
+                    selected = selected,
+                    onClick = null,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun FddbProductSyncFrequencyToggle(
+    frequency: FddbProductSyncManualFrequency,
+    onFrequencyChange: (FddbProductSyncManualFrequency) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(Res.string.label_fddb_product_sync_frequency),
+            modifier = Modifier.padding(bottom = 8.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        ) {
+            ToggleButton(
+                checked = frequency == FddbProductSyncManualFrequency.EverySync,
+                onCheckedChange = { onFrequencyChange(FddbProductSyncManualFrequency.EverySync) },
+                modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+            ) {
                 Text(
-                    text = it,
-                    modifier = Modifier.padding(top = 4.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = stringResource(Res.string.option_fddb_product_sync_every_sync),
+                    maxLines = 1,
+                )
+            }
+            ToggleButton(
+                checked = frequency == FddbProductSyncManualFrequency.EveryThirdSync,
+                onCheckedChange = {
+                    onFrequencyChange(FddbProductSyncManualFrequency.EveryThirdSync)
+                },
+                modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+            ) {
+                Text(
+                    text = stringResource(Res.string.option_fddb_product_sync_every_third_sync),
+                    maxLines = 1,
                 )
             }
         }

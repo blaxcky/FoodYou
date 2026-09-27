@@ -554,6 +554,9 @@
     <string name="option_fddb_product_sync_disabled">Disabled</string>
     <string name="option_fddb_product_sync_every_sync">Every time</string>
     <string name="option_fddb_product_sync_every_third_sync">Every third time</string>
+    <string name="description_fddb_product_sync_mode_manual">Two queued products at a time are synced along with the manual diary sync.</string>
+    <string name="description_fddb_product_sync_mode_disabled">Products are only synced manually from the queue.</string>
+    <string name="label_fddb_product_sync_frequency">Frequency</string>
     <string name="neutral_fddb_product_sync_manual_every_time">The next two products run with every manual FDDB diary sync</string>
     <string name="neutral_fddb_product_sync_manual_progress">%1$d/3 manual FDDB diary syncs until the next two products</string>
     <string name="neutral_fddb_product_sync_disabled">Automatic FDDB product sync is disabled</string>

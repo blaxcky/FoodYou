@@ -121,6 +121,9 @@
     <string name="option_fddb_product_sync_disabled">Deaktiviert</string>
     <string name="option_fddb_product_sync_every_sync">Jedes Mal</string>
     <string name="option_fddb_product_sync_every_third_sync">Jedes dritte Mal</string>
+    <string name="description_fddb_product_sync_mode_manual">Je zwei Produkte aus der Warteschlange werden zusammen mit dem manuellen Tagebuch-Sync abgeglichen.</string>
+    <string name="description_fddb_product_sync_mode_disabled">Produkte werden nur manuell über die Warteschlange abgeglichen.</string>
+    <string name="label_fddb_product_sync_frequency">Häufigkeit</string>
     <string name="neutral_fddb_product_sync_manual_every_time">Die nächsten zwei Produkte werden bei jedem manuellen FDDB-Tagebuch-Sync abgeglichen</string>
     <string name="neutral_fddb_product_sync_manual_progress">%1$d/3 manuelle FDDB-Tagebuch-Syncs bis zu den nächsten zwei Produkten</string>
     <string name="neutral_fddb_product_sync_disabled">Automatischer FDDB-Produktabgleich ist deaktiviert</string>
