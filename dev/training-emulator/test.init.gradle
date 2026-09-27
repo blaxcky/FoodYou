@@ -1,0 +1,11 @@
+// Test-only manifest overlay; never apply when building a distributable APK.
+allprojects { project ->
+    project.pluginManager.withPlugin('com.android.application') {
+        def android = project.extensions.getByName('android')
+        android.testBuildType = 'devRelease'
+        android.sourceSets.maybeCreate('devRelease').manifest.srcFile(
+            project.rootProject.file('dev/training-emulator/AndroidManifest.xml'))
+        android.sourceSets.maybeCreate('devRelease').res.srcDir(
+            project.rootProject.file('dev/training-emulator/res'))
+    }
+}

@@ -468,12 +468,12 @@ private fun MoveSelectedMealEntriesSheet(
 private fun HomeSyncButton(state: HomeSyncState, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val activityState = state.activitySyncState
-    val hasFddbFailure = state.hasFddbFailure
+    val hasFddbFailure = state.hasFddbFailure || (state.trainingState.report?.failed ?: 0) > 0
     val iconColor =
         when {
             state.isSyncing -> colors.primary
             hasFddbFailure || (state.healthConnectEnabled && activityState.isStale) -> colors.error
-            !state.healthConnectEnabled && !state.fddbDiaryEnabled -> colors.onSurfaceVariant
+            !state.healthConnectEnabled && !state.fddbDiaryEnabled && !state.trainingState.enabled -> colors.onSurfaceVariant
             else -> Color(0xFF1B7F3A)
         }
     val backgroundColor =
@@ -481,7 +481,7 @@ private fun HomeSyncButton(state: HomeSyncState, onClick: () -> Unit) {
             state.isSyncing -> colors.primaryContainer.copy(alpha = 0.55f)
             hasFddbFailure || (state.healthConnectEnabled && activityState.isStale) ->
                 colors.errorContainer.copy(alpha = 0.95f)
-            !state.healthConnectEnabled && !state.fddbDiaryEnabled -> colors.surfaceContainerHighest
+            !state.healthConnectEnabled && !state.fddbDiaryEnabled && !state.trainingState.enabled -> colors.surfaceContainerHighest
             else -> Color(0xFFDDEFE3)
         }
     val badgeColor =

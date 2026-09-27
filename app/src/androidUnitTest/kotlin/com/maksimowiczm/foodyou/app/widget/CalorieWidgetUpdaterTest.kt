@@ -62,6 +62,10 @@ class CalorieWidgetUpdaterTest {
 
         assertEquals(8_432L, updater.loadModel().countedSteps)
         assertEquals(1, observedDates.count { it == today })
+        summary = summary.copy(importedEnergyKcal = 330.0, totalEnergyKcal = 374.0)
+        assertEquals(374, updater.loadModel().burnedKcal)
+        summary = summary.copy(importedEnergyKcal = 0.0, totalEnergyKcal = 44.0)
+        assertEquals(44, updater.loadModel().burnedKcal)
         summary = summary.copy(excludedSteps = 10_000, countedSteps = 0)
         assertEquals(0L, updater.loadModel().countedSteps)
         summary = DailyActivitySummary(0, 0, 0, 0.0, 0.0, 0.0)

@@ -67,10 +67,13 @@ class SynchronizationSettingsScreenScreenshotTest {
         )
     }
 
+    @Test fun trainingLogin() = captureContent("training-login", Model, training = true)
+
     private fun captureContent(
         name: String,
         model: SynchronizationSettingsModel,
         errorDetailsExpanded: Boolean = false,
+        training: Boolean = false,
     ) {
         captureRoboImage(
             filePath = "SynchronizationSettingsScreenScreenshotTest.$name.png",
@@ -84,6 +87,11 @@ class SynchronizationSettingsScreenScreenshotTest {
                 ) {
                     SynchronizationSettingsContent(
                         model = model,
+                        trainingContent = { if (training) {
+                            com.maksimowiczm.foodyou.training.TrainingSyncSettingsContent(
+                                com.maksimowiczm.foodyou.training.TrainingSyncState(configured = true),
+                                { _, _ -> }, {}, {})
+                        } },
                         onBack = {},
                         onHomeSyncHealthConnectEnabledChange = {},
                         onWeightSyncEnabledChange = {},

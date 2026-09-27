@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.activity.infrastructure.repository
 
+import com.maksimowiczm.foodyou.training.*
+import kotlinx.coroutines.flow.*
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyActivitySummary
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
@@ -26,7 +28,16 @@ internal class RoomActivityRepository(
     private val manualDao: ManualActivityEntryDao,
     private val stepDao: DailyStepSummaryDao,
     private val exclusionDao: StepExclusionPeriodDao,
+    private val trainingDao: TrainingImportDao? = null,
+    private val trainingAccount: StateFlow<TrainingAccount?> = MutableStateFlow(null),
 ) : ActivityRepository {
+    override fun observeImportedEntries(date: LocalDate): Flow<List<ImportedActivity>> = trainingAccount.flatMapLatest { account ->
+        if (account == null || trainingDao == null) flowOf(emptyList())
+        else trainingDao.observeEntries(account.project, account.uid, date.toEpochDays()).map { entries ->
+            entries.map { ImportedActivity(it.importId, it.name, it.energyKcal) }
+        }
+    }
+
     override fun observeManualEntry(id: ManualActivityEntryId): Flow<ManualActivityEntry?> =
         manualDao.observe(id.value).map { it?.toModel() }
 
@@ -40,7 +51,8 @@ internal class RoomActivityRepository(
         combine(
             stepDao.observe(date.toEpochDays()),
             manualDao.observeEnergySum(date.toEpochDays()),
-        ) { steps, manualEnergy ->
+            observeImportedEntries(date),
+        ) { steps, manualEnergy, imports ->
             val rawSteps = steps?.rawSteps ?: 0
             val excludedSteps = steps?.excludedSteps ?: 0
             val countedSteps = (rawSteps - excludedSteps).coerceAtLeast(0)
@@ -51,7 +63,8 @@ internal class RoomActivityRepository(
                 countedSteps = countedSteps,
                 stepEnergyKcal = stepEnergy,
                 manualEnergyKcal = manualEnergy,
-                totalEnergyKcal = stepEnergy + manualEnergy,
+                totalEnergyKcal = stepEnergy + manualEnergy + imports.sumOf { it.energyKcal.toDouble() },
+                importedEnergyKcal = imports.sumOf { it.energyKcal.toDouble() },
             )
         }
 

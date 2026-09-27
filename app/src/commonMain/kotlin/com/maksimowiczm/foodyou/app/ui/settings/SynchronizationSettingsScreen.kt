@@ -111,6 +111,7 @@ internal fun SynchronizationSettingsScreen(
         onFddbProductSyncQueue = onFddbProductSyncQueue,
         onFddbProductSyncPolicy = { showFddbProductSyncPolicyDialog = true },
         modifier = modifier,
+        trainingContent = { com.maksimowiczm.foodyou.training.TrainingSyncSettings() },
     )
 
     if (showFddbLoginDialog) {
@@ -141,6 +142,7 @@ internal fun SynchronizationSettingsContent(
     onFddbProductSyncPolicy: () -> Unit,
     modifier: Modifier = Modifier,
     initialErrorDetailsExpanded: Boolean = false,
+    trainingContent: @Composable () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -195,6 +197,8 @@ internal fun SynchronizationSettingsContent(
                     onCheckedChange = onHomeSyncFddbDiaryEnabledChange,
                 )
             }
+
+            item { trainingContent() }
 
             item { SynchronizationSectionHeader(stringResource(Res.string.headline_fddb_diary)) }
             item {

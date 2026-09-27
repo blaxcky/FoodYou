@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
 interface ActivityRepository {
+    fun observeImportedEntries(date: LocalDate): Flow<List<com.maksimowiczm.foodyou.training.ImportedActivity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+
     fun observeManualEntry(id: ManualActivityEntryId): Flow<ManualActivityEntry?>
 
     fun observeManualEntries(date: LocalDate): Flow<List<ManualActivityEntry>>

@@ -26,6 +26,7 @@ internal data class ActivitiesCardModel(
     val manualEnergyKcal: Int,
     val totalEnergyKcal: Int,
     val manualEntries: List<ManualActivityEntry>,
+    val importedEntries: List<com.maksimowiczm.foodyou.training.ImportedActivity> = emptyList(),
 )
 
 internal class ActivitiesCardViewModel(
@@ -45,7 +46,8 @@ internal class ActivitiesCardViewModel(
                             settings.stepsCaloriesPerStepKcal,
                         ),
                         activityRepository.observeManualEntries(date),
-                    ) { summary, entries ->
+                        activityRepository.observeImportedEntries(date),
+                    ) { summary, entries, importedEntries ->
                         ActivitiesCardModel(
                             countedSteps = summary.countedSteps,
                             excludedSteps = summary.excludedSteps,
@@ -54,6 +56,7 @@ internal class ActivitiesCardViewModel(
                             manualEnergyKcal = roundedActivityEnergyKcal(summary.manualEnergyKcal),
                             totalEnergyKcal = roundedActivityEnergyKcal(summary.totalEnergyKcal),
                             manualEntries = entries,
+                            importedEntries = importedEntries,
                         )
                     }
                 }

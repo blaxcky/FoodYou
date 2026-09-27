@@ -45,6 +45,45 @@ class TrainingImportDaoTest {
         dao.importDocument(account, trainingDocument("76aa75c0-0686-4e8c-8b31-750c13409d23", strength = 0), 100)
         assertEquals(listOf("Cardio", "Krafttraining"), dao.observeEntries(TRAINING_PROJECT, "A", date).first().map { it.name }.sorted())
     }
+    @Test fun receiptsSurviveDatabaseRestart() = runTest {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val name = "training-restart-" + java.util.UUID.randomUUID()
+        try {
+            Room.databaseBuilder(context, FoodYouDatabase::class.java, name).build().let { db ->
+                try { db.trainingImportDao.importDocument(account, trainingDocument(), 100) }
+                finally { db.close() }
+            }
+            Room.databaseBuilder(context, FoodYouDatabase::class.java, name).build().let { db ->
+                try {
+                    assertEquals(TrainingImportResult.AlreadyImported, db.trainingImportDao.importDocument(account, trainingDocument(), 200))
+                    assertEquals(330L, db.trainingImportDao.observeEntries(TRAINING_PROJECT, account.uid, date).first().sumOf { it.energyKcal })
+                } finally { db.close() }
+            }
+        } finally { context.deleteDatabase(name) }
+    }
+
+    @Test fun onlyActiveAccountCountsAndLogoutPreservesManualEntries() = runTest {
+        val owner = kotlinx.coroutines.flow.MutableStateFlow<TrainingAccount?>(account)
+        val repository = com.maksimowiczm.foodyou.activity.infrastructure.repository.RoomActivityRepository(
+            database.manualActivityEntryDao, database.dailyStepSummaryDao,
+            database.stepExclusionPeriodDao, dao, owner)
+        val day = LocalDate.fromEpochDays(date)
+        val time = kotlinx.datetime.LocalDateTime.parse("2026-09-27T12:00:00")
+        repository.createManualEntry(com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry(
+            com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntryId(0),
+            day, "Manuell", 42.0, time, time))
+        dao.importDocument(account, trainingDocument(), 100)
+        dao.importDocument(account.copy(uid = "B"), trainingDocument(strength = 10, cardio = 0), 100)
+        assertEquals(372.0, repository.observeDailySummary(day, null).first().totalEnergyKcal)
+        owner.value = account.copy(uid = "B")
+        assertEquals(52.0, repository.observeDailySummary(day, null).first().totalEnergyKcal)
+        owner.value = null
+        assertEquals(42.0, repository.observeDailySummary(day, null).first().totalEnergyKcal)
+        owner.value = account
+        assertEquals(372.0, repository.observeDailySummary(day, null).first().totalEnergyKcal)
+        assertEquals(0.0, repository.observeDailySummary(LocalDate.parse("2026-09-28"), null).first().totalEnergyKcal)
+    }
+
     @Test fun failureBetweenCategoriesRollsBackEntryAndReceipt() = runTest {
         database.useWriterConnection { it.execSQL("CREATE TRIGGER fail_cardio BEFORE INSERT ON ImportedTrainingActivity WHEN NEW.name = 'Cardio' BEGIN SELECT RAISE(ABORT, 'test failure'); END") }
         assertFails { dao.importDocument(account, trainingDocument(), 100) }

@@ -135,6 +135,10 @@ internal fun ActivitiesCardContent(
                     )
                 }
 
+                cardModel.importedEntries.forEach { entry ->
+                    ActivityRow(label = "${entry.name} · Trainings-App",
+                        energy = energyFormatter.formatEnergy(-entry.energyKcal.toDouble()))
+                }
                 cardModel.manualEntries.forEach { entry ->
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                     ActivityRow(

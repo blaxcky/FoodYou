@@ -42,8 +42,16 @@ class ActivitiesCardScreenshotTest {
         }
     }
 
+    @Test
+    fun importedTraining() {
+        captureRoboImage(
+            filePath = "ActivitiesCardScreenshotTest.training-import.png",
+            roborazziComposeOptions = RoborazziComposeOptions.Builder().size(390, 420).locale("de-rDE").build(),
+        ) { ActivitiesCardGolden(imported = true) }
+    }
+
     @Composable
-    private fun ActivitiesCardGolden() {
+    private fun ActivitiesCardGolden(imported: Boolean = false) {
         MaterialTheme {
             EnergyFormatterProvider(EnergyFormatter.kilocalories) {
                 Box(
@@ -59,7 +67,8 @@ class ActivitiesCardScreenshotTest {
                                 healthConnectStepsEnabled = true,
                                 stepEnergyKcal = 34,
                                 manualEnergyKcal = 0,
-                                totalEnergyKcal = 34,
+                                totalEnergyKcal = if (imported) 364 else 34,
+                                importedEntries = if (imported) listOf(com.maksimowiczm.foodyou.training.ImportedActivity("strength", "Krafttraining", 210), com.maksimowiczm.foodyou.training.ImportedActivity("cardio", "Cardio", 120)) else emptyList(),
                                 manualEntries = emptyList(),
                             ),
                         onAdd = {},

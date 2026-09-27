@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/trainingSessions/{sessionId} {
+      function owns() { return request.auth != null && request.auth.uid == uid; }
+      function valid() {
+        let d = request.resource.data;
+        return d.keys().hasAll(['schemaVersion','source','sessionId','startedAt','endedAt','activityDate','timeZone','strengthKcal','cardioKcal','receivedAt'])
+          && d.keys().hasOnly(['schemaVersion','source','sessionId','startedAt','endedAt','activityDate','timeZone','strengthKcal','cardioKcal','receivedAt'])
+          && d.schemaVersion == 1 && d.source == 'krafttraining-tracker'
+          && d.sessionId == sessionId && sessionId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+          && d.startedAt is string && d.endedAt is string
+          && d.startedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$')
+          && d.endedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$')
+          && d.endedAt >= d.startedAt
+          && d.activityDate is string && d.activityDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && d.timeZone is string && d.timeZone.size() > 0 && d.timeZone.size() <= 100
+          && d.strengthKcal is int && d.strengthKcal >= 0 && d.strengthKcal <= 9007199254740991
+          && d.cardioKcal is int && d.cardioKcal >= 0 && d.cardioKcal <= 9007199254740991
+          && d.receivedAt == request.time;
+      }
+      allow read: if owns();
+      allow create: if owns() && valid();
+      // Final training exports are immutable. Replays read and compare them.
+      allow update, delete: if false;
+    }
+  }
+}

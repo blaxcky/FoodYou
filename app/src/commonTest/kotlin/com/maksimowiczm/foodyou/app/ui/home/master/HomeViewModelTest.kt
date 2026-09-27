@@ -104,6 +104,7 @@ class HomeViewModelTest {
                 settingsRepository = FakeSettingsRepository(),
                 syncHealthConnect = { started.add("steps"); release.await() },
                 syncWeight = { started.add("weight"); weightRelease.await() },
+                syncTraining = { started.add("training"); release.await(); true },
                 hasFddbCredentials = { true },
                 syncFddbDiary = {
                     started.add("diary"); release.await()
@@ -112,7 +113,7 @@ class HomeViewModelTest {
             )
         }
         runCurrent()
-        assertEquals(setOf("steps", "weight", "diary"), started)
+        assertEquals(setOf("steps", "weight", "diary", "training"), started)
         release.complete(Unit)
         runCurrent()
         assertFalse(sync.isCompleted)
@@ -131,6 +132,7 @@ class HomeViewModelTest {
             date = LocalDate(2026, 9, 27), settings = settings,
             settingsRepository = FakeSettingsRepository(),
             syncHealthConnect = { error("Health Connect unavailable") },
+            syncTraining = { error("Firestore offline") },
             syncWeight = { weightRan = true }, hasFddbCredentials = { true },
             syncFddbDiary = { Ok(FddbDiarySyncResult(0, 0, 0)) },
         )

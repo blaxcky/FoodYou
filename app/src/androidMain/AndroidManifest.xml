@@ -33,6 +33,9 @@
         android:theme="@style/Theme.FoodYou"
         tools:targetApi="36">
 
+        <!-- Firebase is initialized explicitly for training sync in the main process only. -->
+        <provider android:name="com.google.firebase.provider.FirebaseInitProvider" tools:node="remove" />
+
         <service
             android:name="com.maksimowiczm.foodyou.ai.LocalAiService"
             android:exported="false"

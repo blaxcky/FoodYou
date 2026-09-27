@@ -37,6 +37,10 @@ class FoodYouApplication : Application() {
             androidContext(this@FoodYouApplication)
             modules(
                 module {
+                    single<com.maksimowiczm.foodyou.training.TrainingSync> {
+                        com.maksimowiczm.foodyou.training.createTrainingSync(this@FoodYouApplication,
+                            get<com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase>().trainingImportDao)
+                    }
                     single<com.maksimowiczm.foodyou.ai.AiController> {
                         com.maksimowiczm.foodyou.ai.AndroidAiController(this@FoodYouApplication, get(), get())
                     }

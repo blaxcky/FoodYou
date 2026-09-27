@@ -10,7 +10,9 @@ import org.koin.dsl.module
 val activityModule = module { activity() }
 
 fun Module.activity() {
-    factoryOf(::RoomActivityRepository).bind<ActivityRepository>()
+    factory<ActivityRepository> { RoomActivityRepository(get(), get(), get(),
+        get<com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase>().trainingImportDao,
+        get<com.maksimowiczm.foodyou.training.TrainingSync>().account) }
     factory { get<ActivityDatabase>().manualActivityEntryDao }
     factory { get<ActivityDatabase>().dailyStepSummaryDao }
     factory { get<ActivityDatabase>().stepExclusionPeriodDao }

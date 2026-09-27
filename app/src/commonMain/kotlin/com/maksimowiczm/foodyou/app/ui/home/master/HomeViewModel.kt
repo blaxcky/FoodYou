@@ -63,6 +63,7 @@ internal data class HomeSyncState(
     val healthConnectEnabled: Boolean,
     val fddbDiaryEnabled: Boolean,
     val configuredSyncInProgress: Boolean = false,
+    val trainingState: com.maksimowiczm.foodyou.training.TrainingSyncState = com.maksimowiczm.foodyou.training.TrainingSyncState(),
 ) {
     val isSyncing: Boolean
         get() =
@@ -84,6 +85,7 @@ internal data class HomeConfiguredSyncResult(
     val healthConnectSynced: Boolean,
     val fddbDiarySynced: Boolean,
     val fddbMissingCredentials: Boolean,
+    val trainingSynced: Boolean = false,
 )
 
 private const val HEALTH_CONNECT_STEPS_SYNC_LOOKBACK_DAYS = 30
@@ -96,6 +98,7 @@ internal class HomeViewModel(
     private val activityRepository: ActivityRepository,
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     private val fddbCredentialsRepository: FddbCredentialsRepository,
+    private val trainingSync: com.maksimowiczm.foodyou.training.TrainingSync = com.maksimowiczm.foodyou.training.DisabledTrainingSync,
 ) : ViewModel() {
 
     private val _homeOrder = settingsRepository.observe().map { it.homeCardOrder }
@@ -166,16 +169,18 @@ internal class HomeViewModel(
             )
 
     val homeSyncState: StateFlow<HomeSyncState> =
-        combine(settingsRepository.observe(), activitySyncState, fddbSyncState, configuredSyncInProgress) {
+        combine(settingsRepository.observe(), activitySyncState, fddbSyncState, configuredSyncInProgress, trainingSync.state) {
                 settings,
                 activityState,
                 fddbState,
                 configuredSyncing,
+                trainingState,
             ->
                 HomeSyncState(
                     activitySyncState = activityState,
                     fddbSyncState = fddbState,
                     configuredSyncInProgress = configuredSyncing,
+                    trainingState = trainingState,
                     healthConnectEnabled = settings.homeSyncHealthConnectEnabled,
                     fddbDiaryEnabled = settings.homeSyncFddbDiaryEnabled,
                 )
@@ -235,6 +240,10 @@ internal class HomeViewModel(
 
         configuredSyncRunner.launch {
             val settings = settingsRepository.observe().first()
+            val syncAccount = trainingSync.account.value
+            val deltaDates = burnedEnergySyncDeltaDates(date)
+            val before = deltaDates.associateWith { dailyBurnedEnergyKcal(it, settingsRepository, activityRepository) }
+            clearBurnedEnergySyncDelta()
             val result =
                 syncConfiguredHomeSync(
                     date = date,
@@ -251,7 +260,6 @@ internal class HomeViewModel(
                                         healthConnectActivitySync = healthConnectActivitySync,
                                         activityRepository = activityRepository,
                                     )
-                                    ?.let(::showBurnedEnergySyncDelta)
                             } finally {
                                 nowEpochSeconds.value = Clock.System.now().epochSeconds
                                 isSyncing.value = false
@@ -259,6 +267,7 @@ internal class HomeViewModel(
                         }
                     },
                     syncWeight = { healthConnectWeightSync.syncHistorical() },
+                    syncTraining = { trainingSync.sync() != null },
                     hasFddbCredentials = manualFddbDiarySyncUseCase::hasCredentials,
                     syncFddbDiary = { selectedDate ->
                         if (fddbSyncInProgress.value) {
@@ -273,7 +282,12 @@ internal class HomeViewModel(
                         }
                     },
                 )
-            if (result.healthConnectSynced || result.fddbDiarySynced) {
+            if (syncAccount == trainingSync.account.value) {
+                showBurnedEnergySyncDelta(deltaDates.associateWith {
+                    burnedEnergySyncDeltaKcal(before.getValue(it), dailyBurnedEnergyKcal(it, settingsRepository, activityRepository))
+                })
+            }
+            if (result.healthConnectSynced || result.fddbDiarySynced || result.trainingSynced) {
                 updateCalorieWidgetValues()
             }
         }
@@ -332,7 +346,13 @@ internal suspend fun syncConfiguredHomeSync(
     hasFddbCredentials: suspend () -> Boolean,
     syncFddbDiary: suspend (LocalDate) -> Result<FddbDiarySyncResult, Throwable>,
     syncWeight: suspend () -> Unit = {},
+    syncTraining: suspend () -> Boolean = { false },
 ): HomeConfiguredSyncResult = supervisorScope {
+    val training = async {
+        var completed = false
+        syncBranch { completed = syncTraining() }
+        completed
+    }
     val health = async {
         if (!settings.homeSyncHealthConnectEnabled) false
         else syncBranch { syncHealthConnect() }
@@ -357,7 +377,7 @@ internal suspend fun syncConfiguredHomeSync(
     val healthSynced = health.await()
     val (diarySynced, missingCredentials) = diary.await()
     weight.await()
-    HomeConfiguredSyncResult(healthSynced, diarySynced, missingCredentials)
+    HomeConfiguredSyncResult(healthSynced, diarySynced, missingCredentials, training.await())
 }
 
 private suspend fun syncBranch(block: suspend () -> Unit): Boolean =

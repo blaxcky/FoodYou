@@ -29,3 +29,7 @@ captures
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+
+# Local Firebase training-import emulator output
+/firebase-debug.log
+/firestore-debug.log

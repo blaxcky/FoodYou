@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.infrastructure.backup
 
+import com.maksimowiczm.foodyou.training.isTrainingAuthPreference
+import com.maksimowiczm.foodyou.training.removeTrainingAuthPreferences
 import android.content.Context
 import androidx.room.execSQL
 import androidx.room.useWriterConnection
@@ -61,6 +63,12 @@ internal class FullBackupManager(
             val sensitive = Json.decodeFromString<SensitiveState>(File(restored, SENSITIVE_FILE).readText())
             // This is keystore encrypted and is deliberately outside the replaced app state.
             BackupBootstrap.save(context, masterCrypto, sensitive)
+            File(restored, "shared_prefs").mkdirs()
+            removeTrainingAuthPreferences(File(restored, "shared_prefs"))
+            // In-memory SDK tokens must not be written back after restoring the preferences.
+            com.google.firebase.FirebaseApp.getApps(context).firstOrNull { it.name == "training-import" }?.let {
+                com.google.firebase.auth.FirebaseAuth.getInstance(it).signOut()
+            }
             replaceState(restored)
         } finally {
             stage.deleteRecursively()
@@ -77,7 +85,9 @@ internal class FullBackupManager(
     private fun copyStateTo(root: File) {
         copyRecursively(context.getDatabasePath(DATABASE_NAME), File(root, "database/$DATABASE_NAME"))
         copyRecursively(context.filesDir, File(root, "files"))
-        copyRecursively(File(context.applicationInfo.dataDir, "shared_prefs"), File(root, "shared_prefs"))
+        val target = File(root, "shared_prefs").apply { mkdirs() }
+        File(context.applicationInfo.dataDir, "shared_prefs").listFiles()
+            ?.filterNot(::isTrainingAuthPreference)?.forEach { copyRecursively(it, File(target, it.name)) }
     }
 
     private fun replaceState(root: File) {
