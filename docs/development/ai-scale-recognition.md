@@ -42,7 +42,8 @@ Mit `JAVA_HOME=/usr/lib/jvm/java-21-openjdk` und
 ```bash
 ./gradlew :app:testDevReleaseUnitTest \
   --tests '*ScaleRecognitionTest' --tests '*AiInfrastructureTest' \
-  --tests '*ScalePhotoDecoderTest' \
+  --tests '*ScalePhotoDecoderTest' --tests '*NativeGenerationTest' \
+  --tests '*LocalAiProtocolTest' --tests '*LocalAiClientTest' \
   --tests '*QuickCaptureAiMigrationTest' --tests '*QuickCaptureDaoTest' \
   --tests '*QuickCaptureViewModelTest' \
   --tests '*AiSettingsScreenshotTest' --tests '*QuickCaptureScreenshotTest' \
@@ -74,3 +75,61 @@ Desktop-/Emulatortests abgeleitet. Ein echter Gemini-Test benötigt einen Nutzer
 
 Bei lokalem Ladefehler werden Modell und freier Arbeitsspeicher als Prüfpunkte genannt.
 Ein Fehler aktiviert weder ein kleineres Modell noch den Online-Anbieter automatisch.
+
+## Prozessisolierung und Absturzdiagnose
+
+Gemma läuft ausschließlich im nicht exportierten Dienst `LocalAiService` im Prozess
+`:local_ai`. `FoodYouApplication` überspringt dort Koin, Room, Widgets und den
+UI-Crashhandler. Der Hauptprozess übergibt Fotos mit `ParcelFileDescriptor`; nur der
+Worker dekodiert das Bild. Die IPC-Antworten enthalten kleine strukturierte Ergebnisse,
+Sitzungs- und Anfragenummern. Verspätete Antworten werden verworfen.
+
+Die native Engine wird pro Durchlauf geöffnet, Conversations pro Foto. Abbruch wartet
+auf den terminalen Generierungs-Callback und das Ende von `cancelProcess()` vor dem
+Schließen. Ein unabhängiger Service-Watchdog beendet nach fünf Sekunden ausschließlich
+den Worker, wenn Initialisierung, Generierung oder Aufräumen hängt. Prozessverlust
+stoppt den Durchlauf ohne Neustart oder Anbieterwechsel. Android kann bei systemweitem
+Speichermangel trotzdem auch den Hauptprozess beenden.
+
+Einstellungen → KI → KI-Diagnosebericht → Kopieren enthält Runtime/Modellrevision,
+Gerät, Phasen, Bildabmessungen sowie verfügbaren RAM und Prozessspeicher. Die begrenzten
+Phasenprotokolle liegen im privaten `noBackupFilesDir/ai/diagnostics`. Fotos, rohe
+Modellantworten, Exception-Texte und Schlüssel werden nicht protokolliert.
+Ab Android 11 werden `ApplicationExitInfo`-Datensätze ergänzt. LOW_MEMORY und native
+Abstürze werden unterschieden; SIGKILL allein oder fehlende Informationen ergeben
+keine RAM-Diagnose. Frühere Datensätze sind über Zeitstempel und PID zuzuordnen.
+
+Antwortformatfehler und abgeschnittene Antworten sind technische Fehler; nur ein
+explizites `readable:false` bedeutet unlesbar. Zusatzanzeigen wie Timer sind kein
+zweites Gewicht. Runtime 0.16.1 und Kontext 4096 bleiben zur Diagnose unverändert.
+
+### Reproduzierbarer Gerätetest: 269 g
+
+Das vom Nutzer bereitgestellte Bild liegt ausschließlich in Test-Assets unter
+`app/src/androidInstrumentedTest/assets/ai/scale-269g.png`, nicht im App-APK. Der
+Opt-in-Test `com.maksimowiczm.foodyou.ai.LocalScaleDeviceTest` analysiert es in zwei
+Einzelsitzungen und einem Dreierstapel mit der echten lokalen Engine. Er erwartet
+269 g; dieser Sollwert kommt weder im Prompt noch in der Erkennungslogik vor.
+Der Test benötigt das fertig heruntergeladene Modell und das Instrumentierungsargument
+`runLocalAiRegression=true`. Ohne dieses Argument wird er übersprungen. Nur auf einem
+bewusst ausgewählten physischen Gerät starten. Danach auch den UI-Ablauf prüfen:
+Vorschlag 269 g → manuell korrigieren/bestätigen, Abbrechen, Hintergrundwechsel und
+Fortsetzen eines Stapels. Ladezeit und Bildzeiten lassen sich aus den Phasenzeitstempeln
+ablesen. Nach Fehlern den vollständigen Bericht kopieren.
+
+Dieser Gerätetest steht noch aus. Weder der ursprüngliche Absturzgrund noch die
+Erkennungsqualität auf dem Nothing Phone (2) sind durch JVM-Tests bewiesen.
+
+Für den gezielten echten Test (JDK/Gradle-Variablen wie oben), nach expliziter Auswahl
+der USB-Geräteseriennummer und mit installiertem Modell:
+
+```bash
+ANDROID_SERIAL=<Nothing-Phone-Seriennummer> ./gradlew -I dev/ai-device-test.init.gradle \
+  :app:connectedDevReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.maksimowiczm.foodyou.ai.LocalScaleDeviceTest \
+  -Pandroid.testInstrumentationRunnerArguments.runLocalAiRegression=true
+```
+
+Das optionale Init-Skript wählt nur für diesen Aufruf `devRelease` als Testvariante.
+Es startet keinen Emulator. Ein Testfehler darf nicht durch Änderung des Sollwerts
+oder automatisches Umschalten auf Google umgangen werden.

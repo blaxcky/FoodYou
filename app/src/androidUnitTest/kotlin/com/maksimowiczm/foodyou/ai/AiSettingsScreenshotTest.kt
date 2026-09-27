@@ -30,6 +30,13 @@ class AiSettingsScreenshotTest {
     @Test fun localReady() = showSettings(AiSettings(), ModelDownloadState(bytes = GEMMA_SIZE, ready = true), "local-ready")
     @Test fun geminiSettings() = showSettings(AiSettings(AiProvider.Gemini, hasApiKey = true), ModelDownloadState(), "gemini")
 
+    @Test fun diagnosticReport() {
+        show { AiDiagnosticDialog("LiteRT-LM: 0.16.1\nGerät: Nothing Phone (2)\nUrsache unbekannt.\nphase=generation_start availableMiB=4096", {}, {}) }
+        compose.onNodeWithText("Kopieren").assertExists()
+        compose.onNodeWithText("KI-Diagnosebericht").assertExists()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.diagnostics.png")
+    }
+
     @Test fun batchProgress() {
         show {
             Column {

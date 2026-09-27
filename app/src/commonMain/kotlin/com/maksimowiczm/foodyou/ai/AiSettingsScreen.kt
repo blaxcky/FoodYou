@@ -23,6 +23,9 @@ fun AiSettingsScreen(onBack: () -> Unit) {
     val analysis by controller.analysis.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var message by remember { mutableStateOf<String?>(null) }
+    var report by remember { mutableStateOf<String?>(null) }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    report?.let { text -> AiDiagnosticDialog(text, { clipboard.setText(androidx.compose.ui.text.AnnotatedString(text)) }, { report = null }) }
     var saving by remember { mutableStateOf(false) }
     AiSettingsContent(settings, download, analysis.running || saving, message,
         onBack = onBack,
@@ -46,6 +49,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
         onDownload = controller::startDownload,
         onPause = controller::pauseDownload,
         onDelete = controller::deleteModel,
+        onDiagnostics = { scope.launch { report = controller.diagnosticReport() } },
     )
 }
 
@@ -61,6 +65,7 @@ internal fun AiSettingsContent(
     onDownload: () -> Unit,
     onPause: () -> Unit,
     onDelete: () -> Unit,
+    onDiagnostics: () -> Unit = {},
 ) {
     var provider by rememberSaveable(settings.provider) { mutableStateOf(settings.provider) }
     var model by rememberSaveable(settings.model) { mutableStateOf(settings.model) }
@@ -125,6 +130,7 @@ internal fun AiSettingsContent(
                 onSave(provider, model, key.takeIf { it.isNotBlank() }, false)
                 key = ""
             }, enabled = !busy && !download.running && model.isNotBlank()) { Text("Einstellungen speichern") }
+            OutlinedButton(onClick = onDiagnostics) { Text("KI-Diagnosebericht") }
             message?.let { Text(it) }
         }
     }
@@ -156,4 +162,20 @@ internal fun AiAnalysisControls(
         if (progress.total > 0) Text("${progress.completed} von ${progress.total} Fotos – ${progress.recognized} Gewichte erkannt")
         progress.message?.let { Text(it) }
     }
+}
+
+@Composable
+internal fun AiDiagnosticDialog(report: String, onCopy: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("KI-Diagnosebericht") },
+        text = {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(report, Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { TextButton(onClick = onCopy) { Text("Kopieren") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Schließen") } },
+    )
 }

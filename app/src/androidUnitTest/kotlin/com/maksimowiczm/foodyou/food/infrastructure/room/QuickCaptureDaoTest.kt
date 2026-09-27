@@ -103,8 +103,10 @@ class QuickCaptureDaoTest {
         assertEquals(123.0, suggested.suggestedWeightInGrams)
         assertNull(suggested.directWeightInGrams)
         assertNull(suggested.foodName)
-        dao.saveAiResult(id, "scale.jpg", null, "error", "Local", "Gemma", 250)
-        assertEquals(123.0, dao.getEntry(id)?.suggestedWeightInGrams)
+        for (status in listOf("error", "error_format", "error_truncated")) {
+            dao.saveAiResult(id, "scale.jpg", null, status, "Local", "Gemma", 250)
+            assertEquals(123.0, dao.getEntry(id)?.suggestedWeightInGrams)
+        }
         val name = dao.resolveFoodName("Apfel", "apfel", 300)
         dao.processPhoto(id, name.id, name.name, 124.0)
         dao.saveAiResult(id, "scale.jpg", 999.0, "recognized", "Gemini", "test", 400)

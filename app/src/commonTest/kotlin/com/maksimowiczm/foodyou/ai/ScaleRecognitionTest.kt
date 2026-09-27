@@ -12,14 +12,45 @@ class ScaleRecognitionTest {
     }
 
     @Test fun refusesGuessesMalformedNumbersAndMissingUnits() {
-        listOf("", "125 g", "[]", "null", "{bad}", """{"readable":false,"value":100,"unit":"g"}""",
+        listOf("", "125 g", "[]", "null", "{bad}",
             """{"value":100,"unit":"g"}""", """{"readable":true,"value":100}""").forEach {
-            assertEquals(ScaleRecognitionResult.Unreadable, parseScaleReading(it))
+            assertEquals(ScaleErrorKind.ResponseFormat, assertIs<ScaleRecognitionResult.Error>(parseScaleReading(it)).kind)
         }
         listOf("0", "-1", "NaN", "Infinity", "1,234.5", "1e3", "100 g").forEach {
-            assertEquals(ScaleRecognitionResult.Unreadable, parseScaleReading("""{"readable":true,"value":"$it","unit":"g"}"""))
+            assertIs<ScaleRecognitionResult.Error>(parseScaleReading("""{"readable":true,"value":"$it","unit":"g"}"""))
         }
-        assertEquals(ScaleRecognitionResult.Unreadable, parseScaleReading("""{"readable":true,"value":5,"unit":"oz"}"""))
+        assertIs<ScaleRecognitionResult.Error>(parseScaleReading("""{"readable":true,"value":5,"unit":"oz"}"""))
+    }
+
+    @Test fun distinguishesUnreadableTruncatedAndInvalidAnswers() {
+        assertEquals(ScaleRecognitionResult.Unreadable, parseScaleReading("""{"readable":false}"""))
+        assertEquals(ScaleErrorKind.Truncated, assertIs<ScaleRecognitionResult.Error>(parseScaleReading("{\"readable\":" )).kind)
+        assertEquals(ScaleErrorKind.Truncated, assertIs<ScaleRecognitionResult.Error>(parseScaleReading("{}", truncated = true)).kind)
+        assertEquals(ScaleRecognitionResult.Recognized(269.0), parseScaleReading("""{"readable":true,"value":269,"unit":"g"}"""))
+        assertEquals(ScaleRecognitionResult.Recognized(26.9), parseScaleReading("""{"readable":true,"value":26.9,"unit":"g"}"""))
+    }
+
+    @Test fun processLossAndTimeoutPreserveCompletedResultsAndStopBatch() = runTest {
+        for (kind in listOf(ScaleErrorKind.ProcessDied, ScaleErrorKind.Timeout)) {
+            val coordinator = ScaleAnalysisCoordinator()
+            val saved = mutableListOf<ScaleRecognitionResult>()
+            var calls = 0
+            var closed = false
+            val recognizer = object : ScaleWeightRecognizer {
+                override suspend fun recognize(photoPath: String): ScaleRecognitionResult {
+                    calls++
+                    return if (calls == 1) ScaleRecognitionResult.Recognized(269.0)
+                    else ScaleRecognitionResult.Error("worker failed", fatal = true, kind = kind)
+                }
+                override suspend fun close() { closed = true }
+            }
+            coordinator.run(listOf(AnalysisPhoto(1,"a"), AnalysisPhoto(2,"b"), AnalysisPhoto(3,"c")),
+                { recognizer }, { true }, { _, result -> saved += result })
+            assertEquals(2, calls)
+            assertEquals(ScaleRecognitionResult.Recognized(269.0), saved.first())
+            assertTrue(closed)
+            assertFalse(coordinator.progress.value.running)
+        }
     }
 
     @Test fun batchUsesOneSessionSkipsDeletedPhotosAndContinuesAfterUnreadable() = runTest {

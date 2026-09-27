@@ -30,6 +30,8 @@ class FoodYouApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // The native worker must not initialize Room, backup restore, widgets or the UI crash handler.
+        if (getProcessName() == packageName + com.maksimowiczm.foodyou.ai.LOCAL_AI_PROCESS_SUFFIX) return
 
         initKoin(coroutineScope) {
             androidContext(this@FoodYouApplication)

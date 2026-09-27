@@ -45,7 +45,7 @@ abstract class QuickCaptureDao {
 
     @Query("""
         UPDATE QuickCaptureLogEntry SET suggestedWeightInGrams =
-            CASE WHEN :status = 'error' THEN suggestedWeightInGrams ELSE :grams END,
+            CASE WHEN :status IN ('error', 'error_format', 'error_truncated') THEN suggestedWeightInGrams ELSE :grams END,
         aiAnalysisStatus = :status, aiAnalysisProvider = :provider,
         aiAnalysisModel = :model, aiAnalyzedAt = :timestamp
         WHERE id = :id AND photoPath = :path AND completedAt IS NULL

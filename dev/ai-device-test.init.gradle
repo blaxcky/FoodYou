@@ -1,0 +1,5 @@
+allprojects { project ->
+    project.pluginManager.withPlugin('com.android.application') {
+        project.extensions.getByName('android').testBuildType = 'devRelease'
+    }
+}

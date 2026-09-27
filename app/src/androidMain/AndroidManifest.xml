@@ -33,6 +33,11 @@
         android:theme="@style/Theme.FoodYou"
         tools:targetApi="36">
 
+        <service
+            android:name="com.maksimowiczm.foodyou.ai.LocalAiService"
+            android:exported="false"
+            android:process=":local_ai" />
+
         <uses-native-library android:name="libvndksupport.so" android:required="false" />
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
 

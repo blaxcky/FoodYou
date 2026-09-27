@@ -1,66 +1,13 @@
 package com.maksimowiczm.foodyou.ai
 
 import android.util.Base64
-import com.google.ai.edge.litertlm.*
 import io.ktor.client.HttpClient
 import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import java.io.File
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.json.*
-
-internal class LocalScaleWeightRecognizer(
-    private val engine: Engine,
-    private val photos: File,
-) : ScaleWeightRecognizer {
-    override suspend fun recognize(photoPath: String): ScaleRecognitionResult = withContext(Dispatchers.IO) {
-        val bytes = try { decodeScalePhoto(photos, photoPath) } catch (_: Exception) {
-            return@withContext ScaleRecognitionResult.Error("Foto konnte nicht gelesen werden.")
-        }
-        try {
-            engine.createConversation(ConversationConfig(
-                maxOutputToken = 128,
-                thinkingConfig = ThinkingConfig(enableThinking = false),
-                samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 0.0),
-            )).use { conversation ->
-                val response = StringBuilder()
-                try {
-                    withTimeout(120_000) {
-                        conversation.sendMessageAsync(Contents.of(Content.ImageBytes(bytes), Content.Text(SCALE_PROMPT)))
-                            .collect { response.append(it.toString()) }
-                    }
-                } finally { conversation.cancelProcess() }
-                parseScaleReading(response.toString())
-            }
-        } catch (_: TimeoutCancellationException) {
-            ScaleRecognitionResult.Error("Lokale Analyse dauert zu lange. Bitte erneut versuchen.", fatal = true)
-        } catch (e: CancellationException) { throw e
-        } catch (_: Exception) {
-            ScaleRecognitionResult.Error("Gemma konnte das Foto nicht verarbeiten. Modell und freien Arbeitsspeicher prüfen.", fatal = true)
-        }
-    }
-
-    override suspend fun close() = withContext(NonCancellable + Dispatchers.IO) { engine.close() }
-
-    companion object {
-        suspend fun open(model: File, photos: File, cache: File): LocalScaleWeightRecognizer = withContext(Dispatchers.IO) {
-            check(model.isFile && model.length() == GEMMA_SIZE)
-            cache.mkdirs()
-            val engine = Engine(EngineConfig(modelPath = model.path, backend = Backend.GPU(),
-                visionBackend = Backend.GPU(), maxNumTokens = 4096, maxNumImages = 1, cacheDir = cache.path))
-            try {
-                engine.initialize()
-                currentCoroutineContext().ensureActive()
-                LocalScaleWeightRecognizer(engine, photos)
-            } catch (e: Throwable) {
-                engine.close()
-                throw e
-            }
-        }
-    }
-}
 
 internal class GeminiScaleWeightRecognizer(
     private val client: HttpClient,
@@ -138,7 +85,9 @@ internal fun parseGeminiResponse(body: String): ScaleRecognitionResult = try {
         if ((p["thought"] as? JsonPrimitive)?.booleanOrNull == true) null
         else (p["text"] as? JsonPrimitive)?.contentOrNull
     }?.joinToString("")
-    if (candidate?.get("finishReason")?.jsonPrimitive?.content != "STOP" || text.isNullOrBlank())
+    if (candidate?.get("finishReason")?.jsonPrimitive?.content == "MAX_TOKENS")
+        parseScaleReading(text.orEmpty(), truncated = true)
+    else if (candidate?.get("finishReason")?.jsonPrimitive?.content != "STOP" || text.isNullOrBlank())
         ScaleRecognitionResult.Error("Google lieferte keine vollständige Antwort.")
     else parseScaleReading(text)
 } catch (_: Exception) { ScaleRecognitionResult.Error("Google lieferte eine ungültige Antwort.") }

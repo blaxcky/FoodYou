@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
 
 /** Private no-backup state keeps keys and large downloaded models out of full app backups too. */
 internal class AndroidAiController(
-    context: Context,
+    private val context: Context,
     database: FoodYouDatabase,
     private val crypto: MasterCrypto,
 ) : AiController {
@@ -27,6 +27,7 @@ internal class AndroidAiController(
     private val dao = database.quickCaptureDao
     private val configMutex = Mutex()
     private val store = GemmaModelStore(File(directory, "models"))
+    private val diagnostics = AiDiagnostics(context)
     private val coordinator = ScaleAnalysisCoordinator()
     private val mutableSettings = MutableStateFlow(readSettings())
     override val settings: StateFlow<AiSettings> = mutableSettings
@@ -107,7 +108,7 @@ internal class AndroidAiController(
                         val (config, key) = configuration()
                         selected = config
                         when (config.provider) {
-                            AiProvider.Local -> LocalScaleWeightRecognizer.open(store.model, photoDirectory, cacheDirectory)
+                            AiProvider.Local -> LocalScaleWeightRecognizer.open(context, photoDirectory, diagnostics)
                             AiProvider.Gemini -> GeminiScaleWeightRecognizer(client, key, config.model, photoDirectory)
                         }
                     },
@@ -118,7 +119,11 @@ internal class AndroidAiController(
                             when (result) {
                                 is ScaleRecognitionResult.Recognized -> "recognized"
                                 ScaleRecognitionResult.Unreadable -> "unreadable"
-                                is ScaleRecognitionResult.Error -> "error"
+                                is ScaleRecognitionResult.Error -> when (result.kind) {
+                                    ScaleErrorKind.ResponseFormat -> "error_format"
+                                    ScaleErrorKind.Truncated -> "error_truncated"
+                                    else -> "error"
+                                }
                             }, selected.provider.name,
                             if (selected.provider == AiProvider.Local) "gemma-4-E4B-it@$GEMMA_REVISION" else selected.model,
                             System.currentTimeMillis())
@@ -126,6 +131,8 @@ internal class AndroidAiController(
             }
         }
     }
+
+    override suspend fun diagnosticReport(): String = diagnostics.report()
 
     override fun cancelAnalysis() { analysisJob?.cancel() }
     override fun startDownload() {
