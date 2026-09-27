@@ -54,6 +54,16 @@ class CalorieRingWidgetScreenshotTest {
     /** Night mode must still render the light design. */
     @Test fun cellNightOverflow() = capture("cell", 320, 170, night = true, case = "overflow", model = overflow())
     @Test fun cellLightNoDiet() = capture("cell", 320, 170, night = false, case = "no-diet", model = noDiet())
+    @Test
+    fun cellLightNoDistinctDiet() =
+        capture(
+            "cell",
+            320,
+            170,
+            night = false,
+            case = "no-distinct-diet",
+            model = noDistinctDiet(),
+        )
     @Test fun tallLightNormal() = capture("tall", 320, 240, night = false, case = "normal", model = normal())
     @Test fun tallLightOverflow() = capture("tall", 320, 240, night = false, case = "overflow", model = overflow())
     @Test fun wideLightNormal() = capture("wide", 400, 150, night = false, case = "normal", model = normal())
@@ -145,6 +155,17 @@ class CalorieRingWidgetScreenshotTest {
             countedSteps = 0,
             baseGoalKcal = 2000.0,
             dietEnergyDeficitKcal = null,
+            previousDays = emptyList(),
+        )
+
+    private fun noDistinctDiet() =
+        calorieWidgetModel(
+            today = LocalDate(2026, 9, 15),
+            eatenKcal = 900.0,
+            burnedKcal = 0.0,
+            countedSteps = 0,
+            baseGoalKcal = 2000.0,
+            dietEnergyDeficitKcal = 0.4,
             previousDays = emptyList(),
         )
 

@@ -93,6 +93,7 @@ internal class CalorieRingWidget(
                 normalLeftKcal = 0,
                 optimizedGoalKcal = null,
                 optimizedLeftKcal = null,
+                dietGoalConfigured = false,
                 dietGoalKcal = null,
                 dietLeftKcal = null,
             )

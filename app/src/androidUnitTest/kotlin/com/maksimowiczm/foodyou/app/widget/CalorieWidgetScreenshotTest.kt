@@ -51,6 +51,18 @@ class CalorieWidgetScreenshotTest {
         assertEquals("12,345", root.findViewById<TextView>(R.id.widget_calories_steps).text)
     }
 
+    @Test
+    fun configuredDietWithoutDistinctGoalUsesPlaceholder() {
+        val root = render(false, 360, 1f, 0, dietEnergyDeficitKcal = 0.4)
+
+        assertEquals(
+            "--",
+            root.findViewById<TextView>(R.id.widget_calories_left_diet).text.toString(),
+        )
+        assertEquals(View.GONE, root.findViewById<View>(R.id.widget_calories_diet_disabled).visibility)
+        assertEquals(View.VISIBLE, root.findViewById<View>(R.id.widget_calories_diet_unit).visibility)
+    }
+
     private fun verifyLayout(large: Boolean, width: Int, fontScale: Float, name: String) {
         Locale.setDefault(Locale.GERMANY)
         var contentPositions: List<Int>? = null
@@ -84,7 +96,13 @@ class CalorieWidgetScreenshotTest {
         }
     }
 
-    private fun render(large: Boolean, width: Int, fontScale: Float, steps: Long): ViewGroup {
+    private fun render(
+        large: Boolean,
+        width: Int,
+        fontScale: Float,
+        steps: Long,
+        dietEnergyDeficitKcal: Double = 300.0,
+    ): ViewGroup {
         val height = if (large) 380 else 230
         RuntimeEnvironment.setQualifiers("de-rDE-w${width}dp-h${height}dp-mdpi")
         RuntimeEnvironment.setFontScale(fontScale)
@@ -97,7 +115,7 @@ class CalorieWidgetScreenshotTest {
             burnedKcal = 120.0,
             countedSteps = steps,
             baseGoalKcal = 2000.0,
-            dietEnergyDeficitKcal = 300.0,
+            dietEnergyDeficitKcal = dietEnergyDeficitKcal,
             previousDays = emptyList(),
         )
         val root = createCalorieWidgetRemoteViews(

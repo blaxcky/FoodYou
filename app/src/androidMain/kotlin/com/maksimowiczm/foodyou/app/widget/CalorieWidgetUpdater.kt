@@ -218,11 +218,11 @@ private fun RemoteViews.setValues(context: Context, model: CalorieWidgetModel) {
     }
     setViewVisibility(
         R.id.widget_calories_diet_disabled,
-        if (model.dietLeftKcal == null) View.VISIBLE else View.GONE,
+        if (model.dietGoalConfigured) View.GONE else View.VISIBLE,
     )
     setViewVisibility(
         R.id.widget_calories_diet_unit,
-        if (model.dietLeftKcal == null) View.GONE else View.VISIBLE,
+        if (model.dietGoalConfigured) View.VISIBLE else View.GONE,
     )
 }
 

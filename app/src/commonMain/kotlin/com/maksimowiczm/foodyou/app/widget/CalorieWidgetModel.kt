@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.widget
 
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalEnergyOptimizationDay
 import com.maksimowiczm.foodyou.app.ui.home.goals.adjustedEnergyGoalKcal
+import com.maksimowiczm.foodyou.app.ui.home.goals.energyGoalDiffersFromBase
 import com.maksimowiczm.foodyou.app.ui.home.goals.optimizedEnergyGoalKcal
 import com.maksimowiczm.foodyou.app.ui.home.goals.roundedEnergyKcal
 import com.maksimowiczm.foodyou.app.ui.home.goals.roundedNetEnergyKcal
@@ -18,6 +19,7 @@ internal data class CalorieWidgetModel(
     val normalLeftKcal: Int,
     val optimizedGoalKcal: Int?,
     val optimizedLeftKcal: Int?,
+    val dietGoalConfigured: Boolean,
     val dietGoalKcal: Int?,
     val dietLeftKcal: Int?,
 )
@@ -63,6 +65,13 @@ internal fun calorieWidgetModel(
     val normalLeftKcal = roundedRemainingEnergyKcal(effectiveNormalGoalKcal, netEnergyKcal)
     val optimizedLeftKcal = roundedRemainingEnergyKcal(optimizedGoal, netEnergyKcal)
     val showOptimized = optimizedLeftKcal != baseNormalLeftKcal
+    val showDiet =
+        dietGoal?.let {
+            energyGoalDiffersFromBase(
+                baseEnergyGoalKcal = baseGoalKcal,
+                adjustedEnergyGoalKcal = it,
+            )
+        } == true
 
     return CalorieWidgetModel(
         date = today,
@@ -74,7 +83,9 @@ internal fun calorieWidgetModel(
         normalLeftKcal = normalLeftKcal,
         optimizedGoalKcal = roundedEnergyKcal(optimizedGoal).takeIf { showOptimized },
         optimizedLeftKcal = optimizedLeftKcal.takeIf { showOptimized },
-        dietGoalKcal = dietGoal?.let(::roundedEnergyKcal),
-        dietLeftKcal = dietGoal?.let { roundedRemainingEnergyKcal(it, netEnergyKcal) },
+        dietGoalConfigured = dietDeficit != null,
+        dietGoalKcal = dietGoal?.takeIf { showDiet }?.let(::roundedEnergyKcal),
+        dietLeftKcal =
+            dietGoal?.takeIf { showDiet }?.let { roundedRemainingEnergyKcal(it, netEnergyKcal) },
     )
 }

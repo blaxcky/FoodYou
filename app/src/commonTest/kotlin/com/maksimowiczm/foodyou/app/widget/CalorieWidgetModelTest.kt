@@ -165,7 +165,7 @@ class CalorieWidgetModelTest {
     }
 
     @Test
-    fun dietRemainingEnergyUsesRoundedAdjustedGoalAndRoundedNetEnergy() {
+    fun hidesDietGoalWhenRoundedAdjustedGoalMatchesNormalGoal() {
         val model =
             calorieWidgetModel(
                 today = LocalDate(2026, 5, 18),
@@ -176,7 +176,9 @@ class CalorieWidgetModelTest {
                 previousDays = emptyList(),
             )
 
-        assertEquals(1176, model.dietLeftKcal)
+        assertEquals(true, model.dietGoalConfigured)
+        assertNull(model.dietGoalKcal)
+        assertNull(model.dietLeftKcal)
     }
 
     @Test
@@ -223,6 +225,8 @@ class CalorieWidgetModelTest {
                 previousDays = emptyList(),
             )
 
+        assertEquals(false, model.dietGoalConfigured)
+        assertNull(model.dietGoalKcal)
         assertNull(model.dietLeftKcal)
     }
 
@@ -293,6 +297,7 @@ class CalorieWidgetModelTest {
         val optimizedGoal = assertNotNull(model.optimizedGoalKcal)
         assertEquals(model.optimizedLeftKcal, optimizedGoal - model.netKcal)
         val dietGoal = assertNotNull(model.dietGoalKcal)
+        assertEquals(true, model.dietGoalConfigured)
         assertEquals(model.dietLeftKcal, dietGoal - model.netKcal)
     }
 

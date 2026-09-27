@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.widget.ring
 
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -19,6 +20,7 @@ internal object CalorieRingWidgetState {
     val normalLeftKcal = intPreferencesKey("normal_left_kcal")
     val optimizedGoalKcal = intPreferencesKey("optimized_goal_kcal")
     val optimizedLeftKcal = intPreferencesKey("optimized_left_kcal")
+    val dietGoalConfigured = booleanPreferencesKey("diet_goal_configured")
     val dietGoalKcal = intPreferencesKey("diet_goal_kcal")
     val dietLeftKcal = intPreferencesKey("diet_left_kcal")
 }
@@ -33,6 +35,7 @@ internal fun MutablePreferences.write(model: CalorieWidgetModel) {
     this[CalorieRingWidgetState.normalLeftKcal] = model.normalLeftKcal
     setOrRemove(CalorieRingWidgetState.optimizedGoalKcal, model.optimizedGoalKcal)
     setOrRemove(CalorieRingWidgetState.optimizedLeftKcal, model.optimizedLeftKcal)
+    this[CalorieRingWidgetState.dietGoalConfigured] = model.dietGoalConfigured
     setOrRemove(CalorieRingWidgetState.dietGoalKcal, model.dietGoalKcal)
     setOrRemove(CalorieRingWidgetState.dietLeftKcal, model.dietLeftKcal)
 }
@@ -44,6 +47,8 @@ private fun MutablePreferences.setOrRemove(key: Preferences.Key<Int>, value: Int
 internal fun Preferences.toCalorieWidgetModel(): CalorieWidgetModel? {
     val date = this[CalorieRingWidgetState.date]?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         ?: return null
+    val dietGoalKcal = this[CalorieRingWidgetState.dietGoalKcal]
+    val dietLeftKcal = this[CalorieRingWidgetState.dietLeftKcal]
     return CalorieWidgetModel(
         date = date,
         countedSteps = this[CalorieRingWidgetState.countedSteps] ?: 0L,
@@ -54,7 +59,10 @@ internal fun Preferences.toCalorieWidgetModel(): CalorieWidgetModel? {
         normalLeftKcal = this[CalorieRingWidgetState.normalLeftKcal] ?: 0,
         optimizedGoalKcal = this[CalorieRingWidgetState.optimizedGoalKcal],
         optimizedLeftKcal = this[CalorieRingWidgetState.optimizedLeftKcal],
-        dietGoalKcal = this[CalorieRingWidgetState.dietGoalKcal],
-        dietLeftKcal = this[CalorieRingWidgetState.dietLeftKcal],
+        dietGoalConfigured =
+            this[CalorieRingWidgetState.dietGoalConfigured]
+                ?: (dietGoalKcal != null || dietLeftKcal != null),
+        dietGoalKcal = dietGoalKcal,
+        dietLeftKcal = dietLeftKcal,
     )
 }

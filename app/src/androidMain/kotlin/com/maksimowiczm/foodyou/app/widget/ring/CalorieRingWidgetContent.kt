@@ -96,7 +96,7 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                     goalKcal = model.dietGoalKcal,
                     leftKcal = model.dietLeftKcal,
                     netKcal = model.netKcal,
-                    disabledText = context.getString(R.string.widget_calories_diet_disabled),
+                    disabledText = dietUnavailableText(context, model.dietGoalConfigured),
                 )
             }
         }
@@ -231,10 +231,19 @@ private fun InlineGoalsRow(context: Context, model: CalorieWidgetModel, spec: Ca
             spec = spec,
             label = context.getString(R.string.widget_calories_diet),
             leftKcal = model.dietLeftKcal,
-            disabledText = context.getString(R.string.widget_calories_diet_disabled),
+            disabledText = dietUnavailableText(context, model.dietGoalConfigured),
         )
     }
 }
+
+private fun dietUnavailableText(context: Context, dietGoalConfigured: Boolean): String =
+    context.getString(
+        if (dietGoalConfigured) {
+            R.string.widget_calories_placeholder
+        } else {
+            R.string.widget_calories_diet_disabled
+        }
+    )
 
 @Composable
 private fun InlineGoal(
