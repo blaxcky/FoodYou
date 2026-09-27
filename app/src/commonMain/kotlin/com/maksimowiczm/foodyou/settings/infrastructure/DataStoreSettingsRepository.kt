@@ -11,8 +11,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStoreUserPreferencesRepository
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.set
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
-import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_LOCKED_DAY_SURPLUS_KCAL
+import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
@@ -23,8 +23,8 @@ import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
-import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
+import kotlinx.datetime.LocalDate
 
 internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
     AbstractDataStoreUserPreferencesRepository<Settings>(dataStore) {
@@ -74,8 +74,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             fddbProductSyncMode = getFddbProductSyncMode(),
             fddbProductSyncManualFrequency = getFddbProductSyncManualFrequency(),
             fddbProductSyncManualTriggerCount =
-                (this[SettingsPreferencesKeys.fddbProductSyncManualTriggerCountV2] ?: 0)
-                    .coerceIn(0, 2),
+                if (hasCurrentFddbProductSyncMode()) {
+                    (this[SettingsPreferencesKeys.fddbProductSyncManualTriggerCountV2] ?: 0)
+                        .coerceIn(0, 2)
+                } else 0,
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
@@ -319,12 +321,16 @@ private fun Preferences.getPendingProductPhotoQuality(): PendingProductPhotoQual
 private fun Preferences.getFddbProductSyncMode(): FddbProductSyncMode =
     runCatching {
             this[SettingsPreferencesKeys.fddbProductSyncMode]?.let(FddbProductSyncMode::valueOf)
-                ?: FddbProductSyncMode.EveryThirtyMinutes
+                ?: FddbProductSyncMode.WithManualFddbSync
         }
-        .getOrElse { FddbProductSyncMode.EveryThirtyMinutes }
+        .getOrElse { FddbProductSyncMode.WithManualFddbSync }
+
+private fun Preferences.hasCurrentFddbProductSyncMode(): Boolean =
+    this[SettingsPreferencesKeys.fddbProductSyncMode] in FddbProductSyncMode.entries.map { it.name }
 
 private fun Preferences.getFddbProductSyncManualFrequency(): FddbProductSyncManualFrequency =
-    runCatching {
+    if (!hasCurrentFddbProductSyncMode()) FddbProductSyncManualFrequency.EveryThirdSync
+    else runCatching {
             this[SettingsPreferencesKeys.fddbProductSyncManualFrequency]?.let(
                 FddbProductSyncManualFrequency::valueOf
             ) ?: FddbProductSyncManualFrequency.EveryThirdSync

@@ -113,6 +113,7 @@ class ImportFddbProductsUseCase(
                 retryAfterMillis = exception.retryAfterMillis,
             )
         } catch (throwable: Throwable) {
+            if (throwable is kotlinx.coroutines.CancellationException) throw throwable
             FddbImportResult.Failed(link = link, message = throwable.message)
         }
 

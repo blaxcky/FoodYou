@@ -20,6 +20,7 @@ class ManualFddbDiarySyncUseCase(
             try {
                 diarySyncUseCase.sync(referenceDate)
             } catch (throwable: Throwable) {
+                if (throwable is kotlinx.coroutines.CancellationException) throw throwable
                 settingsRepository.recordFddbDiarySyncFailure(throwable)
                 return Err(throwable)
             }

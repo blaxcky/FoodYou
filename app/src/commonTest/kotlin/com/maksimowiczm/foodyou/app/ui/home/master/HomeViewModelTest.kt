@@ -27,13 +27,142 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 
 class HomeViewModelTest {
+    @Test
+    fun combinedSyncRejectsRepeatedClicksAndClearsLoadingAfterCompletion() = runTest {
+        val runner = HomeSyncRunner(this)
+        val release = CompletableDeferred<Unit>()
+        var runs = 0
+        runner.launch { runs++; release.await() }
+        runner.launch { runs++ }
+        assertTrue(runner.isSyncing.value)
+        runCurrent()
+        assertEquals(1, runs)
+        release.complete(Unit)
+        runCurrent()
+        assertFalse(runner.isSyncing.value)
+        runner.launch { runs++ }
+        runCurrent()
+        assertEquals(2, runs)
+    }
+
+    @Test
+    fun combinedLoadingStateIncludesWeightWhenOtherSourcesAreDisabled() {
+        val state = HomeSyncState(
+            activitySyncState = HomeActivitySyncState(false, false, emptyMap()),
+            fddbSyncState = HomeFddbSyncState.Idle(false),
+            healthConnectEnabled = false, fddbDiaryEnabled = false,
+            configuredSyncInProgress = true,
+        )
+        assertTrue(state.isSyncing)
+    }
+
+    @Test
+    fun disabledSourcesAreNotInvoked() = runTest {
+        val settings = FakeSettingsRepository().value.copy(
+            homeSyncHealthConnectEnabled = false, homeSyncFddbDiaryEnabled = false,
+            healthConnectWeightEnabled = false,
+        )
+        var invocations = 0
+        val result = syncConfiguredHomeSync(
+            date = LocalDate(2026, 9, 27), settings = settings,
+            settingsRepository = FakeSettingsRepository(),
+            syncHealthConnect = { invocations++ },
+            syncWeight = { invocations++ },
+            hasFddbCredentials = { invocations++; true },
+            syncFddbDiary = { invocations++; Ok(FddbDiarySyncResult(0, 0, 0)) },
+        )
+        assertEquals(0, invocations)
+        assertEquals(HomeConfiguredSyncResult(false, false, false), result)
+    }
+
+    @Test
+    fun configuredSyncStartsAllBranchesAndWaitsForWeight() = runTest {
+        val settings = FakeSettingsRepository().value.copy(
+            homeSyncHealthConnectEnabled = true,
+            homeSyncFddbDiaryEnabled = true,
+            healthConnectWeightEnabled = true,
+        )
+        val started = mutableSetOf<String>()
+        val release = CompletableDeferred<Unit>()
+        val weightRelease = CompletableDeferred<Unit>()
+        val sync = async {
+            syncConfiguredHomeSync(
+                date = LocalDate(2026, 9, 27), settings = settings,
+                settingsRepository = FakeSettingsRepository(),
+                syncHealthConnect = { started.add("steps"); release.await() },
+                syncWeight = { started.add("weight"); weightRelease.await() },
+                hasFddbCredentials = { true },
+                syncFddbDiary = {
+                    started.add("diary"); release.await()
+                    Ok(FddbDiarySyncResult(0, 0, 0))
+                },
+            )
+        }
+        runCurrent()
+        assertEquals(setOf("steps", "weight", "diary"), started)
+        release.complete(Unit)
+        runCurrent()
+        assertFalse(sync.isCompleted)
+        weightRelease.complete(Unit)
+        assertTrue(sync.await().fddbDiarySynced)
+    }
+
+    @Test
+    fun branchFailureDoesNotCancelOtherSyncs() = runTest {
+        val settings = FakeSettingsRepository().value.copy(
+            homeSyncHealthConnectEnabled = true, homeSyncFddbDiaryEnabled = true,
+            healthConnectWeightEnabled = true,
+        )
+        var weightRan = false
+        val result = syncConfiguredHomeSync(
+            date = LocalDate(2026, 9, 27), settings = settings,
+            settingsRepository = FakeSettingsRepository(),
+            syncHealthConnect = { error("Health Connect unavailable") },
+            syncWeight = { weightRan = true }, hasFddbCredentials = { true },
+            syncFddbDiary = { Ok(FddbDiarySyncResult(0, 0, 0)) },
+        )
+        assertFalse(result.healthConnectSynced)
+        assertTrue(result.fddbDiarySynced)
+        assertTrue(weightRan)
+    }
+
+    @Test
+    fun cancellingCombinedSyncCancelsAllBranches() = runTest {
+        val settings = FakeSettingsRepository().value.copy(
+            homeSyncHealthConnectEnabled = true, homeSyncFddbDiaryEnabled = true,
+            healthConnectWeightEnabled = true,
+        )
+        val cancelled = mutableSetOf<String>()
+        suspend fun wait(name: String) {
+            try { awaitCancellation() } finally { cancelled.add(name) }
+        }
+        val job = async {
+            syncConfiguredHomeSync(
+                date = LocalDate(2026, 9, 27), settings = settings,
+                settingsRepository = FakeSettingsRepository(),
+                syncHealthConnect = { wait("steps") }, syncWeight = { wait("weight") },
+                hasFddbCredentials = { true },
+                syncFddbDiary = { wait("diary"); Ok(FddbDiarySyncResult(0, 0, 0)) },
+            )
+        }
+        runCurrent()
+        job.cancelAndJoin()
+        assertEquals(setOf("steps", "weight", "diary"), cancelled)
+    }
+
     @Test
     fun burnedEnergySyncDeltaKcalReturnsPositiveRoundedIncrease() {
         assertEquals(5, burnedEnergySyncDeltaKcal(before = 955.0, after = 960.0))

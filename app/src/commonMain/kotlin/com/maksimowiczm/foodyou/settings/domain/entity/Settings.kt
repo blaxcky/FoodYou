@@ -34,7 +34,7 @@ data class Settings(
     val fddbDiarySyncLastErrorMessage: String? = null,
     val fddbDiarySyncLastAttemptEpochSeconds: Long? = null,
     val fddbProductSyncLastAttemptEpochSeconds: Long? = null,
-    val fddbProductSyncMode: FddbProductSyncMode = FddbProductSyncMode.EveryThirtyMinutes,
+    val fddbProductSyncMode: FddbProductSyncMode = FddbProductSyncMode.WithManualFddbSync,
     val fddbProductSyncManualFrequency: FddbProductSyncManualFrequency =
         FddbProductSyncManualFrequency.EveryThirdSync,
     val fddbProductSyncManualTriggerCount: Int = 0,
@@ -123,7 +123,6 @@ enum class PendingProductPhotoQuality {
 }
 
 enum class FddbProductSyncMode {
-    EveryThirtyMinutes,
     WithManualFddbSync,
     Disabled,
 }

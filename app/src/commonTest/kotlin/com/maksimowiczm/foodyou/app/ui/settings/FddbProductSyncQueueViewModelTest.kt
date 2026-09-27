@@ -16,11 +16,12 @@ import com.maksimowiczm.foodyou.food.domain.entity.Product
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
-import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncCoordinator
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchLauncher
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchState
+import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncDueFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductUseCase
@@ -32,8 +33,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.time.Duration
 import kotlin.time.Instant
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,53 +51,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class FddbProductSyncQueueViewModelTest {
-    @Test
-    fun modelShowsNextAutomaticSyncOnlyWhileCooldownIsActive() = runTest {
-        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        val fixture = Fixture(this)
-        val viewModel = fixture.viewModel()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.model.collect()
-        }
-        try {
-            fixture.settings.update {
-                copy(
-                    fddbProductSyncLastAttemptEpochSeconds =
-                        FixedDateProvider.nowInstant().epochSeconds
-                )
-            }
-            advanceUntilIdle()
-
-            assertEquals(
-                Instant.parse("2026-09-25T12:30:00Z"),
-                viewModel.model.value.nextAutomaticSyncAt,
-            )
-
-            fixture.settings.update {
-                copy(
-                    fddbProductSyncLastAttemptEpochSeconds =
-                        FixedDateProvider.nowInstant().epochSeconds - 1_800
-                )
-            }
-            advanceUntilIdle()
-
-            assertNull(viewModel.model.value.nextAutomaticSyncAt)
-
-            fixture.settings.update {
-                copy(
-                    fddbProductSyncMode = FddbProductSyncMode.Disabled,
-                    fddbProductSyncLastAttemptEpochSeconds =
-                        FixedDateProvider.nowInstant().epochSeconds,
-                )
-            }
-            advanceUntilIdle()
-            assertNull(viewModel.model.value.nextAutomaticSyncAt)
-        } finally {
-            viewModel.viewModelScope.cancel()
-            Dispatchers.resetMain()
-        }
-    }
-
     @Test
     fun manualBatchValidatesAgainstQueueAndPublishesLauncherResult() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
@@ -199,12 +153,10 @@ class FddbProductSyncQueueViewModelTest {
                     statusRepository = status,
                     syncDueFddbProductsUseCase = SyncDueFddbProductsUseCase(status, sync),
                     syncFddbProductUseCase = sync,
-                    dateProvider = FixedDateProvider,
                 )
             return FddbProductSyncQueueViewModel(
                 statusRepository = status,
                 settingsRepository = settings,
-                dateProvider = FixedDateProvider,
                 fddbProductSyncCoordinator = coordinator,
                 manualBatchLauncher =
                     FddbProductSyncManualBatchLauncher(scope, coordinator, NoopLogger),
@@ -219,7 +171,10 @@ class FddbProductSyncQueueViewModelTest {
     private class FakeGateway : FddbProductGateway {
         val requestedUrls = mutableListOf<String>()
 
-        override suspend fun getProduct(url: String): FddbProduct {
+        override suspend fun getProduct(
+            url: String,
+            priority: FddbRequestPriority,
+        ): FddbProduct {
             requestedUrls += url
             return FddbProduct(
                 name = "Remote",

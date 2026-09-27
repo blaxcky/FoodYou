@@ -1,21 +1,22 @@
 package com.maksimowiczm.foodyou.food.domain.usecase
 
-import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.database.TransactionScope
+import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiaryGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiarySyncEntryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFood
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.FoodDiaryEntryId
@@ -37,6 +38,25 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 
 class FddbDiarySyncUseCaseTest {
+    @Test
+    fun cancellationDuringProductFetchStopsDiaryInsteadOfRecordingFailure() = runBlocking {
+        val entries = FakeFddbDiarySyncEntryRepository()
+        val gateway = object : FddbProductGateway {
+            override suspend fun getProduct(url: String, priority: FddbRequestPriority): FddbProduct {
+                assertEquals(FddbRequestPriority.Diary, priority)
+                throw kotlinx.coroutines.CancellationException("Cancelled")
+            }
+        }
+        val sync = useCase(
+            diaryGateway = FakeFddbDiaryGateway(listOf(diaryEntry("1", "food"))),
+            productGateway = gateway, syncEntries = entries,
+        )
+        kotlin.test.assertFailsWith<kotlinx.coroutines.CancellationException> {
+            sync.sync(LocalDate(2026, 5, 25))
+        }
+        assertEquals(emptySet(), entries.ids)
+    }
+
     @Test
     fun skipsAlreadySyncedEntriesAndDummyProducts() = runBlocking {
         val syncEntries = FakeFddbDiarySyncEntryRepository(existing = setOf("1"))
@@ -386,7 +406,11 @@ class FddbDiarySyncUseCaseTest {
         private val isLiquid: Boolean = false,
         private val portions: List<ProductPortion> = emptyList(),
     ) : FddbProductGateway {
-        override suspend fun getProduct(url: String): FddbProduct {
+        override suspend fun getProduct(
+            url: String,
+            priority: FddbRequestPriority,
+        ): FddbProduct {
+            assertEquals(FddbRequestPriority.Diary, priority)
             if (failingSlug != null && url.contains(failingSlug)) error("Failed")
             val slug = url.substringAfterLast("lebensmittel/").substringBefore("/")
             return FddbProduct(

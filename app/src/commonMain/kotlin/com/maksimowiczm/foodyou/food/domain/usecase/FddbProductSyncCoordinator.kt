@@ -1,14 +1,12 @@
 package com.maksimowiczm.foodyou.food.domain.usecase
 
-import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
-import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
-import kotlin.time.Duration.Companion.minutes
+import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -18,34 +16,8 @@ class FddbProductSyncCoordinator(
     private val statusRepository: FddbProductSyncStatusRepository,
     private val syncDueFddbProductsUseCase: SyncDueFddbProductsUseCase,
     private val syncFddbProductUseCase: SyncFddbProductUseCase,
-    private val dateProvider: DateProvider,
 ) {
     private val mutex = Mutex()
-
-    suspend fun syncDueIfAllowed(): AutomaticFddbProductSyncResult =
-        mutex.withLock {
-            val now = dateProvider.nowInstant()
-            val settings = settingsRepository.observe().first()
-            if (settings.fddbProductSyncMode != FddbProductSyncMode.EveryThirtyMinutes) {
-                return@withLock AutomaticFddbProductSyncResult.NotEnabled
-            }
-            val lastAttempt = settings.fddbProductSyncLastAttemptEpochSeconds
-            if (
-                lastAttempt != null &&
-                    now.epochSeconds - lastAttempt < AUTOMATIC_SYNC_INTERVAL.inWholeSeconds
-            ) {
-                return@withLock AutomaticFddbProductSyncResult.NotDue
-            }
-
-            val products = statusRepository.getDueProducts(AUTOMATIC_SYNC_LIMIT)
-            if (products.isEmpty()) {
-                return@withLock AutomaticFddbProductSyncResult.NoProducts
-            }
-
-            AutomaticFddbProductSyncResult.Completed(
-                syncDueFddbProductsUseCase.sync(products)
-            )
-        }
 
     suspend fun onManualFddbSyncCompleted(): ManualFddbProductSyncResult =
         mutex.withLock {
@@ -55,7 +27,7 @@ class FddbProductSyncCoordinator(
             }
 
             when (settings.fddbProductSyncManualFrequency) {
-                FddbProductSyncManualFrequency.EverySync -> syncNextLocked(AUTOMATIC_SYNC_LIMIT)
+                FddbProductSyncManualFrequency.EverySync -> syncNextLocked(MANUAL_SYNC_LIMIT)
                 FddbProductSyncManualFrequency.EveryThirdSync -> {
                     val count = settings.fddbProductSyncManualTriggerCount + 1
                     if (count < MANUAL_SYNCS_PER_PRODUCT_SYNC) {
@@ -67,7 +39,7 @@ class FddbProductSyncCoordinator(
                         settingsRepository.update {
                             copy(fddbProductSyncManualTriggerCount = 0)
                         }
-                        syncNextLocked(AUTOMATIC_SYNC_LIMIT)
+                        syncNextLocked(MANUAL_SYNC_LIMIT)
                     }
                 }
             }
@@ -88,8 +60,7 @@ class FddbProductSyncCoordinator(
     }
 
     companion object {
-        val AUTOMATIC_SYNC_INTERVAL = 30.minutes
-        const val AUTOMATIC_SYNC_LIMIT = 2
+        const val MANUAL_SYNC_LIMIT = 2
         const val MANUAL_SYNCS_PER_PRODUCT_SYNC = 3
     }
 
@@ -106,17 +77,6 @@ class FddbProductSyncCoordinator(
             syncDueFddbProductsUseCase.sync(products, onProgress)
         )
     }
-}
-
-sealed interface AutomaticFddbProductSyncResult {
-    data object NotEnabled : AutomaticFddbProductSyncResult
-
-    data object NotDue : AutomaticFddbProductSyncResult
-
-    data object NoProducts : AutomaticFddbProductSyncResult
-
-    data class Completed(val result: SyncDueFddbProductsResult) :
-        AutomaticFddbProductSyncResult
 }
 
 sealed interface ManualFddbProductSyncResult {

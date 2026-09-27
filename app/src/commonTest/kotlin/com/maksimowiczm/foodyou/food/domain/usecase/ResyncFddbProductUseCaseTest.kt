@@ -7,14 +7,15 @@ import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.common.result.Result
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbHttpException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -205,7 +206,10 @@ class ResyncFddbProductUseCaseTest {
         private val failing: Boolean = false,
         private val throwable: Throwable? = null,
     ) : FddbProductGateway {
-        override suspend fun getProduct(url: String): FddbProduct {
+        override suspend fun getProduct(
+            url: String,
+            priority: FddbRequestPriority,
+        ): FddbProduct {
             throwable?.let { throw it }
             if (blocked) {
                 throw FddbAccessBlockedException("Blocked")

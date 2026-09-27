@@ -7,14 +7,15 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.food.domain.entity.FddbImportQueueItem
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
+import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
-import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbImportQueueRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import kotlin.test.Test
@@ -237,7 +238,10 @@ class ImportFddbProductsUseCaseTest {
     ) : FddbProductGateway {
         val requests = mutableListOf<String>()
 
-        override suspend fun getProduct(url: String): FddbProduct {
+        override suspend fun getProduct(
+            url: String,
+            priority: FddbRequestPriority,
+        ): FddbProduct {
             requests += url
             if (url == failingUrl) {
                 error("Failed")

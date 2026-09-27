@@ -1,9 +1,10 @@
 package com.maksimowiczm.foodyou.food.infrastructure.fddb
 
 import com.maksimowiczm.foodyou.common.config.NetworkConfig
-import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
+import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -16,8 +17,12 @@ internal class FddbRemoteDataSource(
     private val client: HttpClient,
     private val parser: FddbProductParser,
     private val networkConfig: NetworkConfig,
+    private val requestQueue: FddbRequestQueue,
 ) : FddbProductGateway {
-    override suspend fun getProduct(url: String): FddbProduct {
+    override suspend fun getProduct(
+        url: String,
+        priority: FddbRequestPriority,
+    ): FddbProduct = requestQueue.execute(priority) {
         val response =
             client.get(url) {
                 userAgent(networkConfig.userAgent)
@@ -41,7 +46,7 @@ internal class FddbRemoteDataSource(
             )
         }
 
-        return parser.parse(html)
+        parser.parse(html)
     }
 }
 

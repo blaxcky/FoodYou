@@ -120,8 +120,6 @@
     <string name="headline_fddb_product_sync_queue">FDDB-Produktabgleich-Warteschlange</string>
     <string name="headline_fddb_product_sync_settings">FDDB-Produktabgleich</string>
     <string name="description_fddb_product_sync_settings">Lege fest, wann Produkte aus der Warteschlange abgeglichen werden.</string>
-    <string name="option_fddb_product_sync_every_thirty_minutes">Alle 30 Minuten beim Öffnen der App</string>
-    <string name="description_fddb_product_sync_every_thirty_minutes">Wird ausgeführt, wenn die App in den Vordergrund kommt und die letzte Anfrage mindestens 30 Minuten zurückliegt.</string>
     <string name="option_fddb_product_sync_with_manual_sync">Beim manuellen FDDB-Tagebuch-Sync</string>
     <string name="option_fddb_product_sync_disabled">Deaktiviert</string>
     <string name="option_fddb_product_sync_every_sync">Jedes Mal</string>
@@ -129,8 +127,6 @@
     <string name="neutral_fddb_product_sync_manual_every_time">Die nächsten zwei Produkte werden bei jedem manuellen FDDB-Tagebuch-Sync abgeglichen</string>
     <string name="neutral_fddb_product_sync_manual_progress">%1$d/3 manuelle FDDB-Tagebuch-Syncs bis zu den nächsten zwei Produkten</string>
     <string name="neutral_fddb_product_sync_disabled">Automatischer FDDB-Produktabgleich ist deaktiviert</string>
-    <string name="neutral_fddb_product_sync_ready">Beim nächsten Öffnen bereit</string>
-    <string name="neutral_fddb_product_sync_next_at">Nächster automatischer Abgleich frühestens %1$s</string>
     <string name="neutral_fddb_product_sync_empty">Keine FDDB-Produkte mit Quell-URL gefunden</string>
     <string name="neutral_fddb_product_sync_next">Nächste zwei</string>
     <string name="neutral_fddb_product_sync_never">Letzter erfolgreicher Abgleich: noch nie</string>

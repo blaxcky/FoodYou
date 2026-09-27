@@ -4,34 +4,34 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -45,8 +45,6 @@ import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFreq
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import foodyou.app.generated.resources.*
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -305,18 +303,6 @@ internal fun FddbProductSyncPolicyDialog(
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 FddbProductSyncPolicyOption(
-                    selected = selectedMode == FddbProductSyncMode.EveryThirtyMinutes,
-                    headline =
-                        stringResource(
-                            Res.string.option_fddb_product_sync_every_thirty_minutes
-                        ),
-                    supporting =
-                        stringResource(
-                            Res.string.description_fddb_product_sync_every_thirty_minutes
-                        ),
-                    onClick = { selectedMode = FddbProductSyncMode.EveryThirtyMinutes },
-                )
-                FddbProductSyncPolicyOption(
                     selected = selectedMode == FddbProductSyncMode.WithManualFddbSync,
                     headline =
                         stringResource(
@@ -433,27 +419,11 @@ private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {
 
 @Composable
 private fun SynchronizationSettingsModel?.fddbProductSyncQueueStatus(): String =
-    when (this?.fddbProductSyncMode) {
-        FddbProductSyncMode.EveryThirtyMinutes ->
-            nextAutomaticFddbProductSyncAt?.let {
-                stringResource(
-                    Res.string.neutral_fddb_product_sync_next_at,
-                    LocalDateFormatter.current.formatDateTime(
-                        it.toLocalDateTime(TimeZone.currentSystemDefault())
-                    ),
-                )
-            } ?: stringResource(Res.string.neutral_fddb_product_sync_ready)
-        FddbProductSyncMode.WithManualFddbSync,
-        FddbProductSyncMode.Disabled,
-        null,
-        -> fddbProductSyncPolicySummary()
-    }
+    fddbProductSyncPolicySummary()
 
 @Composable
 private fun SynchronizationSettingsModel?.fddbProductSyncPolicySummary(): String =
     when (this?.fddbProductSyncMode) {
-        FddbProductSyncMode.EveryThirtyMinutes ->
-            stringResource(Res.string.option_fddb_product_sync_every_thirty_minutes)
         FddbProductSyncMode.WithManualFddbSync ->
             when (fddbProductSyncManualFrequency) {
                 FddbProductSyncManualFrequency.EverySync ->

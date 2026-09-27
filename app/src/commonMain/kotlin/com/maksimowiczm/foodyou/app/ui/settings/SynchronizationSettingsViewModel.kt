@@ -3,13 +3,11 @@ package com.maksimowiczm.foodyou.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.HealthConnectAvailability
-import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.ManualFddbDiarySyncUseCase
-import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncForegroundLauncher
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbDiarySyncStatus
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
@@ -17,8 +15,8 @@ import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
 import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
 import kotlin.time.Clock
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -32,8 +30,6 @@ internal class SynchronizationSettingsViewModel(
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     fddbCredentialsRepository: FddbCredentialsRepository,
     private val healthConnectWeightSync: HealthConnectWeightSync,
-    private val fddbProductSyncForegroundLauncher: FddbProductSyncForegroundLauncher,
-    dateProvider: DateProvider,
 ) : ViewModel() {
 
     private val fddbSyncInProgress = MutableStateFlow(false)
@@ -52,8 +48,7 @@ internal class SynchronizationSettingsViewModel(
                 fddbCredentialsRepository.hasCredentials(),
                 fddbSyncInProgress,
                 weightSyncAvailable,
-                dateProvider.observeInstant(),
-            ) { settings, hasFddbCredentials, fddbSyncing, weightAvailable, now ->
+            ) { settings, hasFddbCredentials, fddbSyncing, weightAvailable ->
                 SynchronizationSettingsModel(
                     homeSyncHealthConnectEnabled = settings.homeSyncHealthConnectEnabled,
                     weightSyncEnabled = settings.healthConnectWeightEnabled,
@@ -66,8 +61,6 @@ internal class SynchronizationSettingsViewModel(
                     fddbProductSyncManualFrequency = settings.fddbProductSyncManualFrequency,
                     fddbProductSyncManualTriggerCount =
                         settings.fddbProductSyncManualTriggerCount,
-                    nextAutomaticFddbProductSyncAt =
-                        settings.nextAutomaticFddbProductSyncAt(now),
                 )
             }
             .stateIn(
@@ -112,12 +105,6 @@ internal class SynchronizationSettingsViewModel(
                         if (changed) 0 else fddbProductSyncManualTriggerCount,
                 )
             }
-            if (
-                current.fddbProductSyncMode != FddbProductSyncMode.EveryThirtyMinutes &&
-                    mode == FddbProductSyncMode.EveryThirtyMinutes
-            ) {
-                fddbProductSyncForegroundLauncher.onForeground()
-            }
         }
     }
 
@@ -153,5 +140,4 @@ internal data class SynchronizationSettingsModel(
     val fddbProductSyncMode: FddbProductSyncMode,
     val fddbProductSyncManualFrequency: FddbProductSyncManualFrequency,
     val fddbProductSyncManualTriggerCount: Int,
-    val nextAutomaticFddbProductSyncAt: kotlin.time.Instant?,
 )

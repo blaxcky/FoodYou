@@ -10,8 +10,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
-import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.activity.domain.entity.StepExclusionPeriod
+import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.activity.domain.usecase.MINUTES_PER_DAY
 import com.maksimowiczm.foodyou.activity.domain.usecase.boundedExcludedSteps
 import com.maksimowiczm.foodyou.activity.domain.usecase.mergeStepExclusionPeriods
@@ -65,7 +65,8 @@ private class AndroidHealthConnectActivitySync(
             false
         } catch (_: RemoteException) {
             false
-        } catch (_: RuntimeException) {
+        } catch (exception: RuntimeException) {
+            if (exception is kotlinx.coroutines.CancellationException) throw exception
             false
         }
     }
@@ -124,7 +125,8 @@ private class AndroidHealthConnectActivitySync(
             HealthConnectSyncResult.Failed
         } catch (_: RemoteException) {
             HealthConnectSyncResult.Failed
-        } catch (_: RuntimeException) {
+        } catch (exception: RuntimeException) {
+            if (exception is kotlinx.coroutines.CancellationException) throw exception
             HealthConnectSyncResult.Failed
         }
     }

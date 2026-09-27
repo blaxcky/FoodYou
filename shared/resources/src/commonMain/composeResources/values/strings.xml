@@ -553,8 +553,6 @@
     <string name="headline_fddb_product_sync_queue">FDDB product sync queue</string>
     <string name="headline_fddb_product_sync_settings">FDDB product sync</string>
     <string name="description_fddb_product_sync_settings">Choose when products in the queue are synchronized.</string>
-    <string name="option_fddb_product_sync_every_thirty_minutes">Every 30 minutes when opening the app</string>
-    <string name="description_fddb_product_sync_every_thirty_minutes">Runs when the app enters the foreground and the last request was at least 30 minutes ago.</string>
     <string name="option_fddb_product_sync_with_manual_sync">With manual FDDB diary sync</string>
     <string name="option_fddb_product_sync_disabled">Disabled</string>
     <string name="option_fddb_product_sync_every_sync">Every time</string>
@@ -562,8 +560,6 @@
     <string name="neutral_fddb_product_sync_manual_every_time">The next two products run with every manual FDDB diary sync</string>
     <string name="neutral_fddb_product_sync_manual_progress">%1$d/3 manual FDDB diary syncs until the next two products</string>
     <string name="neutral_fddb_product_sync_disabled">Automatic FDDB product sync is disabled</string>
-    <string name="neutral_fddb_product_sync_ready">Ready on the next app open</string>
-    <string name="neutral_fddb_product_sync_next_at">Next automatic sync no earlier than %1$s</string>
     <string name="neutral_fddb_product_sync_empty">No FDDB products with source URL found</string>
     <string name="neutral_fddb_product_sync_next">Next two</string>
     <string name="neutral_fddb_product_sync_never">Last successful sync: never</string>

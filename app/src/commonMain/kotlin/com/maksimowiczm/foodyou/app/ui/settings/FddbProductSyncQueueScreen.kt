@@ -8,19 +8,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.OpenInBrowser
-import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -549,10 +549,6 @@ private fun Instant.formatDateTime(): String =
 @Composable
 private fun FddbProductSyncQueueModel.scheduleStatusText(): String =
     when (syncMode) {
-        FddbProductSyncMode.EveryThirtyMinutes ->
-            nextAutomaticSyncAt?.let {
-                stringResource(Res.string.neutral_fddb_product_sync_next_at, it.formatDateTime())
-            } ?: stringResource(Res.string.neutral_fddb_product_sync_ready)
         FddbProductSyncMode.WithManualFddbSync ->
             when (manualFrequency) {
                 FddbProductSyncManualFrequency.EverySync ->

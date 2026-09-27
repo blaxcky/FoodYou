@@ -17,8 +17,8 @@ import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
-import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchState
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncBatchProgress
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchState
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import kotlin.time.Instant
@@ -115,8 +115,7 @@ class FddbProductSyncQueueScreenScreenshotTest {
                 FddbProductSyncQueueContent(
                     model =
                         FddbProductSyncQueueModel(
-                            nextAutomaticSyncAt = Instant.parse("2026-09-25T12:30:00Z"),
-                            syncMode = FddbProductSyncMode.EveryThirtyMinutes,
+                            syncMode = FddbProductSyncMode.WithManualFddbSync,
                             manualFrequency = FddbProductSyncManualFrequency.EveryThirdSync,
                             manualTriggerCount = 0,
                             manualBatchState = batchState,

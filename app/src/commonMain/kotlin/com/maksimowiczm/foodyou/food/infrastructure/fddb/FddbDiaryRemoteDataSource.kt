@@ -4,6 +4,7 @@ import com.maksimowiczm.foodyou.common.config.NetworkConfig
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiaryGateway
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
@@ -18,8 +19,11 @@ internal class FddbDiaryRemoteDataSource(
     private val parser: FddbDiaryParser,
     private val credentialsRepository: FddbCredentialsRepository,
     private val networkConfig: NetworkConfig,
+    private val requestQueue: FddbRequestQueue,
 ) : FddbDiaryGateway {
-    override suspend fun login(username: String, password: String) {
+    override suspend fun login(username: String, password: String) = requestQueue.execute(
+        FddbRequestPriority.Diary
+    ) {
         val response =
             client.submitForm(
                 url = "https://fddb.info/db/i18n/account/?lang=de&action=login",
@@ -41,15 +45,17 @@ internal class FddbDiaryRemoteDataSource(
     override suspend fun getLastSevenDays(referenceDate: LocalDate): List<FddbDiaryEntry> {
         val credentials = credentialsRepository.loadCredentials() ?: error("FDDB credentials missing")
         login(credentials.first, credentials.second)
-        val response =
+        val html = requestQueue.execute(
+            FddbRequestPriority.Diary
+        ) {
             client.get("https://fddb.info/db/i18n/notepad/") {
                 userAgent(networkConfig.userAgent)
                 parameter("lang", "de")
                 parameter("action", "npfe")
                 parameter("mode", "1")
                 parameter("option", "4")
-            }
-
-        return parser.parse(response.bodyAsText(), referenceDate)
+            }.bodyAsText()
+        }
+        return parser.parse(html, referenceDate)
     }
 }

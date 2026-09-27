@@ -3,24 +3,22 @@ package com.maksimowiczm.foodyou.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
-import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductError
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncCoordinator
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchLauncher
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchState
+import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductError
 import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductError
 import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateFddbProductLinkError
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateFddbProductLinkUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.toStatusMessage
-import com.maksimowiczm.foodyou.common.result.Result
-import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
-import com.maksimowiczm.foodyou.common.domain.date.DateProvider
-import kotlin.time.Instant
+import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +30,6 @@ import kotlinx.coroutines.launch
 internal class FddbProductSyncQueueViewModel(
     statusRepository: FddbProductSyncStatusRepository,
     settingsRepository: UserPreferencesRepository<Settings>,
-    dateProvider: DateProvider,
     private val fddbProductSyncCoordinator: FddbProductSyncCoordinator,
     private val manualBatchLauncher: FddbProductSyncManualBatchLauncher,
     private val updateFddbProductLinkUseCase: UpdateFddbProductLinkUseCase,
@@ -45,11 +42,9 @@ internal class FddbProductSyncQueueViewModel(
         combine(
             statusRepository.observeQueue(),
             settingsRepository.observe(),
-            dateProvider.observeInstant(),
             manualBatchLauncher.state,
-        ) { queue, settings, now, batchState ->
+        ) { queue, settings, batchState ->
                 FddbProductSyncQueueModel(
-                    nextAutomaticSyncAt = settings.nextAutomaticFddbProductSyncAt(now),
                     syncMode = settings.fddbProductSyncMode,
                     manualFrequency = settings.fddbProductSyncManualFrequency,
                     manualTriggerCount = settings.fddbProductSyncManualTriggerCount,
@@ -62,8 +57,7 @@ internal class FddbProductSyncQueueViewModel(
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue =
                     FddbProductSyncQueueModel(
-                        nextAutomaticSyncAt = null,
-                        syncMode = FddbProductSyncMode.EveryThirtyMinutes,
+                        syncMode = FddbProductSyncMode.WithManualFddbSync,
                         manualFrequency = FddbProductSyncManualFrequency.EveryThirdSync,
                         manualTriggerCount = 0,
                         manualBatchState = FddbProductSyncManualBatchState.Idle,
@@ -125,20 +119,12 @@ internal class FddbProductSyncQueueViewModel(
 }
 
 internal data class FddbProductSyncQueueModel(
-    val nextAutomaticSyncAt: Instant?,
     val syncMode: FddbProductSyncMode,
     val manualFrequency: FddbProductSyncManualFrequency,
     val manualTriggerCount: Int,
     val manualBatchState: FddbProductSyncManualBatchState,
     val queue: List<FddbProductSyncQueueItem>,
 )
-
-internal fun Settings.nextAutomaticFddbProductSyncAt(now: Instant): Instant? =
-    fddbProductSyncLastAttemptEpochSeconds
-        ?.takeIf { fddbProductSyncMode == FddbProductSyncMode.EveryThirtyMinutes }
-        ?.let(Instant::fromEpochSeconds)
-        ?.plus(FddbProductSyncCoordinator.AUTOMATIC_SYNC_INTERVAL)
-        ?.takeIf { it > now }
 
 internal data class FddbProductSyncActionState(
     val productId: FoodId.Product? = null,

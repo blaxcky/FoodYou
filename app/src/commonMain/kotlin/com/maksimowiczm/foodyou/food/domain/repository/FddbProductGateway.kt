@@ -3,8 +3,10 @@ package com.maksimowiczm.foodyou.food.domain.repository
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 
 interface FddbProductGateway {
-    suspend fun getProduct(url: String): FddbProduct
+    suspend fun getProduct(url: String, priority: FddbRequestPriority = FddbRequestPriority.Normal): FddbProduct
 }
+
+enum class FddbRequestPriority { Normal, Diary }
 
 class FddbAccessBlockedException(
     message: String,

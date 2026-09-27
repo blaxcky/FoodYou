@@ -8,25 +8,26 @@ import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.log.Logger
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProduct
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.repository.FddbAccessBlockedException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbHttpException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbParseException
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
-import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
-import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration
@@ -40,15 +41,15 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class SyncDueFddbProductsUseCaseTest {
     @Test
-    fun automaticSyncDoesNothingOutsideAutomaticMode() = runTest {
+    fun manualSyncDoesNothingWhenDisabled() = runTest {
         val fixture =
             coordinatorFixture(
                 now = Instant.fromEpochSeconds(10_000),
@@ -56,8 +57,8 @@ class SyncDueFddbProductsUseCaseTest {
             )
 
         assertEquals(
-            AutomaticFddbProductSyncResult.NotEnabled,
-            fixture.coordinator.syncDueIfAllowed(),
+            ManualFddbProductSyncResult.NotEnabled,
+            fixture.coordinator.onManualFddbSyncCompleted(),
         )
         assertEquals(emptyList(), fixture.gateway.requestedUrls)
     }
@@ -161,13 +162,13 @@ class SyncDueFddbProductsUseCaseTest {
     }
 
     @Test
-    fun automaticSyncImmediatelyProcessesOnlyTheFirstTwoProducts() = runTest {
+    fun manualSyncProcessesOnlyTheFirstTwoProducts() = runTest {
         val fixture = coordinatorFixture(now = Instant.fromEpochSeconds(10_000))
 
-        val result = fixture.coordinator.syncDueIfAllowed()
+        val result = fixture.coordinator.onManualFddbSyncCompleted()
 
         assertEquals(
-            AutomaticFddbProductSyncResult.Completed(
+            ManualFddbProductSyncResult.Completed(
                 SyncDueFddbProductsResult(synced = 2, failed = 0, blocked = false)
             ),
             result,
@@ -177,29 +178,7 @@ class SyncDueFddbProductsUseCaseTest {
     }
 
     @Test
-    fun automaticSyncWaitsThirtyMinutesAndRunsAtTheBoundary() = runTest {
-        val now = Instant.fromEpochSeconds(10_000)
-        val fixture = coordinatorFixture(now = now, lastAttempt = 10_000)
-
-        fixture.date.now = Instant.fromEpochSeconds(11_799)
-        assertEquals(
-            AutomaticFddbProductSyncResult.NotDue,
-            fixture.coordinator.syncDueIfAllowed(),
-        )
-        assertEquals(emptyList(), fixture.gateway.requestedUrls)
-
-        fixture.date.now = Instant.fromEpochSeconds(11_800)
-        assertEquals(
-            AutomaticFddbProductSyncResult.Completed(
-                SyncDueFddbProductsResult(synced = 2, failed = 0, blocked = false)
-            ),
-            fixture.coordinator.syncDueIfAllowed(),
-        )
-        assertEquals(listOf(Url(1), Url(2)), fixture.gateway.requestedUrls)
-    }
-
-    @Test
-    fun emptyQueueDoesNotStartCooldown() = runTest {
+    fun emptyQueueDoesNotRecordAttempt() = runTest {
         val fixture =
             coordinatorFixture(
                 now = Instant.fromEpochSeconds(10_000),
@@ -207,14 +186,14 @@ class SyncDueFddbProductsUseCaseTest {
             )
 
         assertEquals(
-            AutomaticFddbProductSyncResult.NoProducts,
-            fixture.coordinator.syncDueIfAllowed(),
+            ManualFddbProductSyncResult.NoProducts,
+            fixture.coordinator.onManualFddbSyncCompleted(),
         )
         assertEquals(null, fixture.settings.current.fddbProductSyncLastAttemptEpochSeconds)
     }
 
     @Test
-    fun manualSyncBypassesCooldownAndRestartsIt() = runTest {
+    fun explicitSyncRecordsAttempt() = runTest {
         val fixture =
             coordinatorFixture(
                 now = Instant.fromEpochSeconds(10_000),
@@ -225,14 +204,10 @@ class SyncDueFddbProductsUseCaseTest {
 
         assertEquals(listOf(Url(3)), fixture.gateway.requestedUrls)
         assertEquals(10_000, fixture.settings.current.fddbProductSyncLastAttemptEpochSeconds)
-        assertEquals(
-            AutomaticFddbProductSyncResult.NotDue,
-            fixture.coordinator.syncDueIfAllowed(),
-        )
     }
 
     @Test
-    fun interruptedRequestHasAlreadyStartedTheCooldown() = runTest {
+    fun interruptedRequestHasRecordedAttempt() = runTest {
         val started = CompletableDeferred<Unit>()
         val fixture =
             coordinatorFixture(
@@ -249,36 +224,6 @@ class SyncDueFddbProductsUseCaseTest {
         assertEquals(10_000, fixture.settings.current.fddbProductSyncLastAttemptEpochSeconds)
         assertEquals(listOf(FoodId.Product(1)), fixture.statusRepository.attempts)
         job.cancelAndJoin()
-    }
-
-    @Test
-    fun concurrentAutomaticTriggersProduceOneBatch() = runTest {
-        val release = CompletableDeferred<Unit>()
-        val firstRequestStarted = CompletableDeferred<Unit>()
-        var requestCount = 0
-        val fixture =
-            coordinatorFixture(
-                now = Instant.fromEpochSeconds(10_000),
-                beforeResponse = {
-                    requestCount += 1
-                    if (requestCount == 1) {
-                        firstRequestStarted.complete(Unit)
-                        release.await()
-                    }
-                },
-            )
-
-        val first = launch { fixture.coordinator.syncDueIfAllowed() }
-        firstRequestStarted.await()
-        val second = launch { fixture.coordinator.syncDueIfAllowed() }
-        runCurrent()
-        assertEquals(listOf(Url(1)), fixture.gateway.requestedUrls)
-
-        release.complete(Unit)
-        first.join()
-        second.join()
-
-        assertEquals(listOf(Url(1), Url(2)), fixture.gateway.requestedUrls)
     }
 
     @Test
@@ -390,9 +335,9 @@ class SyncDueFddbProductsUseCaseTest {
     private fun coordinatorFixture(
         now: Instant,
         lastAttempt: Long? = null,
-        mode: FddbProductSyncMode = FddbProductSyncMode.EveryThirtyMinutes,
+        mode: FddbProductSyncMode = FddbProductSyncMode.WithManualFddbSync,
         frequency: FddbProductSyncManualFrequency =
-            FddbProductSyncManualFrequency.EveryThirdSync,
+            FddbProductSyncManualFrequency.EverySync,
         manualTriggerCount: Int = 0,
         dueProducts: List<FddbProductSyncQueueItem> = dueItems(1, 2, 3),
         beforeResponse: suspend (String) -> Unit = {},
@@ -430,7 +375,6 @@ class SyncDueFddbProductsUseCaseTest {
                     syncDueFddbProductsUseCase =
                         SyncDueFddbProductsUseCase(statusRepository, sync),
                     syncFddbProductUseCase = sync,
-                    dateProvider = date,
                 ),
             settings = settings,
             statusRepository = statusRepository,
@@ -503,7 +447,10 @@ class SyncDueFddbProductsUseCaseTest {
     ) : FddbProductGateway {
         val requestedUrls = mutableListOf<String>()
 
-        override suspend fun getProduct(url: String): FddbProduct {
+        override suspend fun getProduct(
+            url: String,
+            priority: FddbRequestPriority,
+        ): FddbProduct {
             requestedUrls += url
             beforeResponse(url)
             if (url in blockedUrls) throw FddbAccessBlockedException("Blocked")

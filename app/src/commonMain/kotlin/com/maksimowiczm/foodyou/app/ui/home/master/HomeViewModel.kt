@@ -3,7 +3,6 @@ package com.maksimowiczm.foodyou.app.ui.home.master
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.HealthConnectActivitySync
-import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
 import com.maksimowiczm.foodyou.activity.HealthConnectSyncResult
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
@@ -15,25 +14,31 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ManualFddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbDiarySyncStatus
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
+import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
+import kotlin.math.roundToInt
 import kotlin.time.Clock
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.supervisorScope
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
-import kotlin.math.roundToInt
 
 internal data class HomeActivitySyncState(
     val isStale: Boolean,
@@ -57,10 +62,11 @@ internal data class HomeSyncState(
     val fddbSyncState: HomeFddbSyncState,
     val healthConnectEnabled: Boolean,
     val fddbDiaryEnabled: Boolean,
+    val configuredSyncInProgress: Boolean = false,
 ) {
     val isSyncing: Boolean
         get() =
-            (healthConnectEnabled && activitySyncState.isSyncing) ||
+            configuredSyncInProgress || (healthConnectEnabled && activitySyncState.isSyncing) ||
                 (fddbDiaryEnabled && fddbSyncState is HomeFddbSyncState.Syncing)
 
     val hasFddbFailure: Boolean
@@ -101,6 +107,8 @@ internal class HomeViewModel(
         )
 
     private val nowEpochSeconds = MutableStateFlow(Clock.System.now().epochSeconds)
+    private val configuredSyncRunner = HomeSyncRunner(viewModelScope)
+    private val configuredSyncInProgress = configuredSyncRunner.isSyncing
     private val isSyncing = MutableStateFlow(false)
     private val burnedEnergySyncDeltas = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     private val fddbSyncInProgress = MutableStateFlow(false)
@@ -158,14 +166,16 @@ internal class HomeViewModel(
             )
 
     val homeSyncState: StateFlow<HomeSyncState> =
-        combine(settingsRepository.observe(), activitySyncState, fddbSyncState) {
+        combine(settingsRepository.observe(), activitySyncState, fddbSyncState, configuredSyncInProgress) {
                 settings,
                 activityState,
                 fddbState,
+                configuredSyncing,
             ->
                 HomeSyncState(
                     activitySyncState = activityState,
                     fddbSyncState = fddbState,
+                    configuredSyncInProgress = configuredSyncing,
                     healthConnectEnabled = settings.homeSyncHealthConnectEnabled,
                     fddbDiaryEnabled = settings.homeSyncFddbDiaryEnabled,
                 )
@@ -196,7 +206,7 @@ internal class HomeViewModel(
     }
 
     fun syncActivities(date: LocalDate) {
-        if (isSyncing.value) return
+        if (configuredSyncInProgress.value || isSyncing.value) return
 
         viewModelScope.launch {
             isSyncing.value = true
@@ -221,9 +231,9 @@ internal class HomeViewModel(
     }
 
     fun syncConfigured(date: LocalDate) {
-        if (homeSyncState.value.isSyncing) return
+        if (isSyncing.value || fddbSyncInProgress.value) return
 
-        viewModelScope.launch {
+        configuredSyncRunner.launch {
             val settings = settingsRepository.observe().first()
             val result =
                 syncConfiguredHomeSync(
@@ -248,6 +258,7 @@ internal class HomeViewModel(
                             }
                         }
                     },
+                    syncWeight = { healthConnectWeightSync.syncHistorical() },
                     hasFddbCredentials = manualFddbDiarySyncUseCase::hasCredentials,
                     syncFddbDiary = { selectedDate ->
                         if (fddbSyncInProgress.value) {
@@ -262,7 +273,6 @@ internal class HomeViewModel(
                         }
                     },
                 )
-            healthConnectWeightSync.syncHistorical()
             if (result.healthConnectSynced || result.fddbDiarySynced) {
                 updateCalorieWidgetValues()
             }
@@ -270,7 +280,7 @@ internal class HomeViewModel(
     }
 
     fun syncFddbDiary(date: LocalDate) {
-        if (fddbSyncInProgress.value) return
+        if (configuredSyncInProgress.value || fddbSyncInProgress.value) return
 
         viewModelScope.launch {
             if (!manualFddbDiarySyncUseCase.hasCredentials()) {
@@ -321,34 +331,44 @@ internal suspend fun syncConfiguredHomeSync(
     syncHealthConnect: suspend () -> Unit,
     hasFddbCredentials: suspend () -> Boolean,
     syncFddbDiary: suspend (LocalDate) -> Result<FddbDiarySyncResult, Throwable>,
-): HomeConfiguredSyncResult {
-    var healthConnectSynced = false
-    var fddbDiarySynced = false
-    var fddbMissingCredentials = false
-
-    if (settings.homeSyncHealthConnectEnabled) {
-        syncHealthConnect()
-        healthConnectSynced = true
+    syncWeight: suspend () -> Unit = {},
+): HomeConfiguredSyncResult = supervisorScope {
+    val health = async {
+        if (!settings.homeSyncHealthConnectEnabled) false
+        else syncBranch { syncHealthConnect() }
     }
-
-    if (settings.homeSyncFddbDiaryEnabled) {
-        if (hasFddbCredentials()) {
-            when (syncFddbDiary(date)) {
-                is Result.Success -> fddbDiarySynced = true
-                is Result.Error -> Unit
+    val weight = async {
+        if (settings.healthConnectWeightEnabled) syncBranch { syncWeight() }
+    }
+    val diary = async {
+        var synced = false
+        var missingCredentials = false
+        if (settings.homeSyncFddbDiaryEnabled) {
+            syncBranch {
+                if (hasFddbCredentials()) {
+                    synced = syncFddbDiary(date) is Result.Success
+                } else {
+                    missingCredentials = true
+                }
             }
-        } else {
-            fddbMissingCredentials = true
         }
+        synced to missingCredentials
     }
-
-    return HomeConfiguredSyncResult(
-        healthConnectSynced = healthConnectSynced,
-        fddbDiarySynced = fddbDiarySynced,
-        fddbMissingCredentials = fddbMissingCredentials,
-    )
+    val healthSynced = health.await()
+    val (diarySynced, missingCredentials) = diary.await()
+    weight.await()
+    HomeConfiguredSyncResult(healthSynced, diarySynced, missingCredentials)
 }
 
+private suspend fun syncBranch(block: suspend () -> Unit): Boolean =
+    try {
+        block()
+        true
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        false
+    }
 
 internal suspend fun syncActivitiesForBurnedEnergyDelta(
     date: LocalDate,
@@ -422,4 +442,15 @@ internal fun healthConnectStepsSyncDates(
         dates += selectedDate
     }
     return dates.distinct().sorted()
+}
+
+/** Owns the complete manual sync lifetime, including a weight-only sync. */
+internal class HomeSyncRunner(private val scope: CoroutineScope) {
+    private val running = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = running.asStateFlow()
+
+    fun launch(block: suspend () -> Unit) {
+        if (!running.compareAndSet(false, true)) return
+        scope.launch { block() }.invokeOnCompletion { running.value = false }
+    }
 }

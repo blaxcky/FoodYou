@@ -7,13 +7,14 @@ import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.common.result.isSuccess
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryEntry
 import com.maksimowiczm.foodyou.food.domain.entity.FddbDiaryPortionMeasurement
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.normalizedLabel
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiaryGateway
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiarySyncEntryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductGateway
+import com.maksimowiczm.foodyou.food.domain.repository.FddbRequestPriority
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
@@ -93,6 +94,7 @@ class FddbDiarySyncUseCase(
                         )
                 }
             } catch (throwable: Throwable) {
+                if (throwable is kotlinx.coroutines.CancellationException) throw throwable
                 failed += 1
                 errors += entry.debugMessage(throwable)
             }
@@ -107,7 +109,7 @@ class FddbDiarySyncUseCase(
     }
 
     private suspend fun resolveProduct(entry: FddbDiaryEntry): Product? {
-        val fddbProduct = productGateway.getProduct(entry.productUrl)
+        val fddbProduct = productGateway.getProduct(entry.productUrl, FddbRequestPriority.Diary)
         return transactionProvider.withTransaction {
             when (val result = productRepository.upsertFddbProduct(entry.productUrl, fddbProduct)) {
                 is FddbProductUpsertResult.Inserted -> result.product

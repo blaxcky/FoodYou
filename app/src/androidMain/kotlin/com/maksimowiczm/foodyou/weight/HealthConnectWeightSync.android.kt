@@ -67,7 +67,8 @@ private class AndroidHealthConnectWeightSync(
             false
         } catch (_: RemoteException) {
             false
-        } catch (_: RuntimeException) {
+        } catch (exception: RuntimeException) {
+            if (exception is kotlinx.coroutines.CancellationException) throw exception
             false
         }
     }
@@ -120,7 +121,8 @@ private class AndroidHealthConnectWeightSync(
             HealthConnectSyncResult.Failed
         } catch (_: RemoteException) {
             HealthConnectSyncResult.Failed
-        } catch (_: RuntimeException) {
+        } catch (exception: RuntimeException) {
+            if (exception is kotlinx.coroutines.CancellationException) throw exception
             HealthConnectSyncResult.Failed
         }
     }
@@ -144,7 +146,8 @@ private class AndroidHealthConnectWeightSync(
             HealthConnectSyncResult.Failed
         } catch (_: RemoteException) {
             HealthConnectSyncResult.Failed
-        } catch (_: RuntimeException) {
+        } catch (exception: RuntimeException) {
+            if (exception is kotlinx.coroutines.CancellationException) throw exception
             HealthConnectSyncResult.Failed
         }
     }
