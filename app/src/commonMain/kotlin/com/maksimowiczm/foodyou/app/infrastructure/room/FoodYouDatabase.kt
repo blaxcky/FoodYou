@@ -13,6 +13,7 @@ import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsC
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsMigration
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.LegacyMigrations
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.ActivityMigration
+import com.maksimowiczm.foodyou.training.*
 import com.maksimowiczm.foodyou.activity.ActivityDatabase
 import com.maksimowiczm.foodyou.activity.infrastructure.room.DailyStepSummaryEntity
 import com.maksimowiczm.foodyou.activity.infrastructure.room.ManualActivityEntryEntity
@@ -94,6 +95,8 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntit
             ProductPortionEntity::class,
             ProductPortionOverrideEntity::class,
             DailyWeightEntryEntity::class,
+            ImportedTrainingActivityEntity::class,
+            TrainingImportReceiptEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
     version = FoodYouDatabase.VERSION,
@@ -169,8 +172,10 @@ abstract class FoodYouDatabase :
             }
         }
 
+    abstract val trainingImportDao: TrainingImportDao
+
     companion object {
-        const val VERSION = 51
+        const val VERSION = 52
 
         private val migrations: List<Migration> =
             listOf(
@@ -207,6 +212,7 @@ abstract class FoodYouDatabase :
                 QuickCaptureMigration,
                 WeightMeasurementsMigration,
                 QuickCaptureAiMigration,
+                TrainingImportMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -630,5 +636,14 @@ internal object QuickCaptureAiMigration : Migration(50, 51) {
         connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiAnalysisProvider TEXT")
         connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiAnalysisModel TEXT")
         connection.execSQL("ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiAnalyzedAt INTEGER")
+    }
+}
+
+internal object TrainingImportMigration : Migration(51, 52) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("CREATE TABLE IF NOT EXISTS ImportedTrainingActivity (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, firebaseProjectId TEXT NOT NULL, firebaseUid TEXT NOT NULL, importId TEXT NOT NULL, sessionId TEXT NOT NULL, dateEpochDay INTEGER NOT NULL, name TEXT NOT NULL, energyKcal INTEGER NOT NULL)")
+        connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_ImportedTrainingActivity_firebaseProjectId_firebaseUid_importId ON ImportedTrainingActivity (firebaseProjectId, firebaseUid, importId)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_ImportedTrainingActivity_firebaseProjectId_firebaseUid_dateEpochDay ON ImportedTrainingActivity (firebaseProjectId, firebaseUid, dateEpochDay)")
+        connection.execSQL("CREATE TABLE IF NOT EXISTS TrainingImportReceipt (firebaseProjectId TEXT NOT NULL, firebaseUid TEXT NOT NULL, sessionId TEXT NOT NULL, canonicalPayload TEXT NOT NULL, importedAtMillis INTEGER NOT NULL, receivedAtMillis INTEGER NOT NULL, PRIMARY KEY(firebaseProjectId, firebaseUid, sessionId))")
     }
 }
