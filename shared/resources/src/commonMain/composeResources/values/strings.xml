@@ -561,7 +561,6 @@
     <string name="neutral_fddb_product_sync_manual_progress">%1$d/3 manual FDDB diary syncs until the next two products</string>
     <string name="neutral_fddb_product_sync_disabled">Automatic FDDB product sync is disabled</string>
     <string name="neutral_fddb_product_sync_empty">No FDDB products with source URL found</string>
-    <string name="neutral_fddb_product_sync_next">Next two</string>
     <string name="neutral_fddb_product_sync_never">Last successful sync: never</string>
     <string name="neutral_fddb_product_sync_last_success">Last successful sync: %1$s</string>
     <string name="neutral_fddb_product_sync_last_attempt">Last attempt: %1$s</string>
@@ -585,10 +584,21 @@
     <string name="label_fddb_product_sync_count">Number of products</string>
     <string name="description_fddb_product_sync_count_range">Enter a whole number from 1 to %1$d.</string>
     <string name="error_fddb_product_sync_count_range">Choose a number from 1 to %1$d.</string>
-    <string name="neutral_fddb_product_sync_batch_progress">Processed %1$d of %2$d · successful: %3$d · failed: %4$d</string>
-    <string name="neutral_fddb_product_sync_batch_completed">Manual sync completed · successful: %1$d · failed: %2$d</string>
     <string name="error_fddb_product_sync_batch_blocked">FDDB blocked further requests. The batch was stopped.</string>
     <string name="error_fddb_product_sync_batch_failed">Manual product sync failed: %1$s</string>
+    <string name="action_start_manual_fddb_product_sync_full">Start manual sync</string>
+    <string name="label_fddb_product_sync_stat_total">Products</string>
+    <string name="label_fddb_product_sync_stat_never">Never synced</string>
+    <string name="label_fddb_product_sync_stat_failed">Failed</string>
+    <string name="headline_fddb_product_sync_section_failed">Failed (%1$d)</string>
+    <string name="headline_fddb_product_sync_section_next">Up next (%1$d)</string>
+    <string name="headline_fddb_product_sync_section_remaining">More products (%1$d)</string>
+    <string name="headline_fddb_product_sync_batch_completed">Sync completed</string>
+    <string name="neutral_fddb_product_sync_batch_processed">%1$d of %2$d</string>
+    <string name="neutral_fddb_product_sync_count_synced">%1$d successful</string>
+    <string name="neutral_fddb_product_sync_count_failed">%1$d failed</string>
+    <string name="neutral_fddb_product_sync_last_success_short">Last synced %1$s</string>
+    <string name="neutral_fddb_product_sync_never_short">Never synced</string>
     <string name="neutral_home_sync_settings">Choose what the sync button on the home screen runs.</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>

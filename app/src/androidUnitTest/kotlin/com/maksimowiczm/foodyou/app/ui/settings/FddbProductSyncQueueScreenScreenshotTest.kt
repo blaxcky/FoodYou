@@ -50,6 +50,34 @@ class FddbProductSyncQueueScreenScreenshotTest {
     }
 
     @Test
+    fun overview() {
+        capture(name = "overview", selectedProductId = null)
+    }
+
+    @Test
+    fun overviewRemainingExpanded() {
+        capture(name = "overview-expanded", selectedProductId = null, remainingExpanded = true)
+    }
+
+    @Test
+    fun manualBatchCompleted() {
+        capture(
+            name = "manual-batch-completed",
+            selectedProductId = null,
+            batchState =
+                FddbProductSyncManualBatchState.Completed(
+                    FddbProductSyncBatchProgress(
+                        total = 5,
+                        processed = 5,
+                        synced = 5,
+                        failed = 0,
+                        blocked = false,
+                    )
+                ),
+        )
+    }
+
+    @Test
     fun manualBatchRunning() {
         capture(
             name = "manual-batch-running",
@@ -90,13 +118,14 @@ class FddbProductSyncQueueScreenScreenshotTest {
         confirmUnlink: Boolean = false,
         selectedProductId: Long? = Item.productId.id,
         batchState: FddbProductSyncManualBatchState = FddbProductSyncManualBatchState.Idle,
+        remainingExpanded: Boolean = false,
     ) {
         captureRoboImage(
             filePath = "FddbProductSyncQueueScreenScreenshotTest.$name.png",
             roborazziComposeOptions =
                 RoborazziComposeOptions.Builder().size(390, 844).locale("de-rDE").build(),
         ) {
-            Golden(confirmUnlink, selectedProductId, batchState)
+            Golden(confirmUnlink, selectedProductId, batchState, remainingExpanded)
         }
     }
 
@@ -105,6 +134,7 @@ class FddbProductSyncQueueScreenScreenshotTest {
         confirmUnlink: Boolean,
         selectedProductId: Long?,
         batchState: FddbProductSyncManualBatchState,
+        remainingExpanded: Boolean,
     ) {
         MaterialTheme {
             Box(
@@ -119,7 +149,7 @@ class FddbProductSyncQueueScreenScreenshotTest {
                             manualFrequency = FddbProductSyncManualFrequency.EveryThirdSync,
                             manualTriggerCount = 0,
                             manualBatchState = batchState,
-                            queue = listOf(Item),
+                            queue = Queue,
                         ),
                     actionState = FddbProductSyncActionState(),
                     onBack = {},
@@ -133,6 +163,7 @@ class FddbProductSyncQueueScreenScreenshotTest {
                     modifier = Modifier.fillMaxSize(),
                     initialSelectedProductId = selectedProductId,
                     initialConfirmUnlink = confirmUnlink,
+                    initialRemainingExpanded = remainingExpanded,
                 )
             }
         }
@@ -149,6 +180,30 @@ class FddbProductSyncQueueScreenScreenshotTest {
                 lastSyncedAt = Instant.parse("2026-09-20T08:15:00Z"),
                 lastAttemptAt = Instant.parse("2026-09-25T10:30:00Z"),
                 lastError = "FDDB page not found (HTTP 404)",
+            )
+
+        val Queue =
+            listOf(
+                queueItem(1, "Maisgebäck, mit dem Geschmack von sauren Äpfeln", "Chrupki", null),
+                Item,
+                queueItem(2, "Steinofenbaguette", "Metro", null),
+                queueItem(3, "Eiklar", "Beispielmarke", "2026-08-12T07:49:00Z"),
+                queueItem(4, "Earth Champ Protein Vanilla", "Earthchamp", "2026-08-12T07:49:00Z"),
+                queueItem(5, "Skyr Natur", "Beispielmarke", "2026-08-20T09:00:00Z"),
+                queueItem(6, "Vollkorn-Toast", null, "2026-09-01T09:00:00Z"),
+                queueItem(7, "Hafer Porridge Zimt", "Beispielmarke", "2026-09-10T09:00:00Z"),
+                queueItem(8, "Erdnussbutter Crunchy", "Beispielmarke", "2026-09-18T09:00:00Z"),
+            )
+
+        fun queueItem(id: Long, name: String, brand: String?, syncedAt: String?) =
+            FddbProductSyncQueueItem(
+                productId = FoodId.Product(id),
+                name = name,
+                brand = brand,
+                sourceUrl = "https://fddb.info/db/de/lebensmittel/product_$id/index.html",
+                lastSyncedAt = syncedAt?.let(Instant::parse),
+                lastAttemptAt = syncedAt?.let(Instant::parse),
+                lastError = null,
             )
     }
 }

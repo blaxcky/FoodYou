@@ -159,3 +159,23 @@ private fun UpdateFddbProductLinkError.toUiError(): FddbProductSyncActionError =
 
 private fun UnlinkFddbProductError.toUiError(): FddbProductSyncActionError =
     FddbProductSyncActionError.ProductUnavailable
+
+internal data class FddbProductSyncQueueSections(
+    val failed: List<FddbProductSyncQueueItem>,
+    val next: List<FddbProductSyncQueueItem>,
+    val remaining: List<FddbProductSyncQueueItem>,
+)
+
+/** Splits the queue, which is already ordered by sync priority, into the screen sections. */
+internal fun List<FddbProductSyncQueueItem>.toSections(
+    nextCount: Int = DEFAULT_NEXT_COUNT
+): FddbProductSyncQueueSections {
+    val (failed, pending) = partition { it.lastError != null }
+    return FddbProductSyncQueueSections(
+        failed = failed,
+        next = pending.take(nextCount),
+        remaining = pending.drop(nextCount),
+    )
+}
+
+private const val DEFAULT_NEXT_COUNT = 5

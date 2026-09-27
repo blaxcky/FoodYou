@@ -3,14 +3,24 @@ package com.maksimowiczm.foodyou.app.ui.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.LinkOff
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -18,16 +28,22 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncBatchProgress
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchState
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
@@ -78,6 +94,7 @@ internal fun FddbProductSyncQueueContent(
     modifier: Modifier = Modifier,
     initialSelectedProductId: Long? = null,
     initialConfirmUnlink: Boolean = false,
+    initialRemainingExpanded: Boolean = false,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var selectedProductId by rememberSaveable {
@@ -89,6 +106,8 @@ internal fun FddbProductSyncQueueContent(
     val selectedItem = model.queue.firstOrNull { it.productId.id == selectedProductId }
     val batchRunning = model.manualBatchState is FddbProductSyncManualBatchState.Running
     val actionsBusy = batchRunning || actionState.inProgress
+    val sections = remember(model.queue) { model.queue.toSections() }
+    var remainingExpanded by rememberSaveable { mutableStateOf(initialRemainingExpanded) }
 
     LaunchedEffect(selectedItem) {
         if (selectedItem == null) {
@@ -101,7 +120,13 @@ internal fun FddbProductSyncQueueContent(
         modifier = modifier,
         topBar = {
             MediumFlexibleTopAppBar(
-                title = { Text(stringResource(Res.string.headline_fddb_product_sync_queue)) },
+                title = {
+                    Text(
+                        text = stringResource(Res.string.headline_fddb_product_sync_settings),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 navigationIcon = { ArrowBackIconButton(onBack) },
                 scrollBehavior = scrollBehavior,
             )
@@ -112,38 +137,16 @@ internal fun FddbProductSyncQueueContent(
             contentPadding = paddingValues,
         ) {
             item {
-                ListItem(
-                    headlineContent = {
-                        Text(model.scheduleStatusText())
-                    }
+                FddbProductSyncOverviewCard(
+                    model = model,
+                    startEnabled = model.queue.isNotEmpty() && !actionsBusy,
+                    onStart = {
+                        onClearManualBatchResult()
+                        showManualBatchDialog = true
+                    },
+                    onClearResult = onClearManualBatchResult,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-            }
-            item {
-                ListItem(
-                    headlineContent = {
-                        Text(stringResource(Res.string.headline_manual_fddb_product_sync))
-                    },
-                    supportingContent = {
-                        Text(stringResource(Res.string.description_manual_fddb_product_sync))
-                    },
-                    trailingContent = {
-                        FilledTonalButton(
-                            onClick = {
-                                onClearManualBatchResult()
-                                showManualBatchDialog = true
-                            },
-                            enabled = model.queue.isNotEmpty() && !actionsBusy,
-                        ) {
-                            Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                            Text(stringResource(Res.string.action_start_manual_fddb_product_sync))
-                        }
-                    },
-                )
-            }
-            if (model.manualBatchState !is FddbProductSyncManualBatchState.Idle) {
-                item {
-                    FddbProductSyncManualBatchStatus(model.manualBatchState)
-                }
             }
             if (model.queue.isEmpty()) {
                 item {
@@ -154,17 +157,65 @@ internal fun FddbProductSyncQueueContent(
                     )
                 }
             } else {
-                itemsIndexed(model.queue, key = { _, item -> item.productId.id }) { index, item ->
-                    FddbProductSyncQueueListItem(
-                        item = item,
-                        isNext =
-                            model.syncMode != FddbProductSyncMode.Disabled && index < 2,
-                        enabled = !actionsBusy,
-                        onClick = {
-                            onClearActionError()
-                            selectedProductId = item.productId.id
-                        },
-                    )
+                val onItemClick = { item: FddbProductSyncQueueItem ->
+                    onClearActionError()
+                    selectedProductId = item.productId.id
+                }
+                if (sections.failed.isNotEmpty()) {
+                    item(key = "header_failed") {
+                        FddbProductSyncSectionHeader(
+                            stringResource(
+                                Res.string.headline_fddb_product_sync_section_failed,
+                                sections.failed.size,
+                            )
+                        )
+                    }
+                    items(sections.failed, key = { it.productId.id }) { item ->
+                        FddbProductSyncQueueListItem(
+                            item = item,
+                            enabled = !actionsBusy,
+                            onClick = { onItemClick(item) },
+                        )
+                    }
+                }
+                if (sections.next.isNotEmpty()) {
+                    item(key = "header_next") {
+                        FddbProductSyncSectionHeader(
+                            stringResource(
+                                Res.string.headline_fddb_product_sync_section_next,
+                                sections.next.size,
+                            )
+                        )
+                    }
+                    items(sections.next, key = { it.productId.id }) { item ->
+                        FddbProductSyncQueueListItem(
+                            item = item,
+                            enabled = !actionsBusy,
+                            onClick = { onItemClick(item) },
+                        )
+                    }
+                }
+                if (sections.remaining.isNotEmpty()) {
+                    item(key = "header_remaining") {
+                        FddbProductSyncExpandableSectionHeader(
+                            text =
+                                stringResource(
+                                    Res.string.headline_fddb_product_sync_section_remaining,
+                                    sections.remaining.size,
+                                ),
+                            expanded = remainingExpanded,
+                            onToggle = { remainingExpanded = !remainingExpanded },
+                        )
+                    }
+                    if (remainingExpanded) {
+                        items(sections.remaining, key = { it.productId.id }) { item ->
+                            FddbProductSyncQueueListItem(
+                                item = item,
+                                enabled = !actionsBusy,
+                                onClick = { onItemClick(item) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -221,45 +272,163 @@ internal fun FddbProductSyncQueueContent(
 }
 
 @Composable
+private fun FddbProductSyncOverviewCard(
+    model: FddbProductSyncQueueModel,
+    startEnabled: Boolean,
+    onStart: () -> Unit,
+    onClearResult: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val neverSynced = model.queue.count { it.lastSyncedAt == null }
+    val failed = model.queue.count { it.lastError != null }
+
+    OutlinedCard(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = model.scheduleStatusText(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                FddbProductSyncStat(
+                    value = model.queue.size,
+                    label = stringResource(Res.string.label_fddb_product_sync_stat_total),
+                    modifier = Modifier.weight(1f),
+                )
+                FddbProductSyncStat(
+                    value = neverSynced,
+                    label = stringResource(Res.string.label_fddb_product_sync_stat_never),
+                    modifier = Modifier.weight(1f),
+                )
+                FddbProductSyncStat(
+                    value = failed,
+                    label = stringResource(Res.string.label_fddb_product_sync_stat_failed),
+                    isError = failed > 0,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            FilledTonalButton(
+                onClick = onStart,
+                enabled = startEnabled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(stringResource(Res.string.action_start_manual_fddb_product_sync_full))
+            }
+            if (model.manualBatchState !is FddbProductSyncManualBatchState.Idle) {
+                HorizontalDivider()
+                FddbProductSyncManualBatchStatus(
+                    state = model.manualBatchState,
+                    onClearResult = onClearResult,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FddbProductSyncStat(
+    value: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            color =
+                if (isError) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun FddbProductSyncSectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun FddbProductSyncExpandableSectionHeader(
+    text: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
 private fun FddbProductSyncQueueListItem(
     item: FddbProductSyncQueueItem,
-    isNext: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
     ListItem(
-        headlineContent = { Text(item.headline) },
+        headlineContent = {
+            Text(text = item.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        },
         supportingContent = {
-            Column(
-                modifier = Modifier.padding(top = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(item.lastSuccessText(), style = MaterialTheme.typography.bodyMedium)
-                item.lastAttemptAt?.let {
-                    Text(
-                        stringResource(
-                            Res.string.neutral_fddb_product_sync_last_attempt,
-                            it.formatDateTime(),
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = listOfNotNull(item.brand, item.lastSuccessShortText()).joinToString(" · "),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 item.lastError?.let {
                     Text(
-                        stringResource(Res.string.neutral_fddb_product_sync_error, it),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = it,
                         color = MaterialTheme.colorScheme.error,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
         },
         trailingContent = {
-            if (isNext) {
-                AssistChip(
-                    onClick = onClick,
-                    label = { Text(stringResource(Res.string.neutral_fddb_product_sync_next)) },
-                )
-            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+            )
         },
         modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
     )
@@ -406,76 +575,115 @@ private fun ManualFddbProductSyncDialog(
 }
 
 @Composable
-private fun FddbProductSyncManualBatchStatus(state: FddbProductSyncManualBatchState) {
+private fun FddbProductSyncManualBatchStatus(
+    state: FddbProductSyncManualBatchState,
+    onClearResult: () -> Unit,
+) {
     when (state) {
         FddbProductSyncManualBatchState.Idle -> Unit
         is FddbProductSyncManualBatchState.Running ->
-            ListItem(
-                headlineContent = {
-                    Text(stringResource(Res.string.neutral_fddb_product_sync_running))
-                },
-                supportingContent = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (state.progress.total > 0) {
-                            LinearProgressIndicator(
-                                progress = {
-                                    state.progress.processed.toFloat() /
-                                        state.progress.total.toFloat()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        Text(state.progress.summaryText())
-                    }
-                },
-            )
-        is FddbProductSyncManualBatchState.Completed ->
-            ListItem(
-                headlineContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        stringResource(
-                            Res.string.neutral_fddb_product_sync_batch_completed,
-                            state.progress.synced,
-                            state.progress.failed,
-                        )
+                        text = stringResource(Res.string.neutral_fddb_product_sync_running),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
                     )
-                },
-                supportingContent =
-                    if (state.progress.blocked) {
-                        {
-                            Text(
-                                stringResource(
-                                    Res.string.error_fddb_product_sync_batch_blocked
-                                ),
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    } else null,
-            )
-        is FddbProductSyncManualBatchState.Failed ->
-            ListItem(
-                headlineContent = {
                     Text(
-                        stringResource(
-                            Res.string.error_fddb_product_sync_batch_failed,
-                            state.detail,
-                        ),
+                        text =
+                            stringResource(
+                                Res.string.neutral_fddb_product_sync_batch_processed,
+                                state.progress.processed,
+                                state.progress.total,
+                            ),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (state.progress.total > 0) {
+                    LinearProgressIndicator(
+                        progress = {
+                            state.progress.processed.toFloat() / state.progress.total.toFloat()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                FddbProductSyncBatchCounts(state.progress)
+            }
+        is FddbProductSyncManualBatchState.Completed ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FddbProductSyncBatchResultHeader(
+                    text = stringResource(Res.string.headline_fddb_product_sync_batch_completed),
+                    onClearResult = onClearResult,
+                )
+                FddbProductSyncBatchCounts(state.progress)
+                if (state.progress.blocked) {
+                    Text(
+                        text = stringResource(Res.string.error_fddb_product_sync_batch_blocked),
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
+            }
+        is FddbProductSyncManualBatchState.Failed ->
+            FddbProductSyncBatchResultHeader(
+                text = stringResource(Res.string.error_fddb_product_sync_batch_failed, state.detail),
+                onClearResult = onClearResult,
+                color = MaterialTheme.colorScheme.error,
             )
     }
 }
 
 @Composable
-private fun com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncBatchProgress.summaryText(): String =
-    stringResource(
-        Res.string.neutral_fddb_product_sync_batch_progress,
-        processed,
-        total,
-        synced,
-        failed,
-    )
+private fun FddbProductSyncBatchResultHeader(
+    text: String,
+    onClearResult: () -> Unit,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            color = color,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onClearResult) {
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = stringResource(Res.string.action_close),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FddbProductSyncBatchCounts(progress: FddbProductSyncBatchProgress) {
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        FddbProductSyncBatchCount(
+            icon = Icons.Outlined.CheckCircle,
+            text = stringResource(Res.string.neutral_fddb_product_sync_count_synced, progress.synced),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        FddbProductSyncBatchCount(
+            icon = Icons.Outlined.ErrorOutline,
+            text = stringResource(Res.string.neutral_fddb_product_sync_count_failed, progress.failed),
+            color =
+                if (progress.failed > 0) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun FddbProductSyncBatchCount(icon: ImageVector, text: String, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color)
+    }
+}
 
 @Composable
 private fun EditFddbLinkDialog(
@@ -535,6 +743,17 @@ private fun FddbProductSyncActionError.message(): String =
 
 private val FddbProductSyncQueueItem.headline: String
     get() = listOfNotNull(name, brand).joinToString(" · ")
+
+@Composable
+private fun FddbProductSyncQueueItem.lastSuccessShortText(): String =
+    lastSyncedAt?.let {
+        stringResource(
+            Res.string.neutral_fddb_product_sync_last_success_short,
+            LocalDateFormatter.current.formatDateShort(
+                it.toLocalDateTime(TimeZone.currentSystemDefault()).date
+            ),
+        )
+    } ?: stringResource(Res.string.neutral_fddb_product_sync_never_short)
 
 @Composable
 private fun FddbProductSyncQueueItem.lastSuccessText(): String =
