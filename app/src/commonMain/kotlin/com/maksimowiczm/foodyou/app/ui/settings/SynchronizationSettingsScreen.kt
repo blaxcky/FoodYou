@@ -16,18 +16,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -37,6 +41,8 @@ import com.maksimowiczm.foodyou.app.ui.home.master.FddbLoginDialog
 import com.maksimowiczm.foodyou.app.ui.weight.rememberHealthConnectWeightPermissionRequester
 import com.maksimowiczm.foodyou.common.compose.utility.LocalClipboardManager
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import foodyou.app.generated.resources.*
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
@@ -53,6 +59,7 @@ internal fun SynchronizationSettingsScreen(
 ) {
     val model = viewModel.model.collectAsStateWithLifecycle().value
     var showFddbLoginDialog by remember { mutableStateOf(false) }
+    var showFddbProductSyncPolicyDialog by remember { mutableStateOf(false) }
     val weightPermissionRequester =
         rememberHealthConnectWeightPermissionRequester { granted ->
             if (granted) viewModel.setWeightSyncEnabled(true)
@@ -75,11 +82,23 @@ internal fun SynchronizationSettingsScreen(
             }
         },
         onFddbProductSyncQueue = onFddbProductSyncQueue,
+        onFddbProductSyncPolicy = { showFddbProductSyncPolicyDialog = true },
         modifier = modifier,
     )
 
     if (showFddbLoginDialog) {
         FddbLoginDialog(onDismissRequest = { showFddbLoginDialog = false })
+    }
+    if (showFddbProductSyncPolicyDialog && model != null) {
+        FddbProductSyncPolicyDialog(
+            mode = model.fddbProductSyncMode,
+            frequency = model.fddbProductSyncManualFrequency,
+            onDismiss = { showFddbProductSyncPolicyDialog = false },
+            onSave = { mode, frequency ->
+                showFddbProductSyncPolicyDialog = false
+                viewModel.setFddbProductSyncPolicy(mode, frequency)
+            },
+        )
     }
 }
 
@@ -92,6 +111,7 @@ private fun SynchronizationSettingsContent(
     onHomeSyncFddbDiaryEnabledChange: (Boolean) -> Unit,
     onFddbSync: () -> Unit,
     onFddbProductSyncQueue: () -> Unit,
+    onFddbProductSyncPolicy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -111,6 +131,16 @@ private fun SynchronizationSettingsContent(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = paddingValues,
         ) {
+            item {
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(Res.string.headline_fddb_product_sync_settings))
+                    },
+                    supportingContent = { Text(model.fddbProductSyncPolicySummary()) },
+                    modifier = Modifier.clickable(onClick = onFddbProductSyncPolicy),
+                )
+            }
+
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(Res.string.headline_home_sync)) },
@@ -250,7 +280,7 @@ private fun SynchronizationSettingsContent(
                         Text(stringResource(Res.string.headline_fddb_product_sync_queue))
                     },
                     supportingContent = {
-                        Text(model?.nextAutomaticFddbProductSyncAt.automaticSyncStatusText())
+                        Text(model.fddbProductSyncQueueStatus())
                     },
                     modifier = Modifier.clickable(onClick = onFddbProductSyncQueue),
                 )
@@ -260,15 +290,117 @@ private fun SynchronizationSettingsContent(
 }
 
 @Composable
-private fun Instant?.automaticSyncStatusText(): String =
-    this?.let {
-        stringResource(
-            Res.string.neutral_fddb_product_sync_next_at,
-            LocalDateFormatter.current.formatDateTime(
-                toLocalDateTime(TimeZone.currentSystemDefault())
-            ),
-        )
-    } ?: stringResource(Res.string.neutral_fddb_product_sync_ready)
+internal fun FddbProductSyncPolicyDialog(
+    mode: FddbProductSyncMode,
+    frequency: FddbProductSyncManualFrequency,
+    onDismiss: () -> Unit,
+    onSave: (FddbProductSyncMode, FddbProductSyncManualFrequency) -> Unit,
+) {
+    var selectedMode by remember(mode) { mutableStateOf(mode) }
+    var selectedFrequency by remember(frequency) { mutableStateOf(frequency) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.headline_fddb_product_sync_settings)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                FddbProductSyncPolicyOption(
+                    selected = selectedMode == FddbProductSyncMode.EveryThirtyMinutes,
+                    headline =
+                        stringResource(
+                            Res.string.option_fddb_product_sync_every_thirty_minutes
+                        ),
+                    supporting =
+                        stringResource(
+                            Res.string.description_fddb_product_sync_every_thirty_minutes
+                        ),
+                    onClick = { selectedMode = FddbProductSyncMode.EveryThirtyMinutes },
+                )
+                FddbProductSyncPolicyOption(
+                    selected = selectedMode == FddbProductSyncMode.WithManualFddbSync,
+                    headline =
+                        stringResource(
+                            Res.string.option_fddb_product_sync_with_manual_sync
+                        ),
+                    onClick = { selectedMode = FddbProductSyncMode.WithManualFddbSync },
+                )
+                if (selectedMode == FddbProductSyncMode.WithManualFddbSync) {
+                    FddbProductSyncPolicyOption(
+                        selected =
+                            selectedFrequency == FddbProductSyncManualFrequency.EverySync,
+                        headline =
+                            stringResource(Res.string.option_fddb_product_sync_every_sync),
+                        onClick = {
+                            selectedFrequency = FddbProductSyncManualFrequency.EverySync
+                        },
+                        modifier = Modifier.padding(start = 24.dp),
+                    )
+                    FddbProductSyncPolicyOption(
+                        selected =
+                            selectedFrequency == FddbProductSyncManualFrequency.EveryThirdSync,
+                        headline =
+                            stringResource(
+                                Res.string.option_fddb_product_sync_every_third_sync
+                            ),
+                        onClick = {
+                            selectedFrequency = FddbProductSyncManualFrequency.EveryThirdSync
+                        },
+                        modifier = Modifier.padding(start = 24.dp),
+                    )
+                }
+                FddbProductSyncPolicyOption(
+                    selected = selectedMode == FddbProductSyncMode.Disabled,
+                    headline = stringResource(Res.string.option_fddb_product_sync_disabled),
+                    onClick = { selectedMode = FddbProductSyncMode.Disabled },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(selectedMode, selectedFrequency) },
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                Text(stringResource(Res.string.action_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun FddbProductSyncPolicyOption(
+    selected: Boolean,
+    headline: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Column(modifier = Modifier.padding(start = 12.dp, top = 10.dp)) {
+            Text(headline, style = MaterialTheme.typography.bodyLarge)
+            supporting?.let {
+                Text(
+                    text = it,
+                    modifier = Modifier.padding(top = 4.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {
@@ -298,3 +430,41 @@ private fun SynchronizationSettingsModel?.fddbSyncStatusText(): String {
         status.failed,
     )
 }
+
+@Composable
+private fun SynchronizationSettingsModel?.fddbProductSyncQueueStatus(): String =
+    when (this?.fddbProductSyncMode) {
+        FddbProductSyncMode.EveryThirtyMinutes ->
+            nextAutomaticFddbProductSyncAt?.let {
+                stringResource(
+                    Res.string.neutral_fddb_product_sync_next_at,
+                    LocalDateFormatter.current.formatDateTime(
+                        it.toLocalDateTime(TimeZone.currentSystemDefault())
+                    ),
+                )
+            } ?: stringResource(Res.string.neutral_fddb_product_sync_ready)
+        FddbProductSyncMode.WithManualFddbSync,
+        FddbProductSyncMode.Disabled,
+        null,
+        -> fddbProductSyncPolicySummary()
+    }
+
+@Composable
+private fun SynchronizationSettingsModel?.fddbProductSyncPolicySummary(): String =
+    when (this?.fddbProductSyncMode) {
+        FddbProductSyncMode.EveryThirtyMinutes ->
+            stringResource(Res.string.option_fddb_product_sync_every_thirty_minutes)
+        FddbProductSyncMode.WithManualFddbSync ->
+            when (fddbProductSyncManualFrequency) {
+                FddbProductSyncManualFrequency.EverySync ->
+                    stringResource(Res.string.neutral_fddb_product_sync_manual_every_time)
+                FddbProductSyncManualFrequency.EveryThirdSync ->
+                    stringResource(
+                        Res.string.neutral_fddb_product_sync_manual_progress,
+                        fddbProductSyncManualTriggerCount,
+                    )
+            }
+        FddbProductSyncMode.Disabled ->
+            stringResource(Res.string.neutral_fddb_product_sync_disabled)
+        null -> stringResource(Res.string.description_fddb_product_sync_settings)
+    }

@@ -11,6 +11,7 @@ import kotlinx.datetime.LocalDate
 class ManualFddbDiarySyncUseCase(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val diarySyncUseCase: FddbDiarySyncUseCase,
+    private val fddbProductSyncCoordinator: FddbProductSyncCoordinator,
 ) {
     suspend fun hasCredentials(): Boolean = diarySyncUseCase.hasCredentials()
 
@@ -24,6 +25,7 @@ class ManualFddbDiarySyncUseCase(
             }
 
         settingsRepository.recordFddbDiarySyncResult(diaryResult)
+        fddbProductSyncCoordinator.onManualFddbSyncCompleted()
 
         return Ok(diaryResult)
     }

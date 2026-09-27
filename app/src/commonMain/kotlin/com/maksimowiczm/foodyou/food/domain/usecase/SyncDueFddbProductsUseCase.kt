@@ -12,10 +12,22 @@ class SyncDueFddbProductsUseCase(
         return sync(statusRepository.getDueProducts(limit))
     }
 
-    suspend fun sync(products: List<FddbProductSyncQueueItem>): SyncDueFddbProductsResult {
+    suspend fun sync(
+        products: List<FddbProductSyncQueueItem>,
+        onProgress: (FddbProductSyncBatchProgress) -> Unit = {},
+    ): SyncDueFddbProductsResult {
         var synced = 0
         var failed = 0
         var blocked = false
+        onProgress(
+            FddbProductSyncBatchProgress(
+                total = products.size,
+                processed = 0,
+                synced = 0,
+                failed = 0,
+                blocked = false,
+            )
+        )
 
         for (item in products) {
             when (val result = syncFddbProductUseCase.sync(item.productId)) {
@@ -27,10 +39,19 @@ class SyncDueFddbProductsUseCase(
                     failed += 1
                     if (result.error == ResyncFddbProductError.Blocked) {
                         blocked = true
-                        break
                     }
                 }
             }
+            onProgress(
+                FddbProductSyncBatchProgress(
+                    total = products.size,
+                    processed = synced + failed,
+                    synced = synced,
+                    failed = failed,
+                    blocked = blocked,
+                )
+            )
+            if (blocked) break
         }
 
         return SyncDueFddbProductsResult(synced = synced, failed = failed, blocked = blocked)
@@ -38,3 +59,11 @@ class SyncDueFddbProductsUseCase(
 }
 
 data class SyncDueFddbProductsResult(val synced: Int, val failed: Int, val blocked: Boolean)
+
+data class FddbProductSyncBatchProgress(
+    val total: Int,
+    val processed: Int,
+    val synced: Int,
+    val failed: Int,
+    val blocked: Boolean,
+)

@@ -19,6 +19,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.DownloadProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncCoordinator
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncForegroundLauncher
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchLauncher
 import com.maksimowiczm.foodyou.food.domain.usecase.ImportFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ManualFddbDiarySyncUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFddbImportQueueUseCase
@@ -63,6 +64,7 @@ fun Module.foodDomainModule() {
         ManualFddbDiarySyncUseCase(
             settingsRepository = userPreferencesRepository(),
             diarySyncUseCase = get(),
+            fddbProductSyncCoordinator = get(),
         )
     }
     factory {
@@ -108,6 +110,13 @@ fun Module.foodDomainModule() {
     }
     single {
         FddbProductSyncForegroundLauncher(
+            applicationScope = applicationCoroutineScope(),
+            coordinator = get(),
+            logger = get(),
+        )
+    }
+    single {
+        FddbProductSyncManualBatchLauncher(
             applicationScope = applicationCoroutineScope(),
             coordinator = get(),
             logger = get(),

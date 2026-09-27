@@ -19,6 +19,8 @@ import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepo
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncCoordinator
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchLauncher
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchState
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncDueFddbProductsUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UnlinkFddbProductUseCase
@@ -31,6 +33,7 @@ import kotlin.test.assertNull
 import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,7 +53,7 @@ class FddbProductSyncQueueViewModelTest {
     @Test
     fun modelShowsNextAutomaticSyncOnlyWhileCooldownIsActive() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        val fixture = Fixture()
+        val fixture = Fixture(this)
         val viewModel = fixture.viewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.model.collect()
@@ -78,6 +81,47 @@ class FddbProductSyncQueueViewModelTest {
             advanceUntilIdle()
 
             assertNull(viewModel.model.value.nextAutomaticSyncAt)
+
+            fixture.settings.update {
+                copy(
+                    fddbProductSyncMode = FddbProductSyncMode.Disabled,
+                    fddbProductSyncLastAttemptEpochSeconds =
+                        FixedDateProvider.nowInstant().epochSeconds,
+                )
+            }
+            advanceUntilIdle()
+            assertNull(viewModel.model.value.nextAutomaticSyncAt)
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun manualBatchValidatesAgainstQueueAndPublishesLauncherResult() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val fixture = Fixture(this)
+        val viewModel = fixture.viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.model.collect()
+        }
+        try {
+            advanceUntilIdle()
+            viewModel.startManualBatch(2)
+            advanceUntilIdle()
+            assertEquals(emptyList(), fixture.gateway.requestedUrls)
+
+            viewModel.startManualBatch(1)
+            advanceUntilIdle()
+
+            assertEquals(listOf(OldUrl), fixture.gateway.requestedUrls)
+            assertEquals(
+                1,
+                (viewModel.model.value.manualBatchState as
+                        FddbProductSyncManualBatchState.Completed)
+                    .progress
+                    .synced,
+            )
         } finally {
             viewModel.viewModelScope.cancel()
             Dispatchers.resetMain()
@@ -87,7 +131,7 @@ class FddbProductSyncQueueViewModelTest {
     @Test
     fun changingLinkImmediatelySyncsExactlyOnce() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        val fixture = Fixture()
+        val fixture = Fixture(this)
         val viewModel = fixture.viewModel()
         try {
             viewModel.updateLink(ProductId, NewUrl)
@@ -107,7 +151,7 @@ class FddbProductSyncQueueViewModelTest {
     @Test
     fun invalidLinkSurfacesValidationErrorWithoutSync() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        val fixture = Fixture()
+        val fixture = Fixture(this)
         val viewModel = fixture.viewModel()
         try {
             viewModel.updateLink(ProductId, "https://example.com/product")
@@ -124,7 +168,7 @@ class FddbProductSyncQueueViewModelTest {
     @Test
     fun unlinkKeepsProductAndClearsUrlAndStatus() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        val fixture = Fixture()
+        val fixture = Fixture(this)
         val original = fixture.products[ProductId]
         val viewModel = fixture.viewModel()
         try {
@@ -139,7 +183,7 @@ class FddbProductSyncQueueViewModelTest {
         }
     }
 
-    private class Fixture {
+    private class Fixture(private val scope: CoroutineScope) {
         val products = FakeProductRepository(product())
         val status = FakeStatusRepository()
         val gateway = FakeGateway()
@@ -162,6 +206,8 @@ class FddbProductSyncQueueViewModelTest {
                 settingsRepository = settings,
                 dateProvider = FixedDateProvider,
                 fddbProductSyncCoordinator = coordinator,
+                manualBatchLauncher =
+                    FddbProductSyncManualBatchLauncher(scope, coordinator, NoopLogger),
                 updateFddbProductLinkUseCase =
                     UpdateFddbProductLinkUseCase(products, ImmediateTransactionProvider),
                 unlinkFddbProductUseCase =
@@ -192,9 +238,12 @@ class FddbProductSyncQueueViewModelTest {
         val successes = mutableListOf<FoodId.Product>()
         val cleared = mutableListOf<FoodId.Product>()
 
-        override fun observeQueue(): Flow<List<FddbProductSyncQueueItem>> = flowOf(emptyList())
+        private val queue = listOf(queueItem())
 
-        override suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueItem> = emptyList()
+        override fun observeQueue(): Flow<List<FddbProductSyncQueueItem>> = flowOf(queue)
+
+        override suspend fun getDueProducts(limit: Int): List<FddbProductSyncQueueItem> =
+            queue.take(limit)
 
         override suspend fun markAttempt(productId: FoodId.Product, attemptedAt: Instant) = Unit
 
@@ -313,6 +362,17 @@ class FddbProductSyncQueueViewModelTest {
             isQuickCapture = true,
             nutritionFacts = nutrition(),
         )
+
+        fun queueItem() =
+            FddbProductSyncQueueItem(
+                productId = ProductId,
+                name = "Product",
+                brand = "Brand",
+                sourceUrl = OldUrl,
+                lastSyncedAt = null,
+                lastAttemptAt = null,
+                lastError = null,
+            )
 
         fun nutrition() = NutritionFacts(
             energy = NutrientValue.Complete(100.0),

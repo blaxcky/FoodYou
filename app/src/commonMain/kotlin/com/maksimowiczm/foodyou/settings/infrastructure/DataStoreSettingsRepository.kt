@@ -14,6 +14,8 @@ import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_LOCKED_DAY_SURPLUS_KCAL
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
@@ -69,6 +71,11 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 this[SettingsPreferencesKeys.fddbDiarySyncLastAttemptEpochSeconds],
             fddbProductSyncLastAttemptEpochSeconds =
                 this[SettingsPreferencesKeys.fddbProductSyncLastAttemptEpochSeconds],
+            fddbProductSyncMode = getFddbProductSyncMode(),
+            fddbProductSyncManualFrequency = getFddbProductSyncManualFrequency(),
+            fddbProductSyncManualTriggerCount =
+                (this[SettingsPreferencesKeys.fddbProductSyncManualTriggerCountV2] ?: 0)
+                    .coerceIn(0, 2),
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
@@ -139,6 +146,11 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             SettingsPreferencesKeys.fddbProductSyncLastAttemptEpochSeconds,
             updated.fddbProductSyncLastAttemptEpochSeconds,
         )
+        this[SettingsPreferencesKeys.fddbProductSyncMode] = updated.fddbProductSyncMode.name
+        this[SettingsPreferencesKeys.fddbProductSyncManualFrequency] =
+            updated.fddbProductSyncManualFrequency.name
+        this[SettingsPreferencesKeys.fddbProductSyncManualTriggerCountV2] =
+            updated.fddbProductSyncManualTriggerCount.coerceIn(0, 2)
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
@@ -304,6 +316,21 @@ private fun Preferences.getPendingProductPhotoQuality(): PendingProductPhotoQual
         }
         .getOrElse { PendingProductPhotoQuality.Balanced }
 
+private fun Preferences.getFddbProductSyncMode(): FddbProductSyncMode =
+    runCatching {
+            this[SettingsPreferencesKeys.fddbProductSyncMode]?.let(FddbProductSyncMode::valueOf)
+                ?: FddbProductSyncMode.EveryThirtyMinutes
+        }
+        .getOrElse { FddbProductSyncMode.EveryThirtyMinutes }
+
+private fun Preferences.getFddbProductSyncManualFrequency(): FddbProductSyncManualFrequency =
+    runCatching {
+            this[SettingsPreferencesKeys.fddbProductSyncManualFrequency]?.let(
+                FddbProductSyncManualFrequency::valueOf
+            ) ?: FddbProductSyncManualFrequency.EveryThirdSync
+        }
+        .getOrElse { FddbProductSyncManualFrequency.EveryThirdSync }
+
 private fun Preferences.getAppLaunchInfo(): AppLaunchInfo =
     AppLaunchInfo(
         firstLaunch = getInstantFromEpochSeconds(SettingsPreferencesKeys.firstLaunchEpoch),
@@ -393,6 +420,11 @@ private object SettingsPreferencesKeys {
         longPreferencesKey("settings:fddbDiarySyncLastAttemptEpochSeconds")
     val fddbProductSyncLastAttemptEpochSeconds =
         longPreferencesKey("settings:fddbProductSyncLastAttemptEpochSeconds")
+    val fddbProductSyncMode = stringPreferencesKey("settings:fddbProductSyncMode")
+    val fddbProductSyncManualFrequency =
+        stringPreferencesKey("settings:fddbProductSyncManualFrequency")
+    val fddbProductSyncManualTriggerCountV2 =
+        intPreferencesKey("settings:fddbProductSyncManualTriggerCountV2")
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")

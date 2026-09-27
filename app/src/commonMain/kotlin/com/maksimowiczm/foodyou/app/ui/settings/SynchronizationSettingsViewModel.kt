@@ -9,7 +9,10 @@ import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRep
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.ManualFddbDiarySyncUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncForegroundLauncher
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbDiarySyncStatus
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
 import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -28,6 +32,7 @@ internal class SynchronizationSettingsViewModel(
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     fddbCredentialsRepository: FddbCredentialsRepository,
     private val healthConnectWeightSync: HealthConnectWeightSync,
+    private val fddbProductSyncForegroundLauncher: FddbProductSyncForegroundLauncher,
     dateProvider: DateProvider,
 ) : ViewModel() {
 
@@ -57,6 +62,10 @@ internal class SynchronizationSettingsViewModel(
                     fddbDiarySyncStatus = settings.fddbDiarySyncStatus(),
                     hasFddbCredentials = hasFddbCredentials,
                     fddbSyncInProgress = fddbSyncing,
+                    fddbProductSyncMode = settings.fddbProductSyncMode,
+                    fddbProductSyncManualFrequency = settings.fddbProductSyncManualFrequency,
+                    fddbProductSyncManualTriggerCount =
+                        settings.fddbProductSyncManualTriggerCount,
                     nextAutomaticFddbProductSyncAt =
                         settings.nextAutomaticFddbProductSyncAt(now),
                 )
@@ -83,6 +92,32 @@ internal class SynchronizationSettingsViewModel(
     fun setHomeSyncFddbDiaryEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.update { copy(homeSyncFddbDiaryEnabled = enabled) }
+        }
+    }
+
+    fun setFddbProductSyncPolicy(
+        mode: FddbProductSyncMode,
+        frequency: FddbProductSyncManualFrequency,
+    ) {
+        viewModelScope.launch {
+            val current = settingsRepository.observe().first()
+            val changed =
+                current.fddbProductSyncMode != mode ||
+                    current.fddbProductSyncManualFrequency != frequency
+            settingsRepository.update {
+                copy(
+                    fddbProductSyncMode = mode,
+                    fddbProductSyncManualFrequency = frequency,
+                    fddbProductSyncManualTriggerCount =
+                        if (changed) 0 else fddbProductSyncManualTriggerCount,
+                )
+            }
+            if (
+                current.fddbProductSyncMode != FddbProductSyncMode.EveryThirtyMinutes &&
+                    mode == FddbProductSyncMode.EveryThirtyMinutes
+            ) {
+                fddbProductSyncForegroundLauncher.onForeground()
+            }
         }
     }
 
@@ -115,5 +150,8 @@ internal data class SynchronizationSettingsModel(
     val fddbDiarySyncStatus: FddbDiarySyncStatus?,
     val hasFddbCredentials: Boolean,
     val fddbSyncInProgress: Boolean,
+    val fddbProductSyncMode: FddbProductSyncMode,
+    val fddbProductSyncManualFrequency: FddbProductSyncManualFrequency,
+    val fddbProductSyncManualTriggerCount: Int,
     val nextAutomaticFddbProductSyncAt: kotlin.time.Instant?,
 )

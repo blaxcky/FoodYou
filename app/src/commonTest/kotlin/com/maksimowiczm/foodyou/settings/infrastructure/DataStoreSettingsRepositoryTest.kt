@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
@@ -23,6 +25,57 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 
 class DataStoreSettingsRepositoryTest {
+    @Test
+    fun fddbProductSyncPolicyDefaultsAndRoundTrips() = runTest {
+        val store = InMemoryPreferencesDataStore()
+        val repository = DataStoreSettingsRepository(store)
+        val defaults = repository.observe().first()
+        assertEquals(FddbProductSyncMode.EveryThirtyMinutes, defaults.fddbProductSyncMode)
+        assertEquals(
+            FddbProductSyncManualFrequency.EveryThirdSync,
+            defaults.fddbProductSyncManualFrequency,
+        )
+        assertEquals(0, defaults.fddbProductSyncManualTriggerCount)
+
+        repository.update {
+            copy(
+                fddbProductSyncMode = FddbProductSyncMode.WithManualFddbSync,
+                fddbProductSyncManualFrequency = FddbProductSyncManualFrequency.EverySync,
+                fddbProductSyncManualTriggerCount = 2,
+            )
+        }
+
+        val reloaded = DataStoreSettingsRepository(store).observe().first()
+        assertEquals(FddbProductSyncMode.WithManualFddbSync, reloaded.fddbProductSyncMode)
+        assertEquals(
+            FddbProductSyncManualFrequency.EverySync,
+            reloaded.fddbProductSyncManualFrequency,
+        )
+        assertEquals(2, reloaded.fddbProductSyncManualTriggerCount)
+    }
+
+    @Test
+    fun invalidFddbProductSyncPolicyFallsBackAndLegacyCounterIsIgnored() = runTest {
+        val preferences =
+            mutablePreferencesOf(
+                stringPreferencesKey("settings:fddbProductSyncMode") to "Unknown",
+                stringPreferencesKey("settings:fddbProductSyncManualFrequency") to "Unknown",
+                androidx.datastore.preferences.core.intPreferencesKey(
+                    "settings:fddbProductSyncManualCount"
+                ) to 2,
+            )
+
+        val settings =
+            DataStoreSettingsRepository(InMemoryPreferencesDataStore(preferences)).observe().first()
+
+        assertEquals(FddbProductSyncMode.EveryThirtyMinutes, settings.fddbProductSyncMode)
+        assertEquals(
+            FddbProductSyncManualFrequency.EveryThirdSync,
+            settings.fddbProductSyncManualFrequency,
+        )
+        assertEquals(0, settings.fddbProductSyncManualTriggerCount)
+    }
+
     @Test
     fun fddbProductSyncLastAttemptRoundTrips() = runTest {
         val store = InMemoryPreferencesDataStore()

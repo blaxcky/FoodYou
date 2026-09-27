@@ -34,6 +34,10 @@ data class Settings(
     val fddbDiarySyncLastErrorMessage: String? = null,
     val fddbDiarySyncLastAttemptEpochSeconds: Long? = null,
     val fddbProductSyncLastAttemptEpochSeconds: Long? = null,
+    val fddbProductSyncMode: FddbProductSyncMode = FddbProductSyncMode.EveryThirtyMinutes,
+    val fddbProductSyncManualFrequency: FddbProductSyncManualFrequency =
+        FddbProductSyncManualFrequency.EveryThirdSync,
+    val fddbProductSyncManualTriggerCount: Int = 0,
     val pendingProductPhotoQuality: PendingProductPhotoQuality = PendingProductPhotoQuality.Balanced,
     val crosstrainerCalorieDiscountPercent: Double = 0.0,
     val todayEnergyGoalAdjustment: TodayEnergyGoalAdjustment? = null,
@@ -116,4 +120,15 @@ enum class PendingProductPhotoQuality {
     Fast,
     Balanced,
     High,
+}
+
+enum class FddbProductSyncMode {
+    EveryThirtyMinutes,
+    WithManualFddbSync,
+    Disabled,
+}
+
+enum class FddbProductSyncManualFrequency {
+    EverySync,
+    EveryThirdSync,
 }

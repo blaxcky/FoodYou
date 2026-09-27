@@ -25,6 +25,8 @@ import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration
@@ -40,10 +42,124 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class SyncDueFddbProductsUseCaseTest {
+    @Test
+    fun automaticSyncDoesNothingOutsideAutomaticMode() = runTest {
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                mode = FddbProductSyncMode.Disabled,
+            )
+
+        assertEquals(
+            AutomaticFddbProductSyncResult.NotEnabled,
+            fixture.coordinator.syncDueIfAllowed(),
+        )
+        assertEquals(emptyList(), fixture.gateway.requestedUrls)
+    }
+
+    @Test
+    fun manualTriggerCanRunEverySuccessfulDiarySync() = runTest {
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                mode = FddbProductSyncMode.WithManualFddbSync,
+                frequency = FddbProductSyncManualFrequency.EverySync,
+            )
+
+        assertEquals(
+            ManualFddbProductSyncResult.Completed(
+                SyncDueFddbProductsResult(synced = 2, failed = 0, blocked = false)
+            ),
+            fixture.coordinator.onManualFddbSyncCompleted(),
+        )
+        assertEquals(listOf(Url(1), Url(2)), fixture.gateway.requestedUrls)
+    }
+
+    @Test
+    fun manualTriggerRunsOnEveryThirdSuccessfulDiarySyncAndResetsCounter() = runTest {
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                mode = FddbProductSyncMode.WithManualFddbSync,
+                frequency = FddbProductSyncManualFrequency.EveryThirdSync,
+            )
+
+        assertEquals(
+            ManualFddbProductSyncResult.Waiting(1),
+            fixture.coordinator.onManualFddbSyncCompleted(),
+        )
+        assertEquals(
+            ManualFddbProductSyncResult.Waiting(2),
+            fixture.coordinator.onManualFddbSyncCompleted(),
+        )
+        assertEquals(
+            ManualFddbProductSyncResult.Completed(
+                SyncDueFddbProductsResult(synced = 2, failed = 0, blocked = false)
+            ),
+            fixture.coordinator.onManualFddbSyncCompleted(),
+        )
+        assertEquals(0, fixture.settings.current.fddbProductSyncManualTriggerCount)
+        assertEquals(listOf(Url(1), Url(2)), fixture.gateway.requestedUrls)
+    }
+
+    @Test
+    fun explicitBatchBypassesDisabledModeAndReportsProgress() = runTest {
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                mode = FddbProductSyncMode.Disabled,
+            )
+        val progress = mutableListOf<FddbProductSyncBatchProgress>()
+
+        val result = fixture.coordinator.syncNext(limit = 3, onProgress = progress::add)
+
+        assertEquals(
+            ManualFddbProductSyncResult.Completed(
+                SyncDueFddbProductsResult(synced = 3, failed = 0, blocked = false)
+            ),
+            result,
+        )
+        assertEquals(listOf(0, 1, 2, 3), progress.map { it.processed })
+        assertEquals(listOf(Url(1), Url(2), Url(3)), fixture.gateway.requestedUrls)
+        assertEquals(0, fixture.settings.current.fddbProductSyncManualTriggerCount)
+    }
+
+    @Test
+    fun manualBatchLauncherKeepsAndPublishesCompletedState() = runTest {
+        val fixture =
+            coordinatorFixture(
+                now = Instant.fromEpochSeconds(10_000),
+                mode = FddbProductSyncMode.Disabled,
+            )
+        val launcher =
+            FddbProductSyncManualBatchLauncher(
+                applicationScope = this,
+                coordinator = fixture.coordinator,
+                logger = NoopLogger,
+            )
+
+        launcher.start(3)
+        advanceUntilIdle()
+
+        assertEquals(
+            FddbProductSyncManualBatchState.Completed(
+                FddbProductSyncBatchProgress(
+                    total = 3,
+                    processed = 3,
+                    synced = 3,
+                    failed = 0,
+                    blocked = false,
+                )
+            ),
+            launcher.state.value,
+        )
+    }
+
     @Test
     fun automaticSyncImmediatelyProcessesOnlyTheFirstTwoProducts() = runTest {
         val fixture = coordinatorFixture(now = Instant.fromEpochSeconds(10_000))
@@ -274,6 +390,10 @@ class SyncDueFddbProductsUseCaseTest {
     private fun coordinatorFixture(
         now: Instant,
         lastAttempt: Long? = null,
+        mode: FddbProductSyncMode = FddbProductSyncMode.EveryThirtyMinutes,
+        frequency: FddbProductSyncManualFrequency =
+            FddbProductSyncManualFrequency.EveryThirdSync,
+        manualTriggerCount: Int = 0,
         dueProducts: List<FddbProductSyncQueueItem> = dueItems(1, 2, 3),
         beforeResponse: suspend (String) -> Unit = {},
     ): CoordinatorFixture {
@@ -283,7 +403,10 @@ class SyncDueFddbProductsUseCaseTest {
         val settings =
             FakeSettingsRepository(
                 defaultSettings().copy(
-                    fddbProductSyncLastAttemptEpochSeconds = lastAttempt
+                    fddbProductSyncLastAttemptEpochSeconds = lastAttempt,
+                    fddbProductSyncMode = mode,
+                    fddbProductSyncManualFrequency = frequency,
+                    fddbProductSyncManualTriggerCount = manualTriggerCount,
                 )
             )
         val sync =

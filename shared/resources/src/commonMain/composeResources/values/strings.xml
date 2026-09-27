@@ -551,6 +551,17 @@
     <string name="neutral_fddb_sync_failed_with_message">FDDB diary sync failed: %1$s</string>
     <string name="neutral_fddb_sync_never_run">FDDB diary sync has not run yet</string>
     <string name="headline_fddb_product_sync_queue">FDDB product sync queue</string>
+    <string name="headline_fddb_product_sync_settings">FDDB product sync</string>
+    <string name="description_fddb_product_sync_settings">Choose when products in the queue are synchronized.</string>
+    <string name="option_fddb_product_sync_every_thirty_minutes">Every 30 minutes when opening the app</string>
+    <string name="description_fddb_product_sync_every_thirty_minutes">Runs when the app enters the foreground and the last request was at least 30 minutes ago.</string>
+    <string name="option_fddb_product_sync_with_manual_sync">With manual FDDB diary sync</string>
+    <string name="option_fddb_product_sync_disabled">Disabled</string>
+    <string name="option_fddb_product_sync_every_sync">Every time</string>
+    <string name="option_fddb_product_sync_every_third_sync">Every third time</string>
+    <string name="neutral_fddb_product_sync_manual_every_time">The next two products run with every manual FDDB diary sync</string>
+    <string name="neutral_fddb_product_sync_manual_progress">%1$d/3 manual FDDB diary syncs until the next two products</string>
+    <string name="neutral_fddb_product_sync_disabled">Automatic FDDB product sync is disabled</string>
     <string name="neutral_fddb_product_sync_ready">Ready on the next app open</string>
     <string name="neutral_fddb_product_sync_next_at">Next automatic sync no earlier than %1$s</string>
     <string name="neutral_fddb_product_sync_empty">No FDDB products with source URL found</string>
@@ -572,6 +583,16 @@
     <string name="error_fddb_url_already_linked">This FDDB URL is already linked to another product.</string>
     <string name="error_fddb_product_unavailable">The product is no longer available or is not an FDDB product.</string>
     <string name="neutral_fddb_product_sync_running">Synchronizing…</string>
+    <string name="headline_manual_fddb_product_sync">Manual product sync</string>
+    <string name="description_manual_fddb_product_sync">Choose how many of the next queued products to synchronize.</string>
+    <string name="action_start_manual_fddb_product_sync">Start</string>
+    <string name="label_fddb_product_sync_count">Number of products</string>
+    <string name="description_fddb_product_sync_count_range">Enter a whole number from 1 to %1$d.</string>
+    <string name="error_fddb_product_sync_count_range">Choose a number from 1 to %1$d.</string>
+    <string name="neutral_fddb_product_sync_batch_progress">Processed %1$d of %2$d · successful: %3$d · failed: %4$d</string>
+    <string name="neutral_fddb_product_sync_batch_completed">Manual sync completed · successful: %1$d · failed: %2$d</string>
+    <string name="error_fddb_product_sync_batch_blocked">FDDB blocked further requests. The batch was stopped.</string>
+    <string name="error_fddb_product_sync_batch_failed">Manual product sync failed: %1$s</string>
     <string name="neutral_home_sync_settings">Choose what the sync button on the home screen runs.</string>
 
     <string name="action_export_csv_food_products">Export CSV food products</string>

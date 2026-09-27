@@ -17,6 +17,10 @@ import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
 import com.maksimowiczm.foodyou.food.domain.entity.FddbProductSyncQueueItem
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncManualBatchState
+import com.maksimowiczm.foodyou.food.domain.usecase.FddbProductSyncBatchProgress
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
+import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import kotlin.time.Instant
 import org.junit.After
 import org.junit.Test
@@ -45,18 +49,63 @@ class FddbProductSyncQueueScreenScreenshotTest {
         capture("unlink-confirmation", confirmUnlink = true)
     }
 
-    private fun capture(name: String, confirmUnlink: Boolean) {
+    @Test
+    fun manualBatchRunning() {
+        capture(
+            name = "manual-batch-running",
+            selectedProductId = null,
+            batchState =
+                FddbProductSyncManualBatchState.Running(
+                    FddbProductSyncBatchProgress(
+                        total = 15,
+                        processed = 6,
+                        synced = 5,
+                        failed = 1,
+                        blocked = false,
+                    )
+                ),
+        )
+    }
+
+    @Test
+    fun manualBatchBlocked() {
+        capture(
+            name = "manual-batch-blocked",
+            selectedProductId = null,
+            batchState =
+                FddbProductSyncManualBatchState.Completed(
+                    FddbProductSyncBatchProgress(
+                        total = 15,
+                        processed = 7,
+                        synced = 6,
+                        failed = 1,
+                        blocked = true,
+                    )
+                ),
+        )
+    }
+
+    private fun capture(
+        name: String,
+        confirmUnlink: Boolean = false,
+        selectedProductId: Long? = Item.productId.id,
+        batchState: FddbProductSyncManualBatchState = FddbProductSyncManualBatchState.Idle,
+    ) {
         captureRoboImage(
             filePath = "FddbProductSyncQueueScreenScreenshotTest.$name.png",
             roborazziComposeOptions =
                 RoborazziComposeOptions.Builder().size(390, 844).locale("de-rDE").build(),
         ) {
-            Golden(confirmUnlink)
+            Golden(confirmUnlink, selectedProductId, batchState)
         }
     }
 
     @Composable
-    private fun Golden(confirmUnlink: Boolean) {
+    private fun Golden(
+        confirmUnlink: Boolean,
+        selectedProductId: Long?,
+        batchState: FddbProductSyncManualBatchState,
+    ) {
         MaterialTheme {
             Box(
                 modifier =
@@ -67,6 +116,10 @@ class FddbProductSyncQueueScreenScreenshotTest {
                     model =
                         FddbProductSyncQueueModel(
                             nextAutomaticSyncAt = Instant.parse("2026-09-25T12:30:00Z"),
+                            syncMode = FddbProductSyncMode.EveryThirtyMinutes,
+                            manualFrequency = FddbProductSyncManualFrequency.EveryThirdSync,
+                            manualTriggerCount = 0,
+                            manualBatchState = batchState,
                             queue = listOf(Item),
                         ),
                     actionState = FddbProductSyncActionState(),
@@ -76,8 +129,10 @@ class FddbProductSyncQueueScreenScreenshotTest {
                     onUpdateLink = { _, _ -> },
                     onUnlink = {},
                     onClearActionError = {},
+                    onStartManualBatch = {},
+                    onClearManualBatchResult = {},
                     modifier = Modifier.fillMaxSize(),
-                    initialSelectedProductId = Item.productId.id,
+                    initialSelectedProductId = selectedProductId,
                     initialConfirmUnlink = confirmUnlink,
                 )
             }
