@@ -9,7 +9,48 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.*
 
 enum class AiProvider(val label: String) {
-    Local("Gemma 4 E4B lokal"), Gemini("Google AI Studio")
+    Local("Gemma 4 E4B lokal"),
+    LocalE2B("Gemma 4 E2B lokal"),
+    Gemini("Google AI Studio");
+
+    val localModel: GemmaModel?
+        get() = when (this) {
+            Local -> GemmaModel.E4B
+            LocalE2B -> GemmaModel.E2B
+            Gemini -> null
+        }
+}
+
+enum class GemmaModel(
+    val displayName: String,
+    val approximateSize: String,
+    val size: Long,
+    val revision: String,
+    val sha256: String,
+    val fileName: String,
+    val repository: String,
+) {
+    E4B(
+        displayName = "Gemma 4 E4B",
+        approximateSize = "3,66",
+        size = 3_659_530_240L,
+        revision = "2eee7ac325f20eb8c9ac1d0e972f7c84663062da",
+        sha256 = "0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0",
+        fileName = "gemma-4-E4B-it.litertlm",
+        repository = "litert-community/gemma-4-E4B-it-litert-lm",
+    ),
+    E2B(
+        displayName = "Gemma 4 E2B",
+        approximateSize = "2,59",
+        size = 2_588_147_712L,
+        revision = "6e5c4f1e395deb959c494953478fa5cec4b8008f",
+        sha256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c",
+        fileName = "gemma-4-E2B-it.litertlm",
+        repository = "litert-community/gemma-4-E2B-it-litert-lm",
+    );
+
+    val url: String get() = "https://huggingface.co/$repository/resolve/$revision/$fileName"
+    val artifactName: String get() = "${fileName.removeSuffix(".litertlm")}@$revision"
 }
 
 data class AiSettings(
@@ -134,30 +175,24 @@ class ScaleAnalysisCoordinator {
 
 data class ModelDownloadState(
     val bytes: Long = 0,
-    val total: Long = GEMMA_SIZE,
+    val total: Long = GemmaModel.E4B.size,
     val running: Boolean = false,
     val verifying: Boolean = false,
     val ready: Boolean = false,
     val message: String? = null,
 )
 
-const val GEMMA_SIZE = 3659530240L
-internal const val GEMMA_REVISION = "2eee7ac325f20eb8c9ac1d0e972f7c84663062da"
-internal const val GEMMA_SHA256 = "0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0"
-internal const val GEMMA_FILE = "gemma-4-E4B-it.litertlm"
-internal const val GEMMA_URL = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/$GEMMA_REVISION/$GEMMA_FILE"
-
 interface AiController {
     val settings: StateFlow<AiSettings>
-    val download: StateFlow<ModelDownloadState>
+    val downloads: StateFlow<Map<AiProvider, ModelDownloadState>>
     val analysis: StateFlow<AnalysisProgress>
     suspend fun saveSettings(provider: AiProvider, model: String, newKey: String?, deleteKey: Boolean = false)
     suspend fun diagnosticReport(): String
     suspend fun testConnection(): String
     fun startAnalysis(reanalyze: Boolean = false)
     fun cancelAnalysis()
-    fun startDownload()
+    fun startDownload(provider: AiProvider)
     fun pauseDownload()
-    fun deleteModel()
+    fun deleteModel(provider: AiProvider)
     fun onBackground()
 }

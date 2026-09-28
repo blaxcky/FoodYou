@@ -54,7 +54,8 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
         buildString {
             appendLine("FoodYou KI-Diagnose · ${BuildConfig.VERSION_NAME}")
             appendLine("Gerät: ${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-            appendLine("LiteRT-LM: $LOCAL_AI_RUNTIME · Gemma 4 E4B · $GEMMA_REVISION")
+            appendLine("LiteRT-LM: $LOCAL_AI_RUNTIME")
+            appendLine("Lokale Modelle: " + GemmaModel.entries.joinToString { "${it.displayName} · ${it.revision}" })
             appendLine("Backend: GPU / Vision GPU · Kontext: 4096 · Ausgabe: 128")
             appendLine("Zeitangaben: Unix-Millisekunden; keine Fotos, Modellantworten oder API-Schlüssel.")
             appendLine()

@@ -41,7 +41,7 @@ class ScalePhotoDecoderTest {
     @Test fun partialDownloadsRemainInactiveAcrossStoreInstances() {
         val dir = kotlin.io.path.createTempDirectory("scale-model").toFile()
         try {
-            File(dir, "$GEMMA_FILE.part").writeText("unfinished")
+            File(dir, "${GemmaModel.E4B.fileName}.part").writeText("unfinished")
             assertFalse(GemmaModelStore(dir).state.value.ready)
             assertEquals(10L, GemmaModelStore(dir).state.value.bytes)
             GemmaModelStore(dir).delete()

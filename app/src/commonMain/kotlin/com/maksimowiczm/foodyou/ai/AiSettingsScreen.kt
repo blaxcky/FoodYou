@@ -29,7 +29,7 @@ import org.koin.compose.koinInject
 fun AiSettingsScreen(onBack: () -> Unit) {
     val controller: AiController = koinInject()
     val settings by controller.settings.collectAsStateWithLifecycle()
-    val download by controller.download.collectAsStateWithLifecycle()
+    val downloads by controller.downloads.collectAsStateWithLifecycle()
     val analysis by controller.analysis.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var message by remember { mutableStateOf<String?>(null) }
@@ -37,7 +37,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     report?.let { text -> AiDiagnosticDialog(text, { clipboard.setText(androidx.compose.ui.text.AnnotatedString(text)) }, { report = null }) }
     var saving by remember { mutableStateOf(false) }
-    AiSettingsContent(settings, download, analysis.running || saving, message,
+    AiSettingsContent(settings, downloads, analysis.running || saving, message,
         onBack = onBack,
         onSave = { provider, model, key, delete ->
             saving = true
@@ -66,15 +66,15 @@ fun AiSettingsScreen(onBack: () -> Unit) {
 @Composable
 internal fun AiSettingsContent(
     settings: AiSettings,
-    download: ModelDownloadState,
+    downloads: Map<AiProvider, ModelDownloadState>,
     busy: Boolean,
     message: String?,
     onBack: () -> Unit,
     onSave: (AiProvider, String, String?, Boolean) -> Unit,
     onTest: () -> Unit,
-    onDownload: () -> Unit,
+    onDownload: (AiProvider) -> Unit,
     onPause: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (AiProvider) -> Unit,
     onDiagnostics: () -> Unit = {},
 ) {
     var provider by rememberSaveable(settings.provider) { mutableStateOf(settings.provider) }
@@ -82,12 +82,14 @@ internal fun AiSettingsContent(
     // A plaintext API key is deliberately neither saveable nor persisted in UI state bundles.
     var key by remember { mutableStateOf("") }
     var confirmDelete by remember { mutableStateOf(false) }
+    val localModel = provider.localModel
+    val download = downloads[provider] ?: ModelDownloadState(total = localModel?.size ?: GemmaModel.E4B.size)
     val dirty = provider != settings.provider || model != settings.model || key.isNotEmpty()
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Gemma-Modell löschen?") },
         text = { Text("Für die nächste lokale Analyse muss das Modell erneut heruntergeladen werden.") },
-        confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Löschen") } },
+        confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete(provider) }) { Text("Löschen") } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Abbrechen") } },
     )
     Scaffold(topBar = { TopAppBar(title = { Text("KI") }, navigationIcon = { ArrowBackIconButton(onBack) }) }) { padding ->
@@ -101,8 +103,8 @@ internal fun AiSettingsContent(
                     Text(value.label)
                 }
             }
-            if (provider == AiProvider.Local) {
-                Text("Gemma 4 E4B · etwa 3,66 GB", style = MaterialTheme.typography.titleMedium)
+            if (localModel != null) {
+                Text("${localModel.displayName} · etwa ${localModel.approximateSize} GB", style = MaterialTheme.typography.titleMedium)
                 Text("Nach dem Download bleiben die Fotos auf deinem Smartphone. Die Analyse benötigt freien Arbeitsspeicher und läuft nur bei geöffneter App.")
                 Text(when {
                     download.ready -> "Modell bereit"
@@ -113,7 +115,7 @@ internal fun AiSettingsContent(
                     LinearProgressIndicator(progress = { (download.bytes.toDouble() / download.total).toFloat() }, modifier = Modifier.fillMaxWidth())
                     OutlinedButton(onClick = onPause) { Text("Pausieren") }
                 } else {
-                    if (!download.ready) Button(onClick = onDownload, enabled = !busy) {
+                    if (!download.ready) Button(onClick = { onDownload(provider) }, enabled = !busy) {
                         Text(if (download.bytes > 0) "Download fortsetzen" else "Gemma herunterladen")
                     }
                     if (download.ready || download.bytes > 0) TextButton(onClick = { confirmDelete = true }, enabled = !busy) { Text("Modell und Download löschen") }

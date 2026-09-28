@@ -67,8 +67,13 @@ class LocalAiService : Service() {
                     val finishLoading = timings.modelLoading()
                     var outcome = AiTimingOutcome.Error
                     try {
+                        val model = GemmaModel.valueOf(requireNotNull(data.getString(LocalAiProtocol.MODEL)))
                         engine = LiteRtScaleEngine.open(
-                            File(noBackupFilesDir, "ai/models/$GEMMA_FILE"), File(cacheDir, "gemma"), cancellationScope, diagnostics,
+                            File(noBackupFilesDir, "ai/models/${model.fileName}"),
+                            File(cacheDir, "gemma/${model.name}"),
+                            model.size,
+                            cancellationScope,
+                            diagnostics,
                         )
                         outcome = if (stopping) AiTimingOutcome.Cancelled else AiTimingOutcome.Completed
                         Bundle().apply { putString(LocalAiProtocol.RESULT, "ready") }

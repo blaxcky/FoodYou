@@ -26,12 +26,19 @@ internal class AndroidAiController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val dao = database.quickCaptureDao
     private val configMutex = Mutex()
-    private val store = GemmaModelStore(File(directory, "models"))
+    private val stores = GemmaModel.entries.associateWith { GemmaModelStore(File(directory, "models"), it) }
     private val diagnostics = AiDiagnostics(context)
     private val coordinator = ScaleAnalysisCoordinator()
     private val mutableSettings = MutableStateFlow(readSettings())
     override val settings: StateFlow<AiSettings> = mutableSettings
-    override val download = store.state
+    override val downloads: StateFlow<Map<AiProvider, ModelDownloadState>> = combine(
+        requireNotNull(stores[GemmaModel.E4B]).state,
+        requireNotNull(stores[GemmaModel.E2B]).state,
+    ) { e4b, e2b -> mapOf(AiProvider.Local to e4b, AiProvider.LocalE2B to e2b) }
+        .stateIn(scope, SharingStarted.Eagerly, mapOf(
+            AiProvider.Local to requireNotNull(stores[GemmaModel.E4B]).state.value,
+            AiProvider.LocalE2B to requireNotNull(stores[GemmaModel.E2B]).state.value,
+        ))
     override val analysis = coordinator.progress
     private var analysisJob: Job? = null
     private var downloadJob: Job? = null
@@ -108,7 +115,9 @@ internal class AndroidAiController(
                         val (config, key) = configuration()
                         selected = config
                         when (config.provider) {
-                            AiProvider.Local -> LocalScaleWeightRecognizer.open(context, photoDirectory, diagnostics)
+                            AiProvider.Local, AiProvider.LocalE2B -> LocalScaleWeightRecognizer.open(
+                                context, photoDirectory, diagnostics, requireNotNull(config.provider.localModel),
+                            )
                             AiProvider.Gemini -> GeminiScaleWeightRecognizer(client, key, config.model, photoDirectory)
                         }
                     },
@@ -126,7 +135,7 @@ internal class AndroidAiController(
                                     else -> "error"
                                 }
                             }, selected.provider.name,
-                            if (selected.provider == AiProvider.Local) "gemma-4-E4B-it@$GEMMA_REVISION" else selected.model,
+                            selected.provider.localModel?.artifactName ?: selected.model,
                             System.currentTimeMillis())
                     })
             }
@@ -136,15 +145,17 @@ internal class AndroidAiController(
     override suspend fun diagnosticReport(): String = diagnostics.report()
 
     override fun cancelAnalysis() { analysisJob?.cancel() }
-    override fun startDownload() {
+    override fun startDownload(provider: AiProvider) {
         if (downloadJob?.isActive == true || analysisJob?.isActive == true) return
+        val store = provider.localModel?.let(stores::get) ?: return
         downloadJob = scope.launch { store.download() }
     }
     override fun pauseDownload() { downloadJob?.cancel() }
-    override fun deleteModel() {
+    override fun deleteModel(provider: AiProvider) {
         if (downloadJob?.isActive == true || analysisJob?.isActive == true) return
-        store.delete()
-        cacheDirectory.deleteRecursively()
+        val model = provider.localModel ?: return
+        stores[model]?.delete()
+        File(cacheDirectory, model.name).deleteRecursively()
     }
     override fun onBackground() { cancelAnalysis(); pauseDownload() }
 }

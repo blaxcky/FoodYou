@@ -7,10 +7,24 @@ import org.junit.Test
 
 class AiInfrastructureTest {
     @Test fun resumedDownloadChecksRangeAndRestartsWhenIgnored() {
-        assertTrue(acceptsDownloadResponse(206, "bytes 123-999/$GEMMA_SIZE", 123))
-        assertFalse(acceptsDownloadResponse(200, null, 123))
-        assertFailsWith<IllegalArgumentException> { acceptsDownloadResponse(206, "bytes 0-999/$GEMMA_SIZE", 123) }
-        assertFailsWith<IllegalArgumentException> { acceptsDownloadResponse(206, "bytes 123-999/1000", 123) }
+        assertTrue(acceptsDownloadResponse(206, "bytes 123-999/${GemmaModel.E4B.size}", 123, GemmaModel.E4B.size))
+        assertTrue(acceptsDownloadResponse(206, "bytes 123-999/${GemmaModel.E2B.size}", 123, GemmaModel.E2B.size))
+        assertFalse(acceptsDownloadResponse(200, null, 123, GemmaModel.E4B.size))
+        assertFailsWith<IllegalArgumentException> {
+            acceptsDownloadResponse(206, "bytes 0-999/${GemmaModel.E4B.size}", 123, GemmaModel.E4B.size)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            acceptsDownloadResponse(206, "bytes 123-999/1000", 123, GemmaModel.E4B.size)
+        }
+    }
+
+    @Test fun bothLocalModelsUsePinnedVerifiedArtifacts() {
+        assertEquals(3_659_530_240L, GemmaModel.E4B.size)
+        assertEquals(2_588_147_712L, GemmaModel.E2B.size)
+        GemmaModel.entries.forEach { model ->
+            assertEquals(64, model.sha256.length)
+            assertTrue(model.url.contains("/${model.revision}/${model.fileName}"))
+        }
     }
 
     @Test fun verifiesBothSizeAndHashBeforeActivation() = runTest {

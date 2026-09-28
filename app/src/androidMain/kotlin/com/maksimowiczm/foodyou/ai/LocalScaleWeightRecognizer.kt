@@ -117,10 +117,19 @@ internal class LocalScaleWeightRecognizer private constructor(
     }
 
     companion object {
-        suspend fun open(context: Context, photoDirectory: File, diagnostics: AiDiagnostics): LocalScaleWeightRecognizer =
-            openOnMain(context, photoDirectory, diagnostics)
+        suspend fun open(
+            context: Context,
+            photoDirectory: File,
+            diagnostics: AiDiagnostics,
+            model: GemmaModel = GemmaModel.E4B,
+        ): LocalScaleWeightRecognizer = openOnMain(context, photoDirectory, diagnostics, model)
 
-        private suspend fun openOnMain(context: Context, photoDirectory: File, diagnostics: AiDiagnostics): LocalScaleWeightRecognizer {
+        private suspend fun openOnMain(
+            context: Context,
+            photoDirectory: File,
+            diagnostics: AiDiagnostics,
+            model: GemmaModel,
+        ): LocalScaleWeightRecognizer {
             var created: LocalScaleWeightRecognizer? = null
             try {
                 return withContext(Dispatchers.Main.immediate) {
@@ -130,7 +139,9 @@ internal class LocalScaleWeightRecognizer private constructor(
                     if (!recognizer.bound || !withTimeout(15_000) { recognizer.connected.await() }) {
                         recognizer.lost()
                     } else {
-                        val result = recognizer.request(LocalAiProtocol.OPEN)
+                        val result = recognizer.request(LocalAiProtocol.OPEN, Bundle().apply {
+                            putString(LocalAiProtocol.MODEL, model.name)
+                        })
                         if (result.getString(LocalAiProtocol.RESULT) != "ready")
                             recognizer.initialFailure = result.readRecognitionResult() as? ScaleRecognitionResult.Error
                     }

@@ -9,15 +9,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /** Only a fully verified file is renamed into the active model path. */
-internal class GemmaModelStore(private val directory: File) {
-    val model = File(directory, GEMMA_FILE)
-    private val partial = File(directory, "$GEMMA_FILE.part")
+internal class GemmaModelStore(private val directory: File, private val descriptor: GemmaModel = GemmaModel.E4B) {
+    val model = File(directory, descriptor.fileName)
+    private val partial = File(directory, "${descriptor.fileName}.part")
     private val mutableState = MutableStateFlow(snapshot())
     val state: StateFlow<ModelDownloadState> = mutableState
 
     private fun snapshot() = ModelDownloadState(
-        bytes = if (model.isFile && model.length() == GEMMA_SIZE) GEMMA_SIZE else partial.length(),
-        ready = model.isFile && model.length() == GEMMA_SIZE,
+        bytes = if (model.isFile && model.length() == descriptor.size) descriptor.size else partial.length(),
+        total = descriptor.size,
+        ready = model.isFile && model.length() == descriptor.size,
     )
 
     suspend fun download() = withContext(Dispatchers.IO) {
@@ -25,15 +26,15 @@ internal class GemmaModelStore(private val directory: File) {
         directory.mkdirs()
         mutableState.value = snapshot().copy(running = true)
         try {
-            if (partial.length() > GEMMA_SIZE) partial.delete()
+            if (partial.length() > descriptor.size) partial.delete()
             val offset = partial.length()
-            require(directory.usableSpace >= GEMMA_SIZE - offset + 256L * 1024 * 1024) {
-                "Nicht genügend Speicher: Für das Modell werden etwa 3,66 GB benötigt."
+            require(directory.usableSpace >= descriptor.size - offset + 256L * 1024 * 1024) {
+                "Nicht genügend Speicher: Für das Modell werden etwa ${descriptor.approximateSize} GB benötigt."
             }
-            if (offset < GEMMA_SIZE) transfer(offset)
+            if (offset < descriptor.size) transfer(offset)
             currentCoroutineContext().ensureActive()
             mutableState.value = mutableState.value.copy(verifying = true)
-            val valid = verifyModelFile(partial, GEMMA_SIZE, GEMMA_SHA256)
+            val valid = verifyModelFile(partial, descriptor.size, descriptor.sha256)
             if (!valid) {
                 partial.delete()
                 error("Die Modellprüfung ist fehlgeschlagen. Bitte erneut herunterladen.")
@@ -56,14 +57,14 @@ internal class GemmaModelStore(private val directory: File) {
     }
 
     private suspend fun transfer(offset: Long) {
-        val connection = URL(GEMMA_URL).openConnection() as HttpURLConnection
+        val connection = URL(descriptor.url).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 15_000
             connection.readTimeout = 15_000
             connection.setRequestProperty("Accept-Encoding", "identity")
             if (offset > 0) connection.setRequestProperty("Range", "bytes=$offset-")
             val code = connection.responseCode
-            val append = acceptsDownloadResponse(code, connection.getHeaderField("Content-Range"), offset)
+            val append = acceptsDownloadResponse(code, connection.getHeaderField("Content-Range"), offset, descriptor.size)
             require(code == 200 || code == 206) { "Modellserver nicht erreichbar (HTTP $code)." }
             connection.inputStream.use { input ->
                 java.io.FileOutputStream(partial, append).use { output ->
@@ -75,7 +76,7 @@ internal class GemmaModelStore(private val directory: File) {
                         val count = input.read(buffer)
                         if (count < 0) break
                         bytes += count
-                        check(bytes <= GEMMA_SIZE) { "Unerwartete Modelldateigröße. Bitte erneut versuchen." }
+                        check(bytes <= descriptor.size) { "Unerwartete Modelldateigröße. Bitte erneut versuchen." }
                         output.write(buffer, 0, count)
                         val now = System.currentTimeMillis()
                         if (now - lastUpdate > 200) {
@@ -86,7 +87,7 @@ internal class GemmaModelStore(private val directory: File) {
                 }
             }
             mutableState.value = mutableState.value.copy(bytes = partial.length())
-            check(partial.length() == GEMMA_SIZE) { "Download unvollständig. Bitte fortsetzen." }
+            check(partial.length() == descriptor.size) { "Download unvollständig. Bitte fortsetzen." }
         } finally { connection.disconnect() }
     }
 
@@ -98,9 +99,9 @@ internal class GemmaModelStore(private val directory: File) {
 }
 
 /** A server ignoring Range must restart the file, never append duplicate bytes. */
-internal fun acceptsDownloadResponse(code: Int, range: String?, offset: Long): Boolean {
+internal fun acceptsDownloadResponse(code: Int, range: String?, offset: Long, total: Long): Boolean {
     if (code == 206) {
-        require(range?.startsWith("bytes $offset-") == true && range.endsWith("/$GEMMA_SIZE")) {
+        require(range?.startsWith("bytes $offset-") == true && range.endsWith("/$total")) {
             "Ungültige Fortsetzung des Downloads. Bitte erneut versuchen."
         }
         return offset > 0

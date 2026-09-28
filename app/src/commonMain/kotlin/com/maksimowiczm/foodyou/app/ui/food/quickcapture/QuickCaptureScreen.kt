@@ -153,11 +153,11 @@ fun QuickCaptureScreen(
 ) {
     val ai: com.maksimowiczm.foodyou.ai.AiController = org.koin.compose.koinInject()
     val aiSettings by ai.settings.collectAsStateWithLifecycle()
-    val aiDownload by ai.download.collectAsStateWithLifecycle()
+    val aiDownloads by ai.downloads.collectAsStateWithLifecycle()
     val aiProgress by ai.analysis.collectAsStateWithLifecycle()
     val aiCanStart =
-        !aiDownload.running &&
-            if (aiSettings.provider == com.maksimowiczm.foodyou.ai.AiProvider.Local) aiDownload.ready
+        aiDownloads.values.none { it.running } &&
+            if (aiSettings.provider.localModel != null) aiDownloads[aiSettings.provider]?.ready == true
             else aiSettings.hasApiKey
     val viewModel: QuickCaptureViewModel = koinViewModel()
     val entries by viewModel.entries.collectAsStateWithLifecycle()

@@ -27,7 +27,14 @@ class AiSettingsScreenshotTest {
     @After fun tearDown() { if (::activity.isInitialized) activity.close() }
 
     @Test fun localDownload() = showSettings(AiSettings(), ModelDownloadState(bytes = 900_000_000, running = true), "local-download")
-    @Test fun localReady() = showSettings(AiSettings(), ModelDownloadState(bytes = GEMMA_SIZE, ready = true), "local-ready")
+    @Test fun localReady() = showSettings(
+        AiSettings(), ModelDownloadState(bytes = GemmaModel.E4B.size, ready = true), "local-ready",
+    )
+    @Test fun localE2BReady() = showSettings(
+        AiSettings(AiProvider.LocalE2B),
+        ModelDownloadState(bytes = GemmaModel.E2B.size, total = GemmaModel.E2B.size, ready = true),
+        "local-e2b-ready",
+    )
     @Test fun geminiSettings() = showSettings(AiSettings(AiProvider.Gemini, hasApiKey = true), ModelDownloadState(), "gemini")
 
     @Test fun diagnosticReport() {
@@ -48,7 +55,8 @@ class AiSettingsScreenshotTest {
     }
 
     private fun showSettings(settings: AiSettings, download: ModelDownloadState, name: String) {
-        show { AiSettingsContent(settings, download, false, null, {}, { _, _, _, _ -> }, {}, {}, {}, {}) }
+        val downloads = settings.provider.localModel?.let { mapOf(settings.provider to download) }.orEmpty()
+        show { AiSettingsContent(settings, downloads, false, null, {}, { _, _, _, _ -> }, {}, { _ -> }, {}, { _ -> }) }
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.$name.png")
     }
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {

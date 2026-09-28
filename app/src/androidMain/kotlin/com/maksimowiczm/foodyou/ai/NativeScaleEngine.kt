@@ -127,8 +127,14 @@ internal class LiteRtScaleEngine private constructor(
     }
 
     companion object {
-        fun open(model: File, cache: File, cancellationScope: CoroutineScope, diagnostics: AiDiagnostics): LiteRtScaleEngine {
-            check(model.isFile && model.length() == GEMMA_SIZE)
+        fun open(
+            model: File,
+            cache: File,
+            expectedSize: Long,
+            cancellationScope: CoroutineScope,
+            diagnostics: AiDiagnostics,
+        ): LiteRtScaleEngine {
+            check(model.isFile && model.length() == expectedSize)
             cache.mkdirs()
             diagnostics.record("engine_initializing")
             val engine = Engine(EngineConfig(
