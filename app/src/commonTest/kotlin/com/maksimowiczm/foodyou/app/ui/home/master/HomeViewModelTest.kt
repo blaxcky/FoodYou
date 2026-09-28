@@ -70,22 +70,25 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun disabledSourcesAreNotInvoked() = runTest {
+    fun trainingSyncRunsWhenOtherSourcesAreDisabled() = runTest {
         val settings = FakeSettingsRepository().value.copy(
             homeSyncHealthConnectEnabled = false, homeSyncFddbDiaryEnabled = false,
             healthConnectWeightEnabled = false,
         )
-        var invocations = 0
+        var otherInvocations = 0
+        var trainingInvocations = 0
         val result = syncConfiguredHomeSync(
             date = LocalDate(2026, 9, 27), settings = settings,
             settingsRepository = FakeSettingsRepository(),
-            syncHealthConnect = { invocations++ },
-            syncWeight = { invocations++ },
-            hasFddbCredentials = { invocations++; true },
-            syncFddbDiary = { invocations++; Ok(FddbDiarySyncResult(0, 0, 0)) },
+            syncHealthConnect = { otherInvocations++ },
+            syncWeight = { otherInvocations++ },
+            syncTraining = { trainingInvocations++; true },
+            hasFddbCredentials = { otherInvocations++; true },
+            syncFddbDiary = { otherInvocations++; Ok(FddbDiarySyncResult(0, 0, 0)) },
         )
-        assertEquals(0, invocations)
-        assertEquals(HomeConfiguredSyncResult(false, false, false), result)
+        assertEquals(0, otherInvocations)
+        assertEquals(1, trainingInvocations)
+        assertEquals(HomeConfiguredSyncResult(false, false, false, trainingSynced = true), result)
     }
 
     @Test

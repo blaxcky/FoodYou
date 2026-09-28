@@ -98,7 +98,7 @@ internal class HomeViewModel(
     private val activityRepository: ActivityRepository,
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     private val fddbCredentialsRepository: FddbCredentialsRepository,
-    private val trainingSync: com.maksimowiczm.foodyou.training.TrainingSync = com.maksimowiczm.foodyou.training.DisabledTrainingSync,
+    private val trainingSync: com.maksimowiczm.foodyou.training.TrainingSync,
 ) : ViewModel() {
 
     private val _homeOrder = settingsRepository.observe().map { it.homeCardOrder }

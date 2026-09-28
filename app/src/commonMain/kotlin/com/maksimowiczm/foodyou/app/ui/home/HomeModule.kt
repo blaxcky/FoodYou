@@ -21,6 +21,7 @@ fun Module.home() {
             activityRepository = get(),
             manualFddbDiarySyncUseCase = get(),
             fddbCredentialsRepository = get<FddbCredentialsRepository>(),
+            trainingSync = get(),
         )
     }
     viewModel {

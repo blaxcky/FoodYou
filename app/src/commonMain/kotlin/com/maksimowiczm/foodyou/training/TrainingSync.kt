@@ -38,15 +38,6 @@ interface TrainingSync {
     suspend fun sync(): TrainingSyncReport?
 }
 
-object DisabledTrainingSync : TrainingSync {
-    override val account = MutableStateFlow<TrainingAccount?>(null).asStateFlow()
-    override val state = MutableStateFlow(TrainingSyncState()).asStateFlow()
-    override suspend fun signIn(email: String, password: String) = Unit
-    override fun signOut() = Unit
-    override fun setEnabled(enabled: Boolean) = Unit
-    override suspend fun sync(): TrainingSyncReport? = null
-}
-
 interface TrainingRemote {
     val configured: Boolean
     val account: StateFlow<TrainingAccount?>

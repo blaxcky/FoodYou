@@ -45,6 +45,18 @@ class TrainingImportDaoTest {
         dao.importDocument(account, trainingDocument("76aa75c0-0686-4e8c-8b31-750c13409d23", strength = 0), 100)
         assertEquals(listOf("Cardio", "Krafttraining"), dao.observeEntries(TRAINING_PROJECT, "A", date).first().map { it.name }.sorted())
     }
+
+    @Test fun strengthOnlySessionIsBookedOnItsActivityDate() = runTest {
+        assertEquals(
+            TrainingImportResult.Imported,
+            dao.importDocument(account, trainingDocument(strength = 45, cardio = 0), 100),
+        )
+
+        val entry = dao.observeEntries(TRAINING_PROJECT, account.uid, date).first().single()
+        assertEquals("Krafttraining", entry.name)
+        assertEquals(45L, entry.energyKcal)
+    }
+
     @Test fun receiptsSurviveDatabaseRestart() = runTest {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val name = "training-restart-" + java.util.UUID.randomUUID()
