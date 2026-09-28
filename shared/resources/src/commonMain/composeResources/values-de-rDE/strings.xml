@@ -452,6 +452,10 @@
     <string name="neutral_loading_activity">Aktivitäten werden geladen</string>
     <string name="neutral_x_steps">%1$s Schritte</string>
     <string name="neutral_x_excluded_steps">%1$s nicht gezählte Schritte</string>
+    <string name="neutral_x_excluded_steps_short">%1$s nicht gezählt</string>
+    <string name="headline_activity_section_steps">Schritte</string>
+    <string name="headline_activity_section_training_app">Aus Trainings-App</string>
+    <string name="headline_activity_section_manual">Eigene Einträge</string>
     <string name="headline_step_exclusions">Nicht gezählte Schritte</string>
     <string name="description_step_exclusions">Wähle Zeiträume, deren Health-Connect-Schritte nicht in die Aktivitätskalorien einfließen. Zeiträume gelten nur für dieses Datum.</string>
     <string name="label_counted_steps">Gezählte Schritte</string>

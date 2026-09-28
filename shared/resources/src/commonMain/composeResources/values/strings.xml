@@ -283,6 +283,10 @@
     <string name="neutral_loading_activity">Loading activity</string>
     <string name="neutral_x_steps">%1$s steps</string>
     <string name="neutral_x_excluded_steps">%1$s excluded steps</string>
+    <string name="neutral_x_excluded_steps_short">%1$s excluded</string>
+    <string name="headline_activity_section_steps">Steps</string>
+    <string name="headline_activity_section_training_app">From training app</string>
+    <string name="headline_activity_section_manual">Your entries</string>
     <string name="headline_step_exclusions">Excluded steps</string>
     <string name="description_step_exclusions">Choose time periods whose Health Connect steps should not count toward activity calories. Periods apply only to this date.</string>
     <string name="label_counted_steps">Counted steps</string>
