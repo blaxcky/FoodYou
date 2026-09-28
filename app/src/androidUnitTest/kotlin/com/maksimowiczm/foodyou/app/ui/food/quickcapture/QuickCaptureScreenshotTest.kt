@@ -249,7 +249,7 @@ class QuickCaptureScreenshotTest {
             androidx.compose.foundation.layout.Column {
                 com.maksimowiczm.foodyou.ai.AiAnalysisControls(
                     com.maksimowiczm.foodyou.ai.AiProvider.Local,
-                    com.maksimowiczm.foodyou.ai.AnalysisProgress(), true, true, {}, {}, {}, {},
+                    com.maksimowiczm.foodyou.ai.AnalysisProgress(), true, true, {}, {},
                 )
                 QuickCapturePhotos(
                     entries = listOf(pendingPhoto(6), pendingPhoto(7), pendingPhoto(8)),

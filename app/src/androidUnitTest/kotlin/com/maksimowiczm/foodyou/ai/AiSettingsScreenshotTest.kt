@@ -40,7 +40,8 @@ class AiSettingsScreenshotTest {
     @Test fun batchProgress() {
         show {
             Column {
-                AiAnalysisControls(AiProvider.Local, AnalysisProgress(true, 7, 10, 6), true, true, {}, {}, {}, {})
+                AiAnalysisControls(AiProvider.Local, AnalysisProgress(true, 7, 10, 6), true, true, {}, {})
+                AiAnalysisActionButton(AnalysisProgress(true, 7, 10, 6), true, true, {}, {})
             }
         }
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-progress.png")

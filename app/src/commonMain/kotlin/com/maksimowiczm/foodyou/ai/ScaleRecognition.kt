@@ -72,6 +72,7 @@ data class AnalysisProgress(
     val total: Int = 0,
     val recognized: Int = 0,
     val message: String? = null,
+    val paused: Boolean = false,
 )
 
 /** One session per batch; persistence must atomically check that the photo is still pending. */
@@ -114,7 +115,7 @@ class ScaleAnalysisCoordinator {
                 }
             }
         } catch (e: CancellationException) {
-            mutableProgress.value = mutableProgress.value.copy(message = "Analyse angehalten. Fertige Vorschläge bleiben gespeichert.")
+            mutableProgress.value = mutableProgress.value.copy(paused = true)
             throw e
         } catch (_: LinkageError) {
             mutableProgress.value = mutableProgress.value.copy(message = "Die lokale KI wird auf diesem Gerät nicht unterstützt. Google AI Studio kann in den Einstellungen ausgewählt werden.")

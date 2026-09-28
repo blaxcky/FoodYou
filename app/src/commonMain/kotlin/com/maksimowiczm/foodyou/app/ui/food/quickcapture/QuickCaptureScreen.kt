@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
@@ -34,8 +35,10 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
@@ -75,6 +78,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -151,6 +155,10 @@ fun QuickCaptureScreen(
     val aiSettings by ai.settings.collectAsStateWithLifecycle()
     val aiDownload by ai.download.collectAsStateWithLifecycle()
     val aiProgress by ai.analysis.collectAsStateWithLifecycle()
+    val aiCanStart =
+        !aiDownload.running &&
+            if (aiSettings.provider == com.maksimowiczm.foodyou.ai.AiProvider.Local) aiDownload.ready
+            else aiSettings.hasApiKey
     val viewModel: QuickCaptureViewModel = koinViewModel()
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val names by viewModel.names.collectAsStateWithLifecycle()
@@ -230,6 +238,15 @@ fun QuickCaptureScreen(
                     showEntryForm = true
                 },
                 onOpenCamera = viewModel::openCamera,
+                aiAction = {
+                    com.maksimowiczm.foodyou.ai.AiAnalysisActionButton(
+                        progress = aiProgress,
+                        canStart = aiCanStart,
+                        hasPhotos = entries.any { it.isPendingPhoto },
+                        onStart = { ai.startAnalysis() },
+                        onCancel = ai::cancelAnalysis,
+                    )
+                },
             )
         },
     ) { padding ->
@@ -302,10 +319,10 @@ fun QuickCaptureScreen(
                     Column(Modifier.fillMaxSize()) {
                         com.maksimowiczm.foodyou.ai.AiAnalysisControls(
                             provider = aiSettings.provider, progress = aiProgress,
-                            canStart = !aiDownload.running && if (aiSettings.provider == com.maksimowiczm.foodyou.ai.AiProvider.Local) aiDownload.ready else aiSettings.hasApiKey,
+                            canStart = aiCanStart,
                             hasPhotos = entries.any { it.isPendingPhoto },
-                            onStart = { ai.startAnalysis() }, onReanalyze = { ai.startAnalysis(true) },
-                            onCancel = ai::cancelAnalysis, onSettings = onAiSettings,
+                            onReanalyze = { ai.startAnalysis(true) },
+                            onSettings = onAiSettings,
                         )
                         QuickCapturePhotos(
                             entries = entries.filter { it.isPendingPhoto },
@@ -330,6 +347,7 @@ internal fun QuickCaptureFloatingActionButton(
     cameraOpen: Boolean,
     onAddEntry: () -> Unit,
     onOpenCamera: () -> Unit,
+    aiAction: @Composable () -> Unit = {},
 ) {
     if (cameraOpen) return
 
@@ -343,12 +361,18 @@ internal fun QuickCaptureFloatingActionButton(
                 )
             }
         QuickCaptureTab.Photos ->
-            FloatingActionButton(onClick = onOpenCamera) {
-                Icon(
-                    Icons.Outlined.PhotoCamera,
-                    contentDescription =
-                        stringResource(Res.string.action_quick_capture_take_photo),
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                aiAction()
+                FloatingActionButton(onClick = onOpenCamera) {
+                    Icon(
+                        Icons.Outlined.PhotoCamera,
+                        contentDescription =
+                            stringResource(Res.string.action_quick_capture_take_photo),
+                    )
+                }
             }
         QuickCaptureTab.Library -> Unit
     }
@@ -997,6 +1021,7 @@ internal fun QuickCapturePhotos(
                     photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
                     modifier = Modifier.fillMaxSize().padding(4.dp),
                 )
+                PhotoAnalysisBadge(entry, Modifier.align(Alignment.TopStart).padding(8.dp))
                 FilledTonalIconButton(
                     onClick = { deletePhoto = entry },
                     modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
@@ -1343,3 +1368,30 @@ internal sealed interface QuickCaptureCsvImportState {
 private const val CopiedEntryIdsKey = "quickCaptureCopiedEntryIds"
 
 internal const val QUICK_CAPTURE_PHOTO_DIRECTORY = "food-snap-photos"
+
+@Composable
+private fun PhotoAnalysisBadge(entry: QuickCaptureLogEntry, modifier: Modifier = Modifier) {
+    val (icon, label, suggested) =
+        when {
+            entry.suggestedWeightInGrams != null -> Triple(Icons.Outlined.Check, "Vorschlag", true)
+            entry.aiAnalysisStatus != null -> Triple(Icons.Outlined.ErrorOutline, "Kein Vorschlag", false)
+            else -> Triple(Icons.Outlined.Schedule, "offen", false)
+        }
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = if (suggested) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        contentColor =
+            if (suggested) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
