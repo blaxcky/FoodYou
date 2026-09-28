@@ -1373,7 +1373,11 @@ internal const val QUICK_CAPTURE_PHOTO_DIRECTORY = "food-snap-photos"
 private fun PhotoAnalysisBadge(entry: QuickCaptureLogEntry, modifier: Modifier = Modifier) {
     val (icon, label, suggested) =
         when {
-            entry.suggestedWeightInGrams != null -> Triple(Icons.Outlined.Check, "Vorschlag", true)
+            entry.suggestedWeightInGrams != null -> Triple(
+                Icons.Outlined.Check,
+                "Vorschlag · ${entry.suggestedWeightInGrams.formatQuickCaptureWeight()} g",
+                true,
+            )
             entry.aiAnalysisStatus != null -> Triple(Icons.Outlined.ErrorOutline, "Kein Vorschlag", false)
             else -> Triple(Icons.Outlined.Schedule, "offen", false)
         }

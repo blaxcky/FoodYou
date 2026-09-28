@@ -252,11 +252,18 @@ class QuickCaptureScreenshotTest {
                     com.maksimowiczm.foodyou.ai.AnalysisProgress(), true, true, {}, {},
                 )
                 QuickCapturePhotos(
-                    entries = listOf(pendingPhoto(6), pendingPhoto(7), pendingPhoto(8)),
+                    entries = listOf(
+                        pendingPhoto(6, suggestedWeight = 104.0, analysisStatus = "recognized"),
+                        pendingPhoto(7, suggestedWeight = 118.0, analysisStatus = "recognized"),
+                        pendingPhoto(8, analysisStatus = "error_format"),
+                    ),
                     onPhoto = {}, onDelete = {},
                 )
             }
         }
+        compose.onNodeWithText("Vorschlag · 104 g").assertExists()
+        compose.onNodeWithText("Vorschlag · 118 g").assertExists()
+        compose.onNodeWithText("Kein Vorschlag").assertExists()
         capture("photo-inbox")
     }
 
@@ -661,7 +668,11 @@ class QuickCaptureScreenshotTest {
             completedAt = null,
         )
 
-    private fun pendingPhoto(id: Long) =
+    private fun pendingPhoto(
+        id: Long,
+        suggestedWeight: Double? = null,
+        analysisStatus: String? = null,
+    ) =
         QuickCaptureLogEntry(
             id = id,
             foodNameId = null,
@@ -673,6 +684,8 @@ class QuickCaptureScreenshotTest {
             photoPath = "photo-$id.jpg",
             createdAt = instant(id),
             completedAt = null,
+            suggestedWeightInGrams = suggestedWeight,
+            aiAnalysisStatus = analysisStatus,
         )
 
     private fun instant(value: Long) = Instant.fromEpochSeconds(value)
