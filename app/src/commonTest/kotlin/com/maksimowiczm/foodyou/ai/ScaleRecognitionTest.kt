@@ -13,6 +13,7 @@ class ScaleRecognitionTest {
             Triple("1.25", "kg", 1250.0), Triple("2", "kg", 2000.0),
         )) assertEquals(ScaleRecognitionResult.Recognized(grams), parseScaleReading("""{"value":"$raw","unit":"$unit"}"""))
         assertEquals(ScaleRecognitionResult.Recognized(5.0), parseScaleReading("```json\n{\"value\":5,\"unit\":\"g\"}\n```"))
+        assertEquals(ScaleRecognitionResult.Recognized(5.0), parseScaleReading("""{"value":5}"""))
     }
 
     @Test fun rejectsFractionalGramsWithoutRoundingOrRemovingDecimalPoints() {
@@ -24,16 +25,20 @@ class ScaleRecognitionTest {
         }
     }
 
-    @Test fun refusesGuessesMalformedNumbersAndMissingUnits() {
-        listOf("", "125 g", "[]", "null", "{bad}", "{}", """{"value":100}""",
+    @Test fun refusesGuessesMalformedNumbersAndUnexpectedFields() {
+        listOf("", "125 g", "[]", "null", "{bad}", "{}",
             """{"value":100,"unit":"g","extra":1}""", """{"readable":false}""",
-            """{"value":null,"unit":"g"}""", """{"value":"null"}""").forEach {
+            """{"value":null,"unit":"g"}""", """{"value":5,"unit":null}""", """{"value":"null"}""").forEach {
             assertEquals(ScaleErrorKind.ResponseFormat, assertIs<ScaleRecognitionResult.Error>(parseScaleReading(it)).kind)
         }
         listOf("0", "0.000", "-1", "NaN", "Infinity", "1,234.5", "1e3", "100 g", "9007199254740992").forEach {
             assertTrue(parseScaleReading("""{"value":"$it","unit":"g"}""") is ScaleRecognitionResult.Error)
         }
         assertTrue(parseScaleReading("""{"value":5,"unit":"oz"}""") is ScaleRecognitionResult.Error)
+        assertEquals(
+            ScaleErrorKind.NonWholeGrams,
+            assertIs<ScaleRecognitionResult.Error>(parseScaleReading("""{"value":5.5}""")).kind,
+        )
     }
 
     @Test fun distinguishesUnreadableTruncatedAndInvalidAnswers() {

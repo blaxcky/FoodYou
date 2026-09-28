@@ -50,5 +50,6 @@ class AiInfrastructureTest {
         assertTrue(parseGeminiResponse("not json") is ScaleRecognitionResult.Error)
         assertTrue(parseGeminiResponse("""{"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[{"text":"{}"}]}}]}""" ) is ScaleRecognitionResult.Error)
         assertEquals(ScaleRecognitionResult.Recognized(42.0), parseGeminiResponse("""{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"reasoning"},{"text":"{\"value\":42,\"unit\":\"g\"}"}]}}]}"""))
+        assertEquals(ScaleRecognitionResult.Recognized(5.0), parseGeminiResponse("""{"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"{\"value\":5}"}]}}]}"""))
     }
 }

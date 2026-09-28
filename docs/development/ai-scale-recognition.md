@@ -154,6 +154,8 @@ nur positive ganze Gramm vorgeschlagen. `16.1 g` wird als `NonWholeGrams` verwor
 weder gerundet noch in `161 g` umgeschrieben. kg-Anzeigen bleiben erlaubt, wenn ihre
 exakte Umrechnung ganze Gramm ergibt (z. B. `1.001 kg` → `1001 g`). Die Verschiebung
 des Dezimalpunkts erfolgt vor der Double-Konvertierung, um Rundungsfehler zu vermeiden.
+Da Küchenwaagen die Einheit häufig nicht im Display zeigen, wird eine positive ganze
+Zahl ohne `unit` als Gramm behandelt; eine explizite Einheit hat weiterhin Vorrang.
 Der persistierte Status `error_whole_grams` benötigt keine Room-Migration und bewahrt
 bei erneuter Analyse vorhandene Vorschläge. Kein automatischer Wiederholungsversuch.
 
