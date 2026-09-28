@@ -40,14 +40,20 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ManualActivityScreen(
     date: LocalDate,
-    id: Long?,
+    manualId: Long?,
+    importedId: Long?,
     onBack: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    require(manualId == null || importedId == null)
+    val isExisting = manualId != null || importedId != null
     val viewModel: ManualActivityViewModel = koinViewModel()
-    LaunchedEffect(id) {
-        if (id != null) viewModel.load(id)
+    LaunchedEffect(manualId, importedId) {
+        when {
+            manualId != null -> viewModel.loadManual(manualId)
+            importedId != null -> viewModel.loadImported(importedId)
+        }
     }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showPresetMenu by rememberSaveable { mutableStateOf(false) }
@@ -59,14 +65,14 @@ fun ManualActivityScreen(
         viewModel.calculatedEnergyKcal.collectAsStateWithLifecycle(null).value
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    if (showDeleteDialog && id != null) {
+    if (showDeleteDialog && isExisting) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
-                        viewModel.delete(id, onSave)
+                        viewModel.delete(manualId, importedId, onSave)
                     }
                 ) {
                     Text(stringResource(Res.string.action_delete))
@@ -90,7 +96,7 @@ fun ManualActivityScreen(
                 title = {
                     Text(
                         stringResource(
-                            if (id == null) Res.string.action_add_activity else Res.string.action_edit_activity
+                            if (!isExisting) Res.string.action_add_activity else Res.string.action_edit_activity
                         )
                     )
                 },
@@ -107,7 +113,7 @@ fun ManualActivityScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (id == null) {
+            if (!isExisting) {
                 ExposedDropdownMenuBox(
                     expanded = showPresetMenu,
                     onExpandedChange = { showPresetMenu = it },
@@ -144,11 +150,15 @@ fun ManualActivityScreen(
             }
             OutlinedTextField(
                 value = energyKcal,
-                onValueChange = viewModel::setEnergyKcal,
+                onValueChange = { viewModel.setEnergyKcal(it, wholeNumbersOnly = importedId != null) },
                 label = { Text(stringResource(Res.string.label_burned_kcal)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions =
+                    KeyboardOptions(
+                        keyboardType =
+                            if (importedId == null) KeyboardType.Decimal else KeyboardType.Number
+                    ),
             )
-            if (id == null && preset == ManualActivityPreset.Crosstrainer) {
+            if (!isExisting && preset == ManualActivityPreset.Crosstrainer) {
                 OutlinedTextField(
                     value = discountPercent,
                     onValueChange = viewModel::setDiscountPercent,
@@ -162,10 +172,10 @@ fun ManualActivityScreen(
                     readOnly = true,
                 )
             }
-            Button(onClick = { viewModel.save(date, id, onSave) }) {
+            Button(onClick = { viewModel.save(date, manualId, importedId, onSave) }) {
                 Text(stringResource(Res.string.action_save))
             }
-            if (id != null) {
+            if (isExisting) {
                 TextButton(onClick = { showDeleteDialog = true }) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = null)
                     Text(stringResource(Res.string.action_delete))

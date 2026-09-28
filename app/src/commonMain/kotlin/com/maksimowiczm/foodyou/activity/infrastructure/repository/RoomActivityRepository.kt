@@ -34,8 +34,30 @@ internal class RoomActivityRepository(
     override fun observeImportedEntries(date: LocalDate): Flow<List<ImportedActivity>> = trainingAccount.flatMapLatest { account ->
         if (account == null || trainingDao == null) flowOf(emptyList())
         else trainingDao.observeEntries(account.project, account.uid, date.toEpochDays()).map { entries ->
-            entries.map { ImportedActivity(it.importId, it.name, it.energyKcal) }
+            entries.map(ImportedTrainingActivityEntity::toModel)
         }
+    }
+
+    override fun observeImportedEntry(id: ImportedActivityId): Flow<ImportedActivity?> =
+        trainingAccount.flatMapLatest { account ->
+            if (account == null || trainingDao == null) flowOf(null)
+            else trainingDao.observeEntry(account.project, account.uid, id.value).map { it?.toModel() }
+        }
+
+    override suspend fun updateImportedEntry(entry: ImportedActivity) {
+        val account = trainingAccount.value ?: return
+        trainingDao?.updateEntry(
+            account.project,
+            account.uid,
+            entry.id.value,
+            entry.name,
+            entry.energyKcal,
+        )
+    }
+
+    override suspend fun deleteImportedEntry(id: ImportedActivityId) {
+        val account = trainingAccount.value ?: return
+        trainingDao?.deleteEntry(account.project, account.uid, id.value)
     }
 
     override fun observeManualEntry(id: ManualActivityEntryId): Flow<ManualActivityEntry?> =
@@ -94,6 +116,15 @@ internal class RoomActivityRepository(
         exclusionDao.replaceAll(date.toEpochDays(), periods.map { it.toEntity() })
     }
 }
+
+private fun ImportedTrainingActivityEntity.toModel(): ImportedActivity =
+    ImportedActivity(
+        id = ImportedActivityId(id),
+        importId = importId,
+        date = LocalDate.fromEpochDays(dateEpochDay),
+        name = name,
+        energyKcal = energyKcal,
+    )
 
 private fun ManualActivityEntryEntity.toModel(): ManualActivityEntry {
     val timeZone = TimeZone.currentSystemDefault()

@@ -68,11 +68,19 @@ class ActivitiesCardScreenshotTest {
                                 stepEnergyKcal = 34,
                                 manualEnergyKcal = 0,
                                 totalEnergyKcal = if (imported) 364 else 34,
-                                importedEntries = if (imported) listOf(com.maksimowiczm.foodyou.training.ImportedActivity("strength", "Krafttraining", 210), com.maksimowiczm.foodyou.training.ImportedActivity("cardio", "Cardio", 120)) else emptyList(),
+                                importedEntries = if (imported) listOf(
+                                    com.maksimowiczm.foodyou.training.ImportedActivity(
+                                        com.maksimowiczm.foodyou.training.ImportedActivityId(1),
+                                        "strength", kotlinx.datetime.LocalDate(2026, 9, 27), "Krafttraining", 210),
+                                    com.maksimowiczm.foodyou.training.ImportedActivity(
+                                        com.maksimowiczm.foodyou.training.ImportedActivityId(2),
+                                        "cardio", kotlinx.datetime.LocalDate(2026, 9, 27), "Cardio", 120),
+                                ) else emptyList(),
                                 manualEntries = emptyList(),
                             ),
                         onAdd = {},
                         onEdit = {},
+                        onEditImported = {},
                         onStepExclusions = {},
                         onLongClick = {},
                     )

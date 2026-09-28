@@ -14,6 +14,8 @@ import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.training.ImportedActivity
+import com.maksimowiczm.foodyou.training.ImportedActivityId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -48,7 +50,7 @@ class ManualActivityViewModelTest {
         viewModel.selectPreset(ManualActivityPreset.Crosstrainer)
         viewModel.setEnergyKcal("500")
         viewModel.setDiscountPercent("20")
-        viewModel.save(LocalDate(2026, 6, 26), id = null) { saved = true }
+        viewModel.save(LocalDate(2026, 6, 26), manualId = null, importedId = null) { saved = true }
         advanceUntilIdle()
 
         assertEquals("Crosstrainer", activityRepository.created.single().name)
@@ -70,7 +72,7 @@ class ManualActivityViewModelTest {
         viewModel.setName("Walk")
         viewModel.setEnergyKcal("500")
         viewModel.setDiscountPercent("20")
-        viewModel.save(LocalDate(2026, 6, 26), id = null) {}
+        viewModel.save(LocalDate(2026, 6, 26), manualId = null, importedId = null) {}
         advanceUntilIdle()
 
         assertEquals("Walk", activityRepository.created.single().name)
@@ -94,13 +96,42 @@ class ManualActivityViewModelTest {
             )
         val viewModel = createViewModel(activityRepository, settingsRepository)
 
-        viewModel.load(12)
-        viewModel.save(LocalDate(2026, 6, 26), id = 12) {}
+        viewModel.loadManual(12)
+        viewModel.save(LocalDate(2026, 6, 26), manualId = 12, importedId = null) {}
         advanceUntilIdle()
 
         assertNull(viewModel.preset.value)
         assertEquals(500.0, activityRepository.updated.single().energyKcal)
         assertEquals(0, settingsRepository.updateCount)
+    }
+
+    @Test
+    fun importedEntryCanBeEditedAndDeleted() = runViewModelTest {
+        val imported =
+            ImportedActivity(
+                id = ImportedActivityId(7),
+                importId = "session:strength",
+                date = LocalDate(2026, 9, 27),
+                name = "Krafttraining",
+                energyKcal = 45,
+            )
+        val activityRepository = FakeActivityRepository().apply { importedEntries[imported.id] = imported }
+        val viewModel = createViewModel(activityRepository, FakeSettingsRepository(defaultSettings()))
+
+        viewModel.loadImported(imported.id.value)
+        viewModel.setName("Krafttraining korrigiert")
+        viewModel.setEnergyKcal("50.5", wholeNumbersOnly = true)
+        assertEquals("45", viewModel.energyKcal.value)
+        viewModel.setEnergyKcal("50", wholeNumbersOnly = true)
+        viewModel.save(imported.date, manualId = null, importedId = imported.id.value) {}
+        advanceUntilIdle()
+
+        assertEquals("Krafttraining korrigiert", activityRepository.updatedImported.single().name)
+        assertEquals(50L, activityRepository.updatedImported.single().energyKcal)
+
+        viewModel.delete(manualId = null, importedId = imported.id.value) {}
+        advanceUntilIdle()
+        assertEquals(listOf(imported.id), activityRepository.deletedImported)
     }
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
@@ -126,6 +157,22 @@ class ManualActivityViewModelTest {
         private val entries = initialEntries.associateBy { it.id }.toMutableMap()
         val created = mutableListOf<ManualActivityEntry>()
         val updated = mutableListOf<ManualActivityEntry>()
+        val importedEntries = mutableMapOf<ImportedActivityId, ImportedActivity>()
+        val updatedImported = mutableListOf<ImportedActivity>()
+        val deletedImported = mutableListOf<ImportedActivityId>()
+
+        override fun observeImportedEntry(id: ImportedActivityId): Flow<ImportedActivity?> =
+            flowOf(importedEntries[id])
+
+        override suspend fun updateImportedEntry(entry: ImportedActivity) {
+            importedEntries[entry.id] = entry
+            updatedImported += entry
+        }
+
+        override suspend fun deleteImportedEntry(id: ImportedActivityId) {
+            importedEntries.remove(id)
+            deletedImported += id
+        }
 
         override fun observeManualEntry(id: ManualActivityEntryId): Flow<ManualActivityEntry?> =
             flowOf(entries[id])

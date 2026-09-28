@@ -35,6 +35,7 @@ internal fun ActivitiesCard(
     homeState: HomeState,
     onAdd: (epochDay: Long) -> Unit,
     onEdit: (id: Long) -> Unit,
+    onEditImported: (id: Long) -> Unit,
     onStepExclusions: (epochDay: Long) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -46,6 +47,7 @@ internal fun ActivitiesCard(
         model = model,
         onAdd = { onAdd(homeState.selectedDate.toEpochDays()) },
         onEdit = onEdit,
+        onEditImported = onEditImported,
         onStepExclusions = { onStepExclusions(homeState.selectedDate.toEpochDays()) },
         onLongClick = onLongClick,
         modifier = modifier,
@@ -57,6 +59,7 @@ internal fun ActivitiesCardContent(
     model: ActivitiesCardModel?,
     onAdd: () -> Unit,
     onEdit: (id: Long) -> Unit,
+    onEditImported: (id: Long) -> Unit,
     onStepExclusions: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -137,7 +140,8 @@ internal fun ActivitiesCardContent(
 
                 cardModel.importedEntries.forEach { entry ->
                     ActivityRow(label = "${entry.name} · Trainings-App",
-                        energy = energyFormatter.formatEnergy(-entry.energyKcal.toDouble()))
+                        energy = energyFormatter.formatEnergy(-entry.energyKcal.toDouble()),
+                        modifier = Modifier.clickable { onEditImported(entry.id.value) })
                 }
                 cardModel.manualEntries.forEach { entry ->
                     HorizontalDivider(Modifier.padding(horizontal = 16.dp))

@@ -106,6 +106,9 @@ class StepExclusionsViewModelTest {
 
     private inner class FakeRepository(initialPeriods: List<StepExclusionPeriod> = emptyList()) :
         ActivityRepository {
+        override suspend fun updateImportedEntry(entry: com.maksimowiczm.foodyou.training.ImportedActivity) = error("Not used")
+        override suspend fun deleteImportedEntry(id: com.maksimowiczm.foodyou.training.ImportedActivityId) = error("Not used")
+
         val periods = MutableStateFlow(initialPeriods)
 
         override fun observeDailySummary(

@@ -62,4 +62,12 @@ fun validateTrainingDocument(document: TrainingDocument): TrainingSession {
 
 enum class TrainingImportResult { Imported, AlreadyImported, ZeroCalories, Conflict }
 
-data class ImportedActivity(val importId: String, val name: String, val energyKcal: Long)
+@JvmInline value class ImportedActivityId(val value: Long)
+
+data class ImportedActivity(
+    val id: ImportedActivityId,
+    val importId: String,
+    val date: LocalDate,
+    val name: String,
+    val energyKcal: Long,
+)

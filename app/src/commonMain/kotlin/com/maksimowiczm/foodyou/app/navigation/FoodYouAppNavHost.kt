@@ -128,10 +128,13 @@ fun FoodYouAppNavHost(
                     navController.navigateSingleTop(ActivitySettings)
                 },
                 onAddActivityClick = { epochDay ->
-                    navController.navigateSingleTop(ManualActivity(epochDay, null))
+                    navController.navigateSingleTop(ManualActivity(epochDay, null, null))
                 },
                 onEditActivityClick = { id ->
-                    navController.navigateSingleTop(ManualActivity(0, id))
+                    navController.navigateSingleTop(ManualActivity(0, id, null))
+                },
+                onEditImportedActivityClick = { id ->
+                    navController.navigateSingleTop(ManualActivity(0, null, id))
                 },
                 onStepExclusionsClick = { epochDay ->
                     navController.navigateSingleTop(StepExclusions(epochDay))
@@ -296,7 +299,8 @@ fun FoodYouAppNavHost(
             val route = it.toRoute<ManualActivity>()
             ManualActivityScreen(
                 date = LocalDate.fromEpochDays(route.epochDay),
-                id = route.id,
+                manualId = route.manualId,
+                importedId = route.importedId,
                 onBack = { navController.popBackStackInclusive<ManualActivity>() },
                 onSave = { navController.popBackStackInclusive<ManualActivity>() },
             )
@@ -643,7 +647,12 @@ fun FoodYouAppNavHost(
 
 @Serializable private object ActivitySettings
 
-@Serializable private data class ManualActivity(val epochDay: Long, val id: Long?)
+@Serializable
+private data class ManualActivity(
+    val epochDay: Long,
+    val manualId: Long?,
+    val importedId: Long?,
+)
 
 @Serializable private data class StepExclusions(val epochDay: Long)
 

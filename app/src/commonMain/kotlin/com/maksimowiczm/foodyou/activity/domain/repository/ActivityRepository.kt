@@ -5,11 +5,19 @@ import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntryId
 import com.maksimowiczm.foodyou.activity.domain.entity.StepExclusionPeriod
+import com.maksimowiczm.foodyou.training.ImportedActivity
+import com.maksimowiczm.foodyou.training.ImportedActivityId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
 interface ActivityRepository {
-    fun observeImportedEntries(date: LocalDate): Flow<List<com.maksimowiczm.foodyou.training.ImportedActivity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+    fun observeImportedEntries(date: LocalDate): Flow<List<ImportedActivity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+
+    fun observeImportedEntry(id: ImportedActivityId): Flow<ImportedActivity?> = kotlinx.coroutines.flow.flowOf(null)
+
+    suspend fun updateImportedEntry(entry: ImportedActivity)
+
+    suspend fun deleteImportedEntry(id: ImportedActivityId)
 
     fun observeManualEntry(id: ManualActivityEntryId): Flow<ManualActivityEntry?>
 

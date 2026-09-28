@@ -9,6 +9,7 @@ import com.maksimowiczm.foodyou.activity.domain.usecase.calculateDiscountedActiv
 import com.maksimowiczm.foodyou.activity.domain.usecase.toCompleteActivityDiscountPercentOrNull
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.training.ImportedActivityId
 import kotlin.math.round
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,8 +67,10 @@ internal class ManualActivityViewModel(
         }
     }
 
-    fun setEnergyKcal(value: String) {
-        _energyKcal.value = value.filter { it.isDigit() || it == '.' || it == ',' }
+    fun setEnergyKcal(value: String, wholeNumbersOnly: Boolean = false) {
+        _energyKcal.value =
+            if (wholeNumbersOnly) value.takeIf { it.all(Char::isDigit) } ?: _energyKcal.value
+            else value.filter { it.isDigit() || it == '.' || it == ',' }
     }
 
     fun setDiscountPercent(value: String) {
@@ -79,17 +82,25 @@ internal class ManualActivityViewModel(
         _name.value = preset.activityName
     }
 
-    suspend fun load(id: Long) {
+    suspend fun loadManual(id: Long) {
         val entry = repository.observeManualEntry(ManualActivityEntryId(id)).filterNotNull().first()
         setName(entry.name)
         setEnergyKcal(entry.energyKcal.formatWithMaximumTwoDecimals())
         _preset.value = null
     }
 
-    fun save(date: LocalDate, id: Long?, onSaved: () -> Unit) {
+    suspend fun loadImported(id: Long) {
+        val entry = repository.observeImportedEntry(ImportedActivityId(id)).filterNotNull().first()
+        setName(entry.name)
+        setEnergyKcal(entry.energyKcal.toString())
+        _preset.value = null
+    }
+
+    fun save(date: LocalDate, manualId: Long?, importedId: Long?, onSaved: () -> Unit) {
+        require(manualId == null || importedId == null)
         val parsedEnergy = energyKcal.value.replace(',', '.').toDoubleOrNull() ?: return
         val trimmedName = name.value.trim().ifBlank { return }
-        val selectedPreset = preset.value.takeIf { id == null }
+        val selectedPreset = preset.value.takeIf { manualId == null && importedId == null }
         val parsedDiscount =
             if (selectedPreset == ManualActivityPreset.Crosstrainer) {
                 discountPercent.value.toCompleteActivityDiscountPercentOrNull() ?: return
@@ -103,21 +114,34 @@ internal class ManualActivityViewModel(
                 parsedEnergy
             }
         viewModelScope.launch {
+            if (importedId != null) {
+                val importedEnergy =
+                    parsedEnergy.toLong().takeIf { it >= 0 && it.toDouble() == parsedEnergy }
+                        ?: return@launch
+                val existing =
+                    repository.observeImportedEntry(ImportedActivityId(importedId)).first()
+                        ?: return@launch
+                repository.updateImportedEntry(
+                    existing.copy(name = trimmedName, energyKcal = importedEnergy)
+                )
+                onSaved()
+                return@launch
+            }
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val existing =
-                id?.let {
+                manualId?.let {
                     repository.observeManualEntry(ManualActivityEntryId(it)).first()
                 }
             val entry =
                 ManualActivityEntry(
-                    id = ManualActivityEntryId(id ?: 0),
+                    id = ManualActivityEntryId(manualId ?: 0),
                     date = existing?.date ?: date,
                     name = trimmedName,
                     energyKcal = energyToSave,
                     createdAt = existing?.createdAt ?: now,
                     updatedAt = now,
                 )
-            if (id == null) repository.createManualEntry(entry) else repository.updateManualEntry(entry)
+            if (manualId == null) repository.createManualEntry(entry) else repository.updateManualEntry(entry)
             if (selectedPreset == ManualActivityPreset.Crosstrainer) {
                 settingsRepository.update {
                     copy(crosstrainerCalorieDiscountPercent = parsedDiscount ?: 0.0)
@@ -127,9 +151,11 @@ internal class ManualActivityViewModel(
         }
     }
 
-    fun delete(id: Long, onDeleted: () -> Unit) {
+    fun delete(manualId: Long?, importedId: Long?, onDeleted: () -> Unit) {
+        require((manualId == null) != (importedId == null))
         viewModelScope.launch {
-            repository.deleteManualEntry(ManualActivityEntryId(id))
+            if (manualId != null) repository.deleteManualEntry(ManualActivityEntryId(manualId))
+            else repository.deleteImportedEntry(ImportedActivityId(requireNotNull(importedId)))
             onDeleted()
         }
     }

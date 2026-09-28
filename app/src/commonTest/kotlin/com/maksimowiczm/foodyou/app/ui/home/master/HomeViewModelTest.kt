@@ -549,6 +549,9 @@ class HomeViewModelTest {
     }
 
     private class FakeActivityRepository(totalEnergyKcal: List<Double>) : ActivityRepository {
+        override suspend fun updateImportedEntry(entry: com.maksimowiczm.foodyou.training.ImportedActivity) = error("Not used")
+        override suspend fun deleteImportedEntry(id: com.maksimowiczm.foodyou.training.ImportedActivityId) = error("Not used")
+
         private val totalEnergyKcal = totalEnergyKcal.toMutableList()
         val observedDates = mutableListOf<LocalDate>()
 

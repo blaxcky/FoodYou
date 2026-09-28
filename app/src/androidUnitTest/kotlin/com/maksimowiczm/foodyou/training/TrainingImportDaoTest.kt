@@ -52,9 +52,28 @@ class TrainingImportDaoTest {
             dao.importDocument(account, trainingDocument(strength = 45, cardio = 0), 100),
         )
 
-        val entry = dao.observeEntries(TRAINING_PROJECT, account.uid, date).first().single()
+        var entry = dao.observeEntries(TRAINING_PROJECT, account.uid, date).first().single()
         assertEquals("Krafttraining", entry.name)
         assertEquals(45L, entry.energyKcal)
+
+        dao.updateEntry(account.project, "B", entry.id, "Falsches Konto", 999)
+        dao.deleteEntry(account.project, "B", entry.id)
+        entry = dao.observeEntries(TRAINING_PROJECT, account.uid, date).first().single()
+        assertEquals("Krafttraining", entry.name)
+        assertEquals(45L, entry.energyKcal)
+
+        dao.updateEntry(account.project, account.uid, entry.id, "Krafttraining korrigiert", 50)
+        assertEquals(TrainingImportResult.AlreadyImported, dao.importDocument(account, trainingDocument(strength = 45, cardio = 0), 200))
+        assertEquals(TrainingImportResult.Conflict, dao.importDocument(account, trainingDocument(strength = 46, cardio = 0), 200))
+        entry = dao.observeEntries(TRAINING_PROJECT, account.uid, date).first().single()
+        assertEquals("Krafttraining korrigiert", entry.name)
+        assertEquals(50L, entry.energyKcal)
+
+        dao.deleteEntry(account.project, account.uid, entry.id)
+        assertEquals(TrainingImportResult.AlreadyImported, dao.importDocument(account, trainingDocument(strength = 45, cardio = 0), 300))
+        assertEquals(TrainingImportResult.Conflict, dao.importDocument(account, trainingDocument(strength = 46, cardio = 0), 300))
+        assertTrue(dao.observeEntries(TRAINING_PROJECT, account.uid, date).first().isEmpty())
+        assertNotNull(dao.receipt(account.project, account.uid, TEST_SESSION))
     }
 
     @Test fun receiptsSurviveDatabaseRestart() = runTest {

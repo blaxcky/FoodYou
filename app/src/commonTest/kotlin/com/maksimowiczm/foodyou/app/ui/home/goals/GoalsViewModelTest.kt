@@ -259,6 +259,9 @@ class GoalsViewModelTest {
     }
 
     private object FixedActivityRepository : ActivityRepository {
+        override suspend fun updateImportedEntry(entry: com.maksimowiczm.foodyou.training.ImportedActivity) = error("Not used")
+        override suspend fun deleteImportedEntry(id: com.maksimowiczm.foodyou.training.ImportedActivityId) = error("Not used")
+
         override fun observeDailySummary(
             date: LocalDate,
             kcalPerStep: Double?,
