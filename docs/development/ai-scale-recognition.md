@@ -101,6 +101,8 @@ Einstellungen → KI → KI-Diagnosebericht → Kopieren enthält Runtime/Modell
 Gerät, Phasen, Bildabmessungen sowie verfügbaren RAM und Prozessspeicher. Die begrenzten
 Phasenprotokolle liegen im privaten `noBackupFilesDir/ai/diagnostics`. Fotos, rohe
 Modellantworten, Exception-Texte und Schlüssel werden nicht protokolliert.
+Der Dialog wertet den letzten Durchlauf zusätzlich lokal als kurze, verständliche
+Zusammenfassung aus; der vollständige technische Bericht bleibt aufklapp- und kopierbar.
 Ab Android 11 werden `ApplicationExitInfo`-Datensätze ergänzt. LOW_MEMORY und native
 Abstürze werden unterschieden; SIGKILL allein oder fehlende Informationen ergeben
 keine RAM-Diagnose. Frühere Datensätze sind über Zeitstempel und PID zuzuordnen.

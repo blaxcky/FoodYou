@@ -38,10 +38,20 @@ class AiSettingsScreenshotTest {
     @Test fun geminiSettings() = showSettings(AiSettings(AiProvider.Gemini, hasApiKey = true), ModelDownloadState(), "gemini")
 
     @Test fun diagnosticReport() {
-        show { AiDiagnosticDialog("LiteRT-LM: 0.16.1\nGerät: Nothing Phone (2)\nLaufzeiten (monotone Uhr):\nModellladen=4.200 s\nFoto 1: Gesamt=20.000 s\nErste Antwort=14.500 s\nStatus=Completed", {}, {}) }
-        compose.onNodeWithText("Kopieren").assertExists()
-        compose.onNodeWithText("KI-Diagnosebericht").assertExists()
+        val report = """
+            FoodYou KI-Diagnose · 3.4.8
+            100 pid=7 Durchlauf=42; Modellladen=4.200 s; Status=Completed
+            110 pid=7 Durchlauf=42; Foto 1: Gesamt=20.000 s; Erste Antwort=14.500 s; Status=Completed
+            120 pid=7 Durchlauf=42; Foto 2: Gesamt=2.400 s; Erste Antwort=1.800 s; Status=Error
+            119 pid=7 phase=result_ResponseFormat availableMiB=3046 lowMemory=false
+        """.trimIndent()
+        show { AiDiagnosticDialog(report, {}, {}) }
+        compose.onNodeWithText("Bericht kopieren").assertExists()
+        compose.onNodeWithText("KI-Diagnose").assertExists()
+        compose.onNodeWithText("1 von 2 Fotos fehlgeschlagen").assertExists()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.diagnostics.png")
+        compose.onNodeWithText("Technische Details anzeigen").performClick()
+        compose.onNodeWithText(report).assertExists()
     }
 
     @Test fun batchProgress() {

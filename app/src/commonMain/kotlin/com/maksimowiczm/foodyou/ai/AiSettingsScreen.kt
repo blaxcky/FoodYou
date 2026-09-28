@@ -289,16 +289,32 @@ internal fun AiAnalysisActionButton(
 
 @Composable
 internal fun AiDiagnosticDialog(report: String, onCopy: () -> Unit, onDismiss: () -> Unit) {
+    val summary = remember(report) { summarizeAiDiagnosticReport(report) }
+    var showDetails by remember(report) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("KI-Diagnosebericht") },
+        title = { Text("KI-Diagnose") },
         text = {
-            androidx.compose.foundation.text.selection.SelectionContainer {
-                Text(report, Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
-                    style = MaterialTheme.typography.bodySmall)
+            Column(
+                Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("Kurzauswertung", style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary)
+                Text(summary.headline, style = MaterialTheme.typography.titleMedium)
+                summary.details.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
+                TextButton(onClick = { showDetails = !showDetails }, contentPadding = PaddingValues(0.dp)) {
+                    Text(if (showDetails) "Technische Details ausblenden" else "Technische Details anzeigen")
+                }
+                if (showDetails) {
+                    HorizontalDivider()
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(report, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
         },
-        confirmButton = { TextButton(onClick = onCopy) { Text("Kopieren") } },
+        confirmButton = { TextButton(onClick = onCopy) { Text("Bericht kopieren") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Schließen") } },
     )
 }
