@@ -124,6 +124,7 @@ fun QuickCapturePhotoScreen(
             QuickCapturePhotoEditor(
                 entryId = current.id,
                 suggestedWeight = current.suggestedWeightInGrams,
+                suggestionRejected = current.aiSuggestionRejected,
                 analysisStatus = current.aiAnalysisStatus,
                 names = names,
                 onProcess = viewModel::process,
@@ -146,13 +147,14 @@ internal fun QuickCapturePhotoEditor(
     modifier: Modifier = Modifier,
     autoFocus: Boolean = true,
     suggestedWeight: Double? = null,
+    suggestionRejected: Boolean = false,
     analysisStatus: String? = null,
 ) {
     var name by rememberSaveable(entryId) { mutableStateOf("") }
     var weight by rememberSaveable(entryId) { mutableStateOf("") }
     var weightEdited by rememberSaveable(entryId) { mutableStateOf(false) }
-    LaunchedEffect(entryId, suggestedWeight) {
-        if (!weightEdited) weight = suggestedWeight?.let {
+    LaunchedEffect(entryId, suggestedWeight, suggestionRejected) {
+        if (!weightEdited) weight = suggestedWeight?.takeUnless { suggestionRejected }?.let {
             it.formatQuickCaptureWeight()
         }.orEmpty()
     }
@@ -173,15 +175,23 @@ internal fun QuickCapturePhotoEditor(
     }
 
     fun confirmName(confirmedName: String) {
+        if (processing) return
         name = confirmedName
         nameSubmitted = true
-        if (confirmedName.isNotBlank()) step = QuickCapturePhotoStep.Weight
+        if (confirmedName.isBlank()) return
+        if (suggestedWeight != null && !suggestionRejected) {
+            processing = true
+            onProcess(confirmedName, suggestedWeight)
+        } else {
+            step = QuickCapturePhotoStep.Weight
+        }
     }
 
     if (suggestedWeight != null || analysisStatus != null) {
         Text(
             when {
-                suggestedWeight != null && !weightEdited -> "KI-Vorschlag · Gewicht bitte prüfen und bestätigen"
+                suggestedWeight != null && suggestionRejected -> "KI-Vorschlag als falsch markiert · Gewicht manuell eingeben"
+                suggestedWeight != null && !weightEdited -> "KI-Vorschlag wird nach dem Namen übernommen"
                 suggestedWeight != null -> "Gewicht manuell geändert"
                 analysisStatus == "error_whole_grams" -> "Kein gültiger Vorschlag in ganzen Gramm"
                 analysisStatus == "error_format" -> "Ungültiges KI-Antwortformat – bitte erneut analysieren"

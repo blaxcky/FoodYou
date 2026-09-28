@@ -175,7 +175,7 @@ abstract class FoodYouDatabase :
     abstract val trainingImportDao: TrainingImportDao
 
     companion object {
-        const val VERSION = 52
+        const val VERSION = 53
 
         private val migrations: List<Migration> =
             listOf(
@@ -213,6 +213,7 @@ abstract class FoodYouDatabase :
                 WeightMeasurementsMigration,
                 QuickCaptureAiMigration,
                 TrainingImportMigration,
+                QuickCaptureSuggestionFeedbackMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -645,5 +646,13 @@ internal object TrainingImportMigration : Migration(51, 52) {
         connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_ImportedTrainingActivity_firebaseProjectId_firebaseUid_importId ON ImportedTrainingActivity (firebaseProjectId, firebaseUid, importId)")
         connection.execSQL("CREATE INDEX IF NOT EXISTS index_ImportedTrainingActivity_firebaseProjectId_firebaseUid_dateEpochDay ON ImportedTrainingActivity (firebaseProjectId, firebaseUid, dateEpochDay)")
         connection.execSQL("CREATE TABLE IF NOT EXISTS TrainingImportReceipt (firebaseProjectId TEXT NOT NULL, firebaseUid TEXT NOT NULL, sessionId TEXT NOT NULL, canonicalPayload TEXT NOT NULL, importedAtMillis INTEGER NOT NULL, receivedAtMillis INTEGER NOT NULL, PRIMARY KEY(firebaseProjectId, firebaseUid, sessionId))")
+    }
+}
+
+internal object QuickCaptureSuggestionFeedbackMigration : Migration(52, 53) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE QuickCaptureLogEntry ADD COLUMN aiSuggestionRejected INTEGER NOT NULL DEFAULT 0"
+        )
     }
 }

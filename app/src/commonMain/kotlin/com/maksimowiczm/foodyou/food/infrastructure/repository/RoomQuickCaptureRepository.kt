@@ -86,6 +86,9 @@ internal class RoomQuickCaptureRepository(private val dao: QuickCaptureDao) :
         dao.processPhoto(id, name.id, name.name, weightInGrams)
     }
 
+    override suspend fun setAiSuggestionRejected(id: Long, rejected: Boolean) =
+        dao.setAiSuggestionRejected(id, rejected)
+
     override suspend fun setAfterWeight(id: Long, afterWeightInGrams: Double) =
         dao.setAfterWeight(id, afterWeightInGrams)
 
@@ -133,4 +136,5 @@ private fun QuickCaptureLogEntryEntity.toModel(): QuickCaptureLogEntry =
         aiAnalysisProvider = aiAnalysisProvider,
         aiAnalysisModel = aiAnalysisModel,
         aiAnalyzedAt = aiAnalyzedAt,
+        aiSuggestionRejected = aiSuggestionRejected,
     )

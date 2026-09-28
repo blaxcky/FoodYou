@@ -40,4 +40,5 @@ data class QuickCaptureLogEntryEntity(
     val aiAnalysisProvider: String? = null,
     val aiAnalysisModel: String? = null,
     val aiAnalyzedAt: Long? = null,
+    val aiSuggestionRejected: Boolean = false,
 )

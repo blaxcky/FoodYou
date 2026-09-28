@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -66,6 +67,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -116,6 +118,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUse
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SaveQuickCaptureEntryResult
 import com.maksimowiczm.foodyou.food.domain.usecase.SaveQuickCaptureEntryUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SetQuickCaptureAiSuggestionRejectedUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateQuickCaptureLibraryUseCase
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.Res
@@ -327,6 +330,7 @@ fun QuickCaptureScreen(
                         QuickCapturePhotos(
                             entries = entries.filter { it.isPendingPhoto },
                             onPhoto = onPhoto,
+                            onSuggestionRejectedChange = viewModel::setSuggestionRejected,
                             onDelete = { viewModel.delete(listOf(it)) },
                         )
                     }
@@ -980,6 +984,7 @@ private fun QuickCaptureCompletedRow(
 internal fun QuickCapturePhotos(
     entries: List<QuickCaptureLogEntry>,
     onPhoto: (Long) -> Unit,
+    onSuggestionRejectedChange: (QuickCaptureLogEntry, Boolean) -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
 ) {
     var deletePhoto by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
@@ -1021,7 +1026,13 @@ internal fun QuickCapturePhotos(
                     photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
                     modifier = Modifier.fillMaxSize().padding(4.dp),
                 )
-                PhotoAnalysisBadge(entry, Modifier.align(Alignment.TopStart).padding(8.dp))
+                PhotoAnalysisBadge(
+                    entry = entry,
+                    onSuggestionRejectedChange = { rejected ->
+                        onSuggestionRejectedChange(entry, rejected)
+                    },
+                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                )
                 FilledTonalIconButton(
                     onClick = { deletePhoto = entry },
                     modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
@@ -1221,6 +1232,7 @@ internal class QuickCaptureViewModel(
     private val completeAfter: CompleteQuickCaptureAfterUseCase,
     private val deleteEntries: DeleteQuickCaptureEntriesUseCase,
     private val updateLibrary: UpdateQuickCaptureLibraryUseCase,
+    private val setAiSuggestionRejected: SetQuickCaptureAiSuggestionRejectedUseCase,
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val csvParser: QuickAddCsvParser,
     private val csvImporter: QuickCaptureCsvImporter,
@@ -1332,6 +1344,11 @@ internal class QuickCaptureViewModel(
         viewModelScope.launch { deleteEntries.delete(entries) }
     }
 
+    fun setSuggestionRejected(entry: QuickCaptureLogEntry, rejected: Boolean) {
+        if (entry.suggestedWeightInGrams == null) return
+        viewModelScope.launch { setAiSuggestionRejected.set(entry.id, rejected) }
+    }
+
     fun renameName(id: Long, name: String) {
         viewModelScope.launch { updateLibrary.rename(id, name) }
     }
@@ -1370,32 +1387,78 @@ private const val CopiedEntryIdsKey = "quickCaptureCopiedEntryIds"
 internal const val QUICK_CAPTURE_PHOTO_DIRECTORY = "food-snap-photos"
 
 @Composable
-private fun PhotoAnalysisBadge(entry: QuickCaptureLogEntry, modifier: Modifier = Modifier) {
+private fun PhotoAnalysisBadge(
+    entry: QuickCaptureLogEntry,
+    onSuggestionRejectedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rejected = entry.suggestedWeightInGrams != null && entry.aiSuggestionRejected
     val (icon, label, suggested) =
         when {
             entry.suggestedWeightInGrams != null -> Triple(
-                Icons.Outlined.Check,
+                if (rejected) Icons.Outlined.Close else Icons.Outlined.Check,
                 "Vorschlag · ${entry.suggestedWeightInGrams.formatQuickCaptureWeight()} g",
                 true,
             )
             entry.aiAnalysisStatus != null -> Triple(Icons.Outlined.ErrorOutline, "Kein Vorschlag", false)
             else -> Triple(Icons.Outlined.Schedule, "offen", false)
         }
-    Surface(
-        modifier = modifier,
-        shape = CircleShape,
-        color = if (suggested) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-        contentColor =
-            if (suggested) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+    Box(
+        modifier =
+            modifier.then(
+                if (suggested) {
+                    Modifier.minimumInteractiveComponentSize().clickable(
+                        onClickLabel =
+                            if (rejected) {
+                                "Vorschlag wieder verwenden"
+                            } else {
+                                "Vorschlag als falsch markieren"
+                            }
+                    ) {
+                        onSuggestionRejectedChange(!rejected)
+                    }
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.TopStart,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        Surface(
+            shape = CircleShape,
+            color =
+                when {
+                    rejected -> MaterialTheme.colorScheme.errorContainer
+                    suggested -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.surface
+                },
+            contentColor =
+                when {
+                    rejected -> MaterialTheme.colorScheme.onErrorContainer
+                    suggested -> MaterialTheme.colorScheme.onPrimary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    icon,
+                    contentDescription =
+                        when {
+                            rejected -> "Vorschlag abgelehnt"
+                            suggested -> "Vorschlag akzeptiert"
+                            else -> null
+                        },
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
     }
 }

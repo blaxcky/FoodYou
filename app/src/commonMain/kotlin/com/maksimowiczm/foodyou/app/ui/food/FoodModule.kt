@@ -26,6 +26,7 @@ fun Module.food() {
             completeAfter = get(),
             deleteEntries = get(),
             updateLibrary = get(),
+            setAiSuggestionRejected = get(),
             settingsRepository = userPreferencesRepository(),
             csvParser = get(),
             csvImporter = get(),

@@ -26,6 +26,8 @@ interface QuickCaptureRepository {
 
     suspend fun processPhoto(id: Long, foodName: String, weightInGrams: Double, usedAt: Instant)
 
+    suspend fun setAiSuggestionRejected(id: Long, rejected: Boolean)
+
     suspend fun setAfterWeight(id: Long, afterWeightInGrams: Double)
 
     suspend fun markCompleted(ids: List<Long>, completedAt: Instant)

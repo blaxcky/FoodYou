@@ -17,6 +17,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.CompleteQuickCaptureAfterUse
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SaveQuickCaptureEntryUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SetQuickCaptureAiSuggestionRejectedUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateQuickCaptureLibraryUseCase
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
@@ -161,6 +162,7 @@ class QuickCaptureViewModelTest {
             observe = ObserveQuickCaptureUseCase(repository),
             saveEntry = SaveQuickCaptureEntryUseCase(repository, CsvImportViewModelDateProvider),
             capture = CaptureQuickCapturePhotoUseCase(repository, CsvImportViewModelDateProvider),
+            setAiSuggestionRejected = SetQuickCaptureAiSuggestionRejectedUseCase(repository),
             completeAfter = CompleteQuickCaptureAfterUseCase(repository),
             deleteEntries =
                 DeleteQuickCaptureEntriesUseCase(
@@ -209,6 +211,8 @@ private class CsvImportViewModelQuickCaptureRepository : QuickCaptureRepository 
         weightInGrams: Double,
         usedAt: Instant,
     ) = error("Not used")
+
+    override suspend fun setAiSuggestionRejected(id: Long, rejected: Boolean) = error("Not used")
 
     override suspend fun setAfterWeight(id: Long, afterWeightInGrams: Double) = error("Not used")
 

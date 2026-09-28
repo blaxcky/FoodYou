@@ -6,7 +6,9 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -103,10 +105,15 @@ class QuickCaptureDaoTest {
         assertEquals(123.0, suggested.suggestedWeightInGrams)
         assertNull(suggested.directWeightInGrams)
         assertNull(suggested.foodName)
+        dao.setAiSuggestionRejected(id, true)
+        assertTrue(dao.getEntry(id)!!.aiSuggestionRejected)
         for (status in listOf("error", "error_format", "error_truncated", "error_whole_grams")) {
             dao.saveAiResult(id, "scale.jpg", null, status, "Local", "Gemma", 250)
             assertEquals(123.0, dao.getEntry(id)?.suggestedWeightInGrams)
+            assertTrue(dao.getEntry(id)!!.aiSuggestionRejected)
         }
+        dao.saveAiResult(id, "scale.jpg", 123.0, "recognized", "Local", "Gemma", 275)
+        assertFalse(dao.getEntry(id)!!.aiSuggestionRejected)
         val name = dao.resolveFoodName("Apfel", "apfel", 300)
         dao.processPhoto(id, name.id, name.name, 124.0)
         dao.saveAiResult(id, "scale.jpg", 999.0, "recognized", "Gemini", "test", 400)

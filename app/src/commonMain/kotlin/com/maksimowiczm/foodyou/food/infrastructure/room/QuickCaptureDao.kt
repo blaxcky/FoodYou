@@ -47,12 +47,21 @@ abstract class QuickCaptureDao {
         UPDATE QuickCaptureLogEntry SET suggestedWeightInGrams =
             CASE WHEN :status IN ('error', 'error_format', 'error_truncated', 'error_whole_grams') THEN suggestedWeightInGrams ELSE :grams END,
         aiAnalysisStatus = :status, aiAnalysisProvider = :provider,
-        aiAnalysisModel = :model, aiAnalyzedAt = :timestamp
+        aiAnalysisModel = :model, aiAnalyzedAt = :timestamp,
+        aiSuggestionRejected = CASE
+            WHEN :status IN ('error', 'error_format', 'error_truncated', 'error_whole_grams')
+                THEN aiSuggestionRejected ELSE 0 END
         WHERE id = :id AND photoPath = :path AND completedAt IS NULL
         AND (foodName IS NULL OR TRIM(foodName) = '')
     """)
     abstract suspend fun saveAiResult(id: Long, path: String, grams: Double?, status: String,
         provider: String, model: String, timestamp: Long)
+
+    @Query("""
+        UPDATE QuickCaptureLogEntry SET aiSuggestionRejected = :rejected
+        WHERE id = :id AND suggestedWeightInGrams IS NOT NULL AND completedAt IS NULL
+    """)
+    abstract suspend fun setAiSuggestionRejected(id: Long, rejected: Boolean)
 
     @Insert abstract suspend fun insertEntry(entity: QuickCaptureLogEntryEntity): Long
 

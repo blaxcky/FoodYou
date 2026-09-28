@@ -32,6 +32,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ObserveQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ProcessQuickCapturePhotoUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SaveQuickCaptureEntryUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SetQuickCaptureAiSuggestionRejectedUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SyncDueFddbProductsUseCase
@@ -85,6 +86,7 @@ fun Module.foodDomainModule() {
     factoryOf(::ObserveQuickCaptureUseCase)
     factoryOf(::ProcessQuickCapturePhotoUseCase)
     factoryOf(::SaveQuickCaptureEntryUseCase)
+    factoryOf(::SetQuickCaptureAiSuggestionRejectedUseCase)
     factoryOf(::UpdateQuickCaptureLibraryUseCase)
     factoryOf(::ResyncFddbProductUseCase)
     factoryOf(::SetProductFavoriteUseCase)

@@ -150,6 +150,8 @@ private class CsvImportRecordingQuickCaptureRepository : QuickCaptureRepository 
         usedAt: Instant,
     ) = error("Not used")
 
+    override suspend fun setAiSuggestionRejected(id: Long, rejected: Boolean) = error("Not used")
+
     override suspend fun setAfterWeight(id: Long, afterWeightInGrams: Double) = error("Not used")
 
     override suspend fun markCompleted(ids: List<Long>, completedAt: Instant) {

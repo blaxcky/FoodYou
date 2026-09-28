@@ -39,6 +39,12 @@ DAO-Updates prüfen atomar Foto-ID, Pfad und offenen Zustand. Technische Fehler 
 Wiederholungen bewahren einen vorhandenen Vorschlag. Manuelle Formulareingaben haben
 Vorrang vor nachträglich eintreffenden Ergebnissen.
 
+In der Fotoübersicht zeigt der Vorschlags-Badge den erkannten Grammwert. Ein Tipp auf
+den Badge markiert den Vorschlag mit einem X als falsch; ein weiterer Tipp nimmt die
+Ablehnung zurück. Bei einem akzeptierten Vorschlag genügt anschließend die Eingabe des
+Lebensmittelnamens und der erkannte Grammwert wird direkt übernommen. Nur bei einem
+abgelehnten oder fehlenden Vorschlag folgt danach die manuelle Gewichtseingabe.
+
 ## Automatisierte Prüfung
 
 Mit `JAVA_HOME=/usr/lib/jvm/java-21-openjdk` und

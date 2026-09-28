@@ -88,6 +88,13 @@ class ProcessQuickCapturePhotoUseCase(
     }
 }
 
+class SetQuickCaptureAiSuggestionRejectedUseCase(
+    private val repository: QuickCaptureRepository,
+) {
+    suspend fun set(id: Long, rejected: Boolean) =
+        repository.setAiSuggestionRejected(id, rejected)
+}
+
 class CompleteQuickCaptureAfterUseCase(private val repository: QuickCaptureRepository) {
     suspend fun complete(id: Long, afterWeightInGrams: Double): Boolean {
         val entry = repository.observeEntry(id).first() ?: return false

@@ -254,15 +254,17 @@ class QuickCaptureScreenshotTest {
                 QuickCapturePhotos(
                     entries = listOf(
                         pendingPhoto(6, suggestedWeight = 104.0, analysisStatus = "recognized"),
-                        pendingPhoto(7, suggestedWeight = 118.0, analysisStatus = "recognized"),
+                        pendingPhoto(7, suggestedWeight = 118.0, analysisStatus = "recognized")
+                            .copy(aiSuggestionRejected = true),
                         pendingPhoto(8, analysisStatus = "error_format"),
                     ),
-                    onPhoto = {}, onDelete = {},
+                    onPhoto = {}, onSuggestionRejectedChange = { _, _ -> }, onDelete = {},
                 )
             }
         }
         compose.onNodeWithText("Vorschlag · 104 g").assertExists()
         compose.onNodeWithText("Vorschlag · 118 g").assertExists()
+        compose.onNodeWithContentDescription("Vorschlag abgelehnt").assertExists()
         compose.onNodeWithText("Kein Vorschlag").assertExists()
         capture("photo-inbox")
     }
@@ -274,6 +276,7 @@ class QuickCaptureScreenshotTest {
             QuickCapturePhotos(
                 entries = listOf(pendingPhoto(6)),
                 onPhoto = {},
+                onSuggestionRejectedChange = { _, _ -> },
                 onDelete = { deleted = true },
             )
         }
@@ -282,6 +285,39 @@ class QuickCaptureScreenshotTest {
         compose.runOnIdle { kotlin.test.assertFalse(deleted) }
         compose.onNodeWithText("Löschen").performClick()
         compose.runOnIdle { kotlin.test.assertTrue(deleted) }
+    }
+
+    @Test
+    fun suggestionBadgeTogglesWithoutOpeningPhoto() {
+        var opened = false
+        var rejected = false
+        show {
+            var isRejected by remember { mutableStateOf(false) }
+            QuickCapturePhotos(
+                entries =
+                    listOf(
+                        pendingPhoto(6, suggestedWeight = 104.0, analysisStatus = "recognized")
+                            .copy(aiSuggestionRejected = isRejected)
+                    ),
+                onPhoto = { opened = true },
+                onSuggestionRejectedChange = { _, value ->
+                    rejected = value
+                    isRejected = value
+                },
+                onDelete = {},
+            )
+        }
+
+        compose.onNodeWithText("Vorschlag · 104 g").performClick()
+        compose.runOnIdle {
+            kotlin.test.assertTrue(rejected)
+            kotlin.test.assertFalse(opened)
+        }
+        compose.onNodeWithContentDescription("Vorschlag abgelehnt").assertExists()
+
+        compose.onNodeWithText("Vorschlag · 104 g").performClick()
+        compose.runOnIdle { kotlin.test.assertFalse(rejected) }
+        compose.onNodeWithContentDescription("Vorschlag akzeptiert").assertExists()
     }
 
     @Test
@@ -497,13 +533,12 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
-    fun aiSuggestionRequiresConfirmationAndNeverOverwritesManualInput() {
-        val suggestion = mutableStateOf<Double?>(125.0)
+    fun acceptedAiSuggestionIsSubmittedImmediatelyAfterName() {
         var submitted: Double? = null
         show {
             androidx.compose.foundation.layout.Column {
                 QuickCapturePhotoEditor(entryId = 6, names = names,
-                    suggestedWeight = suggestion.value, analysisStatus = "recognized",
+                    suggestedWeight = 125.0, analysisStatus = "recognized",
                     onProcess = { _, weight -> submitted = weight })
             }
         }
@@ -511,13 +546,41 @@ class QuickCaptureScreenshotTest {
             performTextInput("Test")
             performImeAction()
         }
+        compose.runOnIdle { kotlin.test.assertEquals(125.0, submitted) }
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+    }
+
+    @Test
+    fun rejectedAiSuggestionRequiresManualWeight() {
+        var submitted: Double? = null
+        show {
+            androidx.compose.foundation.layout.Column {
+                QuickCapturePhotoEditor(
+                    entryId = 6,
+                    names = names,
+                    suggestedWeight = 125.0,
+                    suggestionRejected = true,
+                    analysisStatus = "recognized",
+                    onProcess = { _, weight -> submitted = weight },
+                )
+            }
+        }
+        compose.onNodeWithText("Name").apply {
+            performTextInput("Test")
+            performImeAction()
+        }
+        compose.onNodeWithText("KI-Vorschlag als falsch markiert · Gewicht manuell eingeben")
+            .assertExists()
         val weight = compose.onAllNodes(hasSetTextAction())[0]
-        weight.assertTextContains("125")
+        weight.assert(
+            SemanticsMatcher.expectValue(
+                androidx.compose.ui.semantics.SemanticsProperties.EditableText,
+                androidx.compose.ui.text.AnnotatedString(""),
+            )
+        )
         compose.runOnIdle { kotlin.test.assertNull(submitted) }
         capture("ai-weight-suggestion")
-        weight.performTextReplacement("126")
-        compose.runOnIdle { suggestion.value = 999.0 }
-        weight.assertTextContains("126")
+        weight.performTextInput("126")
         weight.performImeAction()
         compose.runOnIdle { kotlin.test.assertEquals(126.0, submitted) }
     }
