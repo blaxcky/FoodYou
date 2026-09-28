@@ -12,6 +12,7 @@ class AiDiagnosticSummaryTest {
             120 pid=7 Durchlauf=42; Foto 2: Gesamt=2.755 s; Erste Antwort=1.846 s; Status=Completed
             130 pid=7 Durchlauf=42; Foto 3: Gesamt=2.414 s; Erste Antwort=1.864 s; Status=Error
             129 pid=7 phase=result_ResponseFormat availableMiB=3046 lowMemory=false pssKiB=937301 nativeHeapKiB=3474414
+            Antwort (JSON-kodiert): "The weight is 269 g"
         """.trimIndent()
 
         val summary = summarizeAiDiagnosticReport(report)
@@ -19,6 +20,7 @@ class AiDiagnosticSummaryTest {
         assertEquals("1 von 3 Fotos fehlgeschlagen", summary.headline)
         assertTrue(summary.details.any { "2 von 3 Fotos erkannt" in it })
         assertTrue(summary.details.any { "nicht im erwarteten Datenformat" in it })
+        assertTrue(summary.details.any { "The weight is 269 g" in it })
         assertTrue(summary.details.any { "keinen Speichermangel" in it })
     }
 

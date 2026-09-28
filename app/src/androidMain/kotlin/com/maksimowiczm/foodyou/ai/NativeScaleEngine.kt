@@ -67,6 +67,8 @@ internal class NativeGeneration(private val cancellationScope: CoroutineScope, p
             }
         }
     }
+
+    fun responseText(): String = synchronized(lock) { response.toString() }
 }
 
 internal class LiteRtScaleEngine private constructor(
@@ -106,6 +108,14 @@ internal class LiteRtScaleEngine private constructor(
             generation = current
             if (cancellationRequested) current.cancel()
             val result = current.awaitResult()
+            if (result is ScaleRecognitionResult.Error && result.kind in setOf(
+                    ScaleErrorKind.ResponseFormat,
+                    ScaleErrorKind.NonWholeGrams,
+                    ScaleErrorKind.Truncated,
+                )
+            ) {
+                diagnostics.recordRejectedResponse(result.kind, current.responseText())
+            }
             diagnostics.record(when (result) {
                 is ScaleRecognitionResult.Recognized -> "result_recognized"
                 ScaleRecognitionResult.Unreadable -> "result_unreadable"

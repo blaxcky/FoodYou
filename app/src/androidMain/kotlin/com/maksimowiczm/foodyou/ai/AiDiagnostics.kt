@@ -10,11 +10,12 @@ import com.maksimowiczm.foodyou.app.BuildConfig
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonPrimitive
 
 internal const val LOCAL_AI_PROCESS_SUFFIX = ":local_ai"
 internal const val LOCAL_AI_RUNTIME = "0.16.1"
 
-/** Only explicit numeric/enum metadata belongs here, never paths, responses or exception messages. */
+/** Diagnostics stay app-private. Rejected model text is retained so format failures are actionable. */
 internal class AiDiagnostics(private val context: Context, private val worker: Boolean = false) {
     private val directory = File(context.noBackupFilesDir, "ai/diagnostics")
     private val logFile get() = File(directory, if (worker) "worker.log" else "client.log")
@@ -42,6 +43,20 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
         } catch (_: Exception) { /* Timing diagnostics must not interrupt a batch. */ }
     }
 
+    @Synchronized
+    fun recordRejectedResponse(kind: ScaleErrorKind, response: String) {
+        try {
+            directory.mkdirs()
+            val file = File(directory, "rejected-response.log")
+            val temp = File(directory, "${file.name}.tmp")
+            temp.writeText(buildString {
+                appendLine("${System.currentTimeMillis()} kind=${kind.name}")
+                appendLine("Antwort (JSON-kodiert): ${JsonPrimitive(response)}")
+            })
+            temp.renameTo(file)
+        } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
+    }
+
     private fun append(file: File, line: String) {
         directory.mkdirs()
         val previous = if (file.isFile) file.readLines().takeLast(79) else emptyList()
@@ -57,7 +72,11 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
             appendLine("LiteRT-LM: $LOCAL_AI_RUNTIME")
             appendLine("Lokale Modelle: " + GemmaModel.entries.joinToString { "${it.displayName} · ${it.revision}" })
             appendLine("Backend: GPU / Vision GPU · Kontext: 4096 · Ausgabe: 128")
-            appendLine("Zeitangaben: Unix-Millisekunden; keine Fotos, Modellantworten oder API-Schlüssel.")
+            appendLine("Zeitangaben: Unix-Millisekunden; keine Fotos oder API-Schlüssel.")
+            appendLine("Verworfene Modellantworten können erkannten Bildtext enthalten; vor Weitergabe prüfen.")
+            appendLine()
+            appendLine("Letzte verworfene Modellantwort:")
+            appendLine(readLog("rejected-response.log"))
             appendLine()
             appendLine("Laufzeiten (monotone Uhr, Sekunden):")
             appendLine("Modellladen separat; Foto-Gesamtzeit enthält Bildvorbereitung, Sitzung und Aufräumen.")

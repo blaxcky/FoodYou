@@ -70,6 +70,20 @@ class LocalAiProtocolTest {
         assertTrue(report.contains("Foto 2: Gesamt=5.000 s; Erste Antwort=nicht empfangen; Status=Cancelled"))
     }
 
+    @Test fun diagnosticReportRetainsExactRejectedResponseWithPrivacyWarning() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        AiDiagnostics(context, worker = true).recordRejectedResponse(
+            ScaleErrorKind.ResponseFormat,
+            "The weight is 269 g\nnot JSON",
+        )
+
+        val report = AiDiagnostics(context).report()
+
+        assertTrue(report.contains("kind=ResponseFormat"))
+        assertTrue(report.contains("Antwort (JSON-kodiert): \"The weight is 269 g\\nnot JSON\""))
+        assertTrue(report.contains("können erkannten Bildtext enthalten"))
+    }
+
     @Test fun ambiguousSignalDoesNotClaimMemoryExhaustion() {
         assertTrue(exitReasonLabel(ApplicationExitInfo.REASON_LOW_MEMORY).contains("Speichermangel"))
         assertEquals("Nativer Absturz", exitReasonLabel(ApplicationExitInfo.REASON_CRASH_NATIVE))

@@ -73,6 +73,19 @@ internal fun summarizeAiDiagnosticReport(report: String): AiDiagnosticSummary {
         else -> null
     }
     reason?.let(details::add)
+    val rejectedResponseRelevant = listOf(
+        "phase=result_ResponseFormat",
+        "phase=result_NonWholeGrams",
+        "phase=result_Truncated",
+    ).any { it in recentLog }
+    if (rejectedResponseRelevant) {
+        report.lineSequence().lastOrNull { it.startsWith("Antwort (JSON-kodiert): ") }
+            ?.removePrefix("Antwort (JSON-kodiert): ")
+            ?.let { encoded ->
+                val preview = encoded.take(240)
+                details += "Verworfene Antwort: $preview${if (encoded.length > preview.length) "… (vollständig in den Details)" else ""}"
+            }
+    }
 
     val errorMemory = recentLog.lineSequence().lastOrNull {
         "phase=result_" in it || "phase=recognition_failed" in it

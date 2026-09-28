@@ -44,6 +44,7 @@ class AiSettingsScreenshotTest {
             110 pid=7 Durchlauf=42; Foto 1: Gesamt=20.000 s; Erste Antwort=14.500 s; Status=Completed
             120 pid=7 Durchlauf=42; Foto 2: Gesamt=2.400 s; Erste Antwort=1.800 s; Status=Error
             119 pid=7 phase=result_ResponseFormat availableMiB=3046 lowMemory=false
+            Antwort (JSON-kodiert): "The weight is 269 g"
         """.trimIndent()
         show { AiDiagnosticDialog(report, {}, {}) }
         compose.onNodeWithText("Bericht kopieren").assertExists()

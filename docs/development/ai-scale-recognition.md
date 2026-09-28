@@ -100,7 +100,10 @@ Speichermangel trotzdem auch den Hauptprozess beenden.
 Einstellungen → KI → KI-Diagnosebericht → Kopieren enthält Runtime/Modellrevision,
 Gerät, Phasen, Bildabmessungen sowie verfügbaren RAM und Prozessspeicher. Die begrenzten
 Phasenprotokolle liegen im privaten `noBackupFilesDir/ai/diagnostics`. Fotos, rohe
-Modellantworten, Exception-Texte und Schlüssel werden nicht protokolliert.
+Antworten erfolgreicher Analysen, Exception-Texte und Schlüssel werden nicht protokolliert.
+Die letzte wegen Format, Ganzzahligkeit oder Kürzung verworfene Modellantwort wird
+JSON-kodiert gespeichert, im Bericht mit einem Datenschutzhinweis angezeigt und beim
+nächsten solchen Fehler ersetzt. Sie kann von Gemma gelesenen Bildtext enthalten.
 Der Dialog wertet den letzten Durchlauf zusätzlich lokal als kurze, verständliche
 Zusammenfassung aus; der vollständige technische Bericht bleibt aufklapp- und kopierbar.
 Ab Android 11 werden `ApplicationExitInfo`-Datensätze ergänzt. LOW_MEMORY und native
