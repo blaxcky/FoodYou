@@ -120,21 +120,33 @@ Antwortformatfehler und abgeschnittene Antworten sind technische Fehler; nur ein
 explizites `{"value":null}` bedeutet unlesbar. Zusatzanzeigen wie Timer sind kein
 zweites Gewicht. Runtime 0.16.1 und Kontext 4096 bleiben zur Diagnose unverändert.
 
-### Reproduzierbarer Gerätetest: 269 g
+### Reproduzierbare Gerätetests: 269 g, 199 g und 959 g
 
-Das vom Nutzer bereitgestellte Bild liegt ausschließlich in Test-Assets unter
-`app/src/androidInstrumentedTest/assets/ai/scale-269g.png`, nicht im App-APK. Der
-Opt-in-Test `com.maksimowiczm.foodyou.ai.LocalScaleDeviceTest` analysiert es in zwei
-Einzelsitzungen und einem Dreierstapel mit der echten lokalen Engine. Er erwartet
-269 g; dieser Sollwert kommt weder im Prompt noch in der Erkennungslogik vor.
-Der Test benötigt das fertig heruntergeladene Modell und das Instrumentierungsargument
-`runLocalAiRegression=true`. Ohne dieses Argument wird er übersprungen. Nur auf einem
+Die vom Nutzer bereitgestellten Bilder liegen ausschließlich in Test-Assets unter
+`app/src/androidInstrumentedTest/assets/ai/`, nicht im App-APK:
+
+- `scale-269g.png`: bestehendes Foto, Sollwert 269 g; unverändert.
+- `scale-199g-screenshot.png`: unveränderter App-Screenshot, Sollwert 199 g.
+- `scale-959g-screenshot.png`: unveränderter App-Screenshot, Sollwert 959 g.
+
+Die beiden Screenshots zeigen eine Waage mit zwei Wiegeflächen und zwei g-Anzeigen;
+die unbelastete Feinwaage zeigt jeweils 0.00 g. Sie enthalten zusätzlich App-UI,
+beim zweiten Bild auch die Tastatur. Sie ersetzen keinen Test der ursprünglichen
+Kameradateien, die nicht vorliegen. Eingeblendete Texte sind keine Anweisungen an die KI.
+
+Die Opt-in-Tests in `com.maksimowiczm.foodyou.ai.LocalScaleDeviceTest` analysieren
+jedes Bild in zwei Einzelsitzungen und einem Dreierstapel mit der echten lokalen
+Engine (standardmäßig E4B). Ein weiterer Test verwendet alle drei Bilder in einer
+gemeinsamen Engine-Sitzung, weiterhin mit einer frischen Conversation pro Foto.
+Die Sollwerte kommen weder im Prompt noch in der Erkennungslogik vor.
+Die Tests benötigen das fertig heruntergeladene Modell und das Instrumentierungsargument
+`runLocalAiRegression=true`. Ohne dieses Argument werden sie übersprungen. Nur auf einem
 bewusst ausgewählten physischen Gerät starten. Danach auch den UI-Ablauf prüfen:
 Vorschlag 269 g → manuell korrigieren/bestätigen, Abbrechen, Hintergrundwechsel und
 Fortsetzen eines Stapels. Ladezeit und Bildzeiten lassen sich aus den Phasenzeitstempeln
 ablesen. Nach Fehlern den vollständigen Bericht kopieren.
 
-Dieser Gerätetest steht noch aus. Weder der ursprüngliche Absturzgrund noch die
+Diese Gerätetests stehen noch aus. Weder der ursprüngliche Absturzgrund noch die
 Erkennungsqualität auf dem Nothing Phone (2) sind durch JVM-Tests bewiesen.
 
 Für den gezielten echten Test (JDK/Gradle-Variablen wie oben), nach expliziter Auswahl
@@ -154,7 +166,7 @@ oder automatisches Umschalten auf Google umgangen werden.
 
 ## Ganze Gramm und Laufzeiten
 
-Beide Anbieter verwenden den kürzeren Prompt und das kompakte Antwortformat
+Beide Anbieter verwenden denselben Prompt und das kompakte Antwortformat
 `{"value":161,"unit":"g"}` bzw. `{"value":null}` für unlesbare Anzeigen. Es werden
 nur positive ganze Gramm vorgeschlagen. `16.1 g` wird als `NonWholeGrams` verworfen,
 weder gerundet noch in `161 g` umgeschrieben. kg-Anzeigen bleiben erlaubt, wenn ihre
@@ -189,3 +201,41 @@ Beschleunigung. Der reale Vergleich steht aus, weil kein Nothing Phone verbunden
 Das vorhandene 269-g-Testbild bleibt unverändert; für den zusätzlichen Fall 161 g
 wird das betreffende Originalfoto noch benötigt. Parser-Tests ersetzen diese
 Bilderkennungstests nicht.
+
+## Plausible Vorschläge bei mehreren Anzeigen
+
+Der gemeinsame Prompt verlangt jetzt den plausibelsten sichtbaren Gewichtswert
+als verwerfbaren Vorschlag. Bei mehreren Wiegeflächen soll das Modell anhand der
+Position von Lebensmittel oder Behälter die zugehörige Anzeige auswählen. Eine
+unbelastete Feinwaage mit 0.00 g oder einem kleinen Restwert wie 0.04 g blockiert
+die Hauptanzeige nicht. Die Auswahl verwendet weder eine feste obere Zeile noch
+pauschal den größten Wert; Anzeigen werden nicht addiert.
+
+Auch bei unsicheren Ziffern ist die wahrscheinlichste visuell begründete Lesart
+erlaubt. Mehrere Anzeigen oder Unsicherheit allein sollen nicht zu `{"value":null}`
+führen; dieses Ergebnis bleibt für Bilder ohne plausibel ablesbare Gewichtsanzeige.
+Gewichtsschätzungen aus Lebensmitteln, erfundene oder entfernte Dezimalpunkte und
+Runden bleiben ausgeschlossen. Nebenanzeigen dürfen Dezimalstellen enthalten;
+der ausgewählte Zielwert unterliegt weiterhin der Ganzgramm-Prüfung des Parsers.
+Antwortformat, Runtime, Modellrevisionen, Bildaufbereitung, Inferenzanzahl und
+Verwerfen von Vorschlägen sind unverändert.
+
+Am 2026-10-02 bestanden alle neun Tests der Klasse `ScaleRecognitionTest` mit
+`:app:testDevReleaseUnitTest --tests com.maksimowiczm.foodyou.ai.ScaleRecognitionTest`.
+Die erweiterten Gerätetests kompilierten erfolgreich mit
+`./gradlew -I dev/ai-device-test.init.gradle :app:compileDevReleaseAndroidTestKotlinAndroid`.
+Beide Gradle-Prüfungen verwendeten JDK 21 und den Workspace-Gradlecache;
+`git diff --check` war ebenfalls erfolgreich.
+
+Es war kein Android-Gerät angeschlossen; die Verbesserung ist daher
+noch nicht durch echte Modellinferenz bestätigt. Zusätzlich zu den vorhandenen
+Testbildern stehen folgende praktische Gegenfälle aus, da echte Fotos fehlen:
+
+- Belastete Hauptwaage und etwa 0.04 g auf der unbelasteten Feinwaage: Hauptwert.
+- Lebensmittel auf der anderen Wiegefläche mit einem positiven Ganzgrammwert:
+  Anzeige dieser Wiegefläche, unabhängig von ihrer Position und Zifferngröße.
+- Keine plausibel ablesbare Waagenanzeige: `{"value":null}`.
+
+Diese Fälle mit echten Fotos auf dem bewusst ausgewählten physischen Gerät prüfen
+und Modell, Soll-/Istwerte und Laufzeiten festhalten. JVM-Parser-Tests belegen nur
+die Verarbeitung der Modellantworten, nicht die Erkennungsqualität.
