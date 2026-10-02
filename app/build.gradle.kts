@@ -160,6 +160,18 @@ android {
         }
     }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    // devRelease ships one APK per ABI instead of a universal APK that carries the native libraries
+    // of every architecture. Splits are global in AGP, so they are limited to devRelease builds to
+    // keep the single-APK release and preview flows in the justfile unchanged.
+    splits {
+        abi {
+            isEnable =
+                gradle.startParameter.taskNames.any { it.contains("DevRelease", ignoreCase = true) }
+            reset()
+            include("arm64-v8a", "x86_64", "armeabi-v7a")
+            isUniversalApk = false
+        }
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -178,12 +190,9 @@ android {
         }
         create("devRelease") {
             initWith(getByName("release"))
-            isMinifyEnabled = false
+            isShrinkResources = true
+            proguardFile("proguard-rules-devrelease.pro")
             signingConfig = signingConfigs.getByName("debug")
-        }
-        create("miniDevRelease") {
-            initWith(getByName("devRelease"))
-            isMinifyEnabled = true
         }
         create("preview") {
             initWith(getByName("release"))

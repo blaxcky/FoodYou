@@ -35,8 +35,13 @@ JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
 ## Verification Scope
 
 Always run the smallest meaningful verification for the change. `devRelease` is the broadest build
-variant allowed by default, not a required minimum. Run release, preview, or `miniDevRelease` tasks
-only when the user explicitly requests them.
+variant allowed by default, not a required minimum. Run release or preview tasks only when the user
+explicitly requests them.
+
+`devRelease` is shrunk with R8 (not obfuscated) and split per ABI: `assembleDevRelease` writes
+`app-arm64-v8a-devRelease.apk`, `app-x86_64-devRelease.apk`, and `app-armeabi-v7a-devRelease.apk`,
+and `installDevRelease` picks the split matching the device. Because R8 runs, verify features that
+rely on reflection or JNI on the emulator after dependency or keep-rule changes.
 
 - For documentation, comments, and agent-instruction changes, run only `git diff --check`.
 - For production-code changes, run the directly affected tests. If no relevant test exists, run at

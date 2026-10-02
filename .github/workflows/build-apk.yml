@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FoodYou-devRelease-${{ github.sha }}
-          path: app/build/outputs/apk/devRelease/app-devRelease.apk
+          path: app/build/outputs/apk/devRelease/*.apk
           retention-days: 14
 
       - name: Publish prerelease APK
@@ -45,8 +45,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "devRelease-${GITHUB_SHA}" \
-            app/build/outputs/apk/devRelease/app-devRelease.apk \
+            app/build/outputs/apk/devRelease/*.apk \
             --target "${GITHUB_SHA}" \
             --title "Development APK (${GITHUB_SHA::7})" \
-            --notes "Automatisch erstellt aus Commit ${GITHUB_SHA}." \
+            --notes "Automatisch erstellt aus Commit ${GITHUB_SHA}. Für aktuelle Smartphones: app-arm64-v8a-devRelease.apk." \
             --prerelease
