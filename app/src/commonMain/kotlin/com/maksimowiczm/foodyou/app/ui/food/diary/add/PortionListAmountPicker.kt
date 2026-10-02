@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -18,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -29,7 +29,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -166,44 +165,55 @@ internal fun PortionListOptions(
             }
         }
 
-        visibleRows.forEach { option ->
-            val portion = (option as? MeasurementPickerOption.Portion)?.portion
-            PortionOptionRow(
-                label = option.rowLabel(servingUnit),
-                weight = option.rowWeight(state),
-                selected = option == state.selectedOption,
-                onClick = { state.selectFromList(option) },
-                onLongClick =
-                    if (canEdit && portion != null) {
-                        { editing = PortionDialogTarget(original = portion, amount = null) }
-                    } else {
-                        null
+        // Rows are inset so the label and its weight stay visually close together.
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+            visibleRows.forEachIndexed { index, option ->
+                if (index > 0) PortionRowDivider()
+                val portion = (option as? MeasurementPickerOption.Portion)?.portion
+                PortionOptionRow(
+                    label = option.rowLabel(servingUnit),
+                    weight = option.rowWeight(state),
+                    selected = option == state.selectedOption,
+                    onClick = { state.selectFromList(option) },
+                    onLongClick =
+                        if (canEdit && portion != null) {
+                            { editing = PortionDialogTarget(original = portion, amount = null) }
+                        } else {
+                            null
+                        },
+                )
+            }
+
+            if (collapsible && !expanded) {
+                PortionRowDivider()
+                ActionRow(
+                    icon = { Icon(Icons.Outlined.ExpandMore, contentDescription = null) },
+                    text = stringResource(Res.string.action_show_all_count, rows.size),
+                    onClick = { expanded = true },
+                )
+            }
+
+            if (canEdit) {
+                PortionRowDivider()
+                ActionRow(
+                    icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                    text = stringResource(Res.string.action_add_portion),
+                    onClick = {
+                        editing =
+                            PortionDialogTarget(
+                                original = null,
+                                amount = state.currentMetricWeight()?.takeIf { it > 0.0 },
+                            )
                     },
-            )
-        }
-
-        if (collapsible && !expanded) {
-            ActionRow(
-                icon = { Icon(Icons.Outlined.ExpandMore, contentDescription = null) },
-                text = stringResource(Res.string.action_show_all_count, rows.size),
-                onClick = { expanded = true },
-            )
-        }
-
-        if (canEdit) {
-            ActionRow(
-                icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
-                text = stringResource(Res.string.action_add_portion),
-                onClick = {
-                    editing =
-                        PortionDialogTarget(
-                            original = null,
-                            amount = state.currentMetricWeight()?.takeIf { it > 0.0 },
-                        )
-                },
-            )
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun PortionRowDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
 }
 
 @Composable
@@ -221,12 +231,11 @@ private fun PortionOptionRow(
         modifier =
             Modifier.fillMaxWidth()
                 .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                .padding(end = 8.dp),
+                .padding(end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = null, modifier = Modifier.size(48.dp))
+        RadioButton(selected = selected, onClick = null, modifier = Modifier.size(40.dp))
         Text(
             text = label,
             modifier = Modifier.weight(1f),
@@ -238,8 +247,8 @@ private fun PortionOptionRow(
         if (weight != null) {
             Text(
                 text = weight,
-                modifier = Modifier.padding(start = 8.dp),
-                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 12.dp),
+                style = MaterialTheme.typography.bodyLarge,
                 color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -252,11 +261,10 @@ private fun ActionRow(icon: @Composable () -> Unit, text: String, onClick: () ->
         modifier =
             Modifier.fillMaxWidth()
                 .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
                 .combinedClickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
                 icon()
             }
