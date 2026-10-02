@@ -100,8 +100,8 @@ fun DiaryFoodSearchScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     // Hide the FAB while scrolling down so it doesn't cover list items, show it again on scroll up
-    // or when the search changes.
-    var fabVisibleOnScroll by rememberSaveable { mutableStateOf(true) }
+    // (also when the list can't scroll further up) or when the search changes.
+    var fabVisibleOnScroll by remember { mutableStateOf(true) }
     LaunchedEffect(searchInput) { fabVisibleOnScroll = true }
     val fabScrollConnection = remember {
         object : NestedScrollConnection {
@@ -111,7 +111,7 @@ fun DiaryFoodSearchScreen(
                 source: NestedScrollSource,
             ): Offset {
                 if (consumed.y < -1f) fabVisibleOnScroll = false
-                else if (consumed.y > 1f) fabVisibleOnScroll = true
+                else if (consumed.y > 1f || available.y > 1f) fabVisibleOnScroll = true
                 return Offset.Zero
             }
         }
