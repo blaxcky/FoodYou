@@ -145,7 +145,7 @@ class FoodSearchAppInteractionTest {
     }
 
     @Test
-    fun compactItemShowsBrandLabelledNutrientsAndLongPressTogglesFavorite() {
+    fun compactItemShowsBrandPer100gValuesAndLongPressTogglesFavorite() {
         val egg = FoodSearch.Product(
             id = FoodId.Product(2),
             headline = "Ei, vom Huhn (Naturprodukt)",
@@ -159,7 +159,8 @@ class FoodSearchAppInteractionTest {
             totalWeight = null,
             servingWeight = null,
             isFavorite = false,
-            suggestedMeasurement = Measurement.Gram(100.0),
+            // The list ignores the suggested amount and always shows values per 100 g.
+            suggestedMeasurement = Measurement.Gram(50.0),
             name = "Ei, vom Huhn",
             brand = "Naturprodukt",
         )
@@ -168,7 +169,7 @@ class FoodSearchAppInteractionTest {
         show(onFavoriteChange = { id, favorite -> favoriteChange = id to favorite })
         awaitFood("Ei, vom Huhn")
 
-        compose.onNodeWithText("Naturprodukt", substring = true).assertExists()
+        compose.onNodeWithText("Naturprodukt (156 kcal/100 g)").assertExists()
         compose.onNodeWithText("E 13 g").assertExists()
         compose.onNodeWithText("K 1,1 g").assertExists()
         compose.onNodeWithText("F 11,3 g").assertExists()

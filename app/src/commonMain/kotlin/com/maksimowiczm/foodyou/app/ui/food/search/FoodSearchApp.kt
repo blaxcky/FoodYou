@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -425,28 +426,36 @@ private fun FoodSearchResults(
                 ) { i ->
                     val food = pages[i]
 
-                    when (food) {
-                        null -> FoodSearchListItemSkeleton()
-                        is FoodSearch.Product -> {
-                            val measurement = food.suggestedMeasurement
-                            FoodSearchListItem(
-                                food = food,
-                                measurement = measurement,
-                                query = query,
-                                onClick = { onFoodClick(food, measurement) },
-                                onFavoriteToggle = { onFavoriteToggle(food) },
+                    Column {
+                        if (i > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant,
                             )
                         }
 
-                        is FoodSearch.Recipe -> {
-                            val measurement = food.suggestedMeasurement
-                            FoodSearchListItem(
-                                food = food,
-                                measurement = measurement,
-                                query = query,
-                                onClick = { onFoodClick(food, measurement) },
-                                shimmer = rememberShimmer(ShimmerBounds.View),
-                            )
+                        when (food) {
+                            null -> FoodSearchListItemSkeleton()
+                            is FoodSearch.Product -> {
+                                val measurement = food.suggestedMeasurement
+                                FoodSearchListItem(
+                                    food = food,
+                                    measurement = measurement,
+                                    query = query,
+                                    onClick = { onFoodClick(food, measurement) },
+                                    onFavoriteToggle = { onFavoriteToggle(food) },
+                                )
+                            }
+
+                            is FoodSearch.Recipe -> {
+                                val measurement = food.suggestedMeasurement
+                                FoodSearchListItem(
+                                    food = food,
+                                    query = query,
+                                    onClick = { onFoodClick(food, measurement) },
+                                    shimmer = rememberShimmer(ShimmerBounds.View),
+                                )
+                            }
                         }
                     }
                 }

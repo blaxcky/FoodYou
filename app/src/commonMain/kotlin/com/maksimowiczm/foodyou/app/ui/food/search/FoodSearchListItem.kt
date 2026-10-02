@@ -30,8 +30,6 @@ import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItemSkeleton
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
-import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
-import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.common.compose.utility.formatLocalized
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
@@ -55,10 +53,7 @@ internal fun FoodSearchListItem(
     onFavoriteToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val weight = food.weight(measurement)
-    val factor = weight?.div(100)
-
-    if (factor == null) {
+    if (food.weight(measurement) == null) {
         return FoodErrorListItem(
             headline = food.headline,
             errorMessage = stringResource(Res.string.error_measurement_error),
@@ -67,26 +62,14 @@ internal fun FoodSearchListItem(
         )
     }
 
-    val measurementFacts = food.nutritionFacts * factor
-    val proteins = measurementFacts.proteins.value
-    val carbohydrates = measurementFacts.carbohydrates.value
-    val fats = measurementFacts.fats.value
-    val energy = measurementFacts.energy.value
-    val measurementString =
-        measurement.stringResourceWithWeight(
-            totalWeight = food.totalWeight,
-            servingWeight = food.servingWeight,
-            isLiquid = food.isLiquid,
-            servingUnit = ServingUnit.Piece,
-        )
+    // The list always shows values per 100 g/ml; serving sizes belong to the detail screen.
+    val facts = food.nutritionFacts
+    val proteins = facts.proteins.value
+    val carbohydrates = facts.carbohydrates.value
+    val fats = facts.fats.value
+    val energy = facts.energy.value
 
-    if (
-        proteins == null ||
-            carbohydrates == null ||
-            fats == null ||
-            energy == null ||
-            measurementString == null
-    ) {
+    if (proteins == null || carbohydrates == null || fats == null || energy == null) {
         return FoodErrorListItem(
             headline = food.headline,
             modifier = modifier,
@@ -103,7 +86,7 @@ internal fun FoodSearchListItem(
         carbohydrates = carbohydrates,
         fats = fats,
         energy = energy,
-        measurement = measurementString,
+        isLiquid = food.isLiquid,
         isRecipe = false,
         isFavorite = food.isFavorite,
         onClick = onClick,
@@ -121,7 +104,6 @@ internal fun FoodSearchListItem(
 @Composable
 internal fun FoodSearchListItem(
     food: FoodSearch.Recipe,
-    measurement: Measurement,
     query: String?,
     onClick: () -> Unit,
     shimmer: Shimmer,
@@ -140,27 +122,17 @@ internal fun FoodSearchListItem(
         return FoodListItemSkeleton(shimmer)
     }
 
-    val factor = recipe.weight(measurement) / 100
-    val measurementFacts = recipe.nutritionFacts * factor
-    val proteins = measurementFacts.proteins.value
-    val carbohydrates = measurementFacts.carbohydrates.value
-    val fats = measurementFacts.fats.value
-    val energy = measurementFacts.energy.value
-
-    val measurementString =
-        measurement.stringResourceWithWeight(
-            totalWeight = recipe.totalWeight,
-            servingWeight = recipe.servingWeight,
-            isLiquid = recipe.isLiquid,
-            servingUnit = ServingUnit.Serving,
-        )
+    val facts = recipe.nutritionFacts
+    val proteins = facts.proteins.value
+    val carbohydrates = facts.carbohydrates.value
+    val fats = facts.fats.value
+    val energy = facts.energy.value
 
     if (
         (proteins == null || proteins.isNaN()) ||
             (carbohydrates == null || carbohydrates.isNaN()) ||
             (fats == null || fats.isNaN()) ||
-            (energy == null || energy.isNaN()) ||
-            measurementString == null
+            (energy == null || energy.isNaN())
     ) {
         return FoodErrorListItem(
             headline = food.headline,
@@ -178,7 +150,7 @@ internal fun FoodSearchListItem(
         carbohydrates = carbohydrates,
         fats = fats,
         energy = energy,
-        measurement = measurementString,
+        isLiquid = recipe.isLiquid,
         isRecipe = true,
         isFavorite = false,
         onClick = onClick,
@@ -195,7 +167,7 @@ private fun FoodSearchListItem(
     carbohydrates: Double,
     fats: Double,
     energy: Double,
-    measurement: String,
+    isLiquid: Boolean,
     isRecipe: Boolean,
     isFavorite: Boolean,
     onClick: () -> Unit,
@@ -204,6 +176,9 @@ private fun FoodSearchListItem(
     onLongClickLabel: String? = null,
 ) {
     val queryTokens = remember(query) { query.highlightTokens() }
+    val unit =
+        stringResource(if (isLiquid) Res.string.unit_milliliter_short else Res.string.unit_gram_short)
+    val energyPer100 = "${LocalEnergyFormatter.current.formatEnergy(energy.roundToInt())}/100 $unit"
 
     Row(
         modifier =
@@ -255,9 +230,12 @@ private fun FoodSearchListItem(
                     buildAnnotatedString {
                         if (brand != null) {
                             append(brand.highlight(queryTokens))
-                            append(" · ")
+                            append(" (")
+                            append(energyPer100)
+                            append(")")
+                        } else {
+                            append(energyPer100)
                         }
-                        append(measurement)
                     },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -265,12 +243,7 @@ private fun FoodSearchListItem(
                 overflow = TextOverflow.Ellipsis,
             )
 
-            NutrientsRow(
-                proteins = proteins,
-                carbohydrates = carbohydrates,
-                fats = fats,
-                energy = energy,
-            )
+            NutrientsRow(proteins = proteins, carbohydrates = carbohydrates, fats = fats)
         }
 
         FilledTonalIconButton(onClick = onClick) {
@@ -283,7 +256,7 @@ private fun FoodSearchListItem(
 }
 
 @Composable
-private fun NutrientsRow(proteins: Double, carbohydrates: Double, fats: Double, energy: Double) {
+private fun NutrientsRow(proteins: Double, carbohydrates: Double, fats: Double) {
     val palette = LocalNutrientsPalette.current
     val g = stringResource(Res.string.unit_gram_short)
     val proteinsLabel = stringResource(Res.string.nutriment_proteins_short)
@@ -291,11 +264,6 @@ private fun NutrientsRow(proteins: Double, carbohydrates: Double, fats: Double, 
     val fatsLabel = stringResource(Res.string.nutriment_fats_short)
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = LocalEnergyFormatter.current.formatEnergy(energy.roundToInt()),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-
         LocalNutrientsOrder.current.forEach { field ->
             val (label, value, color) =
                 when (field) {
