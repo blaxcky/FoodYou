@@ -74,11 +74,6 @@ internal class WeightReportViewModel(
         }
     }
 
-    fun adjustWeight(deltaKg: Double) {
-        val base = state.value.todayWeightKg ?: state.value.suggestedWeightKg ?: return
-        setWeight(base + deltaKg)
-    }
-
     fun setTargetWeight(weightKg: Double?) {
         viewModelScope.launch { repository.updateGoal(WeightGoal(weightKg)) }
     }

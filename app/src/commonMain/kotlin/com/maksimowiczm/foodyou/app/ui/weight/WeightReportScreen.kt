@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,12 +39,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -95,8 +99,7 @@ internal fun WeightReportScreen(
     WeightReportContent(
         state = state,
         onBack = onBack,
-        onMinus = { viewModel.adjustWeight(-0.1) },
-        onPlus = { viewModel.adjustWeight(0.1) },
+        onSaveWeight = viewModel::setWeight,
         onHealthConnectClick = permissionRequester::request,
         onToggleHidden = viewModel::setHidden,
         modifier = modifier,
@@ -107,12 +110,26 @@ internal fun WeightReportScreen(
 internal fun WeightReportContent(
     state: WeightReportUiState,
     onBack: () -> Unit,
-    onMinus: () -> Unit,
-    onPlus: () -> Unit,
+    onSaveWeight: (Double) -> Unit,
     onHealthConnectClick: () -> Unit,
     onToggleHidden: (String, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
+    var draftWeightKg by rememberSaveable { mutableStateOf<Double?>(null) }
+    draftWeightKg?.let { weightKg ->
+        WeightEntryDialog(
+            weightKg = weightKg,
+            onWeightChange = { draftWeightKg = it },
+            onDismiss = { draftWeightKg = null },
+            onConfirm = {
+                draftWeightKg?.let { confirmedWeightKg ->
+                    draftWeightKg = null
+                    onSaveWeight(confirmedWeightKg)
+                }
+            },
+        )
+    }
+
     Scaffold(modifier = modifier, containerColor = ReportBackground) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues).background(ReportBackground),
@@ -139,8 +156,10 @@ internal fun WeightReportContent(
                     suggestedWeightKg = state.suggestedWeightKg,
                     progressWeightKg = state.currentWeightKg,
                     targetWeightKg = state.targetWeightKg,
-                    onMinus = onMinus,
-                    onPlus = onPlus,
+                    onEnterWeight = {
+                        val base = state.todayWeightKg ?: state.suggestedWeightKg
+                        draftWeightKg = base?.let { (round(it * 10.0) / 10.0).coerceAtLeast(0.1) }
+                    },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 )
             }
@@ -346,8 +365,7 @@ private fun CurrentWeightCard(
     suggestedWeightKg: Double?,
     progressWeightKg: Double?,
     targetWeightKg: Double?,
-    onMinus: () -> Unit,
-    onPlus: () -> Unit,
+    onEnterWeight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val displayWeight = currentWeightKg ?: suggestedWeightKg
@@ -364,12 +382,8 @@ private fun CurrentWeightCard(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column {
                     Text(
                         text = "Dein Gewicht: ${formatWeight(displayWeight)}",
                         style = MaterialTheme.typography.titleMedium,
@@ -384,26 +398,13 @@ private fun CurrentWeightCard(
                         )
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Button(
+                    onClick = onEnterWeight,
+                    enabled = displayWeight != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = ReportPrimary),
                 ) {
-                    WeightAdjustButton(
-                        icon = { Icon(Icons.Filled.Remove, contentDescription = "0,1 kg abziehen") },
-                        enabled = suggestedWeightKg != null,
-                        onClick = onMinus,
-                    )
-                    Text(
-                        text = "0,1 kg",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = ReportText,
-                        textAlign = TextAlign.Center,
-                    )
-                    WeightAdjustButton(
-                        icon = { Icon(Icons.Filled.Add, contentDescription = "0,1 kg addieren") },
-                        enabled = suggestedWeightKg != null,
-                        onClick = onPlus,
-                    )
+                    Text("Neues Gewicht eintragen")
                 }
             }
             WeightGoalProgress(
@@ -413,6 +414,64 @@ private fun CurrentWeightCard(
             )
         }
     }
+}
+
+@Composable
+private fun WeightEntryDialog(
+    weightKg: Double,
+    onWeightChange: (Double) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        titleContentColor = ReportText,
+        textContentColor = ReportText,
+        title = { Text("Neues Gewicht eintragen") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = formatWeight(weightKg),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    WeightAdjustButton(
+                        icon = { Icon(Icons.Filled.Remove, contentDescription = "0,1 kg abziehen") },
+                        enabled = weightKg > 0.1,
+                        onClick = { onWeightChange((round(weightKg * 10.0) - 1.0) / 10.0) },
+                    )
+                    Text("0,1 kg", style = MaterialTheme.typography.labelLarge)
+                    WeightAdjustButton(
+                        icon = { Icon(Icons.Filled.Add, contentDescription = "0,1 kg addieren") },
+                        enabled = true,
+                        onClick = { onWeightChange((round(weightKg * 10.0) + 1.0) / 10.0) },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = ReportPrimaryDark),
+            ) { Text("Übernehmen") }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = ReportPrimaryDark),
+            ) { Text("Abbrechen") }
+        },
+    )
 }
 
 @Composable
@@ -428,7 +487,7 @@ private fun WeightAdjustButton(
             modifier
                 .size(38.dp)
                 .weightAdjustPressHandler(enabled = enabled, onClick = { currentOnClick() })
-                .semantics {
+                .semantics(mergeDescendants = true) {
                     role = Role.Button
                     if (!enabled) disabled()
                     onClick {
