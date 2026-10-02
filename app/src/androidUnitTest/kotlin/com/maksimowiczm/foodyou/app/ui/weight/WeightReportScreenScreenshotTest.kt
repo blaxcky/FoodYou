@@ -46,6 +46,7 @@ class WeightReportScreenScreenshotTest {
     private lateinit var activity: ActivityController<ComponentActivity>
     private lateinit var state: MutableState<WeightReportUiState>
     private val savedWeights = mutableListOf<Double>()
+    private val toggledHidden = mutableListOf<Pair<String, Boolean>>()
 
     @After
     fun tearDown() {
@@ -96,7 +97,7 @@ class WeightReportScreenScreenshotTest {
         minus().performClick()
         dialogWeight("101,4 kg").assertIsDisplayed()
         assertTrue(savedWeights.isEmpty())
-        compose.onNodeWithText("Dein Gewicht: 101,3 kg").assertExists()
+        compose.onNode(hasText("Dein Gewicht") and hasText("101,3 kg")).assertExists()
         compose.onNode(isDialog()).captureRoboImage(
             "WeightReportScreenScreenshotTest.weight-entry-dialog.png"
         )
@@ -165,6 +166,39 @@ class WeightReportScreenScreenshotTest {
         assertTrue(savedWeights.isEmpty())
         openDialog()
         dialogWeight("101,3 kg").assertIsDisplayed()
+    }
+
+    @Test
+    fun noisyHistoryAboveStartWeight() {
+        show(noisyReportState())
+        compose.onNode(hasText("Dein Gewicht") and hasText("Mo, 28. Sep.")).assertExists()
+        compose.onNodeWithText("noch 17,4 kg").assertExists()
+        compose.onNode(isRoot()).captureRoboImage(
+            "WeightReportScreenScreenshotTest.noisy-history-above-start.png"
+        )
+
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Alle 31 Werte anzeigen"))
+        compose.onNode(isRoot()).captureRoboImage(
+            "WeightReportScreenScreenshotTest.noisy-history-list.png"
+        )
+    }
+
+    @Test
+    fun rangeSelectionUpdatesSubtitle() {
+        show()
+        compose.onNodeWithText("1 Jahr").assertExists()
+        compose.onNodeWithText("3M").performClick()
+        compose.onNodeWithText("3 Monate").assertExists()
+        compose.onNodeWithText("1 Jahr").assertDoesNotExist()
+    }
+
+    @Test
+    fun historyRowMenuHidesEntry() {
+        show()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("So, 7. Juni"))
+        compose.onNodeWithText("So, 7. Juni").performClick()
+        compose.onNodeWithText("Ausblenden").performClick()
+        assertEquals(listOf("local:${LocalDate.parse("2026-06-07").toEpochDays()}" to true), toggledHidden)
     }
 
     @Test
@@ -287,6 +321,7 @@ class WeightReportScreenScreenshotTest {
                     onBack = {},
                     onSaveWeight = { savedWeights += it },
                     onHealthConnectClick = {},
+                    onToggleHidden = { id, hidden -> toggledHidden += id to hidden },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -306,7 +341,7 @@ class WeightReportScreenScreenshotTest {
                         isHidden = true,
                     )
                 ),
-                chartEntries = ChartEntries,
+                today = LocalDate.parse("2026-06-07"),
                 todayWeightKg = 101.3,
                 suggestedWeightKg = 101.3,
                 startWeightKg = 105.0,
@@ -315,9 +350,42 @@ class WeightReportScreenScreenshotTest {
                 heightCm = 188.0,
             )
 
+        fun noisyReportState(): WeightReportUiState {
+            val entries =
+                listOf(
+                    "2026-04-01" to 97.8, "2026-04-24" to 102.6, "2026-04-25" to 99.5,
+                    "2026-05-11" to 100.4, "2026-05-26" to 102.8, "2026-05-30" to 102.6,
+                    "2026-06-03" to 99.5, "2026-06-07" to 99.4, "2026-06-24" to 103.4,
+                    "2026-06-27" to 103.4, "2026-06-29" to 103.0, "2026-06-30" to 100.0,
+                    "2026-07-05" to 99.7, "2026-07-23" to 103.8, "2026-07-27" to 104.0,
+                    "2026-08-04" to 105.6, "2026-08-23" to 104.9, "2026-08-26" to 104.5,
+                    "2026-08-28" to 104.8, "2026-09-02" to 103.2, "2026-09-03" to 102.3,
+                    "2026-09-12" to 104.7, "2026-09-14" to 105.4, "2026-09-19" to 104.2,
+                    "2026-09-21" to 103.8, "2026-09-22" to 103.8, "2026-09-24" to 103.7,
+                    "2026-09-25" to 102.6, "2026-09-26" to 102.1, "2026-09-27" to 102.1,
+                    "2026-09-28" to 102.4,
+                )
+                    .map { (date, weightKg) -> weight(date, weightKg, "${date}T06:30:00Z") }
+                    .sortedByDescending { it.date }
+            return WeightReportUiState(
+                entries = entries,
+                today = LocalDate.parse("2026-10-02"),
+                todayWeightKg = null,
+                suggestedWeightKg = 102.4,
+                startWeightKg = 97.8,
+                currentWeightKg = 102.4,
+                targetWeightKg = 85.0,
+                heightCm = 186.0,
+            )
+        }
+
         val WeightEntries =
             listOf(
                 weight("2026-06-07", 101.3, "2026-06-07T06:30:00Z"),
+                weight("2026-04-16", 101.8, "2026-04-16T06:25:00Z"),
+                weight("2026-02-18", 102.1, "2026-02-18T06:25:00Z"),
+                weight("2025-12-12", 102.8, "2025-12-12T06:25:00Z"),
+                weight("2025-10-20", 103.7, "2025-10-20T06:25:00Z"),
                 weight("2025-08-08", 104.4, "2025-08-08T06:35:00Z").copy(
                     id = "hc:fitbit",
                     isFoodYouRecord = false,
@@ -325,16 +393,6 @@ class WeightReportScreenScreenshotTest {
                     sourceDeviceType = 3,
                 ),
                 weight("2025-08-07", 105.0, "2025-08-07T06:20:00Z"),
-            )
-
-        val ChartEntries =
-            listOf(
-                weight("2025-08-07", 105.0, "2025-08-07T06:20:00Z"),
-                weight("2025-10-20", 103.7, "2025-10-20T06:25:00Z"),
-                weight("2025-12-12", 102.8, "2025-12-12T06:25:00Z"),
-                weight("2026-02-18", 102.1, "2026-02-18T06:25:00Z"),
-                weight("2026-04-16", 101.8, "2026-04-16T06:25:00Z"),
-                weight("2026-06-07", 101.3, "2026-06-07T06:30:00Z"),
             )
 
         fun weight(date: String, weightKg: Double, measuredAt: String) =

@@ -2,11 +2,16 @@ package com.maksimowiczm.foodyou.app.ui.weight
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,68 +25,101 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
-import com.maksimowiczm.foodyou.weight.domain.usecase.calculateWeightGoalProgress
+import com.maksimowiczm.foodyou.weight.domain.usecase.calculateWeightGoalPosition
 import kotlin.math.abs
 import kotlin.math.round
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Month
+import kotlinx.datetime.number
 import org.koin.compose.viewmodel.koinViewModel
 
 private val ReportBackground = Color(0xFFEAF5FC)
 private val ReportPrimary = Color(0xFF1F6FB7)
 private val ReportPrimaryDark = Color(0xFF175C9E)
 private val ReportText = Color(0xFF17212B)
-private val ReportMutedText = Color(0xFF718292)
+private val ReportMutedText = Color(0xFF5F7080)
 private val ReportGrid = Color(0xFFD7E2EB)
+private val ReportDivider = Color(0xFFEAF0F5)
 private val ReportSoftButton = Color(0xFFD8ECFA)
+private val ReportMeasurementDot = Color(0xFF9DC2E6)
+private val ReportAwayFromGoal = Color(0xFFE8A060)
 private val ReportCardShape = RoundedCornerShape(26.dp)
+private val ChartHeight = 212.dp
+private val ChartAxisWidth = 40.dp
+private val ChartDateLabelHeight = 22.dp
+private const val HistoryPreviewCount = 10
 private const val WeightAdjustRepeatStartMillis = 550L
 private const val WeightAdjustRepeatMillis = 175L
 private const val HealthConnectScaleDeviceType = 3
@@ -130,6 +168,13 @@ internal fun WeightReportContent(
         )
     }
 
+    var chartRange by rememberSaveable { mutableStateOf(WeightChartRange.OneYear) }
+    val today = state.today ?: state.entries.maxOfOrNull { it.date }
+    val chartModel =
+        remember(state.entries, chartRange, today, state.targetWeightKg) {
+            today?.let { buildWeightChartModel(state.entries, chartRange, it, state.targetWeightKg) }
+        }
+
     Scaffold(modifier = modifier, containerColor = ReportBackground) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues).background(ReportBackground),
@@ -139,10 +184,16 @@ internal fun WeightReportContent(
             item {
                 Surface(color = Color.White, tonalElevation = 0.dp, shadowElevation = 0.dp) {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        WeightReportHeader(onBack = onBack)
+                        WeightReportHeader(subtitle = chartRange.label, onBack = onBack)
                         WeightTabs()
+                        WeightRangeSelector(
+                            selected = chartRange,
+                            onSelect = { chartRange = it },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(top = 16.dp),
+                        )
                         WeightChart(
-                            entries = state.chartEntries,
+                            model = chartModel,
+                            range = chartRange,
                             targetWeightKg = state.targetWeightKg,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
                         )
@@ -156,6 +207,7 @@ internal fun WeightReportContent(
                     suggestedWeightKg = state.suggestedWeightKg,
                     progressWeightKg = state.currentWeightKg,
                     targetWeightKg = state.targetWeightKg,
+                    lastMeasurementDate = state.entries.maxOfOrNull { it.date },
                     onEnterWeight = {
                         val base = state.todayWeightKg ?: state.suggestedWeightKg
                         draftWeightKg = base?.let { (round(it * 10.0) / 10.0).coerceAtLeast(0.1) }
@@ -184,7 +236,6 @@ internal fun WeightReportContent(
                 item {
                     HistoryCard(
                         entries = state.entries,
-                        heightCm = state.heightCm,
                         onToggleHidden = onToggleHidden,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     )
@@ -194,13 +245,29 @@ internal fun WeightReportContent(
                 item {
                     var expanded by remember { mutableStateOf(false) }
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                        Button(onClick = { expanded = !expanded }) {
+                        TextButton(
+                            onClick = { expanded = !expanded },
+                            colors = ButtonDefaults.textButtonColors(contentColor = ReportPrimaryDark),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.VisibilityOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
                             Text("Ausgeblendete Werte (${state.hiddenEntries.size})")
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                imageVector =
+                                    if (expanded) Icons.Filled.KeyboardArrowUp
+                                    else Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                         if (expanded) {
                             HistoryCard(
                                 entries = state.hiddenEntries,
-                                heightCm = state.heightCm,
                                 onToggleHidden = onToggleHidden,
                                 showChanges = false,
                                 modifier = Modifier.fillMaxWidth(),
@@ -214,7 +281,7 @@ internal fun WeightReportContent(
 }
 
 @Composable
-private fun WeightReportHeader(onBack: () -> Unit, modifier: Modifier = Modifier) {
+private fun WeightReportHeader(subtitle: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -228,7 +295,7 @@ private fun WeightReportHeader(onBack: () -> Unit, modifier: Modifier = Modifier
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "1 Jahr",
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReportMutedText,
             )
@@ -263,98 +330,271 @@ private fun WeightTabs(modifier: Modifier = Modifier) {
                 )
             }
         }
-        HorizontalDivider(color = Color(0xFFEAF0F5))
+        HorizontalDivider(color = ReportDivider)
+    }
+}
+
+@Composable
+private fun WeightRangeSelector(
+    selected: WeightChartRange,
+    onSelect: (WeightChartRange) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ranges = WeightChartRange.entries
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
+        ranges.forEachIndexed { index, range ->
+            SegmentedButton(
+                selected = range == selected,
+                onClick = { onSelect(range) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = ranges.size),
+                modifier = Modifier.semantics { contentDescription = range.label },
+                colors =
+                    SegmentedButtonDefaults.colors(
+                        activeContainerColor = ReportSoftButton,
+                        activeContentColor = ReportPrimaryDark,
+                        activeBorderColor = ReportGrid,
+                        inactiveContainerColor = Color.White,
+                        inactiveContentColor = ReportText,
+                        inactiveBorderColor = ReportGrid,
+                    ),
+                icon = {},
+                label = { Text(range.shortLabel) },
+            )
+        }
     }
 }
 
 @Composable
 private fun WeightChart(
-    entries: List<DailyWeightEntry>,
+    model: WeightChartModel?,
+    range: WeightChartRange,
     targetWeightKg: Double?,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.padding(top = 18.dp, bottom = 24.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(
-                modifier = Modifier.width(42.dp).height(188.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.End,
+    Column(
+        modifier = modifier.padding(top = 14.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (model == null) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(ChartHeight),
+                contentAlignment = Alignment.Center,
             ) {
-                chartWeightLabels(entries, targetWeightKg).forEach { label ->
-                    Text(
-                        text = formatWeightInput(label),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ReportMutedText,
-                    )
-                }
-            }
-            Canvas(modifier = Modifier.weight(1f).height(188.dp)) {
-                val labels = chartWeightLabels(entries, targetWeightKg)
-                val minWeight = labels.last()
-                val maxWeight = labels.first()
-                val minDate = entries.minOfOrNull { it.date.toEpochDays() } ?: 0
-                val maxDate =
-                    (entries.maxOfOrNull { it.date.toEpochDays() } ?: (minDate + 1))
-                        .coerceAtLeast(minDate + 1)
-                val weightRange = (maxWeight - minWeight).coerceAtLeast(0.1)
-
-                repeat(5) { index ->
-                    val y = size.height * index / 4f
-                    drawLine(
-                        color = ReportGrid,
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 1.dp.toPx(),
-                    )
-                }
-
-                targetWeightKg?.let { target ->
-                    val y = size.height - (((target - minWeight) / weightRange).toFloat() * size.height)
-                    drawLine(
-                        color = ReportPrimary.copy(alpha = 0.55f),
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 1.5.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 8.dp.toPx())),
-                    )
-                }
-
-                if (entries.size >= 2) {
-                    val points =
-                        entries.sortedBy { it.date }.map { entry ->
-                            val x =
-                                ((entry.date.toEpochDays() - minDate).toFloat() /
-                                    (maxDate - minDate)) * size.width
-                            val y =
-                                size.height -
-                                    (((entry.weightKg - minWeight) / weightRange).toFloat() *
-                                        size.height)
-                            Offset(x, y)
-                        }
-                    points.zipWithNext().forEach { (a, b) ->
-                        drawLine(
-                            color = ReportPrimary,
-                            start = a,
-                            end = b,
-                            strokeWidth = 4.dp.toPx(),
-                            cap = StrokeCap.Round,
-                        )
-                    }
-                }
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 50.dp, top = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            chartDateLabels(entries).forEach { label ->
                 Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = "Keine Messungen in diesem Zeitraum",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = ReportMutedText,
                 )
             }
+        } else {
+            WeightChartCanvas(model = model, range = range, targetWeightKg = targetWeightKg)
+            WeightChartLegend(model = model, targetWeightKg = targetWeightKg)
         }
+    }
+}
+
+@Composable
+private fun WeightChartCanvas(
+    model: WeightChartModel,
+    range: WeightChartRange,
+    targetWeightKg: Double?,
+    modifier: Modifier = Modifier,
+) {
+    var selectedIndex by remember(model) { mutableStateOf<Int?>(null) }
+    val textMeasurer = rememberTextMeasurer()
+    val axisStyle = MaterialTheme.typography.labelSmall.copy(color = ReportMutedText)
+    val tooltipStyle =
+        MaterialTheme.typography.labelMedium.copy(color = Color.White, fontWeight = FontWeight.Medium)
+    val shortRange = model.endDate.toEpochDays() - model.startDate.toEpochDays() <= 45
+
+    Canvas(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(ChartHeight)
+                .semantics { contentDescription = chartDescription(model, range) }
+                .pointerInput(model) {
+                    detectTapGestures { offset ->
+                        val index =
+                            model.nearestMeasurementIndex(
+                                x = offset.x,
+                                plotLeft = ChartAxisWidth.toPx(),
+                                plotWidth = size.width - ChartAxisWidth.toPx() - 6.dp.toPx(),
+                            )
+                        selectedIndex = if (index == selectedIndex) null else index
+                    }
+                }
+                .pointerInput(model) {
+                    val plotLeft = ChartAxisWidth.toPx()
+                    val plotWidth = size.width - plotLeft - 6.dp.toPx()
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            selectedIndex = model.nearestMeasurementIndex(offset.x, plotLeft, plotWidth)
+                        }
+                    ) { change, _ ->
+                        selectedIndex = model.nearestMeasurementIndex(change.position.x, plotLeft, plotWidth)
+                    }
+                }
+    ) {
+        val plotLeft = ChartAxisWidth.toPx()
+        val plotRight = size.width - 6.dp.toPx()
+        val plotTop = 8.dp.toPx()
+        val plotBottom = size.height - ChartDateLabelHeight.toPx()
+        val plotWidth = plotRight - plotLeft
+        val plotHeight = plotBottom - plotTop
+
+        fun x(epochDay: Double) = plotLeft + model.xFraction(epochDay) * plotWidth
+        fun y(weightKg: Double) = plotTop + model.yFraction(weightKg) * plotHeight
+
+        model.gridWeightsKg.forEach { weight ->
+            val gridY = y(weight)
+            drawLine(ReportGrid, Offset(plotLeft, gridY), Offset(plotRight, gridY), 1.dp.toPx())
+            val label = textMeasurer.measure(formatAxisWeight(weight), axisStyle)
+            drawText(
+                textLayoutResult = label,
+                topLeft = Offset(plotLeft - 8.dp.toPx() - label.size.width, gridY - label.size.height / 2f),
+            )
+        }
+
+        if (model.showsTarget && targetWeightKg != null) {
+            val targetY = y(targetWeightKg)
+            drawLine(
+                color = ReportPrimary.copy(alpha = 0.55f),
+                start = Offset(plotLeft, targetY),
+                end = Offset(plotRight, targetY),
+                strokeWidth = 1.5.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
+            )
+        }
+
+        model.ticks.forEach { date ->
+            val label = textMeasurer.measure(formatChartTick(date, shortRange), axisStyle)
+            val left =
+                (x(date.toEpochDays().toDouble()) - label.size.width / 2f)
+                    .coerceAtMost(size.width - label.size.width)
+                    .coerceAtLeast(plotLeft - 8.dp.toPx())
+            drawText(textLayoutResult = label, topLeft = Offset(left, plotBottom + 6.dp.toPx()))
+        }
+
+        model.measurements.forEach { entry ->
+            drawCircle(
+                color = ReportMeasurementDot,
+                radius = 3.dp.toPx(),
+                center = Offset(x(entry.date.toEpochDays().toDouble()), y(entry.weightKg)),
+            )
+        }
+
+        if (model.trend.size >= 2) {
+            drawPath(
+                path = monotoneCurve(model.trend.map { Offset(x(it.epochDay), y(it.weightKg)) }),
+                color = ReportPrimary,
+                style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+            )
+        }
+
+        selectedIndex
+            ?.let { model.measurements.getOrNull(it) }
+            ?.let { entry ->
+                val center = Offset(x(entry.date.toEpochDays().toDouble()), y(entry.weightKg))
+                drawLine(
+                    color = ReportMutedText.copy(alpha = 0.5f),
+                    start = Offset(center.x, plotTop),
+                    end = Offset(center.x, plotBottom),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
+                )
+                drawCircle(Color.White, radius = 7.dp.toPx(), center = center)
+                drawCircle(ReportPrimaryDark, radius = 5.dp.toPx(), center = center)
+                drawChartTooltip(
+                    text =
+                        textMeasurer.measure(
+                            "${formatShortDate(entry.date)} · ${formatWeight(entry.weightKg)}",
+                            tooltipStyle,
+                        ),
+                    anchor = center,
+                    minX = plotLeft,
+                    maxX = plotRight,
+                    minY = plotTop,
+                )
+            }
+    }
+}
+
+private fun DrawScope.drawChartTooltip(
+    text: androidx.compose.ui.text.TextLayoutResult,
+    anchor: Offset,
+    minX: Float,
+    maxX: Float,
+    minY: Float,
+) {
+    val paddingH = 8.dp.toPx()
+    val paddingV = 4.dp.toPx()
+    val gap = 10.dp.toPx()
+    val boxSize = Size(text.size.width + paddingH * 2, text.size.height + paddingV * 2)
+    val left = (anchor.x - boxSize.width / 2f).coerceAtMost(maxX - boxSize.width).coerceAtLeast(minX)
+    val above = anchor.y - gap - boxSize.height
+    val top = if (above >= minY) above else anchor.y + gap
+    drawRoundRect(
+        color = ReportText,
+        topLeft = Offset(left, top),
+        size = boxSize,
+        cornerRadius = CornerRadius(8.dp.toPx()),
+    )
+    drawText(textLayoutResult = text, topLeft = Offset(left + paddingH, top + paddingV))
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WeightChartLegend(
+    model: WeightChartModel,
+    targetWeightKg: Double?,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth().padding(start = ChartAxisWidth),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ChartLegendItem("Messung") {
+            drawCircle(ReportMeasurementDot, radius = 3.dp.toPx(), center = center)
+        }
+        ChartLegendItem("Trend") {
+            drawLine(
+                color = ReportPrimary,
+                start = Offset(0f, center.y),
+                end = Offset(size.width, center.y),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+        }
+        if (targetWeightKg != null) {
+            val position =
+                when {
+                    model.showsTarget -> ""
+                    targetWeightKg < model.minWeightKg -> " (unterhalb)"
+                    else -> " (oberhalb)"
+                }
+            ChartLegendItem("Ziel ${formatWeight(targetWeightKg)}$position") {
+                drawLine(
+                    color = ReportPrimary.copy(alpha = 0.55f),
+                    start = Offset(0f, center.y),
+                    end = Offset(size.width, center.y),
+                    strokeWidth = 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartLegendItem(label: String, glyph: DrawScope.() -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Canvas(modifier = Modifier.size(width = 14.dp, height = 8.dp), onDraw = glyph)
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
     }
 }
 
@@ -365,12 +605,14 @@ private fun CurrentWeightCard(
     suggestedWeightKg: Double?,
     progressWeightKg: Double?,
     targetWeightKg: Double?,
+    lastMeasurementDate: LocalDate?,
     onEnterWeight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val displayWeight = currentWeightKg ?: suggestedWeightKg
-    val progress = calculateWeightGoalProgress(startWeightKg, progressWeightKg, targetWeightKg)
     val startDelta = progressWeightKg?.let { current -> startWeightKg?.let { current - it } }
+    val measuredLabel =
+        if (currentWeightKg != null) "heute" else lastMeasurementDate?.let { formatShortDate(it) }
     Surface(
         modifier = modifier,
         shape = ReportCardShape,
@@ -379,20 +621,35 @@ private fun CurrentWeightCard(
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Dein Gewicht",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ReportMutedText,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (displayWeight != null && measuredLabel != null) {
+                            Text(
+                                text = measuredLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = ReportMutedText,
+                            )
+                        }
+                    }
                     Text(
-                        text = "Dein Gewicht: ${formatWeight(displayWeight)}",
-                        style = MaterialTheme.typography.titleMedium,
+                        text = formatHeroWeight(displayWeight),
+                        style = MaterialTheme.typography.headlineLarge,
                         color = ReportText,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (startDelta != null && startDelta != 0.0) {
+                    if (startDelta != null && abs(startDelta) >= 0.05) {
                         Text(
-                            text = formatWeightChangeSinceStart(startDelta),
+                            text = "${formatWeightChangeSinceStart(startDelta)} seit Start",
                             style = MaterialTheme.typography.bodyMedium,
                             color = ReportMutedText,
                         )
@@ -407,11 +664,13 @@ private fun CurrentWeightCard(
                     Text("Neues Gewicht eintragen")
                 }
             }
-            WeightGoalProgress(
-                startWeightKg = startWeightKg,
-                targetWeightKg = targetWeightKg,
-                progress = progress,
-            )
+            if (startWeightKg != null && targetWeightKg != null) {
+                WeightGoalProgress(
+                    startWeightKg = startWeightKg,
+                    currentWeightKg = progressWeightKg,
+                    targetWeightKg = targetWeightKg,
+                )
+            }
         }
     }
 }
@@ -496,7 +755,7 @@ private fun WeightAdjustButton(
                     }
                 },
         shape = RoundedCornerShape(19.dp),
-        color = if (enabled) ReportSoftButton else Color(0xFFEAF0F5),
+        color = if (enabled) ReportSoftButton else ReportDivider,
         contentColor = if (enabled) ReportPrimaryDark else ReportMutedText,
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { icon() }
@@ -567,63 +826,119 @@ private fun BmiCard(bmi: Double, modifier: Modifier = Modifier) {
     }
 }
 
+private const val BmiScaleMin = 15.0
+private const val BmiScaleMax = 40.0
+private val BmiScaleSegments =
+    listOf(
+        Triple(BmiScaleMin, 18.5, Color(0xFF8FBCE6)),
+        Triple(18.5, 25.0, Color(0xFF53B96A)),
+        Triple(25.0, 30.0, Color(0xFFF0C84B)),
+        Triple(30.0, BmiScaleMax, Color(0xFFE05A4F)),
+    )
+
+private fun bmiScaleFraction(bmi: Double): Float =
+    ((bmi.coerceIn(BmiScaleMin, BmiScaleMax) - BmiScaleMin) / (BmiScaleMax - BmiScaleMin)).toFloat()
+
 @Composable
 private fun BmiScale(bmi: Double, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Canvas(modifier = Modifier.fillMaxWidth().height(18.dp)) {
-            val minBmi = 15.0
-            val maxBmi = 40.0
-            val markerBmi = bmi.coerceIn(minBmi, maxBmi)
-            val y = size.height / 2f
-            val strokeWidth = 8.dp.toPx()
+            val barHeight = 8.dp.toPx()
+            val barTop = (size.height - barHeight) / 2f
+            val bar =
+                Path().apply {
+                    addRoundRect(
+                        RoundRect(
+                            left = 0f,
+                            top = barTop,
+                            right = size.width,
+                            bottom = barTop + barHeight,
+                            cornerRadius = CornerRadius(barHeight / 2f),
+                        )
+                    )
+                }
+            clipPath(bar) {
+                BmiScaleSegments.forEach { (from, to, color) ->
+                    val left = bmiScaleFraction(from) * size.width
+                    drawRect(
+                        color = color,
+                        topLeft = Offset(left, barTop),
+                        size = Size(bmiScaleFraction(to) * size.width - left, barHeight),
+                    )
+                }
+                BmiScaleSegments.drop(1).forEach { (from, _, _) ->
+                    val boundary = bmiScaleFraction(from) * size.width
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(boundary, barTop),
+                        end = Offset(boundary, barTop + barHeight),
+                        strokeWidth = 2.dp.toPx(),
+                    )
+                }
+            }
 
-            fun xFor(value: Double): Float =
-                (((value - minBmi) / (maxBmi - minBmi)).toFloat() * size.width)
-
+            val markerX = bmiScaleFraction(bmi) * size.width
             drawLine(
-                color = Color(0xFFF0C84B),
-                start = Offset(0f, y),
-                end = Offset(xFor(18.5), y),
-                strokeWidth = strokeWidth,
+                color = Color.White,
+                start = Offset(markerX, 0f),
+                end = Offset(markerX, size.height),
+                strokeWidth = 5.dp.toPx(),
                 cap = StrokeCap.Round,
             )
             drawLine(
-                color = Color(0xFF53B96A),
-                start = Offset(xFor(18.5), y),
-                end = Offset(xFor(25.0), y),
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Butt,
-            )
-            drawLine(
-                color = Color(0xFFF0C84B),
-                start = Offset(xFor(25.0), y),
-                end = Offset(xFor(30.0), y),
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Butt,
-            )
-            drawLine(
-                color = Color(0xFFE05A4F),
-                start = Offset(xFor(30.0), y),
-                end = Offset(size.width, y),
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Round,
-            )
-
-            val markerX = xFor(markerBmi)
-            drawLine(
-                color = Color.Black,
-                start = Offset(markerX, y - 8.dp.toPx()),
-                end = Offset(markerX, y + 8.dp.toPx()),
-                strokeWidth = 2.dp.toPx(),
+                color = ReportText,
+                start = Offset(markerX, 1.dp.toPx()),
+                end = Offset(markerX, size.height - 1.dp.toPx()),
+                strokeWidth = 2.5.dp.toPx(),
                 cap = StrokeCap.Round,
             )
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("15", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
-            Text("18,5", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
-            Text("25", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
-            Text("30", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
-            Text("40", style = MaterialTheme.typography.labelSmall, color = ReportMutedText)
+        val boundaries = listOf(BmiScaleMin) + BmiScaleSegments.map { it.second }
+        FractionLabels(
+            fractions = boundaries.map(::bmiScaleFraction),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            boundaries.forEach { value ->
+                Text(
+                    text = formatAxisWeight(value),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ReportMutedText,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Places each child horizontally centred on its fraction of the width, kept inside the bounds and
+ * pushed left of the following child when they would overlap.
+ */
+@Composable
+private fun FractionLabels(
+    fractions: List<Float>,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val width = constraints.maxWidth
+        val gap = 6.dp.roundToPx()
+        val positions =
+            placeables
+                .mapIndexed { index, placeable ->
+                    val center = fractions.getOrElse(index) { 0f } * width
+                    (center - placeable.width / 2f)
+                        .roundToInt()
+                        .coerceAtMost(width - placeable.width)
+                        .coerceAtLeast(0)
+                }
+                .toMutableList()
+        for (index in positions.lastIndex - 1 downTo 0) {
+            positions[index] =
+                positions[index].coerceAtMost(positions[index + 1] - gap - placeables[index].width).coerceAtLeast(0)
+        }
+        layout(width, placeables.maxOfOrNull { it.height } ?: 0) {
+            placeables.forEachIndexed { index, placeable -> placeable.placeRelative(positions[index], 0) }
         }
     }
 }
@@ -645,54 +960,134 @@ private fun HealthConnectCard(onClick: () -> Unit, modifier: Modifier = Modifier
 
 @Composable
 private fun WeightGoalProgress(
-    startWeightKg: Double?,
-    targetWeightKg: Double?,
-    progress: Float?,
+    startWeightKg: Double,
+    currentWeightKg: Double?,
+    targetWeightKg: Double,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        LinearProgressIndicator(
-            progress = { progress ?: 0f },
-            modifier = Modifier.fillMaxWidth().height(8.dp),
-            color = if (progress == null) ReportSoftButton else ReportPrimary,
-            trackColor = ReportSoftButton,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    val position = calculateWeightGoalPosition(startWeightKg, currentWeightKg, targetWeightKg)
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = formatWeight(startWeightKg),
-                style = MaterialTheme.typography.labelMedium,
+                text = "Dein Ziel",
+                style = MaterialTheme.typography.labelLarge,
                 color = ReportMutedText,
-            )
-            Row(
                 modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Flag,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = ReportPrimary,
-                )
-                Spacer(Modifier.width(3.dp))
+            )
+            if (position != null && currentWeightKg != null) {
                 Text(
-                    text = formatWeight(targetWeightKg),
+                    text =
+                        if (position >= 1.0) "Ziel erreicht"
+                        else "noch ${formatWeight(abs(targetWeightKg - currentWeightKg))}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ReportPrimaryDark,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        if (position != null) {
+            // Moving away from the target extends the bar to the left of the start marker.
+            val startFraction = if (position < 0) (-position / (1 - position)).toFloat() else 0f
+            val currentFraction = if (position < 0) 0f else position.coerceAtMost(1.0).toFloat()
+            WeightGoalBar(
+                position = position,
+                startFraction = startFraction,
+                currentFraction = currentFraction,
+                startWeightKg = startWeightKg,
+                currentWeightKg = currentWeightKg,
+            )
+            FractionLabels(fractions = listOf(startFraction, 1f), modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Start ${formatWeight(startWeightKg)}",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
                     color = ReportMutedText,
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Flag,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = ReportPrimary,
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        text = formatWeight(targetWeightKg),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = ReportMutedText,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
+private fun WeightGoalBar(
+    position: Double,
+    startFraction: Float,
+    currentFraction: Float,
+    startWeightKg: Double,
+    currentWeightKg: Double?,
+    modifier: Modifier = Modifier,
+) {
+    val description =
+        if (position < 0 && currentWeightKg != null) {
+            "${formatWeight(abs(currentWeightKg - startWeightKg))} weiter vom Ziel entfernt als zum Start"
+        } else {
+            "${(position.coerceIn(0.0, 1.0) * 100).roundToInt()} % des Weges zum Ziel geschafft"
+        }
+    Canvas(
+        modifier =
+            modifier.fillMaxWidth().height(16.dp).semantics { contentDescription = description }
+    ) {
+        val trackHeight = 8.dp.toPx()
+        val radius = CornerRadius(trackHeight / 2f)
+        val trackTop = (size.height - trackHeight) / 2f
+        drawRoundRect(
+            color = ReportSoftButton,
+            topLeft = Offset(0f, trackTop),
+            size = Size(size.width, trackHeight),
+            cornerRadius = radius,
+        )
+        if (position < 0) {
+            val startX = startFraction * size.width
+            drawRoundRect(
+                color = ReportAwayFromGoal,
+                topLeft = Offset(0f, trackTop),
+                size = Size(startX, trackHeight),
+                cornerRadius = radius,
+            )
+            drawLine(
+                color = ReportText,
+                start = Offset(startX, 0f),
+                end = Offset(startX, size.height),
+                strokeWidth = 2.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+        } else if (currentFraction > 0f) {
+            drawRoundRect(
+                color = ReportPrimary,
+                topLeft = Offset(0f, trackTop),
+                size = Size(currentFraction * size.width, trackHeight),
+                cornerRadius = radius,
+            )
+        }
+        val dotRadius = 6.dp.toPx()
+        val ringRadius = 8.dp.toPx()
+        val dotX = (currentFraction * size.width).coerceIn(ringRadius, size.width - ringRadius)
+        drawCircle(Color.White, radius = ringRadius, center = Offset(dotX, size.height / 2f))
+        drawCircle(
+            color = if (position < 0) ReportText else ReportPrimaryDark,
+            radius = dotRadius,
+            center = Offset(dotX, size.height / 2f),
+        )
+    }
+}
+
+@Composable
 private fun HistoryCard(
     entries: List<DailyWeightEntry>,
-    heightCm: Double?,
     onToggleHidden: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     showChanges: Boolean = true,
@@ -702,6 +1097,8 @@ private fun HistoryCard(
             .zipWithNext()
             .associate { (newer, older) -> newer.date to newer.weightKg - older.weightKg }
     }
+    var showAll by rememberSaveable { mutableStateOf(false) }
+    val visibleEntries = if (showAll) entries else entries.take(HistoryPreviewCount)
     Surface(
         modifier = modifier,
         shape = ReportCardShape,
@@ -709,17 +1106,35 @@ private fun HistoryCard(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            entries.forEachIndexed { index, entry ->
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            visibleEntries.forEachIndexed { index, entry ->
+                val previous = visibleEntries.getOrNull(index - 1)
+                if (previous == null || previous.date.year != entry.date.year || previous.date.month != entry.date.month) {
+                    Text(
+                        text = formatMonthHeader(entry.date),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = ReportMutedText,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier =
+                            Modifier.padding(start = 18.dp, end = 18.dp, top = if (previous == null) 8.dp else 16.dp, bottom = 2.dp),
+                    )
+                } else {
+                    HorizontalDivider(Modifier.padding(horizontal = 18.dp), color = ReportDivider)
+                }
                 HistoryRow(
                     entry = entry,
                     changeKg = if (showChanges) changesByDate[entry.date] else null,
-                    heightCm = heightCm,
                     onToggleHidden = onToggleHidden,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (index != entries.lastIndex) {
-                    HorizontalDivider(Modifier.padding(horizontal = 18.dp), color = Color(0xFFEAF0F5))
+            }
+            if (entries.size > visibleEntries.size) {
+                TextButton(
+                    onClick = { showAll = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = ReportPrimaryDark),
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                ) {
+                    Text("Alle ${entries.size} Werte anzeigen")
                 }
             }
         }
@@ -730,101 +1145,141 @@ private fun HistoryCard(
 private fun HistoryRow(
     entry: DailyWeightEntry,
     changeKg: Double?,
-    heightCm: Double?,
     onToggleHidden: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.padding(horizontal = 12.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = formatGermanDate(entry.date),
-                style = MaterialTheme.typography.bodyLarge,
-                color = ReportText,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(text = germanWeekday(entry.date.dayOfWeek), style = MaterialTheme.typography.bodySmall, color = ReportMutedText)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector =
-                        if (entry.isFoodYouRecord) Icons.Filled.Edit
-                        else if (entry.sourceDeviceType == HealthConnectScaleDeviceType) Icons.Filled.MonitorWeight
-                        else Icons.Filled.Sync,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = ReportMutedText,
-                )
-                Spacer(Modifier.width(3.dp))
-                val appName = entry.sourcePackageName?.let { sourceAppLabel(it) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        Row(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .clickable(onClickLabel = "Optionen") { menuExpanded = true }
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = if (entry.isFoodYouRecord) "FoodYou" else appName ?: "Health Connect",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ReportMutedText,
-                )
-            }
-        }
-        Column(modifier = Modifier.width(54.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            val bmi = calculateBmi(entry.weightKg, heightCm)
-            if (bmi != null) {
-                Text(
-                    text = formatOneDecimal(bmi),
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = formatShortDate(entry.date),
+                    style = MaterialTheme.typography.bodyLarge,
                     color = ReportText,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector =
+                            if (entry.isFoodYouRecord) Icons.Filled.Edit
+                            else if (entry.sourceDeviceType == HealthConnectScaleDeviceType) Icons.Filled.MonitorWeight
+                            else Icons.Filled.Sync,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = ReportMutedText,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    val appName = entry.sourcePackageName?.let { sourceAppLabel(it) }
+                    Text(
+                        text = if (entry.isFoodYouRecord) "FoodYou" else appName ?: "Health Connect",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ReportMutedText,
+                    )
+                }
+            }
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "BMI",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ReportMutedText,
+                    text = formatWeight(entry.weightKg),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ReportText,
+                    fontWeight = FontWeight.Bold,
                 )
+                if (changeKg != null && abs(changeKg) >= 0.05) {
+                    Text(
+                        text = formatSignedWeightChange(changeKg),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ReportMutedText,
+                    )
+                }
             }
         }
-        Column(modifier = Modifier.width(70.dp), horizontalAlignment = Alignment.End) {
-            Text(
-                formatWeight(entry.weightKg),
-                style = MaterialTheme.typography.titleMedium,
-                color = ReportText,
-                fontWeight = FontWeight.Bold,
-            )
-            if (changeKg != null && changeKg != 0.0) {
-                Text(
-                    text = formatSignedWeightChange(changeKg),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ReportMutedText,
+        Box(modifier = Modifier.align(Alignment.TopEnd)) {
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(if (entry.isHidden) "Wieder einblenden" else "Ausblenden") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector =
+                                if (entry.isHidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = null,
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onToggleHidden(entry.id, !entry.isHidden)
+                    },
                 )
             }
-        }
-        IconButton(onClick = { onToggleHidden(entry.id, !entry.isHidden) }, modifier = Modifier.size(40.dp)) {
-            Icon(
-                imageVector = if (entry.isHidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                contentDescription = if (entry.isHidden) "Wieder einblenden" else "Ausblenden",
-                modifier = Modifier.size(20.dp),
-                tint = ReportMutedText,
-            )
         }
     }
 }
 
-private fun chartWeightLabels(entries: List<DailyWeightEntry>, targetWeightKg: Double?): List<Double> {
-    val values = entries.map { it.weightKg } + listOfNotNull(targetWeightKg)
-    val min = values.minOrNull() ?: 80.0
-    val max = values.maxOrNull() ?: 110.0
-    val lower = kotlin.math.floor((min - 1.0) / 5.0) * 5.0
-    val upper = kotlin.math.ceil((max + 1.0) / 5.0) * 5.0
-    val step = ((upper - lower) / 4.0).coerceAtLeast(1.0)
-    return List(5) { index -> upper - step * index }
+/** Smooth curve through [points] that never overshoots between them (Fritsch–Carlson). */
+private fun monotoneCurve(points: List<Offset>): Path {
+    val path = Path()
+    if (points.isEmpty()) return path
+    path.moveTo(points[0].x, points[0].y)
+    val count = points.size
+    if (count == 1) return path
+    val dx = FloatArray(count - 1) { points[it + 1].x - points[it].x }
+    val slopes =
+        FloatArray(count - 1) { if (dx[it] == 0f) 0f else (points[it + 1].y - points[it].y) / dx[it] }
+    val tangents =
+        FloatArray(count) { index ->
+            when {
+                index == 0 -> slopes[0]
+                index == count - 1 -> slopes[count - 2]
+                slopes[index - 1] * slopes[index] <= 0f -> 0f
+                else -> (slopes[index - 1] + slopes[index]) / 2f
+            }
+        }
+    for (index in 0 until count - 1) {
+        if (slopes[index] == 0f) {
+            tangents[index] = 0f
+            tangents[index + 1] = 0f
+            continue
+        }
+        val a = tangents[index] / slopes[index]
+        val b = tangents[index + 1] / slopes[index]
+        val length = a * a + b * b
+        if (length > 9f) {
+            val scale = 3f / sqrt(length)
+            tangents[index] = scale * a * slopes[index]
+            tangents[index + 1] = scale * b * slopes[index]
+        }
+    }
+    for (index in 0 until count - 1) {
+        val from = points[index]
+        val to = points[index + 1]
+        val third = dx[index] / 3f
+        path.cubicTo(
+            from.x + third,
+            from.y + tangents[index] * third,
+            to.x - third,
+            to.y - tangents[index + 1] * third,
+            to.x,
+            to.y,
+        )
+    }
+    return path
 }
 
-@Suppress("DEPRECATION")
-private fun chartDateLabels(entries: List<DailyWeightEntry>): List<String> {
-    if (entries.isEmpty()) return listOf("", "", "")
-    val sorted = entries.sortedBy { it.date }
-    return listOf(sorted.first(), sorted[sorted.lastIndex / 2], sorted.last()).map { entry ->
-        "${germanMonthShort(entry.date.monthNumber)} ${entry.date.year}"
+private fun WeightChartModel.nearestMeasurementIndex(x: Float, plotLeft: Float, plotWidth: Float): Int? =
+    measurements.indices.minByOrNull { index ->
+        abs(plotLeft + xFraction(measurements[index].date.toEpochDays().toDouble()) * plotWidth - x)
     }
+
+private fun chartDescription(model: WeightChartModel, range: WeightChartRange): String {
+    val weights = model.measurements.map { it.weightKg }
+    return "Gewichtsverlauf, ${range.label}: ${weights.size} Messungen zwischen " +
+        "${formatWeight(weights.minOrNull())} und ${formatWeight(weights.maxOrNull())}"
 }
 
 private fun calculateBmi(weightKg: Double?, heightCm: Double?): Double? {
@@ -844,11 +1299,26 @@ private fun bmiCategoryLabel(bmi: Double): String =
 private fun formatWeight(value: Double?): String =
     value?.let { "${formatWeightInput(it)} kg" } ?: "-"
 
+private fun formatHeroWeight(value: Double?) =
+    buildAnnotatedString {
+        if (value == null) {
+            append("-")
+        } else {
+            append(formatWeightInput(value))
+            withStyle(SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.Medium, color = ReportMutedText)) {
+                append(" kg")
+            }
+        }
+    }
+
 private fun formatWeightInput(value: Double?): String =
     value?.let { (round(it * 10.0) / 10.0).toString().replace('.', ',') } ?: ""
 
 private fun formatOneDecimal(value: Double): String =
     (round(value * 10.0) / 10.0).toString().replace('.', ',')
+
+private fun formatAxisWeight(value: Double): String =
+    if (value == round(value)) value.roundToInt().toString() else formatOneDecimal(value)
 
 private fun formatWeightChangeSinceStart(deltaKg: Double): String {
     val value = formatWeightInput(abs(deltaKg))
@@ -860,11 +1330,17 @@ private fun formatSignedWeightChange(deltaKg: Double): String {
     return "$sign${formatWeightInput(abs(deltaKg))} kg"
 }
 
-@Suppress("DEPRECATION")
-private fun formatGermanDate(date: kotlinx.datetime.LocalDate): String {
-    val day = date.dayOfMonth.toString().padStart(2, '0')
-    return "$day. ${germanMonthLong(date.monthNumber)} ${date.year}"
-}
+private fun formatShortDate(date: LocalDate): String =
+    "${germanWeekdayShort(date.dayOfWeek)}, ${date.day}. ${germanMonthShort(date.month.number)}"
+
+private fun formatMonthHeader(date: LocalDate): String = "${germanMonthLong(date.month.number)} ${date.year}"
+
+private fun formatChartTick(date: LocalDate, shortRange: Boolean): String =
+    when {
+        shortRange -> "${date.day}. ${germanMonthShort(date.month.number)}"
+        date.month == Month.JANUARY -> date.year.toString()
+        else -> germanMonthShort(date.month.number)
+    }
 
 private fun germanMonthLong(month: Int): String =
     when (month) {
@@ -900,13 +1376,13 @@ private fun germanMonthShort(month: Int): String =
         else -> ""
     }
 
-private fun germanWeekday(dayOfWeek: kotlinx.datetime.DayOfWeek): String =
+private fun germanWeekdayShort(dayOfWeek: kotlinx.datetime.DayOfWeek): String =
     when (dayOfWeek) {
-        kotlinx.datetime.DayOfWeek.MONDAY -> "Montag"
-        kotlinx.datetime.DayOfWeek.TUESDAY -> "Dienstag"
-        kotlinx.datetime.DayOfWeek.WEDNESDAY -> "Mittwoch"
-        kotlinx.datetime.DayOfWeek.THURSDAY -> "Donnerstag"
-        kotlinx.datetime.DayOfWeek.FRIDAY -> "Freitag"
-        kotlinx.datetime.DayOfWeek.SATURDAY -> "Samstag"
-        kotlinx.datetime.DayOfWeek.SUNDAY -> "Sonntag"
+        kotlinx.datetime.DayOfWeek.MONDAY -> "Mo"
+        kotlinx.datetime.DayOfWeek.TUESDAY -> "Di"
+        kotlinx.datetime.DayOfWeek.WEDNESDAY -> "Mi"
+        kotlinx.datetime.DayOfWeek.THURSDAY -> "Do"
+        kotlinx.datetime.DayOfWeek.FRIDAY -> "Fr"
+        kotlinx.datetime.DayOfWeek.SATURDAY -> "Sa"
+        kotlinx.datetime.DayOfWeek.SUNDAY -> "So"
     }

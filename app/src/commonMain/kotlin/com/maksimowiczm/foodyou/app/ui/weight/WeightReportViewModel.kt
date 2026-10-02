@@ -17,10 +17,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 
 internal class WeightReportViewModel(
@@ -100,11 +98,10 @@ internal class WeightReportViewModel(
         profile: BasalMetabolicRateProfile,
     ): WeightReportUiState {
         val current = todayEntry ?: entries.maxByOrNull { it.measuredAt }
-        val chartStart = today().minus(1, DateTimeUnit.YEAR)
         return WeightReportUiState(
             entries = entries,
             hiddenEntries = measurements.filter { it.isHidden }.sortedByDescending { it.measuredAt },
-            chartEntries = entries.filter { it.date >= chartStart }.sortedBy { it.date },
+            today = today(),
             todayWeightKg = todayEntry?.weightKg,
             suggestedWeightKg = current?.weightKg,
             startWeightKg = entries.minByOrNull { it.date }?.weightKg,
@@ -121,7 +118,7 @@ internal class WeightReportViewModel(
 internal data class WeightReportUiState(
     val entries: List<DailyWeightEntry> = emptyList(),
     val hiddenEntries: List<DailyWeightEntry> = emptyList(),
-    val chartEntries: List<DailyWeightEntry> = emptyList(),
+    val today: LocalDate? = null,
     val todayWeightKg: Double? = null,
     val suggestedWeightKg: Double? = null,
     val startWeightKg: Double? = null,
