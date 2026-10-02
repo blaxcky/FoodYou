@@ -251,6 +251,43 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun weeklyDetailsDietGoalReachedNarrowPhone() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-details-diet-goal-reached-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 200),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Box(Modifier.requiredSize(320.dp, 200.dp).background(Color.White).padding(24.dp)) {
+                        WeeklyDetailsTable(
+                            days =
+                                listOf(
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 7, 27),
+                                        energy = 1_050,
+                                        goal = 2_600,
+                                        dietGoalReached = true,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 7, 28),
+                                        energy = 1_700,
+                                        goal = 2_100,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 7, 29),
+                                        energy = 1_400,
+                                        goal = 2_000,
+                                        dietGoalReached = true,
+                                    ),
+                                ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun burnedEnergyDelta() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.burned-energy-delta.png",

@@ -54,6 +54,7 @@ internal data class WeekDaySummaryModel(
     val energy: Int,
     val goal: Int,
     val locked: Boolean = false,
+    val dietGoalReached: Boolean = false,
 ) {
     val difference: Int = energy - goal
     val percent: Int =

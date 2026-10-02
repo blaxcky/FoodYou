@@ -342,14 +342,23 @@ internal class GoalsViewModel(
                             val lockedSurplus = settings.lockedDaySurplus(date)?.surplusKcal
                             val goalWithActivity =
                                 roundedEnergyKcal(baseGoal) + roundedEnergyKcal(burnedEnergy)
+                            val energy =
+                                lockedSurplus?.let { goalWithActivity + roundedEnergyKcal(it) }
+                                    ?: roundedEnergyKcal(consumedEnergy)
                             WeekDaySummaryModel(
                                 date = date,
-                                energy =
-                                    lockedSurplus?.let {
-                                        goalWithActivity + roundedEnergyKcal(it)
-                                    } ?: roundedEnergyKcal(consumedEnergy),
+                                energy = energy,
                                 goal = goalWithActivity,
                                 locked = lockedSurplus != null,
+                                dietGoalReached =
+                                    lockedSurplus == null &&
+                                        date < today &&
+                                        weekDayDietGoalReached(
+                                            energy = energy,
+                                            goal = goalWithActivity,
+                                            dietEnergyDeficitKcal =
+                                                settings.effectiveDietEnergyDeficitKcal(date),
+                                        ),
                             )
                         }
                     }
@@ -390,6 +399,15 @@ internal fun todayEnergyGoalValues(
             val goal = roundedEnergyKcal(baseGoalKcal - it)
             TodayEnergyGoalValues(goalKcal = goal, remainingKcal = goal - netEnergyKcal)
         }
+
+/**
+ * A day reaches the diet when its consumed energy stays at least the daily diet deficit below the
+ * goal. Days without any logged energy never count as reached.
+ */
+internal fun weekDayDietGoalReached(energy: Int, goal: Int, dietEnergyDeficitKcal: Double?): Boolean {
+    val deficit = dietEnergyDeficitKcal?.let(::roundedEnergyKcal) ?: return false
+    return deficit > 0 && energy > 0 && goal > 0 && energy - goal <= -deficit
+}
 
 internal fun LocalDate.weekDatesUntil(today: LocalDate): List<LocalDate> {
     val weekStart = startOfWeek()

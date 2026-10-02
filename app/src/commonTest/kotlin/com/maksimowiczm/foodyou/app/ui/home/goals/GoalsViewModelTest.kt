@@ -155,6 +155,33 @@ class GoalsViewModelTest {
     }
 
     @Test
+    fun weekModelMarksPastDaysThatReachTheDietDeficit() = runViewModelTest {
+        val viewModel =
+            createViewModel(
+                defaultSettings().copy(
+                    dietEnergyDeficitKcal = 1_700.0,
+                    lockedDaySurpluses =
+                        listOf(LockedDaySurplus(LocalDate(2026, 7, 14), -2_000.0)),
+                )
+            )
+
+        viewModel.setDate(Today)
+        advanceUntilIdle()
+
+        val model = assertNotNull(viewModel.weekModel.value)
+        // 400 kcal of 2,100 is a 1,700 kcal deficit; locked days and today never count.
+        assertEquals(listOf(true, false, false), model.days.map { it.dietGoalReached })
+    }
+
+    @Test
+    fun weekDayDietGoalReachedRequiresTheFullDeficitAndLoggedEnergy() {
+        assertEquals(true, weekDayDietGoalReached(energy = 1_550, goal = 2_100, dietEnergyDeficitKcal = 550.0))
+        assertEquals(false, weekDayDietGoalReached(energy = 1_700, goal = 2_100, dietEnergyDeficitKcal = 550.0))
+        assertEquals(false, weekDayDietGoalReached(energy = 0, goal = 2_100, dietEnergyDeficitKcal = 550.0))
+        assertEquals(false, weekDayDietGoalReached(energy = 1_000, goal = 2_100, dietEnergyDeficitKcal = null))
+    }
+
+    @Test
     fun lockEditAndUnlockPreserveConfiguredDefault() = runViewModelTest {
         val repository =
             InMemoryPreferencesRepository(defaultSettings().copy(defaultLockedDaySurplusKcal = 650.0))

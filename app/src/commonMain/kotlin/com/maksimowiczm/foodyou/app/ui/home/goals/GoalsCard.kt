@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -94,6 +95,7 @@ import foodyou.app.generated.resources.locked_day_status
 import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
+import foodyou.app.generated.resources.weekly_diet_goal_reached
 import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_per_day
 import foodyou.app.generated.resources.weekly_percent
@@ -698,7 +700,7 @@ private fun WeeklyDetailsToggle(expanded: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
+internal fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
     val dateFormatter = LocalDateFormatter.current
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         WeeklyDetailsRow(
@@ -717,7 +719,24 @@ private fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modifi
                 difference = day.difference.toString().groupDigits(),
                 percent = day.percent.toString(),
                 locked = day.locked,
+                dietGoalReached = day.dietGoalReached,
             )
+        }
+        if (days.any { it.dietGoalReached }) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = DietGoalAccentColor,
+                    modifier = Modifier.size(12.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = stringResource(Res.string.weekly_diet_goal_reached),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = GoalsMutedTextColor,
+                )
+            }
         }
     }
 }
@@ -732,6 +751,7 @@ private fun WeeklyDetailsRow(
     modifier: Modifier = Modifier,
     header: Boolean = false,
     locked: Boolean = false,
+    dietGoalReached: Boolean = false,
 ) {
     val numberFontFamily = interNumberFontFamily()
     val style =
@@ -752,7 +772,23 @@ private fun WeeklyDetailsRow(
         }
         Text(goal, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
         Text(soFar, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
-        Text(difference, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                difference,
+                style = valueStyle,
+                fontWeight = weight,
+                maxLines = 1,
+                softWrap = false,
+            )
+            if (dietGoalReached) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = stringResource(Res.string.weekly_diet_goal_reached),
+                    tint = DietGoalAccentColor,
+                    modifier = Modifier.padding(start = 2.dp).size(12.dp),
+                )
+            }
+        }
         Text(percent, modifier = Modifier.weight(0.9f), style = valueStyle, fontWeight = weight)
     }
 }
