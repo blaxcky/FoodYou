@@ -1,5 +1,12 @@
 allprojects { project ->
     project.pluginManager.withPlugin('com.android.application') {
         project.extensions.getByName('android').testBuildType = 'devRelease'
+        // Instrumented tests share runtime libraries such as androidx.tracing with the app, which R8
+        // would strip from a minified devRelease. Test against the unminified app instead.
+        project.extensions.getByName('androidComponents').finalizeDsl { extension ->
+            def devRelease = extension.buildTypes.getByName('devRelease')
+            devRelease.minifyEnabled = false
+            devRelease.shrinkResources = false
+        }
     }
 }

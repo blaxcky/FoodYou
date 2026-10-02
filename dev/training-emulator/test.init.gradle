@@ -7,5 +7,12 @@ allprojects { project ->
             project.rootProject.file('dev/training-emulator/AndroidManifest.xml'))
         android.sourceSets.maybeCreate('devRelease').res.srcDir(
             project.rootProject.file('dev/training-emulator/res'))
+        // Instrumented tests share runtime libraries such as androidx.tracing with the app, which R8
+        // would strip from a minified devRelease. Test against the unminified app instead.
+        project.extensions.getByName('androidComponents').finalizeDsl { extension ->
+            def devRelease = extension.buildTypes.getByName('devRelease')
+            devRelease.minifyEnabled = false
+            devRelease.shrinkResources = false
+        }
     }
 }

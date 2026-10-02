@@ -41,7 +41,8 @@ explicitly requests them.
 `devRelease` is shrunk with R8 (not obfuscated) and split per ABI: `assembleDevRelease` writes
 `app-arm64-v8a-devRelease.apk`, `app-x86_64-devRelease.apk`, and `app-armeabi-v7a-devRelease.apk`,
 and `installDevRelease` picks the split matching the device. Because R8 runs, verify features that
-rely on reflection or JNI on the emulator after dependency or keep-rule changes.
+rely on reflection or JNI on the emulator after dependency or keep-rule changes. The instrumented-test
+init scripts in `dev/` turn minification off, so instrumented tests run against an unminified app.
 
 - For documentation, comments, and agent-instruction changes, run only `git diff --check`.
 - For production-code changes, run the directly affected tests. If no relevant test exists, run at
