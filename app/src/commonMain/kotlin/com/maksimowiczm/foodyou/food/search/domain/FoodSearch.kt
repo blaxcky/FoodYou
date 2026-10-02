@@ -11,6 +11,9 @@ sealed interface FoodSearch {
     val isLiquid: Boolean
     val suggestedMeasurement: Measurement
 
+    /** Food name without the brand. */
+    val name: String
+
     data class Product(
         override val id: FoodId.Product,
         override val headline: String,
@@ -20,6 +23,8 @@ sealed interface FoodSearch {
         val servingWeight: Double?,
         val isFavorite: Boolean,
         override val suggestedMeasurement: Measurement,
+        override val name: String = headline,
+        val brand: String? = null,
     ) : FoodSearch {
         fun weight(measurement: Measurement): Double? =
             WeightCalculator.calculateWeight(
@@ -34,5 +39,6 @@ sealed interface FoodSearch {
         override val headline: String,
         override val isLiquid: Boolean,
         override val suggestedMeasurement: Measurement,
+        override val name: String = headline,
     ) : FoodSearch
 }

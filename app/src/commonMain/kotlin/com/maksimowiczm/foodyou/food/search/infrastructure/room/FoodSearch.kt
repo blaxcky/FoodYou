@@ -10,6 +10,8 @@ data class FoodSearch(
     val productId: Long?,
     val recipeId: Long?,
     val headline: String,
+    val name: String,
+    val brand: String?,
     val isLiquid: Boolean,
     @Embedded val nutrients: Nutrients?,
     @Embedded val vitamins: Vitamins?,

@@ -35,6 +35,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -96,6 +99,24 @@ fun DiaryFoodSearchScreen(
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    // Hide the FAB while scrolling down so it doesn't cover list items, show it again on scroll up
+    // or when the search changes.
+    var fabVisibleOnScroll by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(searchInput) { fabVisibleOnScroll = true }
+    val fabScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (consumed.y < -1f) fabVisibleOnScroll = false
+                else if (consumed.y > 1f) fabVisibleOnScroll = true
+                return Offset.Zero
+            }
+        }
+    }
+
     val topBar =
         @Composable {
             TopAppBar(
@@ -146,10 +167,12 @@ fun DiaryFoodSearchScreen(
                 searchInitially = initialSearchText.isNotBlank(),
                 transformSearch = viewModel::prepareSearch,
                 showBarcodeScannerInitially = showBarcodeScanner,
+                snackbarHostState = snackBarHostState,
                 modifier =
                     Modifier.padding(paddingValues)
                         .consumeWindowInsets(paddingValues)
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        .nestedScroll(fabScrollConnection),
             )
         }
 
@@ -170,7 +193,9 @@ fun DiaryFoodSearchScreen(
                     .windowInsetsPadding(fabInsets)
                     .consumeWindowInsets(fabInsets)
                     .animateFloatingActionButton(
-                        visible = !animatedVisibilityScope.transition.isRunning,
+                        visible =
+                            !animatedVisibilityScope.transition.isRunning &&
+                                (fabVisibleOnScroll || fabExpanded),
                         alignment = Alignment.BottomEnd,
                     ),
         )

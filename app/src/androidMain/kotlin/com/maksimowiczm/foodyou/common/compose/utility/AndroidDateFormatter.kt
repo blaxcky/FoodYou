@@ -4,13 +4,13 @@ import android.content.Context
 import android.text.format.DateFormat
 import java.time.DayOfWeek
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.toJavaLocalDate
-import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toJavaLocalTime
 
 fun interface LocalProvider {
@@ -31,12 +31,12 @@ class AndroidDateFormatter(private val context: Context, private val localProvid
     }
 
     override fun formatDate(date: LocalDate): String {
-        val formatter = DateTimeFormatter.ofPattern("d MMMM yyyy, EEEE", defaultLocale)
+        val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(defaultLocale)
         return date.toJavaLocalDate().format(formatter)
     }
 
     override fun formatDateShort(date: LocalDate): String {
-        val formatter = DateTimeFormatter.ofPattern("d MMMM yyyy", defaultLocale)
+        val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(defaultLocale)
         return date.toJavaLocalDate().format(formatter)
     }
 
@@ -52,15 +52,6 @@ class AndroidDateFormatter(private val context: Context, private val localProvid
             DateTimeFormatter.ofPattern("hh:mm a", defaultLocale).format(time.toJavaLocalTime())
         }
 
-    override fun formatDateTime(dateTime: LocalDateTime): String {
-        val pattern =
-            if (DateFormat.is24HourFormat(context)) {
-                "d MMMM yyyy, HH:mm"
-            } else {
-                "d MMMM yyyy, hh:mm a"
-            }
-
-        return DateTimeFormatter.ofPattern(pattern, defaultLocale)
-            .format(dateTime.toJavaLocalDateTime())
-    }
+    override fun formatDateTime(dateTime: LocalDateTime): String =
+        "${formatDateShort(dateTime.date)}, ${formatTime(dateTime.time)}"
 }

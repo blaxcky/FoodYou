@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.common.compose.utility
 
+import java.math.RoundingMode
+import java.text.NumberFormat
 import java.util.Locale
 
 actual fun Float.formatClipZeros(format: String) =
@@ -33,3 +35,12 @@ actual fun Double.formatClipZeros(format: String) =
             text
         }
     }
+
+actual fun Double.formatLocalized(maxFractionDigits: Int): String =
+    NumberFormat.getNumberInstance(Locale.getDefault())
+        .apply {
+            minimumFractionDigits = 0
+            maximumFractionDigits = maxFractionDigits
+            roundingMode = RoundingMode.HALF_UP
+        }
+        .format(this)

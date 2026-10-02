@@ -282,6 +282,8 @@ internal fun RoomFoodSearch.toFoodSearchModel(): FoodSearch =
                 servingWeight = servingWeight,
                 isFavorite = isFavorite,
                 suggestedMeasurement = suggestedMeasurement,
+                name = name,
+                brand = brand,
             )
 
         is FoodId.Recipe ->
@@ -290,6 +292,7 @@ internal fun RoomFoodSearch.toFoodSearchModel(): FoodSearch =
                 headline = headline,
                 isLiquid = isLiquid,
                 suggestedMeasurement = suggestedMeasurement,
+                name = name,
             )
     }
 

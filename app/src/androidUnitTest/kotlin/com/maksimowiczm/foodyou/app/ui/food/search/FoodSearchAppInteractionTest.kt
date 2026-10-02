@@ -14,6 +14,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.food.diary.search.diarySearchMeasurement
 import com.maksimowiczm.foodyou.app.ui.food.diary.search.parseDiaryFoodSearchInput
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
+import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -124,6 +125,9 @@ class FoodSearchAppInteractionTest {
         val field = compose.onNode(hasSetTextAction())
         field.performClick().performTextInput("Reis")
         awaitFood("Reis gekocht")
+        // The filters share one scrollable row, so FDDB may start off screen.
+        compose.onNode(hasScrollToKeyAction() and hasAnyDescendant(hasText("Alle")))
+            .performScrollToKey(FoodFilter.Source.FDDB)
         compose.onNode(hasText("FDDB") and hasClickAction()).performClick().assertIsSelected()
         field.performTextReplacement("Apfel")
         awaitFood("Lebensmittel nicht gefunden")
@@ -140,7 +144,58 @@ class FoodSearchAppInteractionTest {
         compose.onNodeWithText("Noch keine Suchbegriffe im Verlauf").assertExists()
     }
 
-    private fun show(restored: String = "", parseAmount: Boolean = false) {
+    @Test
+    fun compactItemShowsBrandLabelledNutrientsAndLongPressTogglesFavorite() {
+        val egg = FoodSearch.Product(
+            id = FoodId.Product(2),
+            headline = "Ei, vom Huhn (Naturprodukt)",
+            isLiquid = false,
+            nutritionFacts = NutritionFacts(
+                proteins = NutrientValue.Complete(13.0),
+                carbohydrates = NutrientValue.Complete(1.1),
+                energy = NutrientValue.Complete(156.0),
+                fats = NutrientValue.Complete(11.3),
+            ),
+            totalWeight = null,
+            servingWeight = null,
+            isFavorite = false,
+            suggestedMeasurement = Measurement.Gram(100.0),
+            name = "Ei, vom Huhn",
+            brand = "Naturprodukt",
+        )
+        fixture.repository.foods[null] = listOf(egg)
+        var favoriteChange: Pair<FoodId.Product, Boolean>? = null
+        show(onFavoriteChange = { id, favorite -> favoriteChange = id to favorite })
+        awaitFood("Ei, vom Huhn")
+
+        compose.onNodeWithText("Naturprodukt", substring = true).assertExists()
+        compose.onNodeWithText("E 13 g").assertExists()
+        compose.onNodeWithText("K 1,1 g").assertExists()
+        compose.onNodeWithText("F 11,3 g").assertExists()
+
+        compose.onNodeWithText("Ei, vom Huhn").performTouchInput { longClick() }
+        compose.waitForIdle()
+
+        assertEquals(FoodId.Product(2) to true, favoriteChange)
+        awaitFood("Zu Favoriten hinzugefügt")
+        // Let the snackbar time out so its pending delay does not leak into later tests.
+        compose.mainClock.advanceTimeBy(10_000)
+        compose.waitForIdle()
+        compose.onNodeWithText("Zu Favoriten hinzugefügt").assertDoesNotExist()
+    }
+
+    @Test
+    fun highlightMarksEveryCaseInsensitiveMatchInBold() {
+        val text = "Eierspätzle mit Ei".highlight(listOf("ei"))
+
+        assertEquals(listOf(0 until 2, 16 until 18), text.spanStyles.map { it.start until it.end })
+    }
+
+    private fun show(
+        restored: String = "",
+        parseAmount: Boolean = false,
+        onFavoriteChange: (FoodId.Product, Boolean) -> Unit = { _, _ -> },
+    ) {
         model = FoodSearchViewModel(null, fixture.preferences, fixture.history, fixture.repository,
             fixture.useCase, fixture.favoriteUseCase, fixture.dateProvider)
         activity = Robolectric.buildActivity(ComponentActivity::class.java).setup()
@@ -155,7 +210,7 @@ class FoodSearchAppInteractionTest {
                     onHistoryTabChange = model::changeHistoryTab,
                     onResultsLoaded = model::resultsLoaded,
                     onSourceChange = model::changeSource,
-                    onProductFavoriteChange = { _, _ -> },
+                    onProductFavoriteChange = onFavoriteChange,
                     onFoodClick = { food, measurement ->
                         selected = diarySearchMeasurement(measurement, food.isLiquid, amount)
                     },

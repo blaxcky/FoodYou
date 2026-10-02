@@ -725,4 +725,6 @@
     <string name="headline_recent_searches">Zuletzt gesucht</string>
     <string name="neutral_no_recent_food">Noch keine kürzlich eingetragenen Lebensmittel</string>
     <string name="neutral_no_recent_searches">Noch keine Suchbegriffe im Verlauf</string>
+    <string name="neutral_added_to_favorites">Zu Favoriten hinzugefügt</string>
+    <string name="neutral_removed_from_favorites">Aus Favoriten entfernt</string>
 </resources>

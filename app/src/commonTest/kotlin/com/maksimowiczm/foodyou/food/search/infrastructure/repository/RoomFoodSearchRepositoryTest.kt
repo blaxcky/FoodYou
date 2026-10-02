@@ -41,9 +41,20 @@ class RoomFoodSearchRepositoryTest {
         assertEquals(true, (food.toFoodSearchModel() as FoodSearch.Product).isFavorite)
     }
 
+    @Test
+    fun mapsNameAndBrandSeparately() {
+        val food = foodSearch(name = "Ei, vom Huhn", brand = "Naturprodukt")
+
+        val product = food.toFoodSearchModel() as FoodSearch.Product
+        assertEquals("Ei, vom Huhn", product.name)
+        assertEquals("Naturprodukt", product.brand)
+    }
+
     private fun foodSearch(
         totalWeight: Double? = null,
         isFavorite: Boolean = false,
+        name: String = "Food",
+        brand: String? = null,
         measurementType: MeasurementType? = null,
         measurementValue: Double? = null,
     ) =
@@ -51,6 +62,8 @@ class RoomFoodSearchRepositoryTest {
             productId = 1,
             recipeId = null,
             headline = "Food",
+            name = name,
+            brand = brand,
             isLiquid = false,
             nutrients = null,
             vitamins = null,

@@ -30,16 +30,18 @@ interface DateFormatter {
     fun formatMonthYear(date: YearMonth): String = formatMonthYear(date.firstDay)
 
     /**
-     * Formats the specified [date] as a string in the "d MMMM yyyy, EEEE" format.
+     * Formats the specified [date] as a full localized date including the day of the week.
      *
-     * For example, in English (US), this could return "23 February 2025, Sunday".
+     * For example, in English (US), this could return "Sunday, February 23, 2025" and in German
+     * "Sonntag, 23. Februar 2025".
      */
     fun formatDate(date: LocalDate): String
 
     /**
-     * Formats the specified [date] as a string in the "d MMMM yyyy" format.
+     * Formats the specified [date] as a long localized date without the day of the week.
      *
-     * For example, in English (US), this could return "21 April 2025".
+     * For example, in English (US), this could return "April 21, 2025" and in German
+     * "21. April 2025".
      */
     fun formatDateShort(date: LocalDate): String
 
@@ -60,9 +62,9 @@ interface DateFormatter {
     fun formatTime(time: LocalTime): String
 
     /**
-     * Formats the specified [dateTime] as a string in the "d MMMM yyyy, hh:mm" format.
+     * Formats the specified [dateTime] as a long localized date followed by the time.
      *
-     * For example, in English (US), this could return "21 April 2025, 14:30".
+     * For example, in English (US), this could return "April 21, 2025, 14:30" with a 24-hour clock.
      */
     fun formatDateTime(dateTime: LocalDateTime): String
 }

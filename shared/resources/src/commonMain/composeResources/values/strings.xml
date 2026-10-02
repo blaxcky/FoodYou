@@ -851,4 +851,6 @@
     <string name="headline_recent_searches">Recent searches</string>
     <string name="neutral_no_recent_food">No recently logged food</string>
     <string name="neutral_no_recent_searches">No recent searches yet</string>
+    <string name="neutral_added_to_favorites">Added to favorites</string>
+    <string name="neutral_removed_from_favorites">Removed from favorites</string>
 </resources>

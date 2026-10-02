@@ -3,9 +3,9 @@ package com.maksimowiczm.foodyou.app.ui.food.search
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.staggeredgrid.LazyHorizontalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,18 +26,27 @@ internal fun FoodSearchFilters(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
-    val filters = uiState.sources.filter { (source, state) ->
-        source == uiState.filter.source || state.shouldShowFilter
-    }
+    val filters =
+        uiState.sources
+            .filter { (source, state) -> source == uiState.filter.source || state.shouldShowFilter }
+            .toList()
+            // "All" is the default filter, so it leads the row.
+            .sortedBy { (source, _) -> source != FoodFilter.Source.All }
+    // The row is recreated for every search, so start at the selected filter to keep it visible.
+    val listState =
+        rememberLazyListState(
+            initialFirstVisibleItemIndex =
+                filters.indexOfFirst { (source, _) -> source == uiState.filter.source }
+                    .coerceAtLeast(0)
+        )
 
-    LazyHorizontalStaggeredGrid(
-        rows = StaggeredGridCells.Fixed(2),
+    LazyRow(
         modifier = modifier,
+        state = listState,
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalItemSpacing = 8.dp,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(filters.toList()) { (source, state) ->
+        items(filters, key = { (source, _) -> source }) { (source, state) ->
             val pages = state.collectAsLazyPagingItems()
             val isLoading = pages.delayedLoadingState()
             val hasError = source != FoodFilter.Source.All && pages.loadState.hasError
@@ -77,7 +86,12 @@ internal fun FoodSearchFilters(
                 onClick = { onSource(source) },
                 label = { Text(source.stringResource()) },
                 modifier = Modifier.animateItem(),
-                leadingIcon = { source.Icon(Modifier.size(FilterChipDefaults.IconSize)) },
+                // The FDDB icon is its name as text, which would repeat the label.
+                leadingIcon =
+                    if (source == FoodFilter.Source.FDDB) null
+                    else {
+                        { source.Icon(Modifier.size(FilterChipDefaults.IconSize)) }
+                    },
                 trailingIcon = {
                     if (hasError) {
                         Icon(

@@ -26,6 +26,8 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
@@ -73,6 +75,7 @@ fun FoodSearchApp(
     restoredSearchText: String = "",
     searchInitially: Boolean = false,
     transformSearch: (String?) -> String? = { it },
+    snackbarHostState: SnackbarHostState? = null,
 ) {
     val viewModel: FoodSearchViewModel = koinViewModel { parametersOf(excludedRecipe) }
     val appState =
@@ -98,6 +101,7 @@ fun FoodSearchApp(
         appState = appState,
         layout = layout,
         transformSearch = transformSearch,
+        snackbarHostState = snackbarHostState,
     )
 }
 
@@ -124,6 +128,7 @@ internal fun FoodSearchApp(
     onHistoryTabChange: (FoodSearchHistoryTab) -> Unit = {},
     onResultsLoaded: (String?, FoodFilter.Source) -> Unit = { _, _ -> },
     searchImmediatelyInitially: Boolean = true,
+    snackbarHostState: SnackbarHostState? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -174,6 +179,20 @@ internal fun FoodSearchApp(
             keyboard?.hide()
             focusManager.clearFocus()
             onFoodClick(food, measurement)
+        }
+    }
+    val ownSnackbarHostState = remember { SnackbarHostState() }
+    val favoriteSnackbarHostState = snackbarHostState ?: ownSnackbarHostState
+    val addedToFavoritesMessage = stringResource(Res.string.neutral_added_to_favorites)
+    val removedFromFavoritesMessage = stringResource(Res.string.neutral_removed_from_favorites)
+    val toggleFavorite: (FoodSearch.Product) -> Unit = { food ->
+        val isFavorite = !food.isFavorite
+        onProductFavoriteChange(food.id, isFavorite)
+        coroutineScope.launch {
+            favoriteSnackbarHostState.currentSnackbarData?.dismiss()
+            favoriteSnackbarHostState.showSnackbar(
+                if (isFavorite) addedToFavoritesMessage else removedFromFavoritesMessage
+            )
         }
     }
     val pages = key(uiState.query, source, pending) {
@@ -233,7 +252,8 @@ internal fun FoodSearchApp(
                 pages = pages,
                 listState = appState.listStates.state(source),
                 source = source,
-                onProductFavoriteChange = onProductFavoriteChange,
+                query = if (showingHistory) null else uiState.query,
+                onFavoriteToggle = toggleFavorite,
                 onFoodClick = selectFood,
                 modifier = contentModifier,
                 contentPadding = padding,
@@ -247,6 +267,9 @@ internal fun FoodSearchApp(
         contentWindowInsets =
             if (layout == FoodSearchLayout.Stacked) WindowInsets(0)
             else ScaffoldDefaults.contentWindowInsets,
+        snackbarHost = {
+            if (snackbarHostState == null) SnackbarHost(ownSnackbarHostState)
+        },
     ) { scaffoldPadding ->
         // Fix for searchbar issues on Android SDK 27 and below
         Box(Modifier.focusable().size(1.dp))
@@ -348,7 +371,7 @@ private fun FoodSearchHeader(
                         coroutineScope.launch { listState.animateScrollToItem(0) }
                     }
                 },
-                modifier = Modifier.height(32.dp + 8.dp + 32.dp).fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
@@ -370,7 +393,8 @@ private fun FoodSearchResults(
     pages: LazyPagingItems<FoodSearch>?,
     listState: LazyListState,
     source: FoodFilter.Source,
-    onProductFavoriteChange: (FoodId.Product, Boolean) -> Unit,
+    query: String?,
+    onFavoriteToggle: (FoodSearch.Product) -> Unit,
     onFoodClick: (FoodSearch, Measurement) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
@@ -408,10 +432,9 @@ private fun FoodSearchResults(
                             FoodSearchListItem(
                                 food = food,
                                 measurement = measurement,
+                                query = query,
                                 onClick = { onFoodClick(food, measurement) },
-                                onFavoriteClick = {
-                                    onProductFavoriteChange(food.id, !food.isFavorite)
-                                },
+                                onFavoriteToggle = { onFavoriteToggle(food) },
                             )
                         }
 
@@ -420,6 +443,7 @@ private fun FoodSearchResults(
                             FoodSearchListItem(
                                 food = food,
                                 measurement = measurement,
+                                query = query,
                                 onClick = { onFoodClick(food, measurement) },
                                 shimmer = rememberShimmer(ShimmerBounds.View),
                             )
