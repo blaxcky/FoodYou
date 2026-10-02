@@ -690,7 +690,6 @@ internal actual fun PendingProductPhotoCapture(
                         onSaved = {
                             photoSaving = false
                             if (showCapturePreview) {
-                                shutterVisible = true
                                 capturePreview.photoSaved(it)
                             }
                             latestOnPhotoTaken(it)
