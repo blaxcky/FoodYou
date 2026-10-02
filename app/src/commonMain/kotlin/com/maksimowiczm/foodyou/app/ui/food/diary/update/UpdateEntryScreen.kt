@@ -9,6 +9,7 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.add.FoodEntryForm
 import com.maksimowiczm.foodyou.app.ui.food.diary.add.FoodModel
 import com.maksimowiczm.foodyou.app.ui.food.diary.add.ProductModel
 import com.maksimowiczm.foodyou.app.ui.food.diary.add.RecipeModel
+import com.maksimowiczm.foodyou.app.ui.food.diary.add.rememberFoodEntryAmountPickerStyle
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberFoodMeasurementFormState
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.domain.measurement.type
@@ -126,6 +127,8 @@ fun UpdateEntryScreen(
             history = emptyList(),
             state = state,
             animatedVisibilityScope = animatedVisibilityScope,
+            amountPickerStyle = rememberFoodEntryAmountPickerStyle(),
+            onSavePortions = null,
             modifier = modifier,
         )
     }

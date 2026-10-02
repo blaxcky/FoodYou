@@ -14,8 +14,10 @@ import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
+import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveFoodUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveMeasurementSuggestionsUseCase
@@ -42,6 +44,7 @@ internal class AddEntryViewModel(
     observeFoodUseCase: ObserveFoodUseCase,
     foodHistoryRepository: FoodHistoryRepository,
     private val deleteFoodUseCase: DeleteFoodUseCase,
+    private val productRepository: ProductRepository,
     observeMeasurementSuggestionsUseCase: ObserveMeasurementSuggestionsUseCase,
     mealRepository: MealRepository,
     private val dateProvider: DateProvider,
@@ -131,6 +134,12 @@ internal class AddEntryViewModel(
                 started = SharingStarted.WhileSubscribed(2_000),
                 initialValue = null,
             )
+
+    /** Stores the effective portions of the product as user overrides. */
+    fun savePortions(portions: List<ProductPortion>) {
+        val productId = foodId as? FoodId.Product ?: return
+        viewModelScope.launch { productRepository.updateProductPortions(productId, portions) }
+    }
 
     fun deleteFood() {
         viewModelScope.launch {

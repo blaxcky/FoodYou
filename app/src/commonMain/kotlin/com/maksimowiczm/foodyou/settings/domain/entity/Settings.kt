@@ -44,6 +44,8 @@ data class Settings(
     val defaultLockedDaySurplusKcal: Double = DEFAULT_LOCKED_DAY_SURPLUS_KCAL,
     val lockedDaySurpluses: List<LockedDaySurplus> = emptyList(),
     val quickCaptureAggregateSameFoods: Boolean = false,
+    val foodEntryAmountPickerStyle: FoodEntryAmountPickerStyle =
+        FoodEntryAmountPickerStyle.PortionList,
 ) : UserPreferences
 
 data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)
@@ -114,6 +116,15 @@ enum class GoalDisplayMode {
     Normal,
     Optimized,
     Diet,
+}
+
+/** Layout of the amount input on the food entry screen. */
+enum class FoodEntryAmountPickerStyle {
+    /** Amount field with a unit dropdown and suggestion chips below the save button. */
+    Classic,
+
+    /** Amount field followed by a selectable list of portions and units. */
+    PortionList,
 }
 
 enum class PendingProductPhotoQuality {

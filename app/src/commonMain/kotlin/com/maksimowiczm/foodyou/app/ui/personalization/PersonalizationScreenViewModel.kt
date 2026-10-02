@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
+import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -38,5 +39,20 @@ internal class PersonalizationScreenViewModel(
 
     fun setEnergyFormat(format: EnergyFormat) {
         viewModelScope.launch { settingsRepository.update { copy(energyFormat = format) } }
+    }
+
+    private val _foodEntryAmountPickerStyle =
+        settingsRepository.observe().map { it.foodEntryAmountPickerStyle }
+    val foodEntryAmountPickerStyle =
+        _foodEntryAmountPickerStyle.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _foodEntryAmountPickerStyle.first() },
+        )
+
+    fun setFoodEntryAmountPickerStyle(style: FoodEntryAmountPickerStyle) {
+        viewModelScope.launch {
+            settingsRepository.update { copy(foodEntryAmountPickerStyle = style) }
+        }
     }
 }

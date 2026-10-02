@@ -131,4 +131,107 @@ class MeasurementPickerOptionTest {
 
         assertEquals("1 Packung (400 g)", option?.displayLabel)
     }
+
+    @Test
+    fun portionEditAppendsNewPortionWithTrimmedLabel() {
+        val portions = listOf(ProductPortion("halbe", 75.0, ProductPortion.Unit.Gram))
+
+        val result =
+            portions.withPortionEdit(
+                original = null,
+                edited = ProductPortion("  Scheibe ", 20.0, ProductPortion.Unit.Gram),
+            )
+
+        assertEquals(
+            PortionEditResult.Success(
+                portions + ProductPortion("Scheibe", 20.0, ProductPortion.Unit.Gram)
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun portionEditReplacesPortionInPlaceIncludingRename() {
+        val medium = ProductPortion("mittelgroße", 150.0, ProductPortion.Unit.Gram)
+        val half = ProductPortion("halbe", 75.0, ProductPortion.Unit.Gram)
+        val edited = ProductPortion("groß", 180.0, ProductPortion.Unit.Gram)
+
+        val result = listOf(medium, half).withPortionEdit(original = medium, edited = edited)
+
+        assertEquals(PortionEditResult.Success(listOf(edited, half)), result)
+    }
+
+    @Test
+    fun portionEditKeepsSameNameWithDifferentCaseAndAmount() {
+        val medium = ProductPortion("mittelgroße", 150.0, ProductPortion.Unit.Gram)
+        val edited = ProductPortion("Mittelgroße", 160.0, ProductPortion.Unit.Gram)
+
+        val result = listOf(medium).withPortionEdit(original = medium, edited = edited)
+
+        assertEquals(PortionEditResult.Success(listOf(edited)), result)
+    }
+
+    @Test
+    fun portionEditDeletesPortion() {
+        val medium = ProductPortion("mittelgroße", 150.0, ProductPortion.Unit.Gram)
+        val half = ProductPortion("halbe", 75.0, ProductPortion.Unit.Gram)
+
+        val result = listOf(medium, half).withPortionEdit(original = medium, edited = null)
+
+        assertEquals(PortionEditResult.Success(listOf(half)), result)
+    }
+
+    @Test
+    fun portionEditRejectsInvalidInput() {
+        val medium = ProductPortion("mittelgroße", 150.0, ProductPortion.Unit.Gram)
+        val half = ProductPortion("halbe", 75.0, ProductPortion.Unit.Gram)
+        val portions = listOf(medium, half)
+
+        assertEquals(
+            PortionEditResult.EmptyName,
+            portions.withPortionEdit(null, ProductPortion("  ", 10.0, ProductPortion.Unit.Gram)),
+        )
+        assertEquals(
+            PortionEditResult.InvalidAmount,
+            portions.withPortionEdit(null, ProductPortion("Stück", 0.0, ProductPortion.Unit.Gram)),
+        )
+        assertEquals(
+            PortionEditResult.InvalidAmount,
+            portions.withPortionEdit(
+                null,
+                ProductPortion("Stück", Double.NaN, ProductPortion.Unit.Gram),
+            ),
+        )
+        assertEquals(
+            PortionEditResult.DuplicateName,
+            portions.withPortionEdit(medium, ProductPortion(" Halbe ", 80.0, ProductPortion.Unit.Gram)),
+        )
+    }
+
+    @Test
+    fun portionMatchingFindsPortionWithEqualUnitMeasurement() {
+        val options =
+            listOf(
+                    ProductPortion("mittelgroße", 150.0, ProductPortion.Unit.Gram),
+                    ProductPortion("halbe", 75.0, ProductPortion.Unit.Gram),
+                )
+                .toMeasurementPickerOptions(isLiquid = false)
+
+        assertEquals(options[1], options.portionMatching(Measurement.Gram(75.0)))
+        assertNull(options.portionMatching(Measurement.Gram(100.0)))
+    }
+
+    @Test
+    fun findByPortionLabelUsesNormalizedLabel() {
+        val options =
+            listOf(ProductPortion("Mittelgroße", 160.0, ProductPortion.Unit.Gram))
+                .toMeasurementPickerOptions(isLiquid = false)
+
+        assertEquals(
+            options.single(),
+            options.findByPortionLabel(
+                ProductPortion(" mittelgroße ", 150.0, ProductPortion.Unit.Gram)
+            ),
+        )
+    }
 }

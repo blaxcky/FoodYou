@@ -466,6 +466,7 @@ sealed interface MeasurementPickerOption {
     data class Portion(
         val displayLabel: String,
         val unitMeasurement: Measurement.ImmutableMeasurement,
+        val portion: ProductPortion? = null,
     ) :
         MeasurementPickerOption {
         override val type: MeasurementType = unitMeasurement.type
@@ -494,6 +495,7 @@ fun ProductPortion.toMeasurementPickerOption(isLiquid: Boolean): MeasurementPick
     return MeasurementPickerOption.Portion(
         displayLabel = "1 $label (${amount.formatClipZeros()} ${unit.label})",
         unitMeasurement = measurement,
+        portion = this,
     )
 }
 

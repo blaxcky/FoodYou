@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.component.SettingsListItem
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
+import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -66,6 +68,13 @@ fun PersonalizationScreen(
                 EnergyUnitSettingsListItem(
                     unit = viewModel.energyUnit.collectAsStateWithLifecycle().value,
                     onChange = viewModel::setEnergyFormat,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            item {
+                FoodEntryAmountPickerStyleSettingsListItem(
+                    style = viewModel.foodEntryAmountPickerStyle.collectAsStateWithLifecycle().value,
+                    onChange = viewModel::setFoodEntryAmountPickerStyle,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -183,6 +192,56 @@ private fun EnergyUnitSettingsListItem(
         contentColor = MaterialTheme.colorScheme.onSurface,
     )
 }
+
+@Composable
+private fun FoodEntryAmountPickerStyleSettingsListItem(
+    style: FoodEntryAmountPickerStyle,
+    onChange: (FoodEntryAmountPickerStyle) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    SettingsListItem(
+        label = { Text(stringResource(Res.string.headline_food_entry_amount_picker)) },
+        onClick = { expanded = true },
+        modifier = modifier,
+        supportingContent = {
+            Text(stringResource(Res.string.description_food_entry_amount_picker))
+        },
+        trailingContent = {
+            Box {
+                Text(
+                    text = style.label(),
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    FoodEntryAmountPickerStyle.entries.forEach { entry ->
+                        DropdownMenuItem(
+                            text = { Text(entry.label()) },
+                            onClick = {
+                                onChange(entry)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        },
+        icon = { Icon(imageVector = Icons.Outlined.Scale, contentDescription = null) },
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    )
+}
+
+@Composable
+private fun FoodEntryAmountPickerStyle.label(): String =
+    when (this) {
+        FoodEntryAmountPickerStyle.Classic ->
+            stringResource(Res.string.headline_amount_picker_classic)
+        FoodEntryAmountPickerStyle.PortionList ->
+            stringResource(Res.string.headline_amount_picker_portion_list)
+    }
 
 @Composable
 private fun ThemeSettingsListItem(onClick: () -> Unit, modifier: Modifier = Modifier) {

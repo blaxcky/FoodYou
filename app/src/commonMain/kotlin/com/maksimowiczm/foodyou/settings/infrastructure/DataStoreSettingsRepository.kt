@@ -16,6 +16,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
+import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
@@ -79,6 +80,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                         .coerceIn(0, 2)
                 } else 0,
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
+            foodEntryAmountPickerStyle = this.getFoodEntryAmountPickerStyle(),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
             todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
@@ -154,6 +156,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.fddbProductSyncManualTriggerCountV2] =
             updated.fddbProductSyncManualTriggerCount.coerceIn(0, 2)
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
+        setFoodEntryAmountPickerStyle(updated.foodEntryAmountPickerStyle)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
         setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
@@ -318,6 +321,17 @@ private fun Preferences.getPendingProductPhotoQuality(): PendingProductPhotoQual
         }
         .getOrElse { PendingProductPhotoQuality.Balanced }
 
+private fun MutablePreferences.setFoodEntryAmountPickerStyle(value: FoodEntryAmountPickerStyle) =
+    setWithNull(SettingsPreferencesKeys.foodEntryAmountPickerStyle, value.name)
+
+private fun Preferences.getFoodEntryAmountPickerStyle(): FoodEntryAmountPickerStyle =
+    runCatching {
+            this[SettingsPreferencesKeys.foodEntryAmountPickerStyle]?.let(
+                FoodEntryAmountPickerStyle::valueOf
+            ) ?: FoodEntryAmountPickerStyle.PortionList
+        }
+        .getOrElse { FoodEntryAmountPickerStyle.PortionList }
+
 private fun Preferences.getFddbProductSyncMode(): FddbProductSyncMode =
     runCatching {
             this[SettingsPreferencesKeys.fddbProductSyncMode]?.let(FddbProductSyncMode::valueOf)
@@ -432,6 +446,7 @@ private object SettingsPreferencesKeys {
     val fddbProductSyncManualTriggerCountV2 =
         intPreferencesKey("settings:fddbProductSyncManualTriggerCountV2")
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
+    val foodEntryAmountPickerStyle = stringPreferencesKey("settings:foodEntryAmountPickerStyle")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
     val todayEnergyGoalAdjustmentEpochDay =

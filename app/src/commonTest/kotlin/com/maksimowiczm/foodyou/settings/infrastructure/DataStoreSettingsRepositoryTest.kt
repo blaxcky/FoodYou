@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
+import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
@@ -312,6 +313,39 @@ class DataStoreSettingsRepositoryTest {
             repository.update { copy(pendingProductPhotoQuality = quality) }
 
             assertEquals(quality, repository.observe().first().pendingProductPhotoQuality)
+        }
+    }
+
+    @Test
+    fun foodEntryAmountPickerStyleDefaultsToPortionListAndIgnoresUnknownValues() = runTest {
+        val defaultRepository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+        val unknownRepository =
+            DataStoreSettingsRepository(
+                InMemoryPreferencesDataStore(
+                    mutablePreferencesOf(
+                        stringPreferencesKey("settings:foodEntryAmountPickerStyle") to "Unknown"
+                    )
+                )
+            )
+
+        assertEquals(
+            FoodEntryAmountPickerStyle.PortionList,
+            defaultRepository.observe().first().foodEntryAmountPickerStyle,
+        )
+        assertEquals(
+            FoodEntryAmountPickerStyle.PortionList,
+            unknownRepository.observe().first().foodEntryAmountPickerStyle,
+        )
+    }
+
+    @Test
+    fun foodEntryAmountPickerStyleRoundTripsThroughDataStore() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        FoodEntryAmountPickerStyle.entries.forEach { style ->
+            repository.update { copy(foodEntryAmountPickerStyle = style) }
+
+            assertEquals(style, repository.observe().first().foodEntryAmountPickerStyle)
         }
     }
 

@@ -93,6 +93,8 @@ import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
+import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
 import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
@@ -131,6 +133,7 @@ fun AddEntryScreen(
     val suggestions = viewModel.suggestions.collectAsStateWithLifecycle().value
     val possibleTypes = viewModel.possibleMeasurementTypes.collectAsStateWithLifecycle().value
     val measurementSuggestion by viewModel.suggestedMeasurement.collectAsStateWithLifecycle()
+    val amountPickerStyle = rememberFoodEntryAmountPickerStyle()
 
     // This is stupid that it is here but it's going to be deleted in 4.0.0
     val selectedMeasurement =
@@ -224,6 +227,8 @@ fun AddEntryScreen(
             history = events,
             state = state,
             animatedVisibilityScope = animatedVisibilityScope,
+            amountPickerStyle = amountPickerStyle,
+            onSavePortions = if (food is ProductModel) viewModel::savePortions else null,
             modifier = modifier,
         )
     }
@@ -241,6 +246,8 @@ internal fun FoodEntryForm(
     history: List<FoodHistory>,
     state: FoodMeasurementFormState,
     animatedVisibilityScope: AnimatedVisibilityScope,
+    amountPickerStyle: FoodEntryAmountPickerStyle,
+    onSavePortions: ((List<ProductPortion>) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -306,34 +313,59 @@ internal fun FoodEntryForm(
                             measurement = state.measurementState.measurement,
                         )
 
-                        ReferenceMeasurementPickerInput(
-                            state = state.measurementState,
-                            servingUnit =
-                                if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
-                        )
-
-                        Button(
-                            onClick = {
-                                if (state.isValid) {
-                                    onSave()
+                        val servingUnit =
+                            if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece
+                        val saveButton =
+                            @Composable {
+                                Button(
+                                    onClick = {
+                                        if (state.isValid) {
+                                            onSave()
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    enabled =
+                                        !animatedVisibilityScope.transition.isRunning &&
+                                            state.isValid &&
+                                            (food !is RecipeModel || food.isValid),
+                                    shape = RoundedCornerShape(28.dp),
+                                    contentPadding = ButtonDefaults.ContentPadding,
+                                ) {
+                                    Text(stringResource(Res.string.action_save))
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            enabled =
-                                !animatedVisibilityScope.transition.isRunning &&
-                                    state.isValid &&
-                                    (food !is RecipeModel || food.isValid),
-                            shape = RoundedCornerShape(28.dp),
-                            contentPadding = ButtonDefaults.ContentPadding,
-                        ) {
-                            Text(stringResource(Res.string.action_save))
-                        }
+                            }
 
-                        ReferenceMeasurementPickerSuggestions(
-                            state = state.measurementState,
-                            servingUnit =
-                                if (food is RecipeModel) ServingUnit.Serving else ServingUnit.Piece,
-                        )
+                        when (amountPickerStyle) {
+                            FoodEntryAmountPickerStyle.Classic -> {
+                                ReferenceMeasurementPickerInput(
+                                    state = state.measurementState,
+                                    servingUnit = servingUnit,
+                                )
+
+                                saveButton()
+
+                                ReferenceMeasurementPickerSuggestions(
+                                    state = state.measurementState,
+                                    servingUnit = servingUnit,
+                                )
+                            }
+
+                            FoodEntryAmountPickerStyle.PortionList -> {
+                                PortionListAmountInput(
+                                    state = state.measurementState,
+                                    servingUnit = servingUnit,
+                                )
+
+                                PortionListOptions(
+                                    state = state.measurementState,
+                                    servingUnit = servingUnit,
+                                    portions = (food as? ProductModel)?.portions.orEmpty(),
+                                    onSavePortions = onSavePortions,
+                                )
+
+                                saveButton()
+                            }
+                        }
 
                         if (food.canUnpack) {
                             OutlinedButton(
@@ -542,11 +574,7 @@ internal fun ReferenceMeasurementPickerInput(
     servingUnit: ServingUnit,
     modifier: Modifier = Modifier,
 ) {
-    val latestState by rememberUpdatedState(state)
-    LaunchedEffect(state.inputField.value, state.selectedOption) {
-        val value = state.inputField.value ?: return@LaunchedEffect
-        latestState.measurement = state.selectedOption.measurementForInput(value.toDouble())
-    }
+    SyncMeasurementWithInput(state)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -565,6 +593,16 @@ internal fun ReferenceMeasurementPickerInput(
             },
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+/** Keeps [MeasurementPickerState.measurement] in sync with the amount field and selected unit. */
+@Composable
+internal fun SyncMeasurementWithInput(state: MeasurementPickerState) {
+    val latestState by rememberUpdatedState(state)
+    LaunchedEffect(state.inputField.value, state.selectedOption) {
+        val value = state.inputField.value ?: return@LaunchedEffect
+        latestState.measurement = state.selectedOption.measurementForInput(value.toDouble())
     }
 }
 
@@ -610,7 +648,7 @@ internal fun ReferenceMeasurementPickerSuggestions(
 }
 
 @Composable
-private fun ReferenceMeasurementInput(
+internal fun ReferenceMeasurementInput(
     formField: FormField<Float?, String>,
     modifier: Modifier = Modifier,
 ) {
