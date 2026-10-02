@@ -281,6 +281,7 @@ fun QuickCaptureScreen(
                     PendingProductPhotoCapture(
                         photoCount = entries.count { it.isPendingPhoto },
                         photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
+                        showCapturePreview = true,
                         onPhotoTaken = viewModel::capturePhoto,
                         onClose = viewModel::closeCamera,
                         modifier = Modifier.fillMaxSize(),

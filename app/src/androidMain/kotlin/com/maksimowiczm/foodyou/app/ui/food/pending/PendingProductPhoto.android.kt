@@ -21,7 +21,6 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -32,7 +31,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -41,11 +39,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.RotateLeft
 import androidx.compose.material.icons.automirrored.outlined.RotateRight
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,7 +52,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -542,6 +536,7 @@ internal actual fun PendingProductPhotoCapture(
     modifier: Modifier,
     photoDirectory: String,
     onClose: (() -> Unit)?,
+    showCapturePreview: Boolean,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -587,6 +582,20 @@ internal actual fun PendingProductPhotoCapture(
     var photoSaving by remember { mutableStateOf(false) }
     var photoSaveError by remember { mutableStateOf(false) }
     val latestOnPhotoTaken by rememberUpdatedState(onPhotoTaken)
+    val previewScope = rememberCoroutineScope()
+    val capturePreview = remember(previewScope, photoDirectory) {
+        CapturePhotoPreviewState(previewScope) { path: String ->
+            withContext(Dispatchers.IO) {
+                decodeSampledBitmap(
+                    context.filesDir.resolve(photoDirectory).resolve(path),
+                    maxSizePx = 1600,
+                )?.asImageBitmap()
+            }
+        }
+    }
+    DisposableEffect(capturePreview) {
+        onDispose { capturePreview.close() }
+    }
 
     LaunchedEffect(photoQuality) {
         cameraBound = false
@@ -659,85 +668,49 @@ internal actual fun PendingProductPhotoCapture(
             },
         )
 
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f),
-            shape = CircleShape,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
-        ) {
-            Text(
-                text =
-                    stringResource(
-                        Res.string.neutral_pending_product_photo_count,
-                        photoCount,
-                    ),
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            )
-        }
-
-        LargeFloatingActionButton(
-            onClick = {
-                val capture = imageCapture ?: return@LargeFloatingActionButton
-                if (photoSaving) return@LargeFloatingActionButton
-                photoSaving = true
-                shutterVisible = true
-                photoSaveError = false
-                capture.takePendingProductPhoto(
-                    context = context,
-                    photoDirectory = photoDirectory,
-                    onSaved = {
-                        photoSaving = false
-                        latestOnPhotoTaken(it)
-                    },
-                    onError = {
-                        photoSaving = false
-                        photoSaveError = true
-                    },
-                )
+        PendingProductCameraOverlay(
+            photoCount = photoCount,
+            photoSaving = photoSaving,
+            photoSaveError = photoSaveError,
+            shutterVisible = shutterVisible,
+            showCapturePreview = showCapturePreview,
+            previewBitmap = capturePreview.bitmap,
+            previewVisible = capturePreview.visible,
+            onDismissPreview = capturePreview::dismiss,
+            onCapture = {
+                val capture = imageCapture
+                if (capture != null && !photoSaving) {
+                    capturePreview.captureStarted()
+                    photoSaving = true
+                    shutterVisible = !showCapturePreview
+                    photoSaveError = false
+                    capture.takePendingProductPhoto(
+                        context = context,
+                        photoDirectory = photoDirectory,
+                        onSaved = {
+                            photoSaving = false
+                            if (showCapturePreview) {
+                                shutterVisible = true
+                                capturePreview.photoSaved(it)
+                            }
+                            latestOnPhotoTaken(it)
+                        },
+                        onError = {
+                            photoSaving = false
+                            capturePreview.dismiss()
+                            photoSaveError = true
+                        },
+                    )
+                }
             },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.PhotoCamera,
-                contentDescription = stringResource(Res.string.neutral_take_nutrition_photo),
-            )
-        }
-
-        if (onClose != null) {
-            // Sits to the right of the shutter: half the large FAB width (48dp) plus a gap.
-            FilledTonalIconButton(
-                onClick = onClose,
-                modifier =
-                    Modifier.align(Alignment.BottomCenter)
-                        .padding(bottom = 48.dp)
-                        .offset(x = 48.dp + 16.dp + 24.dp)
-                        .size(48.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = stringResource(Res.string.action_close),
-                )
-            }
-        }
-
-        if (photoSaveError) {
-            Surface(
-                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.96f),
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 104.dp),
-            ) {
-                Text(
-                    text = stringResource(Res.string.neutral_photo_save_failed),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                )
-            }
-        }
-
-        if (shutterVisible) {
-            Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.42f)))
-        }
+            onClose = onClose?.let { close ->
+                {
+                    capturePreview.close()
+                    close()
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 

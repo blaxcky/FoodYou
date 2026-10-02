@@ -48,4 +48,5 @@ internal expect fun PendingProductPhotoCapture(
     modifier: Modifier = Modifier,
     photoDirectory: String = "pending-product-photos",
     onClose: (() -> Unit)? = null,
+    showCapturePreview: Boolean = false,
 )

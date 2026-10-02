@@ -41,6 +41,7 @@ fun QuickCaptureCameraScreen(onClose: () -> Unit, modifier: Modifier = Modifier)
         PendingProductPhotoCapture(
             photoCount = photoCount,
             photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
+            showCapturePreview = true,
             onPhotoTaken = viewModel::capturePhoto,
             onClose = onClose,
             modifier = Modifier.fillMaxSize().padding(padding),
