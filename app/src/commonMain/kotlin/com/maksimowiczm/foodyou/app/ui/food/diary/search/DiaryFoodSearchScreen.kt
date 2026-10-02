@@ -136,7 +136,7 @@ fun DiaryFoodSearchScreen(
                         } ?: diarySearchMeasurement(
                                 suggestedMeasurement = measurement,
                                 isLiquid = model.isLiquid,
-                                amount = searchInput.amount,
+                                amount = viewModel.searchInput.value.amount,
                             ),
                     )
                 },

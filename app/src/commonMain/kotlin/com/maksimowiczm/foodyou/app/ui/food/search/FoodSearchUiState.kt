@@ -11,12 +11,26 @@ internal data class FoodSearchUiState(
     val sources: Map<FoodFilter.Source, FoodSourceUiState>,
     val filter: FoodFilter,
     val recentSearches: List<String>,
+    val query: String? = null,
+    val isPending: Boolean = false,
+    val historyTab: FoodSearchHistoryTab = FoodSearchHistoryTab.RecentFood,
 ) {
+    val showingHistory: Boolean
+        get() = query == null
+
+    val displayedSource: FoodFilter.Source
+        get() = if (showingHistory) FoodFilter.Source.Recent else filter.source
+
     val currentSourceState: FoodSourceUiState?
-        get() = sources[filter.source]
+        get() = sources[displayedSource]
 
     val currentSourceCount: Int?
         get() = currentSourceState?.count
+}
+
+internal enum class FoodSearchHistoryTab {
+    RecentFood,
+    RecentSearches,
 }
 
 internal enum class RemoteStatus {

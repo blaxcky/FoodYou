@@ -721,4 +721,8 @@
     <string name="error_quick_capture_weight">Ein gültiges positives Gewicht eingeben</string>
     <string name="error_quick_capture_after">After muss mindestens null und kleiner als Before sein</string>
     <string name="description_quick_capture_pending_excluded">Unvollständige Einträge werden beim Kopieren und Übertragen ausgelassen.</string>
+    <string name="headline_recently_logged">Kürzlich eingetragen</string>
+    <string name="headline_recent_searches">Zuletzt gesucht</string>
+    <string name="neutral_no_recent_food">Noch keine kürzlich eingetragenen Lebensmittel</string>
+    <string name="neutral_no_recent_searches">Noch keine Suchbegriffe im Verlauf</string>
 </resources>

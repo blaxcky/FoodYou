@@ -29,10 +29,6 @@ class FoodSearchUseCase(
     ): Flow<PagingData<FoodSearch>> {
         val query = searchQuery(query)
 
-        if (query is SearchQuery.Text) {
-            eventBus.publish(FoodSearchEvent(query, dateProvider.nowInstant()))
-        }
-
         return foodSearchPreferencesRepository.observe().flatMapLatest { prefs ->
             foodSearchRepository.search(
                 query = query,
@@ -50,16 +46,20 @@ class FoodSearchUseCase(
     ): Flow<PagingData<FoodSearch>> {
         val query = searchQuery(query)
 
-        if (query is SearchQuery.Text) {
-            eventBus.publish(FoodSearchEvent(query, dateProvider.nowInstant()))
-        }
-
         return foodSearchRepository.searchRecent(
             query = query,
             config = PagingConfig(pageSize = PAGE_SIZE),
             now = dateProvider.now(),
             excludedRecipeId = excludedRecipeId,
         )
+    }
+
+    /** Records an explicitly submitted search or the search used to select a food. */
+    fun recordSearch(query: String?) {
+        val normalized = searchQuery(query)
+        if (normalized is SearchQuery.Text) {
+            eventBus.publish(FoodSearchEvent(normalized, dateProvider.nowInstant()))
+        }
     }
 
     private fun FoodSearchPreferences.remoteMediatorFactory(

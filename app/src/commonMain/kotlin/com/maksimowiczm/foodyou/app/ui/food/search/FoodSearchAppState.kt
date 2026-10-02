@@ -4,14 +4,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.material3.SearchBarState
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun rememberFoodSearchAppState(
-    searchBarState: SearchBarState = rememberSearchBarState(),
     searchTextFieldState: TextFieldState = rememberTextFieldState(),
     showBarcodeScanner: Boolean = false,
 ): FoodSearchAppState {
@@ -20,9 +17,8 @@ fun rememberFoodSearchAppState(
 
     val listStates = rememberListStates()
 
-    return remember(searchBarState, searchTextFieldState, showBarcodeScanner, listStates) {
+    return remember(searchTextFieldState, showBarcodeScanner, listStates) {
         FoodSearchAppState(
-            searchBarState = searchBarState,
             searchTextFieldState = searchTextFieldState,
             showBarcodeScannerState = showBarcodeScanner,
             listStates = listStates,
@@ -32,7 +28,6 @@ fun rememberFoodSearchAppState(
 
 @Stable
 class FoodSearchAppState(
-    val searchBarState: SearchBarState,
     val searchTextFieldState: TextFieldState,
     showBarcodeScannerState: MutableState<Boolean>,
     val listStates: ListStates,

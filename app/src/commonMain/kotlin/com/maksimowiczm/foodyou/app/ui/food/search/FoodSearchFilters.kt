@@ -26,7 +26,9 @@ internal fun FoodSearchFilters(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
 ) {
-    val filters = uiState.sources.filterValues { state -> state.shouldShowFilter }
+    val filters = uiState.sources.filter { (source, state) ->
+        source == uiState.filter.source || state.shouldShowFilter
+    }
 
     LazyHorizontalStaggeredGrid(
         rows = StaggeredGridCells.Fixed(2),

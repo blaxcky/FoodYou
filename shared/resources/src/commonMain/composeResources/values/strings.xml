@@ -847,4 +847,8 @@
     <string name="error_quick_capture_weight">Enter a valid positive weight</string>
     <string name="error_quick_capture_after">After must be zero or greater and smaller than before</string>
     <string name="description_quick_capture_pending_excluded">Incomplete entries are excluded from copying and transfer.</string>
+    <string name="headline_recently_logged">Recently logged</string>
+    <string name="headline_recent_searches">Recent searches</string>
+    <string name="neutral_no_recent_food">No recently logged food</string>
+    <string name="neutral_no_recent_searches">No recent searches yet</string>
 </resources>

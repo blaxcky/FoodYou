@@ -9,13 +9,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -78,6 +80,7 @@ class FoodSearchAppScreenshotTest {
                         onUpdateOpenFoodFactsCredentials = {},
                         modifier = Modifier.fillMaxWidth().weight(1f),
                         layout = FoodSearchLayout.Stacked,
+                        appState = rememberFoodSearchAppState(searchTextFieldState = rememberTextFieldState("Lebensmittel")),
                     )
                 }
             }
@@ -101,7 +104,6 @@ class FoodSearchAppScreenshotTest {
                     contentAlignment = Alignment.Center,
                 ) {
                     FoodSearchBarInputField(
-                        searchBarState = rememberSearchBarState(),
                         textFieldState = rememberTextFieldState("Apfel"),
                         onSearch = {},
                         onBarcodeScanner = {},
@@ -122,7 +124,7 @@ class FoodSearchAppScreenshotTest {
                     .build(),
         ) {
             MaterialTheme {
-                val appState = rememberFoodSearchAppState()
+                val appState = rememberFoodSearchAppState(searchTextFieldState = rememberTextFieldState("Lebensmittel"))
                 LaunchedEffect(appState) { appState.listStates.all.scrollToItem(4, 24) }
 
                 FoodSearchApp(
@@ -138,6 +140,49 @@ class FoodSearchAppScreenshotTest {
                             .background(Color(0xFFEEF5FA)),
                     appState = appState,
                     layout = FoodSearchLayout.Overlay,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun recentlyLoggedFoodIsShownImmediately() = captureHistory("recent-food", FoodSearchHistoryTab.RecentFood)
+
+    @Test
+    fun recentSearchesAreShownBelowSearchField() = captureHistory("recent-searches", FoodSearchHistoryTab.RecentSearches)
+
+    @Test
+    fun emptyRecentlyLoggedFoodHasItsOwnMessage() = captureHistory("recent-food-empty", FoodSearchHistoryTab.RecentFood, empty = true)
+
+    @Test
+    fun emptySearchHistoryHasItsOwnMessage() = captureHistory("recent-searches-empty", FoodSearchHistoryTab.RecentSearches, empty = true)
+
+    private fun captureHistory(name: String, tab: FoodSearchHistoryTab, empty: Boolean = false) {
+        captureRoboImage(
+            filePath = "FoodSearchAppScreenshotTest.$name.png",
+            roborazziComposeOptions = RoborazziComposeOptions.Builder()
+                .size(widthDp = 390, heightDp = 562).locale("de-rDE").build(),
+        ) {
+            MaterialTheme {
+                val state = remember(tab, empty) {
+                    SearchUiState.copy(
+                        query = null,
+                        historyTab = tab,
+                        recentSearches = if (empty) emptyList() else listOf("Apfel", "Haferflocken", "Nudeln"),
+                        sources = if (!empty) SearchUiState.sources else mapOf(
+                            FoodFilter.Source.Recent to foodSourceState(0, emptyList())
+                        ),
+                    )
+                }
+                FoodSearchApp(
+                    uiState = state,
+                    onSearch = {},
+                    onSourceChange = {},
+                    onProductFavoriteChange = { _, _ -> },
+                    onFoodClick = { _, _ -> },
+                    onUpdateUsdaApiKey = {},
+                    onUpdateOpenFoodFactsCredentials = {},
+                    modifier = Modifier.requiredSize(width = 390.dp, height = 562.dp),
                 )
             }
         }
@@ -159,12 +204,17 @@ class FoodSearchAppScreenshotTest {
                     ),
                 filter = FoodFilter(),
                 recentSearches = emptyList(),
+                query = "Lebensmittel",
             )
 
         fun foodSourceState(count: Int, foods: List<FoodSearch>) =
             FoodSourceUiState(
                 remoteEnabled = RemoteStatus.LocalOnly,
-                pages = flowOf(PagingData.from(foods)),
+                pages = flowOf(PagingData.from(foods, sourceLoadStates = LoadStates(
+                    refresh = LoadState.NotLoading(false),
+                    prepend = LoadState.NotLoading(true),
+                    append = LoadState.NotLoading(true),
+                ))),
                 count = count,
                 alwaysShowFilter = true,
             )

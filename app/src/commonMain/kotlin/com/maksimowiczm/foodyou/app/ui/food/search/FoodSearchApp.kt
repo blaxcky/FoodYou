@@ -26,9 +26,8 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -36,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -46,6 +47,7 @@ import androidx.paging.compose.itemKey
 import com.maksimowiczm.foodyou.app.ui.common.component.FoodListItemSkeleton
 import com.maksimowiczm.foodyou.app.ui.common.component.FullScreenCameraBarcodeScanner
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.search.searchQuery
 import com.maksimowiczm.foodyou.common.extension.error
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.RemoteFoodException
@@ -79,15 +81,14 @@ fun FoodSearchApp(
             showBarcodeScanner = showBarcodeScannerInitially,
         )
 
-    LaunchedEffect(restoredSearchText, searchInitially) {
-        if (searchInitially && restoredSearchText.isNotBlank()) {
-            viewModel.search(transformSearch(restoredSearchText))
-        }
-    }
-
     FoodSearchApp(
         uiState = viewModel.uiState.collectAsStateWithLifecycle().value,
         onSearch = viewModel::search,
+        onQueryChange = viewModel::changeQuery,
+        onRecordSearch = viewModel::recordSearch,
+        onHistoryTabChange = viewModel::changeHistoryTab,
+        onResultsLoaded = viewModel::resultsLoaded,
+        searchImmediatelyInitially = searchInitially || restoredSearchText.isNotBlank(),
         onSourceChange = viewModel::changeSource,
         onProductFavoriteChange = viewModel::setProductFavorite,
         onFoodClick = onFoodClick,
@@ -118,46 +119,128 @@ internal fun FoodSearchApp(
     appState: FoodSearchAppState = rememberFoodSearchAppState(),
     layout: FoodSearchLayout = FoodSearchLayout.Overlay,
     transformSearch: (String?) -> String? = { it },
+    onQueryChange: (String?) -> Unit = onSearch,
+    onRecordSearch: (String?) -> Unit = {},
+    onHistoryTabChange: (FoodSearchHistoryTab) -> Unit = {},
+    onResultsLoaded: (String?, FoodFilter.Source) -> Unit = { _, _ -> },
+    searchImmediatelyInitially: Boolean = true,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val onSearch: (String?) -> Unit =
-        remember(onSearch, transformSearch, appState, coroutineScope) {
-            { query ->
-                appState.searchTextFieldState.setTextAndPlaceCursorAtEnd(query ?: "")
-                onSearch(transformSearch(query))
-                coroutineScope.launch { appState.searchBarState.animateToCollapsed() }
-            }
-        }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val currentTransform by rememberUpdatedState(transformSearch)
+    val currentOnQueryChange by rememberUpdatedState(onQueryChange)
+    val currentOnSearch by rememberUpdatedState(onSearch)
+    var observedText by remember(appState) {
+        mutableStateOf(appState.searchTextFieldState.text.toString())
+    }
+    var observedQuery by remember(appState) { mutableStateOf(uiState.query) }
+    val inputText = appState.searchTextFieldState.text.toString()
+    val showingHistory = inputText.isBlank()
+    val pending = uiState.isPending || observedText != inputText ||
+        observedQuery != uiState.query || showingHistory != uiState.showingHistory
+    val source = if (showingHistory) FoodFilter.Source.Recent else uiState.filter.source
 
-    val pages = uiState.currentSourceState?.collectAsLazyPagingItems()
+    LaunchedEffect(appState.searchTextFieldState) {
+        var initial = true
+        snapshotFlow { appState.searchTextFieldState.text.toString() }.collect { text ->
+            val query = currentTransform(text.takeIf { it.isNotBlank() })
+            if (initial && searchImmediatelyInitially && text.isNotBlank()) {
+                currentOnSearch(query)
+            } else {
+                currentOnQueryChange(query)
+            }
+            observedText = text
+            observedQuery = searchQuery(query).query
+            initial = false
+        }
+    }
+
+    fun searchImmediately(text: String?, recordHistory: Boolean = false) {
+        appState.searchTextFieldState.setTextAndPlaceCursorAtEnd(text ?: "")
+        val query = transformSearch(text)
+        onSearch(query)
+        observedText = text ?: ""
+        observedQuery = searchQuery(query).query
+        if (recordHistory) onRecordSearch(query)
+    }
+    val selectFood: (FoodSearch, Measurement) -> Unit = { food, measurement ->
+        // Read the current amount synchronously, including edits that do not change the food query.
+        val query = transformSearch(
+            appState.searchTextFieldState.text.toString().takeIf { it.isNotBlank() }
+        )
+        if (!pending && searchQuery(query).query == uiState.query) {
+            onRecordSearch(query)
+            keyboard?.hide()
+            focusManager.clearFocus()
+            onFoodClick(food, measurement)
+        }
+    }
+    val pages = key(uiState.query, source, pending) {
+        if (pending) null else uiState.sources[source]?.collectAsLazyPagingItems()
+    }
+    LaunchedEffect(uiState.query, source, pages?.loadState?.refresh, uiState.sources) {
+        if (!showingHistory && !pending && pages?.loadState?.refresh is LoadState.NotLoading) {
+            onResultsLoaded(uiState.query, source)
+        }
+    }
+    var previousQuery by remember(appState) { mutableStateOf(uiState.query) }
+    LaunchedEffect(uiState.query) {
+        if (previousQuery != uiState.query && uiState.query != null) {
+            appState.listStates.state(source).scrollToItem(0)
+        }
+        previousQuery = uiState.query
+    }
+
     FullScreenCameraBarcodeScanner(
         visible = appState.showBarcodeScanner,
         onBarcodeScan = {
             appState.showBarcodeScanner = false
-            onSearch(it)
+            searchImmediately(it)
+            keyboard?.hide()
+            focusManager.clearFocus()
         },
         onClose = { appState.showBarcodeScanner = false },
     )
 
-    val searchInputField =
-        @Composable {
-            FoodSearchBarInputField(
-                searchBarState = appState.searchBarState,
-                textFieldState = appState.searchTextFieldState,
-                onSearch = onSearch,
-                onBarcodeScanner = { appState.showBarcodeScanner = true },
-                onClear = { transformSearch(null).let {} },
+    val searchInputField = @Composable {
+        FoodSearchBarInputField(
+            textFieldState = appState.searchTextFieldState,
+            onSearch = { text ->
+                searchImmediately(text, recordHistory = true)
+                keyboard?.hide()
+                focusManager.clearFocus()
+            },
+            onBarcodeScanner = {
+                keyboard?.hide()
+                focusManager.clearFocus()
+                appState.showBarcodeScanner = true
+            },
+            onClear = { searchImmediately(null) },
+        )
+    }
+
+    val content: @Composable (Modifier, PaddingValues) -> Unit = { contentModifier, padding ->
+        if (showingHistory && uiState.historyTab == FoodSearchHistoryTab.RecentSearches) {
+            FoodSearchHistory(
+                searches = uiState.recentSearches,
+                onSearch = { searchImmediately(it) },
+                modifier = contentModifier,
+                contentPadding = padding,
+            )
+        } else {
+            FoodSearchResults(
+                pages = pages,
+                listState = appState.listStates.state(source),
+                source = source,
+                onProductFavoriteChange = onProductFavoriteChange,
+                onFoodClick = selectFood,
+                modifier = contentModifier,
+                contentPadding = padding,
+                showingRecentFood = showingHistory,
             )
         }
-
-    FoodSearchView(
-        appState = appState,
-        uiState = uiState,
-        onFill = { search -> appState.searchTextFieldState.setTextAndPlaceCursorAtEnd(search) },
-        onSearch = onSearch,
-        onSource = onSourceChange,
-        inputField = searchInputField,
-    )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -185,6 +268,9 @@ internal fun FoodSearchApp(
                     uiState = uiState,
                     pages = pages,
                     appState = appState,
+                    showingHistory = showingHistory,
+                    pending = pending,
+                    onHistoryTabChange = onHistoryTabChange,
                     onSourceChange = onSourceChange,
                     onUpdateUsdaApiKey = onUpdateUsdaApiKey,
                     onUpdateOpenFoodFactsCredentials = onUpdateOpenFoodFactsCredentials,
@@ -204,33 +290,22 @@ internal fun FoodSearchApp(
                     headerOuterModifier.zIndex(10f).onSizeChanged { topContentHeight = it.height }
                 )
 
-                FoodSearchResults(
-                    pages = pages,
-                    listState = appState.listStates.state(uiState.filter.source),
-                    source = uiState.filter.source,
-                    onProductFavoriteChange = onProductFavoriteChange,
-                    onFoodClick = onFoodClick,
-                    modifier = Modifier.fillMaxSize().padding(top = topContentHeightDp),
-                    contentPadding =
-                        PaddingValues(
-                            start = scaffoldPadding.calculateStartPadding(layoutDirection),
-                            end = scaffoldPadding.calculateEndPadding(layoutDirection),
-                            bottom = scaffoldPadding.calculateBottomPadding() + 56.dp + 32.dp,
-                        ),
+                content(
+                    Modifier.fillMaxSize().padding(top = topContentHeightDp),
+                    PaddingValues(
+                        start = scaffoldPadding.calculateStartPadding(layoutDirection),
+                        end = scaffoldPadding.calculateEndPadding(layoutDirection),
+                        bottom = scaffoldPadding.calculateBottomPadding() + 56.dp + 32.dp,
+                    ),
                 )
             }
 
             FoodSearchLayout.Stacked ->
                 Column(Modifier.fillMaxSize()) {
                     header(headerOuterModifier)
-                    FoodSearchResults(
-                        pages = pages,
-                        listState = appState.listStates.state(uiState.filter.source),
-                        source = uiState.filter.source,
-                        onProductFavoriteChange = onProductFavoriteChange,
-                        onFoodClick = onFoodClick,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        contentPadding = PaddingValues(bottom = 56.dp + 32.dp),
+                    content(
+                        Modifier.fillMaxWidth().weight(1f),
+                        PaddingValues(bottom = 56.dp + 32.dp),
                     )
                 }
         }
@@ -242,6 +317,9 @@ private fun FoodSearchHeader(
     uiState: FoodSearchUiState,
     pages: LazyPagingItems<FoodSearch>?,
     appState: FoodSearchAppState,
+    showingHistory: Boolean,
+    pending: Boolean,
+    onHistoryTabChange: (FoodSearchHistoryTab) -> Unit,
     onSourceChange: (FoodFilter.Source) -> Unit,
     onUpdateUsdaApiKey: () -> Unit,
     onUpdateOpenFoodFactsCredentials: () -> Unit,
@@ -250,19 +328,16 @@ private fun FoodSearchHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        SearchBar(
-            state = appState.searchBarState,
-            inputField = searchInputField,
+        Surface(
             modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-            colors =
-                SearchBarDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                ),
+            shape = SearchBarDefaults.inputFieldShape,
             shadowElevation = 2.dp,
-        )
+        ) { searchInputField() }
 
-        if (uiState.sources.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
+        if (showingHistory) {
+            FoodSearchHistoryTabs(uiState.historyTab, onHistoryTabChange)
+        } else if (!pending && uiState.sources.isNotEmpty()) {
             FoodSearchFilters(
                 uiState = uiState,
                 onSource = {
@@ -277,8 +352,8 @@ private fun FoodSearchHeader(
             )
         }
 
-        val error = pages?.loadState?.error as? RemoteFoodException
-        if (error != null) {
+        val error = if (pending) null else pages?.loadState?.error as? RemoteFoodException
+        if (error != null && pages != null) {
             FoodSearchErrorCard(
                 error = error,
                 onRetry = pages::retry,
@@ -299,11 +374,17 @@ private fun FoodSearchResults(
     onFoodClick: (FoodSearch, Measurement) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    showingRecentFood: Boolean = false,
 ) {
     Box(modifier) {
-        if (pages?.itemCount == 0 && pages.loadState.append !is LoadState.Loading) {
+        if (pages?.itemCount == 0 && pages.loadState.refresh is LoadState.NotLoading &&
+            pages.loadState.append !is LoadState.Loading
+        ) {
             Text(
-                text = stringResource(Res.string.neutral_no_food_found),
+                text = stringResource(
+                    if (showingRecentFood) Res.string.neutral_no_recent_food
+                    else Res.string.neutral_no_food_found
+                ),
                 modifier = Modifier.safeContentPadding().align(Alignment.Center),
             )
         }

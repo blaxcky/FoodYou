@@ -1,6 +1,8 @@
 package com.maksimowiczm.foodyou.app.ui.food.search
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -8,44 +10,42 @@ import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SearchBarState
-import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import foodyou.app.generated.resources.*
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun FoodSearchBarInputField(
-    searchBarState: SearchBarState,
     textFieldState: TextFieldState,
     onSearch: (String?) -> Unit,
     onBarcodeScanner: () -> Unit,
     onClear: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-
-    SearchBarDefaults.InputField(
-        textFieldState = textFieldState,
-        searchBarState = searchBarState,
-        onSearch = onSearch,
+    TextField(
+        state = textFieldState,
         modifier = modifier,
+        lineLimits = TextFieldLineLimits.SingleLine,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        onKeyboardAction = { onSearch(textFieldState.text.toString()) },
+        shape = SearchBarDefaults.inputFieldShape,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
         placeholder = { Text(stringResource(Res.string.action_search)) },
-        leadingIcon = {
-            if (searchBarState.targetValue == SearchBarValue.Expanded) {
-                ArrowBackIconButton(
-                    onClick = { coroutineScope.launch { searchBarState.animateToCollapsed() } }
-                )
-            } else {
-                Icon(imageVector = Icons.Outlined.Search, contentDescription = null)
-            }
-        },
+        leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = null) },
         trailingIcon = {
             Row {
                 IconButton(onBarcodeScanner) {
@@ -55,15 +55,10 @@ internal fun FoodSearchBarInputField(
                     )
                 }
                 if (textFieldState.text.isNotEmpty()) {
-                    IconButton(
-                        onClick = {
-                            textFieldState.setTextAndPlaceCursorAtEnd("")
-                            onClear()
-                            if (searchBarState.targetValue == SearchBarValue.Collapsed) {
-                                onSearch(null)
-                            }
-                        }
-                    ) {
+                    IconButton(onClick = {
+                        textFieldState.setTextAndPlaceCursorAtEnd("")
+                        onClear()
+                    }) {
                         Icon(
                             imageVector = Icons.Outlined.Clear,
                             contentDescription = stringResource(Res.string.action_clear),
