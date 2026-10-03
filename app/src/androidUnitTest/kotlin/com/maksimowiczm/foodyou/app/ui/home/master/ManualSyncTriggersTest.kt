@@ -227,6 +227,7 @@ class ManualSyncTriggersTest {
         var run: suspend () -> TrainingSyncReport? = { null }
         override suspend fun sync() = run()
         override suspend fun signIn(email: String, password: String) = error("Not used")
+        override suspend fun withPausedSyncForRestore(restore: suspend () -> Unit) = error("Not used")
         override fun signOut() = error("Not used")
         override fun setEnabled(enabled: Boolean) = error("Not used")
     }

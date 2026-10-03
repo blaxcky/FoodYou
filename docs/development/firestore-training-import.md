@@ -11,19 +11,34 @@ weiteres Firebase-Projekt werden benötigt.
 ## Ablauf
 
 Einstellungen → Synchronisierung → Trainings-App → Anmelden. Der Schalter ist
-beim ersten Login aktiviert. Der manuelle Sync auf der Startseite fragt alle
-Dokumente in `users/{uid}/trainingSessions` mit `Source.SERVER` ab, parallel zu
-Health Connect, Gewicht und FDDB. Es gibt keinen Firestore-Listener und keinen
+beim ersten Login aktiviert. Der manuelle Sync auf der Startseite lädt zunächst
+die gesamte Historie in Seiten von höchstens 200 Dokumenten mit `Source.SERVER`,
+parallel zu Health Connect, Gewicht und FDDB. Danach fragt er nur Dokumente nach
+dem gespeicherten Cursor aus `receivedAt` (Sekunden/Nanosekunden) und Dokument-ID
+ab. Die Kaloriendifferenz wartet auf Schritte und Trainings; FDDB und Gewicht
+müssen dafür nicht abgeschlossen sein. Es gibt keinen Firestore-Listener und keinen
 automatischen Import beim App-Start. Offline/Timeout/Berechtigungsfehler werden
 im FoodYou-Importstatus sichtbar, ohne andere Anbieter abzubrechen.
 
 Schema-v1-Dokumente werden strikt geprüft. Ausschließlich `activityDate` bestimmt
-den Buchungstag. Positive Krafttraining-/Cardiowerte bilden getrennte, nicht
-editierbare Verbrauchseinträge; beide 0 erzeugt nur einen Importbeleg.
+den Buchungstag. Positive Krafttraining-/Cardiowerte bilden getrennte, editierbare
+Verbrauchseinträge; beide 0 erzeugt nur einen Importbeleg.
 Room 52 speichert beide Kategorien und Beleg atomar. Eindeutige Schlüssel aus
 Projekt, UID und Import-ID verhindern Doppelzählung bei Wiederholung oder Neustart.
 Veränderte Dokumente erzeugen einen Konflikt und ersetzen vorhandene Werte nicht.
-Andere gültige Dokumente werden trotzdem verarbeitet.
+Andere gültige Dokumente werden trotzdem verarbeitet. Cursor und offene IDs werden
+nach jeder vollständig verarbeiteten Seite gemeinsam gespeichert. Bei Abbruch vor
+dem Speichern wird die Seite erneut gelesen; Importbelege schützen auch manuell
+bearbeitete oder gelöschte Verbrauchseinträge vor erneutem Import.
+
+Neue Seiten haben Vorrang vor Fehlerwiederholungen. Pro manuellem Lauf werden danach
+höchstens 20 beim Laufstart offene IDs in Gruppen von zehn erneut geprüft, mit
+insgesamt zehn Sekunden Zeitbudget. Fehlgeschlagene IDs werden fair ans Ende der
+Liste gestellt und im Status als weiterhin offen ausgewiesen. Jede Seitenabfrage
+hat ein Timeout von 60 Sekunden; der vollständige Erstimport hat kein Gesamtlimit.
+Verspätete Uploads werden über `receivedAt` gefunden und weiterhin unter ihrem
+ursprünglichen `activityDate` gebucht. Die Abfrage setzt den bestehenden Vertrag
+unveränderlicher Dokumente mit serverseitigem Empfangszeitpunkt voraus.
 
 Nur das aktive Konto zählt zur Bilanz. Abmelden blendet dessen Importe aus;
 Anmelden blendet sie wieder ein. Der Sync-Schalter verhindert lediglich neue
@@ -35,15 +50,20 @@ Passwörter werden nur an Firebase Auth übergeben, nicht selbst gespeichert.
 Firebase-Auth-Preferences werden beim vollständigen Backup ausgeschlossen und
 bei Wiederherstellung entfernt. Die Room-Daten einschließlich Importbelegen
 werden mitgesichert; danach ist eine neue Anmeldung nötig. Status und Schalter
-liegen kontogetrennt im noBackup-Verzeichnis. SDK-Fehlertexte werden nicht
-ungefiltert in Status oder Logs übernommen.
+liegen zusammen mit Cursor und offenen IDs kontogetrennt im noBackup-Verzeichnis.
+Dateizugriffe laufen serialisiert auf dem IO-Dispatcher. Vor einer Wiederherstellung
+werden laufende Trainingsimporte abgebrochen und vollständig abgewartet. Erst danach
+werden alle Cursor, offenen IDs und Berichte zurückgesetzt und die Datenbank ersetzt;
+die Aktivierungseinstellungen bleiben erhalten. Auch bei Restore-Rollback bleibt ein
+vollständiger erneuter Abgleich über die erhaltenen Importbelege sicher.
+SDK-Fehlertexte werden nicht ungefiltert in Status oder Logs übernommen.
 
 ## Gezielte Prüfung
 
 JDK 21 und Workspace-Gradle-Cache gemäß AGENTS.md setzen.
 
 ```sh
-./gradlew :app:testDevReleaseUnitTest --tests '*TrainingImportTest' --tests '*TrainingImportDaoTest' --tests '*TrainingMigrationTest' --tests '*TrainingSyncCoordinatorTest' --tests '*TrainingAuthBackupTest' --tests '*HomeViewModelTest'
+./gradlew :app:testDevReleaseUnitTest --tests '*TrainingImportTest' --tests '*TrainingImportDaoTest' --tests '*TrainingMigrationTest' --tests '*TrainingSyncCoordinatorTest' --tests '*TrainingAuthBackupTest' --tests '*FileTrainingSyncStorageTest' --tests '*HomeViewModelTest'
 ./gradlew :app:testDevReleaseUnitTest --tests '*TrainingSettingsScreenshotTest' --tests '*ActivitiesCardScreenshotTest' --tests '*SynchronizationSettingsScreenScreenshotTest' -Proborazzi.test.verify=true
 ```
 
@@ -67,6 +87,18 @@ projektseitige API-Key-Beschränkungen/App-Check-Richtlinien können erst dabei
 abschließend geprüft werden.
 
 ## Verifikation dieser Änderung
+
+Inkrementeller Import:
+
+- 61 gezielte Unit-Tests bestanden: seitenweiser und fortsetzbarer Erstimport,
+  begrenzte/fair rotierende Fehlerwiederholung, Abbruch, Kontowechsel,
+  Speicherkompatibilität und Restore-Sperre sowie bestehende Import- und
+  Startseiten-Sync-Prüfungen.
+- Nativer Firebase-Test auf FoodYou_API_36 bestanden: gleiche Serverzeitpunkte
+  über Seitengrenzen, gezielte ID-Abfragen, verspäteter Upload, präzise atomare
+  Cursor-Speicherung auf Android sowie bestehende Offline- und Kontoprüfungen.
+
+Nachweise des ursprünglichen Trainingsimports:
 
 - Gezielte JVM-Tests für Validator, DAO/Transaktionsrollback, Datenbankneustart,
   Migration 51 → 52, Coordinator/Timeout/Kontowechsel, Backup-Ausschlüsse,

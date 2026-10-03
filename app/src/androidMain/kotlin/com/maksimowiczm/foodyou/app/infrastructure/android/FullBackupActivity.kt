@@ -48,7 +48,8 @@ class FullBackupActivity : FoodYouAbstractActivity() {
 @Composable private fun Activity.BackupScreen() {
     val database: FoodYouDatabase = koinInject(); val crypto: MasterCrypto = koinInject()
     val sessions: SessionRepository = koinInject(); val fddb: FddbCredentialsRepository = koinInject(); val off: OpenFoodFactsCredentialsRepository = koinInject()
-    val manager = remember { FullBackupManager(this, database, crypto, sessions, fddb, off) }
+    val training: com.maksimowiczm.foodyou.training.TrainingSync = koinInject()
+    val manager = remember { FullBackupManager(this, database, crypto, sessions, fddb, off, training) }
     val scope = rememberCoroutineScope()
     var action by remember { mutableStateOf<BackupAction?>(null) }; var busy by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.foodyou.backup")) { uri -> if (uri != null) action = BackupAction.Export(uri) }

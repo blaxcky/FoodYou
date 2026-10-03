@@ -9,6 +9,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.MemoryCacheSettings
 import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.FieldPath
+import com.google.firebase.firestore.DocumentSnapshot
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,27 +36,43 @@ internal class FirebaseTrainingRemote internal constructor(private val app: Fire
     }
     override fun signOut() { auth?.signOut(); accounts.value = null }
 
-    override suspend fun fetch(account: TrainingAccount): List<TrainingDocument> {
-        check(account.project == TRAINING_PROJECT && account.uid == auth?.currentUser?.uid)
-        val snapshot = requireNotNull(firestore).collection("users").document(account.uid)
-            .collection("trainingSessions").get(Source.SERVER).await()
-        return snapshot.documents.map { document ->
-            val fields = buildJsonObject {
-                for ((key, value) in document.data.orEmpty()) {
-                    if (key != "receivedAt") put(key, when (value) {
-                        is String -> JsonPrimitive(value)
-                        is Long -> JsonPrimitive(value)
-                        is Double -> JsonPrimitive(value)
-                        is Boolean -> JsonPrimitive(value)
-                        else -> JsonNull
-                    })
-                }
-            }
-            val receivedAt = (document.data?.get("receivedAt") as? Timestamp)?.let {
-                Instant.fromEpochSeconds(it.seconds, it.nanoseconds)
-            }
-            TrainingDocument(document.id, fields, receivedAt)
+    private fun collection(account: TrainingAccount) = requireNotNull(firestore).collection("users").document(account.uid)
+        .collection("trainingSessions").also {
+            check(account.project == TRAINING_PROJECT && account.uid == auth?.currentUser?.uid)
         }
+
+    override suspend fun fetchPage(account: TrainingAccount, after: TrainingCursor?, limit: Int): TrainingPage {
+        require(limit in 1..200)
+        var query = collection(account).orderBy("receivedAt").orderBy(FieldPath.documentId()).limit(limit.toLong())
+        if (after != null) {
+            after.validate()
+            query = query.startAfter(Timestamp(after.seconds, after.nanoseconds), after.documentId)
+        }
+        return TrainingPage(query.get(Source.SERVER).await().documents.map(::document))
+    }
+
+    override suspend fun fetchByIds(account: TrainingAccount, ids: List<String>): List<TrainingDocument> {
+        if (ids.isEmpty()) return emptyList()
+        require(ids.size <= 10 && ids.distinct().size == ids.size)
+        return collection(account).whereIn(FieldPath.documentId(), ids).get(Source.SERVER).await().documents.map(::document)
+    }
+
+    private fun document(document: DocumentSnapshot): TrainingDocument {
+        val fields = buildJsonObject {
+            for ((key, value) in document.data.orEmpty()) {
+                if (key != "receivedAt") put(key, when (value) {
+                    is String -> JsonPrimitive(value)
+                    is Long -> JsonPrimitive(value)
+                    is Double -> JsonPrimitive(value)
+                    is Boolean -> JsonPrimitive(value)
+                    else -> JsonNull
+                })
+            }
+        }
+        val receivedAt = (document.data?.get("receivedAt") as? Timestamp)?.let {
+            Instant.fromEpochSeconds(it.seconds, it.nanoseconds)
+        }
+        return TrainingDocument(document.id, fields, receivedAt)
     }
 
     companion object {

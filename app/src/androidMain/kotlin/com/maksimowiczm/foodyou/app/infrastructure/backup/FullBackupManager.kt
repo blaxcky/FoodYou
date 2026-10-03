@@ -35,6 +35,7 @@ internal class FullBackupManager(
     private val sessionRepository: SessionRepository,
     private val fddbCredentials: FddbCredentialsRepository,
     private val openFoodFactsCredentials: OpenFoodFactsCredentialsRepository,
+    private val trainingSync: com.maksimowiczm.foodyou.training.TrainingSync,
 ) {
     suspend fun export(password: CharArray, output: OutputStream) {
         require(password.size >= 8) { "Das Passwort muss mindestens 8 Zeichen lang sein." }
@@ -65,11 +66,11 @@ internal class FullBackupManager(
             BackupBootstrap.save(context, masterCrypto, sensitive)
             File(restored, "shared_prefs").mkdirs()
             removeTrainingAuthPreferences(File(restored, "shared_prefs"))
-            // In-memory SDK tokens must not be written back after restoring the preferences.
-            com.google.firebase.FirebaseApp.getApps(context).firstOrNull { it.name == "training-import" }?.let {
-                com.google.firebase.auth.FirebaseAuth.getInstance(it).signOut()
+            // Join imports before resetting cursors and replacing the database. The SDK is signed out
+            // inside the hook so cached tokens cannot be written back into restored preferences.
+            trainingSync.withPausedSyncForRestore {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { replaceState(restored) }
             }
-            replaceState(restored)
         } finally {
             stage.deleteRecursively()
             password.fill('\u0000')
