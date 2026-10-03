@@ -448,6 +448,7 @@
     <string name="neutral_take_nutrition_photo">Nährwertfoto aufnehmen</string>
     <string name="neutral_camera_request">Erlaube Kamerazugriff, um Produktfotos aufzunehmen</string>
     <string name="neutral_photo_save_failed">Foto konnte nicht gespeichert werden</string>
+    <string name="action_show_last_photo">Letztes Foto anzeigen</string>
     <string name="neutral_pending_product_saved">Produkt vorgemerkt</string>
     <string name="neutral_pending_product_photo_count">%1$d Fotos</string>
     <string name="neutral_loading_activity">Aktivitäten werden geladen</string>

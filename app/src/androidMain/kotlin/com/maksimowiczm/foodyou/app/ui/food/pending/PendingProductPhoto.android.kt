@@ -584,11 +584,11 @@ internal actual fun PendingProductPhotoCapture(
     val latestOnPhotoTaken by rememberUpdatedState(onPhotoTaken)
     val previewScope = rememberCoroutineScope()
     val capturePreview = remember(previewScope, photoDirectory) {
-        CapturePhotoPreviewState(previewScope) { path: String ->
+        CapturePhotoPreviewState(previewScope) { path: String, maxSizePx: Int ->
             withContext(Dispatchers.IO) {
                 decodeSampledBitmap(
                     context.filesDir.resolve(photoDirectory).resolve(path),
-                    maxSizePx = 1600,
+                    maxSizePx = maxSizePx,
                 )?.asImageBitmap()
             }
         }
@@ -616,13 +616,13 @@ internal actual fun PendingProductPhotoCapture(
         }
     }
 
+    val previewView = remember(context) {
+        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+    }
+
     Box(modifier = modifier) {
         AndroidView(
-            factory = { viewContext ->
-                PreviewView(viewContext).apply {
-                    scaleType = PreviewView.ScaleType.FILL_CENTER
-                }
-            },
+            factory = { previewView },
             modifier = Modifier.fillMaxSize(),
             update = { previewView ->
                 if (cameraBound) return@AndroidView
@@ -674,13 +674,16 @@ internal actual fun PendingProductPhotoCapture(
             photoSaveError = photoSaveError,
             shutterVisible = shutterVisible,
             showCapturePreview = showCapturePreview,
-            previewBitmap = capturePreview.bitmap,
-            previewVisible = capturePreview.visible,
-            onDismissPreview = capturePreview::dismiss,
+            flight = capturePreview.flight,
+            thumbnail = capturePreview.thumbnail,
+            expandedPhoto = capturePreview.expandedPhoto,
+            expanded = capturePreview.expanded,
+            onFlightFinished = capturePreview::flightFinished,
+            onThumbnailClick = capturePreview::expand,
+            onCollapse = capturePreview::collapse,
             onCapture = {
                 val capture = imageCapture
                 if (capture != null && !photoSaving) {
-                    capturePreview.captureStarted()
                     photoSaving = true
                     shutterVisible = !showCapturePreview
                     photoSaveError = false
@@ -696,10 +699,15 @@ internal actual fun PendingProductPhotoCapture(
                         },
                         onError = {
                             photoSaving = false
-                            capturePreview.dismiss()
+                            capturePreview.photoFailed()
                             photoSaveError = true
                         },
                     )
+                    if (showCapturePreview) {
+                        // Freeze the viewfinder after the capture request so it adds no latency.
+                        val frame = runCatching { previewView.bitmap }.getOrNull()
+                        capturePreview.captureStarted(frame?.asImageBitmap())
+                    }
                 }
             },
             onClose = onClose?.let { close ->

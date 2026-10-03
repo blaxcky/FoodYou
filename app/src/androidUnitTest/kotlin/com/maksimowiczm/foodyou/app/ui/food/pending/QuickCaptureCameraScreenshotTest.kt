@@ -50,17 +50,26 @@ class QuickCaptureCameraScreenshotTest {
     }
 
     @Test
-    fun portraitPreviewLeavesCaptureAndCloseAccessible() {
+    fun thumbnailSitsBesideShutterAndCloseAfterCapture() {
         show()
-        compose.onNodeWithTag("capture-photo-preview").assertIsDisplayed()
+        compose.onNodeWithTag("capture-thumbnail").assertIsDisplayed()
         compose.onNodeWithTag("camera-shutter").assertIsDisplayed()
         compose.onNodeWithTag("camera-close").assertIsDisplayed()
+        compose.onNodeWithTag("capture-photo-preview").assertDoesNotExist()
+        capture("thumbnail")
+    }
+
+    @Test
+    fun tappingThumbnailExpandsPhoto() {
+        show()
+        compose.onNodeWithTag("capture-thumbnail").performClick()
+        compose.onNodeWithTag("capture-photo-preview").assertIsDisplayed()
         capture("portrait-preview")
     }
 
     @Test
     fun landscapePhotoFitsWithoutCropping() {
-        show(landscapePhoto = true)
+        show(landscapePhoto = true, expanded = true)
         capture("landscape-photo")
     }
 
@@ -68,6 +77,7 @@ class QuickCaptureCameraScreenshotTest {
     fun captureInProgressIsVisibleAndRejectsDuplicateTrigger() {
         var captures = 0
         show(saving = true, onCapture = { captures++ })
+        compose.mainClock.advanceTimeBy(400)
         compose.onNodeWithTag("capture-photo-saving").assertIsDisplayed()
         compose.onNodeWithTag("camera-shutter").assertIsNotEnabled().performClick()
         assertEquals(0, captures)
@@ -75,20 +85,26 @@ class QuickCaptureCameraScreenshotTest {
     }
 
     @Test
-    fun shutterAcceptsAnotherCaptureWhilePreviewIsVisible() {
+    fun quickSaveDoesNotFlashProgress() {
+        show(saving = true)
+        compose.onNodeWithTag("capture-photo-saving").assertDoesNotExist()
+    }
+
+    @Test
+    fun shutterAcceptsAnotherCaptureWhileThumbnailIsVisible() {
         var captures = 0
         show(onCapture = { captures++ })
         compose.onNodeWithTag("camera-shutter").performClick()
         assertEquals(1, captures)
-        compose.onNodeWithTag("capture-photo-preview").assertDoesNotExist()
     }
 
     @Test
-    fun tappingPhotoDismissesWithoutCapturing() {
+    fun tappingExpandedPhotoCollapsesWithoutCapturing() {
         var captures = 0
-        show(onCapture = { captures++ })
+        show(expanded = true, onCapture = { captures++ })
         compose.onNodeWithTag("capture-photo-preview").performClick()
         compose.onNodeWithTag("capture-photo-preview").assertDoesNotExist()
+        compose.onNodeWithTag("capture-thumbnail").assertIsDisplayed()
         assertEquals(0, captures)
     }
 
@@ -96,6 +112,7 @@ class QuickCaptureCameraScreenshotTest {
     fun saveErrorDoesNotShowPhotoPreview() {
         show(error = true)
         compose.onNodeWithTag("capture-photo-preview").assertDoesNotExist()
+        compose.onNodeWithTag("capture-thumbnail").assertDoesNotExist()
         capture("save-error")
     }
 
@@ -103,13 +120,15 @@ class QuickCaptureCameraScreenshotTest {
         landscapePhoto: Boolean = false,
         saving: Boolean = false,
         error: Boolean = false,
+        expanded: Boolean = false,
         onCapture: () -> Unit = {},
     ) {
         val bitmap = fixture(landscapePhoto).asImageBitmap()
         activity = Robolectric.buildActivity(ComponentActivity::class.java).setup()
         activity.get().setContent {
             MaterialTheme {
-                var photo by remember { mutableStateOf(if (saving || error) null else bitmap) }
+                val thumbnail = if (saving || error) null else bitmap
+                var isExpanded by remember { mutableStateOf(expanded) }
                 Box(Modifier.fillMaxSize().background(Color(0xFF67736A))) {
                     PendingProductCameraOverlay(
                         photoCount = 3,
@@ -117,11 +136,15 @@ class QuickCaptureCameraScreenshotTest {
                         photoSaveError = error,
                         shutterVisible = false,
                         showCapturePreview = true,
-                        previewBitmap = photo,
-                        previewVisible = photo != null,
-                        onDismissPreview = { photo = null },
-                        onCapture = { photo = null; onCapture() },
-                        onClose = { photo = null },
+                        flight = null,
+                        thumbnail = thumbnail,
+                        expandedPhoto = thumbnail?.takeIf { isExpanded },
+                        expanded = isExpanded,
+                        onFlightFinished = {},
+                        onThumbnailClick = { isExpanded = true },
+                        onCollapse = { isExpanded = false },
+                        onCapture = onCapture,
+                        onClose = {},
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

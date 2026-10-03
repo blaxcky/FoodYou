@@ -279,6 +279,7 @@
     <string name="neutral_take_nutrition_photo">Take nutrition photo</string>
     <string name="neutral_camera_request">Allow camera access to take product photos</string>
     <string name="neutral_photo_save_failed">Could not save photo</string>
+    <string name="action_show_last_photo">Show last photo</string>
     <string name="neutral_pending_product_saved">Pending product saved</string>
     <string name="neutral_pending_product_photo_count">%1$d photos</string>
     <string name="neutral_loading_activity">Loading activity</string>
