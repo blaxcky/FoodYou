@@ -263,6 +263,7 @@ def main():
     parser.add_argument("--backend", choices=("cpu", "gpu"), default="cpu")
     parser.add_argument("--vision-backend", choices=("cpu", "gpu"), default="cpu")
     parser.add_argument("--prompt-rev", help="git revision whose SCALE_PROMPT experiment A uses")
+    parser.add_argument("--prompt-file", type=Path, help="candidate prompt for experiment A")
     parser.add_argument("--activation", choices=("float32", "float16", "int16", "int8"))
     parser.add_argument("--source-long-side", type=int, help="upscale inputs to emulate camera files")
     parser.add_argument("--rotate", type=int, choices=(0, 90, 180, 270), default=0,
@@ -272,7 +273,8 @@ def main():
 
     experiments = [e.strip().upper() for e in args.experiments.split(",") if e.strip()]
     manual = json.loads(args.manual_boxes.read_text()) if args.manual_boxes else {}
-    legacy_prompt = kotlin_prompt("SCALE_PROMPT", revision=args.prompt_rev)
+    legacy_prompt = (args.prompt_file.read_text().strip() if args.prompt_file
+                     else kotlin_prompt("SCALE_PROMPT", revision=args.prompt_rev))
     locate_prompt = kotlin_prompt("SCALE_LOCATE_PROMPT", FALLBACK_LOCATE_PROMPT)
     readings_prompt = kotlin_prompt("SCALE_READINGS_PROMPT", FALLBACK_READINGS_PROMPT)
     photos = sorted(p for p in args.images.iterdir() if re.search(r"-(\d+)g\.\w+$", p.name))

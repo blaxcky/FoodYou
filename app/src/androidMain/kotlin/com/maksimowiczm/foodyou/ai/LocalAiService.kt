@@ -72,6 +72,7 @@ class LocalAiService : Service() {
                             File(noBackupFilesDir, "ai/models/${model.fileName}"),
                             File(cacheDir, "gemma/${model.name}"),
                             model.size,
+                            data.getBoolean(LocalAiProtocol.VISION_ON_CPU),
                             cancellationScope,
                             diagnostics,
                         )
@@ -98,12 +99,16 @@ class LocalAiService : Service() {
                     val timing = timings.photo()
                     var outcome = AiTimingOutcome.Error
                     try {
+                        var imageSize = "?"
                         val bytes = ParcelFileDescriptor.AutoCloseInputStream(photo).use {
                             diagnostics.record("photo_decode")
-                            decodeScalePhoto(it) { width, height -> diagnostics.record("photo_decoded", width, height) }
+                            decodeScalePhoto(it) { width, height ->
+                                imageSize = "${width}x$height"
+                                diagnostics.record("photo_decoded", width, height)
+                            }
                         }
                         if (stopping) failure("Analyse abgebrochen.")
-                        else requireNotNull(engine).recognize(bytes, timing).also { result ->
+                        else requireNotNull(engine).recognize(bytes, imageSize, timing).also { result ->
                             outcome = when (result) {
                                 is ScaleRecognitionResult.Recognized -> AiTimingOutcome.Completed
                                 ScaleRecognitionResult.Unreadable -> AiTimingOutcome.Unreadable

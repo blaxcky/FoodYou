@@ -84,6 +84,35 @@ class LocalAiProtocolTest {
         assertTrue(report.contains("können erkannten Bildtext enthalten"))
     }
 
+    @Test fun diagnosticReportKeepsEveryAnswerWithImageSizeAndVisionBackend() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        val worker = AiDiagnostics(context, worker = true)
+        worker.recordResponse("unreadable", "960x1280", "gpu", "{\"value\":null}")
+        worker.recordResponse("recognized", "960x1280", "cpu", "{\"value\":117,\"unit\":\"g\"}")
+
+        val report = AiDiagnostics(context).report()
+
+        assertTrue(report.contains("result=unreadable image=960x1280 vision=gpu raw=\"{\\\"value\\\":null}\""))
+        assertTrue(report.contains("result=recognized image=960x1280 vision=cpu"))
+        assertTrue(report.contains("Native LiteRT-Meldungen"))
+    }
+
+    @Test fun nativeLogKeepsLiteRtLinesAndWorkerWarningsOnly() {
+        val lines = listOf(
+            "1759525000.100  4242  4300 I litert  : stb_image_preprocessor.cc:88] Resize image from 960x1280 to 672x912 which will result in 2394 patches",
+            "1759525000.200  4242  4300 D Choreographer: unrelated debug line",
+            "1759525000.300  4242  4300 W System  : unrelated warning",
+            "1759525000.400  4242  4301 E tflite  : OpenCL delegate failed",
+            "         1759525000.500  4242  4301 W System  : right-aligned epoch timestamp",
+            "--------- beginning of main",
+        )
+
+        val selected = selectNativeLogLines(lines)
+
+        assertEquals(listOf(lines[0], lines[2], lines[3], lines[4].trim()), selected)
+        assertEquals(listOf(lines[4].trim()), selectNativeLogLines(lines, limit = 1))
+    }
+
     @Test fun ambiguousSignalDoesNotClaimMemoryExhaustion() {
         assertTrue(exitReasonLabel(ApplicationExitInfo.REASON_LOW_MEMORY).contains("Speichermangel"))
         assertEquals("Nativer Absturz", exitReasonLabel(ApplicationExitInfo.REASON_CRASH_NATIVE))

@@ -54,10 +54,17 @@ internal class AndroidAiController(
             provider = runCatching { AiProvider.valueOf(props.getProperty("provider", "Local")) }.getOrDefault(AiProvider.Local),
             model = props.getProperty("model", "gemini-3.8-flash"),
             hasApiKey = keyFile.isFile,
+            visionOnCpu = props.getProperty("vision_backend") == "cpu",
         )
     }
 
-    override suspend fun saveSettings(provider: AiProvider, model: String, newKey: String?, deleteKey: Boolean) {
+    override suspend fun saveSettings(
+        provider: AiProvider,
+        model: String,
+        visionOnCpu: Boolean,
+        newKey: String?,
+        deleteKey: Boolean,
+    ) {
         require(Regex("[A-Za-z0-9._-]+").matches(model.trim())) { "Bitte einen gültigen Modellnamen eingeben." }
         withContext(Dispatchers.IO) {
             configMutex.withLock {
@@ -69,10 +76,11 @@ internal class AndroidAiController(
                 val props = java.util.Properties().apply {
                     setProperty("provider", provider.name)
                     setProperty("model", model.trim())
+                    setProperty("vision_backend", if (visionOnCpu) "cpu" else "gpu")
                 }
                 val bytes = java.io.ByteArrayOutputStream().use { props.store(it, null); it.toByteArray() }
                 atomicWrite(preferences, bytes)
-                mutableSettings.value = AiSettings(provider, model.trim(), keyFile.isFile)
+                mutableSettings.value = AiSettings(provider, model.trim(), keyFile.isFile, visionOnCpu)
             }
         }
     }
@@ -117,6 +125,7 @@ internal class AndroidAiController(
                         when (config.provider) {
                             AiProvider.Local, AiProvider.LocalE2B -> LocalScaleWeightRecognizer.open(
                                 context, photoDirectory, diagnostics, requireNotNull(config.provider.localModel),
+                                visionOnCpu = config.visionOnCpu,
                             )
                             AiProvider.Gemini -> GeminiScaleWeightRecognizer(client, key, config.model, photoDirectory)
                         }

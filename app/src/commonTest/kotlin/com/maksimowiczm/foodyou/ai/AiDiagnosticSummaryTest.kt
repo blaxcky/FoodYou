@@ -24,6 +24,23 @@ class AiDiagnosticSummaryTest {
         assertTrue(summary.details.any { "keinen Speichermangel" in it })
     }
 
+    @Test fun showsLastAnswerAndImageSizeGemmaReceived() {
+        val report = """
+            100 pid=7 Durchlauf=42; Modellladen=10.953 s; Status=Completed
+            120 pid=7 Durchlauf=42; Foto 1: Gesamt=8.123 s; Erste Antwort=2.753 s; Status=Unreadable
+            115 result=unreadable image=960x1280 vision=gpu raw="{\"value\":null}"
+            1759525000.100  4242  4300 I litert  : Resize image from 960x1280 to 672x912 which will result in 2394 patches
+        """.trimIndent()
+
+        val summary = summarizeAiDiagnosticReport(report)
+
+        assertEquals("1 von 1 Fotos nicht lesbar", summary.headline)
+        assertTrue(summary.details.any {
+            "Letzte Modellantwort: \"{\\\"value\\\":null}\" (Foto 960x1280, Bildanalyse GPU)" in it
+        })
+        assertTrue(summary.details.any { "672x912 Pixeln (vorbereitet: 960x1280)" in it })
+    }
+
     @Test fun onlySummarizesLatestRun() {
         val report = """
             100 pid=7 Durchlauf=1; Modellladen=5.000 s; Status=Completed

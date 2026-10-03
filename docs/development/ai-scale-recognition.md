@@ -6,7 +6,8 @@ Es werden weder Lebensmittel noch Nährwerte geschätzt.
 
 ## Anbieter und Dateien
 
-- Lokal: `com.google.ai.edge.litertlm:litertlm-android:0.16.1`, GPU und Vision-GPU,
+- Lokal: `com.google.ai.edge.litertlm:litertlm-android:0.16.1`, GPU und Vision-GPU
+  (Vision optional auf der CPU, siehe „Diagnose ohne Gerätezugriff“),
   4096 Kontexttokens, maximal ein Bild und 128 Ausgabetokens pro Sitzung, Thinking aus.
   Eine Engine pro Durchlauf, eine frische Conversation pro Foto.
 - Modelle: `litert-community/gemma-4-E4B-it-litert-lm`, Revision
@@ -105,8 +106,9 @@ Speichermangel trotzdem auch den Hauptprozess beenden.
 
 Einstellungen → KI → KI-Diagnosebericht → Kopieren enthält Runtime/Modellrevision,
 Gerät, Phasen, Bildabmessungen sowie verfügbaren RAM und Prozessspeicher. Die begrenzten
-Phasenprotokolle liegen im privaten `noBackupFilesDir/ai/diagnostics`. Fotos, rohe
-Antworten erfolgreicher Analysen, Exception-Texte und Schlüssel werden nicht protokolliert.
+Phasenprotokolle liegen im privaten `noBackupFilesDir/ai/diagnostics`. Fotos,
+Exception-Texte und Schlüssel werden nicht protokolliert; die begrenzten Modellantworten
+beschreibt „Diagnose ohne Gerätezugriff“.
 Die letzte wegen Format, Ganzzahligkeit oder Kürzung verworfene Modellantwort wird
 JSON-kodiert gespeichert, im Bericht mit einem Datenschutzhinweis angezeigt und beim
 nächsten solchen Fehler ersetzt. Sie kann von Gemma gelesenen Bildtext enthalten.
@@ -290,18 +292,40 @@ hochgestellte `g` als `°`. Die Lokalisierung per `box_2d` traf die Anzeige in a
 Bildern, verbesserte aber nur die Fälle, die schon der aktuelle Prompt löst. Zeiten pro Foto:
 CPU (12 Threads) etwa 6 s, Host-GPU etwa 3 s, zweistufig auf der CPU etwa 13 s.
 
+Wann antwortet Gemma mit `{"value":null}`? Aktueller Prompt, Host-GPU:
+
+| Eingabe | Antworten |
+|---|---|
+| Screenshots auf 50 %, 35 % oder 25 % verkleinert, weichgezeichnet oder verrauscht | überwiegend richtig; Fehler sind falsche Zahlen (500, 501, 259, 95.9), nie `null` |
+| schwarzes oder graues Bild, Foto auf 73×97 px verkleinert | `{"value":null}` |
+
 Ergebnis: Der Gerätefehler ist mit Screenshots auf dem Rechner nicht reproduzierbar; die
 Auflösung allein erklärt ihn nicht. Ausschnitt-Pipeline und Abschreib-Prompt wurden daher
-nicht übernommen. Offen ist, ob die Ursache in der Android-Laufzeit (Adreno-GPU) oder in den
-Originaldateien bzw. ihrer Dekodierung liegt. Nächste Schritte in dieser Reihenfolge:
+nicht übernommen, der Prompt bleibt unverändert. `{"value":null}` bei gut lesbaren Fotos
+bedeutet, dass Gemma auf dem Gerät praktisch keine Bildinformation erhalten hat. Ob das an
+der Android-Laufzeit, den Originaldateien oder deren Dekodierung liegt, ist offen. Ein
+Verbot von `null` im Prompt würde solche Fälle nur in geratene Werte wie 250 g verwandeln.
 
-1. `LocalScaleDeviceTest` mit `runLocalAiRegression=true` auf dem Nothing Phone. Die drei
-   Assets bestehen auf dem Rechner; scheitern sie auf dem Gerät, liegt es an der Laufzeit
-   (dann Vision-Backend CPU vergleichen), sonst an Originalfotos oder Dekodierung.
-2. KI-Diagnosebericht des betroffenen Laufs: `photo_decoded image=WxH` (Hochformat erwartet)
-   und Zeitstempel. Ergebnisse werden gespeichert und nicht automatisch neu berechnet; sie
-   können von einer älteren App-Version stammen. Vor dem Vergleich erneut analysieren.
-3. Originale Kameradateien im PC-Testlauf prüfen.
+### Diagnose ohne Gerätezugriff
+
+Gerätetests per USB oder adb sind für den Nutzer keine Option; die installierte App wird
+dafür auch nicht ersetzt. Stattdessen sammelt die App die fehlenden Belege im normalen
+Gebrauch, sichtbar unter Einstellungen → KI → KI-Diagnosebericht:
+
+- `responses.log`: jede lokale Modellantwort (höchstens 80 Zeilen, Antwort auf 2000 Zeichen
+  gekürzt, JSON-kodiert) mit Ergebnis, Fotogröße nach der Dekodierung und Vision-Backend.
+  Antworten können von Gemma gelesenen Bildtext enthalten; der Bericht weist darauf hin.
+- `native.log`: LiteRT-Meldungen des eigenen `:local_ai`-Prozesses seit Beginn des Fotos,
+  gelesen per `logcat -d --pid=<eigene PID>` (eigene Logs benötigen keine Berechtigung).
+  Die native Mindeststufe ist dafür INFO, damit die Zeile
+  `Resize image from AxB to CxD … patches` zeigt, welche Bildgröße Gemma tatsächlich erhielt.
+  Behalten werden LiteRT-bezogene Zeilen sowie Warnungen und Fehler, höchstens 40 je Foto.
+- Die Kurzauswertung zeigt die letzte Modellantwort samt Fotogröße und Vision-Backend sowie
+  die zuletzt an Gemma übergebene Bildgröße.
+- Einstellungen → KI → „Bildanalyse auf der CPU“ (Standard aus) setzt
+  `EngineConfig.visionBackend` auf CPU; das Sprachmodell bleibt auf der GPU. Langsamer, aber
+  ein direkter Vergleich, falls die Grafikeinheit Bilder auf dem Gerät falsch verarbeitet.
+  Gespeichert als `vision_backend` in `settings.properties`; jede Antwortzeile nennt `vision=`.
 
 Folgehinweis: Die UI-Texte „Keine eindeutig lesbare Waagenanzeige erkannt“ und „nicht sicher
 lesen“ stammen aus dem früheren strengen Prompt und beschreiben das heutige

@@ -57,6 +57,8 @@ data class AiSettings(
     val provider: AiProvider = AiProvider.Local,
     val model: String = "gemini-3.8-flash",
     val hasApiKey: Boolean = false,
+    /** Runs Gemma's vision encoder on the CPU instead of the GPU; slower, for device comparisons. */
+    val visionOnCpu: Boolean = false,
 )
 
 enum class ScaleErrorKind { Runtime, ResponseFormat, NonWholeGrams, Truncated, ProcessDied, Timeout }
@@ -190,7 +192,13 @@ interface AiController {
     val settings: StateFlow<AiSettings>
     val downloads: StateFlow<Map<AiProvider, ModelDownloadState>>
     val analysis: StateFlow<AnalysisProgress>
-    suspend fun saveSettings(provider: AiProvider, model: String, newKey: String?, deleteKey: Boolean = false)
+    suspend fun saveSettings(
+        provider: AiProvider,
+        model: String,
+        visionOnCpu: Boolean,
+        newKey: String?,
+        deleteKey: Boolean = false,
+    )
     suspend fun diagnosticReport(): String
     suspend fun testConnection(): String
     fun startAnalysis(reanalyze: Boolean = false)

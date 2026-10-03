@@ -39,11 +39,11 @@ fun AiSettingsScreen(onBack: () -> Unit) {
     var saving by remember { mutableStateOf(false) }
     AiSettingsContent(settings, downloads, analysis.running || saving, message,
         onBack = onBack,
-        onSave = { provider, model, key, delete ->
+        onSave = { provider, model, visionOnCpu, key, delete ->
             saving = true
             scope.launch {
                 try {
-                    controller.saveSettings(provider, model, key, delete)
+                    controller.saveSettings(provider, model, visionOnCpu, key, delete)
                     message = "Einstellungen gespeichert."
                 } catch (e: CancellationException) { throw e
                 } catch (_: Exception) { message = "Speichern fehlgeschlagen. Modellname und API-Key prüfen."
@@ -70,7 +70,7 @@ internal fun AiSettingsContent(
     busy: Boolean,
     message: String?,
     onBack: () -> Unit,
-    onSave: (AiProvider, String, String?, Boolean) -> Unit,
+    onSave: (provider: AiProvider, model: String, visionOnCpu: Boolean, newKey: String?, deleteKey: Boolean) -> Unit,
     onTest: () -> Unit,
     onDownload: (AiProvider) -> Unit,
     onPause: () -> Unit,
@@ -79,12 +79,14 @@ internal fun AiSettingsContent(
 ) {
     var provider by rememberSaveable(settings.provider) { mutableStateOf(settings.provider) }
     var model by rememberSaveable(settings.model) { mutableStateOf(settings.model) }
+    var visionOnCpu by rememberSaveable(settings.visionOnCpu) { mutableStateOf(settings.visionOnCpu) }
     // A plaintext API key is deliberately neither saveable nor persisted in UI state bundles.
     var key by remember { mutableStateOf("") }
     var confirmDelete by remember { mutableStateOf(false) }
     val localModel = provider.localModel
     val download = downloads[provider] ?: ModelDownloadState(total = localModel?.size ?: GemmaModel.E4B.size)
-    val dirty = provider != settings.provider || model != settings.model || key.isNotEmpty()
+    val dirty = provider != settings.provider || model != settings.model ||
+        visionOnCpu != settings.visionOnCpu || key.isNotEmpty()
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Gemma-Modell löschen?") },
@@ -122,6 +124,15 @@ internal fun AiSettingsContent(
                 }
                 download.message?.let { Text(it) }
                 Text("Der Download pausiert beim Verlassen der App. Modellquelle: LiteRT Community / Google, Apache 2.0.", style = MaterialTheme.typography.bodySmall)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Bildanalyse auf der CPU")
+                        Text("Langsamer. Zum Vergleich, falls Anzeigen mit der Grafikeinheit nicht erkannt werden.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = visionOnCpu, onCheckedChange = { visionOnCpu = it }, enabled = !busy)
+                }
             } else {
                 Text("Bei der Analyse werden die Fotos an Google gesendet. Es gilt das Kontingent deines API-Keys; API-Nutzung kann Kosten verursachen.")
                 OutlinedTextField(value = key, onValueChange = { key = it },
@@ -136,10 +147,10 @@ internal fun AiSettingsContent(
                     singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
                 OutlinedButton(onClick = onTest, enabled = !busy && !dirty && settings.hasApiKey) { Text("Verbindung testen") }
                 if (dirty) Text("Vor dem Verbindungstest bitte speichern.", style = MaterialTheme.typography.bodySmall)
-                if (settings.hasApiKey) TextButton(onClick = { key = ""; onSave(provider, model, null, true) }, enabled = !busy) { Text("API-Key entfernen") }
+                if (settings.hasApiKey) TextButton(onClick = { key = ""; onSave(provider, model, visionOnCpu, null, true) }, enabled = !busy) { Text("API-Key entfernen") }
             }
             Button(onClick = {
-                onSave(provider, model, key.takeIf { it.isNotBlank() }, false)
+                onSave(provider, model, visionOnCpu, key.takeIf { it.isNotBlank() }, false)
                 key = ""
             }, enabled = !busy && !download.running && model.isNotBlank()) { Text("Einstellungen speichern") }
             OutlinedButton(onClick = onDiagnostics) { Text("KI-Diagnosebericht") }

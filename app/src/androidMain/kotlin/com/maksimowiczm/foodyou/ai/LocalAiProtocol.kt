@@ -13,6 +13,7 @@ internal object LocalAiProtocol {
     const val SESSION = "session"
     const val PHOTO = "photo"
     const val MODEL = "model"
+    const val VISION_ON_CPU = "vision_on_cpu"
     const val RESULT = "result"
     const val ERROR_KIND = "error_kind"
     const val GRAMS = "grams"

@@ -87,6 +87,18 @@ internal fun summarizeAiDiagnosticReport(report: String): AiDiagnosticSummary {
             }
     }
 
+    recentLog.lineSequence().lastOrNull { " result=" in it && " raw=" in it }?.let { line ->
+        val context = listOfNotNull(
+            Regex(" image=(\\d+x\\d+)").find(line)?.let { "Foto ${it.groupValues[1]}" },
+            Regex(" vision=(\\w+)").find(line)?.let { "Bildanalyse ${it.groupValues[1].uppercase()}" },
+        )
+        details += "Letzte Modellantwort: ${line.substringAfter(" raw=").take(160)}" +
+            if (context.isEmpty()) "" else context.joinToString(", ", " (", ")")
+    }
+    Regex("Resize image from (\\d+x\\d+) to (\\d+x\\d+)").findAll(report).lastOrNull()?.let {
+        details += "Gemma erhielt zuletzt ein Bild mit ${it.groupValues[2]} Pixeln (vorbereitet: ${it.groupValues[1]})."
+    }
+
     val errorMemory = recentLog.lineSequence().lastOrNull {
         "phase=result_" in it || "phase=recognition_failed" in it
     }

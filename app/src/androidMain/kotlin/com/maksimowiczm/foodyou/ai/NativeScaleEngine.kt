@@ -6,6 +6,7 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
@@ -15,7 +16,7 @@ import kotlinx.coroutines.*
 
 /** Native calls are owned exclusively by LocalAiService's worker, except the SDK cancellation API. */
 internal interface NativeScaleEngine {
-    suspend fun recognize(bytes: ByteArray, timing: PhotoTiming): ScaleRecognitionResult
+    suspend fun recognize(bytes: ByteArray, imageSize: String, timing: PhotoTiming): ScaleRecognitionResult
     fun cancel()
     fun close()
 }
@@ -73,13 +74,15 @@ internal class NativeGeneration(private val cancellationScope: CoroutineScope, p
 
 internal class LiteRtScaleEngine private constructor(
     private val engine: Engine,
+    private val visionBackend: String,
     private val cancellationScope: CoroutineScope,
     private val diagnostics: AiDiagnostics,
 ) : NativeScaleEngine {
     @Volatile private var generation: NativeGeneration? = null
     @Volatile private var cancellationRequested = false
 
-    override suspend fun recognize(bytes: ByteArray, timing: PhotoTiming): ScaleRecognitionResult {
+    override suspend fun recognize(bytes: ByteArray, imageSize: String, timing: PhotoTiming): ScaleRecognitionResult {
+        val started = System.currentTimeMillis()
         diagnostics.record("conversation_create")
         val conversation = engine.createConversation(ConversationConfig(
             maxOutputToken = 128,
@@ -116,11 +119,15 @@ internal class LiteRtScaleEngine private constructor(
             ) {
                 diagnostics.recordRejectedResponse(result.kind, current.responseText())
             }
-            diagnostics.record(when (result) {
-                is ScaleRecognitionResult.Recognized -> "result_recognized"
-                ScaleRecognitionResult.Unreadable -> "result_unreadable"
-                is ScaleRecognitionResult.Error -> "result_${result.kind.name}"
-            })
+            val outcome = when (result) {
+                is ScaleRecognitionResult.Recognized -> "recognized"
+                ScaleRecognitionResult.Unreadable -> "unreadable"
+                is ScaleRecognitionResult.Error -> result.kind.name
+            }
+            diagnostics.record("result_$outcome")
+            // Every answer is kept (bounded) so an unreadable result can be explained from one report.
+            diagnostics.recordResponse(outcome, imageSize, visionBackend, current.responseText())
+            diagnostics.recordNativeLog(started)
             return result
         } finally {
             generation = null
@@ -141,20 +148,25 @@ internal class LiteRtScaleEngine private constructor(
             model: File,
             cache: File,
             expectedSize: Long,
+            visionOnCpu: Boolean,
             cancellationScope: CoroutineScope,
             diagnostics: AiDiagnostics,
         ): LiteRtScaleEngine {
             check(model.isFile && model.length() == expectedSize)
             cache.mkdirs()
-            diagnostics.record("engine_initializing")
+            // INFO includes the preprocessor's "Resize image ... patches" line for the report.
+            runCatching { Engine.setNativeMinLogSeverity(LogSeverity.INFO) }
+            val visionBackend = if (visionOnCpu) "cpu" else "gpu"
+            diagnostics.record("engine_initializing_vision_$visionBackend")
             val engine = Engine(EngineConfig(
-                modelPath = model.path, backend = Backend.GPU(), visionBackend = Backend.GPU(),
+                modelPath = model.path, backend = Backend.GPU(),
+                visionBackend = if (visionOnCpu) Backend.CPU() else Backend.GPU(),
                 maxNumTokens = 4096, maxNumImages = 1, cacheDir = cache.path,
             ))
             try {
                 engine.initialize()
                 diagnostics.record("engine_ready")
-                return LiteRtScaleEngine(engine, cancellationScope, diagnostics)
+                return LiteRtScaleEngine(engine, visionBackend, cancellationScope, diagnostics)
             } catch (failure: Throwable) {
                 engine.close()
                 throw failure

@@ -8,6 +8,7 @@ import android.os.Debug
 import android.os.Process
 import com.maksimowiczm.foodyou.app.BuildConfig
 import java.io.File
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
@@ -31,7 +32,7 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
                 " availableMiB=${memory.availMem / 1048576} lowMemory=${memory.lowMemory}" +
                 " pssKiB=${processMemory.totalPss} nativeHeapKiB=${Debug.getNativeHeapAllocatedSize() / 1024}" +
                 if (width != null && height != null) " image=${width}x$height" else ""
-            append(logFile, line)
+            append(logFile, listOf(line))
         } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
     }
 
@@ -39,7 +40,7 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
     fun recordTiming(timing: AiTimingRecord) {
         try {
             append(File(directory, "timings.log"),
-                "${System.currentTimeMillis()} pid=${Process.myPid()} ${timing.reportLine()}")
+                listOf("${System.currentTimeMillis()} pid=${Process.myPid()} ${timing.reportLine()}"))
         } catch (_: Exception) { /* Timing diagnostics must not interrupt a batch. */ }
     }
 
@@ -57,11 +58,38 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
         } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
     }
 
-    private fun append(file: File, line: String) {
+    /** Keeps every model answer, not only rejected ones, so unreadable results are explainable. */
+    @Synchronized
+    fun recordResponse(outcome: String, imageSize: String, visionBackend: String, response: String) {
+        try {
+            append(File(directory, "responses.log"), listOf(
+                "${System.currentTimeMillis()} result=$outcome image=$imageSize vision=$visionBackend" +
+                    " raw=${JsonPrimitive(response.take(2_000))}",
+            ))
+        } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
+    }
+
+    /**
+     * Copies this process's own LiteRT log lines since [sinceMillis]; reading one's own logcat needs no
+     * permission. The preprocessor line shows the image size Gemma actually received on the device.
+     */
+    fun recordNativeLog(sinceMillis: Long) {
+        try {
+            val since = String.format(Locale.ROOT, "%d.%03d", sinceMillis / 1000, sinceMillis % 1000)
+            val process = ProcessBuilder("logcat", "-d", "-m", "500", "-v", "epoch",
+                "--pid=${Process.myPid()}", "-T", since).redirectErrorStream(true).start()
+            val lines = try { process.inputStream.bufferedReader().use { it.readLines() } }
+                finally { process.destroy() }
+            val selected = selectNativeLogLines(lines)
+            if (selected.isNotEmpty()) synchronized(this) { append(File(directory, "native.log"), selected) }
+        } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
+    }
+
+    private fun append(file: File, lines: List<String>) {
         directory.mkdirs()
-        val previous = if (file.isFile) file.readLines().takeLast(79) else emptyList()
+        val previous = if (file.isFile) file.readLines() else emptyList()
         val temp = File(directory, "${file.name}.tmp")
-        temp.writeText((previous + line).joinToString("\n", postfix = "\n"))
+        temp.writeText((previous + lines).takeLast(80).joinToString("\n", postfix = "\n"))
         temp.renameTo(file)
     }
 
@@ -71,12 +99,18 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
             appendLine("Gerät: ${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
             appendLine("LiteRT-LM: $LOCAL_AI_RUNTIME")
             appendLine("Lokale Modelle: " + GemmaModel.entries.joinToString { "${it.displayName} · ${it.revision}" })
-            appendLine("Backend: GPU / Vision GPU · Kontext: 4096 · Ausgabe: 128")
+            appendLine("Backend: GPU · Vision: GPU oder CPU laut Einstellung (vision= je Antwort) · Kontext: 4096 · Ausgabe: 128")
             appendLine("Zeitangaben: Unix-Millisekunden; keine Fotos oder API-Schlüssel.")
-            appendLine("Verworfene Modellantworten können erkannten Bildtext enthalten; vor Weitergabe prüfen.")
+            appendLine("Modellantworten können erkannten Bildtext enthalten; vor Weitergabe prüfen.")
             appendLine()
             appendLine("Letzte verworfene Modellantwort:")
             appendLine(readLog("rejected-response.log"))
+            appendLine()
+            appendLine("Letzte Modellantworten (alle Ergebnisse, JSON-kodiert):")
+            appendLine(readLog("responses.log"))
+            appendLine()
+            appendLine("Native LiteRT-Meldungen des KI-Prozesses (u. a. tatsächliche Bildgröße für Gemma):")
+            appendLine(readLog("native.log"))
             appendLine()
             appendLine("Laufzeiten (monotone Uhr, Sekunden):")
             appendLine("Modellladen separat; Foto-Gesamtzeit enthält Bildvorbereitung, Sitzung und Aufräumen.")
@@ -122,3 +156,15 @@ internal fun exitReasonLabel(reason: Int): String = when (reason) {
     ApplicationExitInfo.REASON_USER_REQUESTED -> "Vom Nutzer/System beendet"
     else -> "Ursache unbekannt"
 }
+
+private val nativeLogKeywords =
+    Regex("litert|stb_image|patches|resize image|vision|opencl|ml_drift|gpu|delegate|tflite", RegexOption.IGNORE_CASE)
+private val logcatLevel = Regex("""^\S+\s+\d+\s+\d+\s+([VDIWEF])\s""")
+
+/** Keeps LiteRT-related lines and any warning or error of the worker process, newest last. */
+internal fun selectNativeLogLines(lines: List<String>, limit: Int = 40): List<String> =
+    // `logcat -v epoch` right-aligns the timestamp, so lines start with spaces.
+    lines.map(String::trim).filter { line ->
+        nativeLogKeywords.containsMatchIn(line) ||
+            logcatLevel.find(line)?.groupValues?.get(1) in setOf("W", "E", "F")
+    }.takeLast(limit)
