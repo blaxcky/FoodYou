@@ -239,3 +239,69 @@ Testbildern stehen folgende praktische Gegenfälle aus, da echte Fotos fehlen:
 Diese Fälle mit echten Fotos auf dem bewusst ausgewählten physischen Gerät prüfen
 und Modell, Soll-/Istwerte und Laufzeiten festhalten. JVM-Parser-Tests belegen nur
 die Verarbeitung der Modellantworten, nicht die Erkennungsqualität.
+
+## PC-Testlauf mit der echten Laufzeit (2026-10-03)
+
+Anlass: Auf dem Nothing Phone lieferte Gemma 4 E4B bei Doppelanzeigen (z. B. `117 g` über
+`0.05 g`) für 117 g, 175 g und 199 g `{"value":null}` und für 105 g den Wert 250 g. Fotos mit
+nur einem Wert funktionieren laut Nutzer zuverlässig.
+
+`dev/ai-scale-eval.py` führt die gepinnte Modelldatei mit `litert-lm-api==0.16.1` (dieselbe
+Laufzeitversion wie die App) auf dem Rechner aus. Sampler, Thinking, Kontext und Ausgabelimit
+entsprechen `LiteRtScaleEngine`; Prompts werden direkt aus `ScaleRecognition.kt` gelesen,
+mit `--prompt-rev` auch aus älteren Revisionen. Modell, venv und Bilder liegen außerhalb des
+Repos:
+
+```bash
+python3 -m venv ~/.cache/foodyou-ai-eval/venv
+~/.cache/foodyou-ai-eval/venv/bin/pip install litert-lm-api==0.16.1 pillow
+# gemma-4-E4B-it.litertlm von GemmaModel.E4B.url laden, Größe und SHA-256 prüfen
+~/.cache/foodyou-ai-eval/venv/bin/python dev/ai-scale-eval.py \
+  --model ~/.cache/foodyou-ai-eval/gemma-4-E4B-it.litertlm \
+  --images ~/.cache/foodyou-ai-eval/images --experiments A --backend gpu --vision-backend gpu
+```
+
+Dateinamen tragen den Sollwert (`dual-117g.png`). Testbilder waren nur die Fotobereiche der
+App-Screenshots (117/175/105 g vom Nutzer, nur lokal) sowie die drei vorhandenen Test-Assets;
+alle sechs zeigen die Doppelanzeige. Originale Kameradateien lagen nicht vor.
+
+Bildauflösung des Modells: Die E4B-Datei hat laut Metadaten `patch 16×16` und
+`max_num_patches 2520`; Vision-Encoder und -Adapter enthalten nur die Signaturen für 70, 140
+und 280 Tokens. `ExperimentalFlags.visualTokenBudget` kann daher nicht über die
+Standardeinstellung 280 hinaus erhöht werden. Der native Vorverarbeiter skaliert jedes Bild
+seitenverhältnistreu auf höchstens 2520 Patches, kleinere Bilder auch hoch
+(z. B. 583×777 → 672×912).
+
+| Versuch | Konfiguration | Richtig |
+|---|---|---|
+| A | aktueller `SCALE_PROMPT`, CPU fp32 | 6/6 |
+| A | wie oben, Eingabe auf 960×1280 hochskaliert (nativ verkleinert) | 6/6 |
+| A | wie oben, Host-GPU (WebGPU) für Text und Vision | 6/6 |
+| A | wie oben, CPU mit fp16-Aktivierungen | 6/6 |
+| A | Prompt-Stand `4a421ca5` (vor 2026-10-02), Host-GPU | 5/6 (175 g → `{"value":0}`) |
+| A | aktueller Prompt, Bild um 90° bzw. 270° gedreht | 4/6 bzw. 1/6, falsche Ziffern (501, 55, 500 …), kein `null` |
+| B | Abschreib-Prompt aller Anzeigewerte, ganzes Bild | 0/6 |
+| C | manueller Anzeigeausschnitt + Abschreib-Prompt | 3/6 |
+| D | Gemma-`box_2d` → Ausschnitt → Abschreib-Prompt | 3/6 |
+
+Der Abschreib-Prompt erfand Dezimalpunkte (`95.9`, `26.9`, `175.5`) und las das
+hochgestellte `g` als `°`. Die Lokalisierung per `box_2d` traf die Anzeige in allen sechs
+Bildern, verbesserte aber nur die Fälle, die schon der aktuelle Prompt löst. Zeiten pro Foto:
+CPU (12 Threads) etwa 6 s, Host-GPU etwa 3 s, zweistufig auf der CPU etwa 13 s.
+
+Ergebnis: Der Gerätefehler ist mit Screenshots auf dem Rechner nicht reproduzierbar; die
+Auflösung allein erklärt ihn nicht. Ausschnitt-Pipeline und Abschreib-Prompt wurden daher
+nicht übernommen. Offen ist, ob die Ursache in der Android-Laufzeit (Adreno-GPU) oder in den
+Originaldateien bzw. ihrer Dekodierung liegt. Nächste Schritte in dieser Reihenfolge:
+
+1. `LocalScaleDeviceTest` mit `runLocalAiRegression=true` auf dem Nothing Phone. Die drei
+   Assets bestehen auf dem Rechner; scheitern sie auf dem Gerät, liegt es an der Laufzeit
+   (dann Vision-Backend CPU vergleichen), sonst an Originalfotos oder Dekodierung.
+2. KI-Diagnosebericht des betroffenen Laufs: `photo_decoded image=WxH` (Hochformat erwartet)
+   und Zeitstempel. Ergebnisse werden gespeichert und nicht automatisch neu berechnet; sie
+   können von einer älteren App-Version stammen. Vor dem Vergleich erneut analysieren.
+3. Originale Kameradateien im PC-Testlauf prüfen.
+
+Folgehinweis: Die UI-Texte „Keine eindeutig lesbare Waagenanzeige erkannt“ und „nicht sicher
+lesen“ stammen aus dem früheren strengen Prompt und beschreiben das heutige
+`{"value":null}` (keine plausible Anzeige) nur ungenau.
