@@ -33,6 +33,25 @@ import kotlinx.datetime.LocalDate
 
 class WeightReportViewModelTest {
     @Test
+    fun openingReportAndGrantingPermissionDoNotImportHistory() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val sync = FakeWeightSync(granted = true)
+        val viewModel = createViewModel(FakeWeightRepository(null), sync)
+        try {
+            advanceUntilIdle()
+            assertEquals(0, sync.historicalCalls)
+            viewModel.onHealthConnectPermissionResult(true)
+            advanceUntilIdle()
+            assertEquals(0, sync.historicalCalls)
+            assertEquals(emptyList(), sync.exportedEntries)
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
+
+    @Test
     fun unchangedImportedWeightIsNotExported() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val repository = FakeWeightRepository(nextManualEntry = null)
@@ -72,6 +91,7 @@ class WeightReportViewModelTest {
 
             assertEquals(1, repository.upsertTodayCalls)
             assertEquals(listOf(entry), sync.exportedEntries)
+            assertEquals(0, sync.historicalCalls)
         } finally {
             viewModel.viewModelScope.cancel()
             Dispatchers.resetMain()
@@ -116,14 +136,18 @@ private class FakeWeightRepository(
     override suspend fun updateGoal(goal: WeightGoal) = Unit
 }
 
-private class FakeWeightSync : HealthConnectWeightSync {
+private class FakeWeightSync(private val granted: Boolean = false) : HealthConnectWeightSync {
+    var historicalCalls = 0
     val exportedEntries = mutableListOf<DailyWeightEntry>()
 
     override suspend fun availability() = HealthConnectAvailability.Unavailable
 
-    override suspend fun hasWeightPermission() = false
+    override suspend fun hasWeightPermission() = granted
 
-    override suspend fun syncHistorical() = HealthConnectSyncResult.Synced
+    override suspend fun syncHistorical(): HealthConnectSyncResult {
+        historicalCalls++
+        return HealthConnectSyncResult.Synced
+    }
 
     override suspend fun writeFoodYouEntry(entry: DailyWeightEntry): HealthConnectSyncResult {
         exportedEntries += entry

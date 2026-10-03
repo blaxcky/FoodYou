@@ -205,7 +205,6 @@ internal class HomeViewModel(
             )
 
     init {
-        viewModelScope.launch { healthConnectWeightSync.syncHistorical() }
         viewModelScope.launch {
             while (true) {
                 nowEpochSeconds.value = Clock.System.now().epochSeconds
@@ -248,7 +247,7 @@ internal class HomeViewModel(
                 val syncAccount = trainingSync.account.value
                 val deltaDates = burnedEnergySyncDeltaDates(date)
                 val before = syncLog.recordSyncStep("Kalorienstand vor dem Sync lesen") {
-                    deltaDates.associateWith { dailyBurnedEnergyKcal(it, settingsRepository, activityRepository) }
+                    readBurnedEnergySnapshot(deltaDates, settingsRepository, activityRepository)
                 }
                 clearBurnedEnergySyncDelta()
                 val result =
@@ -260,14 +259,12 @@ internal class HomeViewModel(
                         syncHealthConnect = {
                             if (!isSyncing.value) {
                                 isSyncing.value = true
-                                clearBurnedEnergySyncDelta()
                                 try {
-                                    syncActivitiesForBurnedEnergyDelta(
-                                            date = date,
-                                            settingsRepository = settingsRepository,
-                                            healthConnectActivitySync = healthConnectActivitySync,
-                                            activityRepository = activityRepository,
-                                        )
+                                    syncHomeSteps(
+                                        date = date,
+                                        settingsRepository = settingsRepository,
+                                        healthConnectActivitySync = healthConnectActivitySync,
+                                    )
                                 } finally {
                                     nowEpochSeconds.value = Clock.System.now().epochSeconds
                                     isSyncing.value = false
@@ -292,8 +289,9 @@ internal class HomeViewModel(
                     )
                 if (syncAccount == trainingSync.account.value) {
                     syncLog.recordSyncStep("Kalorienänderung nach dem Sync berechnen") {
+                        val after = readBurnedEnergySnapshot(deltaDates, settingsRepository, activityRepository)
                         showBurnedEnergySyncDelta(deltaDates.associateWith {
-                            burnedEnergySyncDeltaKcal(before.getValue(it), dailyBurnedEnergyKcal(it, settingsRepository, activityRepository))
+                            burnedEnergySyncDeltaKcal(before.getValue(it), after.getValue(it))
                         })
                     }
                 }
@@ -418,24 +416,20 @@ internal suspend fun syncActivitiesForBurnedEnergyDelta(
     today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
 ): Map<LocalDate, Int>? {
     val targetDates = burnedEnergySyncDeltaDates(selectedDate = date, today = today)
-    val before =
-        targetDates.associateWith { targetDate ->
-            dailyBurnedEnergyKcal(targetDate, settingsRepository, activityRepository)
-        }
-    return when (healthConnectActivitySync.syncStepsForHome(date)) {
+    val before = readBurnedEnergySnapshot(targetDates, settingsRepository, activityRepository)
+    return when (syncHomeSteps(date, settingsRepository, healthConnectActivitySync)) {
         HealthConnectSyncResult.MissingPermission,
         HealthConnectSyncResult.Unavailable,
         HealthConnectSyncResult.UpdateRequired,
         -> {
-            settingsRepository.update { copy(healthConnectStepsEnabled = false) }
             null
         }
 
         HealthConnectSyncResult.Synced,
         -> {
+            val after = readBurnedEnergySnapshot(targetDates, settingsRepository, activityRepository)
             targetDates.associateWith { targetDate ->
-                val after = dailyBurnedEnergyKcal(targetDate, settingsRepository, activityRepository)
-                burnedEnergySyncDeltaKcal(before = before.getValue(targetDate), after = after)
+                burnedEnergySyncDeltaKcal(before = before.getValue(targetDate), after = after.getValue(targetDate))
             }
         }
 
@@ -445,16 +439,28 @@ internal suspend fun syncActivitiesForBurnedEnergyDelta(
     }
 }
 
-private suspend fun dailyBurnedEnergyKcal(
+internal suspend fun syncHomeSteps(
     date: LocalDate,
     settingsRepository: UserPreferencesRepository<Settings>,
+    healthConnectActivitySync: HealthConnectActivitySync,
+): HealthConnectSyncResult {
+    val result = healthConnectActivitySync.syncStepsForHome(date)
+    if (result == HealthConnectSyncResult.MissingPermission ||
+        result == HealthConnectSyncResult.Unavailable || result == HealthConnectSyncResult.UpdateRequired) {
+        settingsRepository.update { copy(healthConnectStepsEnabled = false) }
+    }
+    return result
+}
+
+internal suspend fun readBurnedEnergySnapshot(
+    dates: List<LocalDate>,
+    settingsRepository: UserPreferencesRepository<Settings>,
     activityRepository: ActivityRepository,
-): Double {
+): Map<LocalDate, Double> {
     val settings = settingsRepository.observe().first()
-    return activityRepository
-        .observeDailySummary(date, settings.stepsCaloriesPerStepKcal)
-        .first()
-        .totalEnergyKcal
+    return dates.distinct().associateWith { date ->
+        activityRepository.observeDailySummary(date, settings.stepsCaloriesPerStepKcal).first().totalEnergyKcal
+    }
 }
 
 internal fun burnedEnergySyncDeltaKcal(before: Double, after: Double): Int =

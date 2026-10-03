@@ -86,7 +86,6 @@ internal class SynchronizationSettingsViewModel(
     fun setWeightSyncEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.update { copy(healthConnectWeightEnabled = enabled) }
-            if (enabled) healthConnectWeightSync.syncHistorical()
         }
     }
 

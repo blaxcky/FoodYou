@@ -37,9 +37,75 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.minus
 import kotlinx.datetime.LocalDate
 
 class HomeViewModelTest {
+    @Test
+    fun combinedSyncReadsEachDayOnlyBeforeAndAfterAllBranches() = runTest {
+        val date = LocalDate(2026, 5, 18)
+        val dates = listOf(date, date.minus(1, kotlinx.datetime.DateTimeUnit.DAY))
+        val settings = FakeSettingsRepository(defaultSettings().copy(
+            homeSyncHealthConnectEnabled = true, homeSyncFddbDiaryEnabled = true,
+            healthConnectWeightEnabled = true,
+        ))
+        val repository = FakeActivityRepository(listOf(100.0, 200.0, 130.0, 240.0))
+        val steps = FakeHealthConnectActivitySync(HealthConnectSyncResult.Synced)
+        val release = CompletableDeferred<Unit>()
+        val sync = async {
+            val before = readBurnedEnergySnapshot(dates, settings, repository)
+            syncConfiguredHomeSync(
+                date, settings.value, settings,
+                syncHealthConnect = { syncHomeSteps(date, settings, steps) },
+                syncWeight = { release.await() }, syncTraining = { release.await(); true },
+                hasFddbCredentials = { true },
+                syncFddbDiary = { release.await(); Ok(FddbDiarySyncResult(0, 0, 0)) },
+            )
+            val after = readBurnedEnergySnapshot(dates, settings, repository)
+            dates.associateWith { burnedEnergySyncDeltaKcal(before.getValue(it), after.getValue(it)) }
+        }
+        runCurrent()
+        assertEquals(dates, repository.observedDates)
+        assertFalse(sync.isCompleted)
+        release.complete(Unit)
+        assertEquals(mapOf(dates[0] to 30, dates[1] to 40), sync.await())
+        assertEquals(dates + dates, repository.observedDates)
+        assertEquals(2, settings.observations)
+        assertEquals(listOf(listOf(date)), steps.syncedDates)
+    }
+
+    @Test
+    fun rawStepSyncHandlesAccessFailuresWithoutReadingCalories() = runTest {
+        for (result in listOf(HealthConnectSyncResult.MissingPermission,
+            HealthConnectSyncResult.Unavailable, HealthConnectSyncResult.UpdateRequired)) {
+            val settings = FakeSettingsRepository(defaultSettings().copy(healthConnectStepsEnabled = true))
+            assertEquals(result, syncHomeSteps(LocalDate(2026, 5, 18), settings,
+                FakeHealthConnectActivitySync(result)))
+            assertFalse(settings.value.healthConnectStepsEnabled)
+            assertEquals(0, settings.observations)
+        }
+    }
+
+    @Test
+    fun manualWeightSyncRunsOnlyWhenEnabled() = runTest {
+        for (enabled in listOf(false, true)) {
+            var weightCalls = 0
+            val settings = FakeSettingsRepository(defaultSettings().copy(
+                homeSyncHealthConnectEnabled = false, homeSyncFddbDiaryEnabled = false,
+                healthConnectWeightEnabled = enabled,
+            ))
+            syncConfiguredHomeSync(
+                LocalDate(2026, 5, 18), settings.value, settings,
+                syncHealthConnect = { error("Steps disabled") },
+                hasFddbCredentials = { error("Diary disabled") },
+                syncFddbDiary = { error("Diary disabled") },
+                syncWeight = { weightCalls++ },
+            )
+            assertEquals(if (enabled) 1 else 0, weightCalls)
+        }
+    }
+
+
     @Test
     fun combinedSyncRejectsRepeatedClicksAndClearsLoadingAfterCompletion() = runTest {
         val runner = HomeSyncRunner(this)
@@ -473,11 +539,15 @@ class HomeViewModelTest {
         initialValue: Settings = defaultSettings()
     ) : UserPreferencesRepository<Settings> {
         private val state = MutableStateFlow(initialValue)
+        var observations = 0
 
         val value: Settings
             get() = state.value
 
-        override fun observe(): Flow<Settings> = state
+        override fun observe(): Flow<Settings> {
+            observations++
+            return state
+        }
 
         override suspend fun update(transform: Settings.() -> Settings) {
             state.value = state.value.transform()

@@ -24,6 +24,65 @@ import kotlinx.datetime.LocalDate
 
 class RoomWeightRepositoryTest {
     @Test
+    fun unchangedReimportDoesNotWriteAndMetadataChangesStillDo() = runTest {
+        val dao = InMemoryDailyWeightEntryDao()
+        val repository = RoomWeightRepository(dao, InMemoryPreferencesDataStore(), FakeBmrRepository())
+        val entry = measurement(LocalDate(2026, 6, 7), "first", 80.0, "2026-06-07T06:00:00Z")
+        repository.upsert(entry)
+        repository.setHidden(entry.id, true)
+        dao.writeBatches.clear()
+        dao.readBatches.clear()
+
+        repository.upsert(entry)
+        assertEquals(emptyList(), dao.writeBatches)
+        assertEquals(listOf(listOf(entry.id)), dao.readBatches)
+        assertTrue(dao.entries.value.getValue(entry.id).isHidden)
+
+        repository.upsert(entry.copy(sourcePackageName = "changed.source"))
+        assertEquals(1, dao.writeBatches.size)
+        assertEquals("changed.source", dao.entries.value.getValue(entry.id).sourcePackageName)
+        assertTrue(dao.entries.value.getValue(entry.id).isHidden)
+    }
+
+    @Test
+    fun bulkImportChunksReadsAndDoesNotWriteEmptyOrUnchangedBatches() = runTest {
+        val dao = InMemoryDailyWeightEntryDao()
+        val repository = RoomWeightRepository(dao, InMemoryPreferencesDataStore(), FakeBmrRepository())
+        repository.upsertAll(emptyList())
+        assertEquals(emptyList(), dao.readBatches)
+        assertEquals(emptyList(), dao.writeBatches)
+        val entries = (1..1801).map {
+            measurement(LocalDate(2026, 6, 7), "$it", 80.0, "2026-06-07T06:00:00Z")
+        }
+        repository.upsertAll(entries)
+        assertEquals(listOf(900, 900, 1), dao.readBatches.map { it.size })
+        assertEquals(1801, dao.writeBatches.single().size)
+        dao.writeBatches.clear()
+        repository.upsertAll(entries)
+        assertEquals(emptyList(), dao.writeBatches)
+    }
+
+    @Test
+    fun duplicateIdsRespectInputOrderAndProtectNewerLocalWeights() = runTest {
+        val dao = InMemoryDailyWeightEntryDao()
+        val repository = RoomWeightRepository(dao, InMemoryPreferencesDataStore(), FakeBmrRepository())
+        val entry = measurement(LocalDate(2026, 6, 7), "first", 80.0, "2026-06-07T06:00:00Z")
+        repository.upsertAll(listOf(entry, entry.copy(weightKg = 79.0)))
+        assertEquals(79.0, dao.entries.value.getValue(entry.id).weightKg)
+        assertEquals(1, dao.writeBatches.single().size)
+
+        val local = entry.copy(id = "local:1", isFoodYouRecord = true,
+            measuredAt = Instant.parse("2026-06-07T08:00:00Z"))
+        repository.upsertAll(listOf(local, local.copy(weightKg = 78.0,
+            measuredAt = Instant.parse("2026-06-07T07:00:00Z"))))
+        assertEquals(80.0, dao.entries.value.getValue(local.id).weightKg)
+        dao.writeBatches.clear()
+        repository.upsert(local.copy(weightKg = 77.0, measuredAt = Instant.parse("2026-06-07T07:00:00Z")))
+        assertEquals(emptyList(), dao.writeBatches)
+    }
+
+
+    @Test
     fun todayWeightIsUpsertedByDateAndUpdatesBmrWeight() = runTest {
         val dao = InMemoryDailyWeightEntryDao()
         val bmrRepository = FakeBmrRepository()
@@ -197,11 +256,18 @@ private fun measurement(date: LocalDate, id: String, kg: Double, time: String) =
 
 private class InMemoryDailyWeightEntryDao : DailyWeightEntryDao {
     val entries = MutableStateFlow<Map<String, DailyWeightEntryEntity>>(emptyMap())
+    val readBatches = mutableListOf<List<String>>()
+    val writeBatches = mutableListOf<List<DailyWeightEntryEntity>>()
 
     override fun observeAll(): Flow<List<DailyWeightEntryEntity>> =
         entries.map { it.values.sortedByDescending(DailyWeightEntryEntity::dateEpochDay) }
 
     override suspend fun find(id: String): DailyWeightEntryEntity? = entries.value[id]
+
+    override suspend fun findAll(ids: List<String>): List<DailyWeightEntryEntity> {
+        readBatches += ids
+        return ids.mapNotNull { entries.value[it] }
+    }
 
     override suspend fun setHidden(id: String, hidden: Boolean) {
         entries.value = entries.value + (id to entries.value.getValue(id).copy(isHidden = hidden))
@@ -212,6 +278,7 @@ private class InMemoryDailyWeightEntryDao : DailyWeightEntryDao {
     }
 
     override suspend fun upsertAll(entries: List<DailyWeightEntryEntity>) {
+        writeBatches += entries
         this.entries.value = this.entries.value + entries.associateBy { it.id }
     }
 }

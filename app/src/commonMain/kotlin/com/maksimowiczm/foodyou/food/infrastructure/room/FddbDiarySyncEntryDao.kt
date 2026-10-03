@@ -7,8 +7,8 @@ import androidx.room.Query
 
 @Dao
 interface FddbDiarySyncEntryDao {
-    @Query("SELECT EXISTS(SELECT 1 FROM FddbDiarySyncEntry WHERE fddbEntryId = :fddbEntryId)")
-    suspend fun contains(fddbEntryId: String): Boolean
+    @Query("SELECT fddbEntryId FROM FddbDiarySyncEntry WHERE fddbEntryId IN (:ids)")
+    suspend fun findSyncedIds(ids: List<String>): List<String>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entity: FddbDiarySyncEntryEntity): Long

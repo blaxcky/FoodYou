@@ -52,10 +52,11 @@ class FddbDiarySyncUseCase(
 
     private suspend fun syncDiary(referenceDate: LocalDate): FddbDiarySyncResult {
         val dates = (0..6).map { referenceDate.minus(it, DateTimeUnit.DAY) }.toSet()
-        val meals = mealRepository.observeMeals().first().sortedBy { it.rank }
+        var meals: List<com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal>? = null
         val diaryEntries = syncLog.recordSyncStep("FDDB-Tagebucheinträge laden", { entries ->
             SyncLogOutcome.success("${entries.size} Einträge empfangen")
         }) { diaryGateway.getLastSevenDays(referenceDate).filter { it.date in dates } }
+        val syncedIds = syncEntryRepository.findSyncedIds(diaryEntries.map { it.entryId }).toMutableSet()
         var imported = 0
         var skipped = 0
         var failed = 0
@@ -63,12 +64,13 @@ class FddbDiarySyncUseCase(
 
         for (entry in diaryEntries) {
             try {
-                if (syncEntryRepository.contains(entry.entryId)) {
+                if (entry.entryId in syncedIds) {
                     skipped += 1
                     continue
                 }
                 if (entry.isDummy()) {
                     syncEntryRepository.add(entry.entryId, dateProvider.nowInstant())
+                    syncedIds += entry.entryId
                     skipped += 1
                     continue
                 }
@@ -78,7 +80,9 @@ class FddbDiarySyncUseCase(
                     errors += entry.debugMessage("Product could not be resolved")
                     continue
                 }
-                val meal = meals.matchFddbMeal(entry.mealName) ?: run {
+                val availableMeals = meals ?: mealRepository.observeMeals().first().sortedBy { it.rank }
+                    .also { meals = it }
+                val meal = availableMeals.matchFddbMeal(entry.mealName) ?: run {
                     failed += 1
                     errors += entry.debugMessage("Meal could not be mapped")
                     continue
@@ -98,6 +102,7 @@ class FddbDiarySyncUseCase(
                     )
                 if (result.isSuccess()) {
                     syncEntryRepository.add(entry.entryId, dateProvider.nowInstant())
+                    syncedIds += entry.entryId
                     imported += 1
                 } else {
                     failed += 1

@@ -7,7 +7,8 @@ import kotlin.time.Instant
 
 internal class RoomFddbDiarySyncEntryRepository(private val dao: FddbDiarySyncEntryDao) :
     FddbDiarySyncEntryRepository {
-    override suspend fun contains(fddbEntryId: String): Boolean = dao.contains(fddbEntryId)
+    override suspend fun findSyncedIds(ids: List<String>): Set<String> =
+        ids.distinct().chunked(900).flatMap { dao.findSyncedIds(it) }.toSet()
 
     override suspend fun add(fddbEntryId: String, syncedAt: Instant) {
         dao.insert(FddbDiarySyncEntryEntity(fddbEntryId = fddbEntryId, syncedAt = syncedAt.epochSeconds))

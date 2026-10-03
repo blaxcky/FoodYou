@@ -122,7 +122,7 @@ private class AndroidHealthConnectWeightSync(
                     repository.upsert(entry.copy(healthConnectRecordId = insertedId))
                 }
             }
-            syncHistorical()
+            HealthConnectSyncResult.Synced
         } catch (_: SecurityException) {
             HealthConnectSyncResult.MissingPermission
         } catch (_: IOException) {

@@ -57,9 +57,6 @@ internal class WeightReportViewModel(
         viewModelScope.launch {
             availability.value = healthConnectWeightSync.availability()
             healthConnectPermissionGranted.value = healthConnectWeightSync.hasWeightPermission()
-            if (healthConnectPermissionGranted.value) {
-                healthConnectWeightSync.syncHistorical()
-            }
         }
     }
 
@@ -85,7 +82,6 @@ internal class WeightReportViewModel(
         if (granted) {
             viewModelScope.launch {
                 settingsRepository.update { copy(healthConnectWeightEnabled = true) }
-                healthConnectWeightSync.syncHistorical()
             }
         }
     }

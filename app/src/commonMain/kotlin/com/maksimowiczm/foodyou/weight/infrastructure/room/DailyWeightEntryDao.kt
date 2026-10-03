@@ -14,6 +14,9 @@ interface DailyWeightEntryDao {
     @Query("SELECT * FROM DailyWeightEntry WHERE id = :id")
     suspend fun find(id: String): DailyWeightEntryEntity?
 
+    @Query("SELECT * FROM DailyWeightEntry WHERE id IN (:ids)")
+    suspend fun findAll(ids: List<String>): List<DailyWeightEntryEntity>
+
     @Query("UPDATE DailyWeightEntry SET isHidden = :hidden WHERE id = :id")
     suspend fun setHidden(id: String, hidden: Boolean)
 
@@ -23,12 +26,17 @@ interface DailyWeightEntryDao {
 
     @Transaction
     suspend fun upsertImportedPreservingHidden(entries: List<DailyWeightEntryEntity>) {
+        val original = entries.map { it.id }.distinct().chunked(900)
+            .flatMap { findAll(it) }.associateBy { it.id }
+        val current = original.toMutableMap()
         entries.forEach { incoming ->
-            val existing = find(incoming.id)
+            val existing = current[incoming.id]
             if (existing?.isFoodYouRecord == true &&
                 existing.measuredEpochSeconds > incoming.measuredEpochSeconds
             ) return@forEach
-            upsert(incoming.copy(isHidden = existing?.isHidden ?: incoming.isHidden))
+            current[incoming.id] = incoming.copy(isHidden = existing?.isHidden ?: incoming.isHidden)
         }
+        val changed = current.values.filter { it != original[it.id] }
+        if (changed.isNotEmpty()) upsertAll(changed)
     }
 }

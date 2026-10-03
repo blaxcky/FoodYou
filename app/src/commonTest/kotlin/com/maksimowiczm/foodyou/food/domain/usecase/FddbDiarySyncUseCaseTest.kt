@@ -39,6 +39,77 @@ import kotlinx.datetime.LocalTime
 
 class FddbDiarySyncUseCaseTest {
     @Test
+    fun existingEntriesAreCheckedTogetherWithoutLoadingMeals() = runBlocking {
+        val ids = (1..30).map { it.toString() }
+        val syncEntries = FakeFddbDiarySyncEntryRepository(ids.toSet())
+        var mealReads = 0
+        val meals = object : MealRepository by FakeMealRepository {
+            override fun observeMeals(): Flow<List<Meal>> {
+                mealReads++
+                return FakeMealRepository.observeMeals()
+            }
+        }
+        val result = useCase(
+            diaryGateway = FakeFddbDiaryGateway(ids.map { diaryEntry(it, "food") }),
+            syncEntries = syncEntries, mealRepository = meals,
+        ).sync(LocalDate(2026, 5, 25))
+
+        assertEquals(FddbDiarySyncResult(0, 30, 0), result)
+        assertEquals(listOf(ids), syncEntries.lookups)
+        assertEquals(0, mealReads)
+    }
+
+    @Test
+    fun duplicateNewAndDummyEntriesAreImportedOrMarkedOnlyOnce() = runBlocking {
+        val entry = diaryEntry("new", "food")
+        val dummy = diaryEntry("dummy", "dummy_food")
+        val foodEntries = FakeFoodDiaryEntryRepository()
+        val syncEntries = FakeFddbDiarySyncEntryRepository()
+        var mealReads = 0
+        val meals = object : MealRepository by FakeMealRepository {
+            override fun observeMeals(): Flow<List<Meal>> {
+                mealReads++
+                return FakeMealRepository.observeMeals()
+            }
+        }
+        val result = useCase(
+            diaryGateway = FakeFddbDiaryGateway(listOf(entry, entry, dummy, dummy, diaryEntry("other", "food"))),
+            syncEntries = syncEntries, foodEntryRepository = foodEntries, mealRepository = meals,
+        ).sync(LocalDate(2026, 5, 25))
+
+        assertEquals(FddbDiarySyncResult(2, 3, 0), result)
+        assertEquals(2, foodEntries.inserted.size)
+        assertEquals(setOf("new", "dummy", "other"), syncEntries.ids)
+        assertEquals(1, mealReads)
+    }
+
+    @Test
+    fun emptyDiaryDoesNotLoadMeals() = runBlocking {
+        val meals = object : MealRepository by FakeMealRepository {
+            override fun observeMeals(): Flow<List<Meal>> = error("No meals needed")
+        }
+        assertEquals(FddbDiarySyncResult(0, 0, 0),
+            useCase(mealRepository = meals).sync(LocalDate(2026, 5, 25)))
+    }
+
+    @Test
+    fun failedBatchLookupStopsBeforeAnyEntryIsImported() = runBlocking {
+        for (failure in listOf(IllegalStateException("Read failed"), kotlinx.coroutines.CancellationException("Cancelled"))) {
+            val syncEntries = FakeFddbDiarySyncEntryRepository(readFailure = failure)
+            val foodEntries = FakeFoodDiaryEntryRepository()
+            val sync = useCase(
+                diaryGateway = FakeFddbDiaryGateway(listOf(diaryEntry("new", "food"))),
+                syncEntries = syncEntries, foodEntryRepository = foodEntries,
+            )
+            val thrown = kotlin.test.assertFailsWith<Exception> { sync.sync(LocalDate(2026, 5, 25)) }
+            assertEquals(failure, thrown)
+            assertEquals(emptyList(), foodEntries.inserted)
+            assertEquals(emptySet(), syncEntries.ids)
+        }
+    }
+
+
+    @Test
     fun cancellationDuringProductFetchStopsDiaryInsteadOfRecordingFailure() = runBlocking {
         val entries = FakeFddbDiarySyncEntryRepository()
         val gateway = object : FddbProductGateway {
@@ -426,11 +497,20 @@ class FddbDiarySyncUseCaseTest {
         }
     }
 
-    private class FakeFddbDiarySyncEntryRepository(existing: Set<String> = emptySet()) :
+    private class FakeFddbDiarySyncEntryRepository(
+        existing: Set<String> = emptySet(),
+        private val readFailure: Throwable? = null,
+    ) :
         FddbDiarySyncEntryRepository {
         val ids = existing.toMutableSet()
 
-        override suspend fun contains(fddbEntryId: String): Boolean = fddbEntryId in ids
+        val lookups = mutableListOf<List<String>>()
+
+        override suspend fun findSyncedIds(ids: List<String>): Set<String> {
+            lookups += ids
+            readFailure?.let { throw it }
+            return ids.filter { it in this.ids }.toSet()
+        }
 
         override suspend fun add(fddbEntryId: String, syncedAt: Instant) {
             ids += fddbEntryId
