@@ -87,13 +87,13 @@ class LocalAiProtocolTest {
     @Test fun diagnosticReportKeepsEveryAnswerWithImageSizeAndVisionBackend() = runTest {
         val context = ApplicationProvider.getApplicationContext<Application>()
         val worker = AiDiagnostics(context, worker = true)
-        worker.recordResponse("unreadable", "960x1280", "gpu", "{\"value\":null}")
-        worker.recordResponse("recognized", "960x1280", "cpu", "{\"value\":117,\"unit\":\"g\"}")
+        worker.recordResponse("unreadable", "E2B", "960x1280", "gpu", "{\"value\":null}")
+        worker.recordResponse("recognized", "E4B", "960x1280", "cpu", "{\"value\":117,\"unit\":\"g\"}")
 
         val report = AiDiagnostics(context).report()
 
-        assertTrue(report.contains("result=unreadable image=960x1280 vision=gpu raw=\"{\\\"value\\\":null}\""))
-        assertTrue(report.contains("result=recognized image=960x1280 vision=cpu"))
+        assertTrue(report.contains("result=unreadable model=E2B image=960x1280 vision=gpu raw=\"{\\\"value\\\":null}\""))
+        assertTrue(report.contains("result=recognized model=E4B image=960x1280 vision=cpu"))
         assertTrue(report.contains("Native LiteRT-Meldungen"))
     }
 

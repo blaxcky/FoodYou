@@ -70,6 +70,7 @@ class LocalAiService : Service() {
                         val model = GemmaModel.valueOf(requireNotNull(data.getString(LocalAiProtocol.MODEL)))
                         engine = LiteRtScaleEngine.open(
                             File(noBackupFilesDir, "ai/models/${model.fileName}"),
+                            model.name,
                             File(cacheDir, "gemma/${model.name}"),
                             model.size,
                             data.getBoolean(LocalAiProtocol.VISION_ON_CPU),

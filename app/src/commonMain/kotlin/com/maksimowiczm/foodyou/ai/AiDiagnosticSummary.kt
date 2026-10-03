@@ -89,6 +89,7 @@ internal fun summarizeAiDiagnosticReport(report: String): AiDiagnosticSummary {
 
     recentLog.lineSequence().lastOrNull { " result=" in it && " raw=" in it }?.let { line ->
         val context = listOfNotNull(
+            Regex(" model=(\\w+)").find(line)?.let { "Gemma ${it.groupValues[1]}" },
             Regex(" image=(\\d+x\\d+)").find(line)?.let { "Foto ${it.groupValues[1]}" },
             Regex(" vision=(\\w+)").find(line)?.let { "Bildanalyse ${it.groupValues[1].uppercase()}" },
         )

@@ -74,6 +74,7 @@ internal class NativeGeneration(private val cancellationScope: CoroutineScope, p
 
 internal class LiteRtScaleEngine private constructor(
     private val engine: Engine,
+    private val modelName: String,
     private val visionBackend: String,
     private val cancellationScope: CoroutineScope,
     private val diagnostics: AiDiagnostics,
@@ -126,7 +127,7 @@ internal class LiteRtScaleEngine private constructor(
             }
             diagnostics.record("result_$outcome")
             // Every answer is kept (bounded) so an unreadable result can be explained from one report.
-            diagnostics.recordResponse(outcome, imageSize, visionBackend, current.responseText())
+            diagnostics.recordResponse(outcome, modelName, imageSize, visionBackend, current.responseText())
             diagnostics.recordNativeLog(started)
             return result
         } finally {
@@ -146,6 +147,7 @@ internal class LiteRtScaleEngine private constructor(
     companion object {
         fun open(
             model: File,
+            modelName: String,
             cache: File,
             expectedSize: Long,
             visionOnCpu: Boolean,
@@ -166,7 +168,7 @@ internal class LiteRtScaleEngine private constructor(
             try {
                 engine.initialize()
                 diagnostics.record("engine_ready")
-                return LiteRtScaleEngine(engine, visionBackend, cancellationScope, diagnostics)
+                return LiteRtScaleEngine(engine, modelName, visionBackend, cancellationScope, diagnostics)
             } catch (failure: Throwable) {
                 engine.close()
                 throw failure
