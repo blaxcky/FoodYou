@@ -42,6 +42,73 @@ import kotlinx.datetime.LocalDate
 
 class HomeViewModelTest {
     @Test
+    fun activityCompletionWaitsForStepsAndTrainingButNotDiaryOrWeight() = runTest {
+        for (stepsFirst in listOf(false, true)) {
+            val settings = FakeSettingsRepository(defaultSettings().copy(
+                homeSyncHealthConnectEnabled = true, homeSyncFddbDiaryEnabled = true,
+                healthConnectWeightEnabled = true,
+            ))
+            val stepsRelease = CompletableDeferred<Unit>()
+            val trainingRelease = CompletableDeferred<Unit>()
+            val diaryRelease = CompletableDeferred<Unit>()
+            val weightRelease = CompletableDeferred<Unit>()
+            var notifications = 0
+            val sync = async {
+                syncConfiguredHomeSync(
+                    LocalDate(2026, 5, 18), settings.value, settings,
+                    syncHealthConnect = { stepsRelease.await() },
+                    syncTraining = { trainingRelease.await(); true },
+                    syncWeight = { weightRelease.await() }, hasFddbCredentials = { true },
+                    syncFddbDiary = { diaryRelease.await(); Ok(FddbDiarySyncResult(0, 0, 0)) },
+                    onActivitiesSynced = { notifications++ },
+                )
+            }
+            runCurrent()
+            assertEquals(0, notifications)
+            (if (stepsFirst) stepsRelease else trainingRelease).complete(Unit)
+            runCurrent()
+            assertEquals(0, notifications)
+            (if (stepsFirst) trainingRelease else stepsRelease).complete(Unit)
+            runCurrent()
+            assertEquals(1, notifications)
+            assertFalse(sync.isCompleted)
+            diaryRelease.complete(Unit)
+            runCurrent()
+            assertFalse(sync.isCompleted)
+            weightRelease.complete(Unit)
+            assertTrue(sync.await().trainingSynced)
+            assertEquals(1, notifications)
+        }
+    }
+
+    @Test
+    fun activityPublicationFailureDoesNotCancelRemainingSyncSources() = runTest {
+        val settings = FakeSettingsRepository(defaultSettings().copy(
+            homeSyncHealthConnectEnabled = true, homeSyncFddbDiaryEnabled = true,
+            healthConnectWeightEnabled = true,
+        ))
+        val release = CompletableDeferred<Unit>()
+        var diaryFinished = false
+        var weightFinished = false
+        val sync = async {
+            syncConfiguredHomeSync(
+                LocalDate(2026, 5, 18), settings.value, settings,
+                syncHealthConnect = {}, syncWeight = { release.await(); weightFinished = true },
+                hasFddbCredentials = { true },
+                syncFddbDiary = { release.await(); diaryFinished = true; Ok(FddbDiarySyncResult(0, 0, 0)) },
+                onActivitiesSynced = { error("Snapshot read failed") },
+            )
+        }
+        runCurrent()
+        assertFalse(sync.isCompleted)
+        release.complete(Unit)
+        assertTrue(sync.await().fddbDiarySynced)
+        assertTrue(diaryFinished)
+        assertTrue(weightFinished)
+    }
+
+
+    @Test
     fun combinedSyncReadsEachDayOnlyBeforeAndAfterAllBranches() = runTest {
         val date = LocalDate(2026, 5, 18)
         val dates = listOf(date, date.minus(1, kotlinx.datetime.DateTimeUnit.DAY))

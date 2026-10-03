@@ -273,6 +273,16 @@ internal class HomeViewModel(
                         },
                         syncWeight = { healthConnectWeightSync.syncHistorical() },
                         syncTraining = { trainingSync.sync() != null },
+                        onActivitiesSynced = {
+                            if (syncAccount == trainingSync.account.value) {
+                                syncLog.recordSyncStep("Kalorienänderung nach Schritt- und Trainingsabgleich berechnen") {
+                                    val after = readBurnedEnergySnapshot(deltaDates, settingsRepository, activityRepository)
+                                    showBurnedEnergySyncDelta(deltaDates.associateWith {
+                                        burnedEnergySyncDeltaKcal(before.getValue(it), after.getValue(it))
+                                    })
+                                }
+                            }
+                        },
                         hasFddbCredentials = manualFddbDiarySyncUseCase::hasCredentials,
                         syncFddbDiary = { selectedDate ->
                             if (fddbSyncInProgress.value) {
@@ -287,14 +297,6 @@ internal class HomeViewModel(
                             }
                         },
                     )
-                if (syncAccount == trainingSync.account.value) {
-                    syncLog.recordSyncStep("Kalorienänderung nach dem Sync berechnen") {
-                        val after = readBurnedEnergySnapshot(deltaDates, settingsRepository, activityRepository)
-                        showBurnedEnergySyncDelta(deltaDates.associateWith {
-                            burnedEnergySyncDeltaKcal(before.getValue(it), after.getValue(it))
-                        })
-                    }
-                }
                 if (result.healthConnectSynced || result.fddbDiarySynced || result.trainingSynced) {
                     syncLog.recordSyncStep("Kalorien-Widgets aktualisieren") { updateCalorieWidgetValues() }
                 }
@@ -357,6 +359,7 @@ internal suspend fun syncConfiguredHomeSync(
     syncWeight: suspend () -> Unit = {},
     syncTraining: suspend () -> Boolean = { false },
     syncLog: SyncLog? = null,
+    onActivitiesSynced: suspend () -> Unit = {},
 ): HomeConfiguredSyncResult = supervisorScope {
     val training = async {
         var completed = false
@@ -393,9 +396,12 @@ internal suspend fun syncConfiguredHomeSync(
         synced to missingCredentials
     }
     val healthSynced = health.await()
+    val trainingSynced = training.await()
+    // Publish activity calories as soon as their sources finish, while diary and weight continue.
+    syncBranch { onActivitiesSynced() }
     val (diarySynced, missingCredentials) = diary.await()
     weight.await()
-    HomeConfiguredSyncResult(healthSynced, diarySynced, missingCredentials, training.await())
+    HomeConfiguredSyncResult(healthSynced, diarySynced, missingCredentials, trainingSynced)
 }
 
 private suspend fun syncBranch(block: suspend () -> Unit): Boolean =

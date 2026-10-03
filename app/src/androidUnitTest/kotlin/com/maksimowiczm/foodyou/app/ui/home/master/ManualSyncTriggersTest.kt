@@ -22,6 +22,7 @@ import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.first
 import kotlin.time.Clock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +40,35 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 class ManualSyncTriggersTest {
+    @Test
+    fun homePublishesCalorieDeltaWhileWeightStillRuns() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val fixture = Fixture(true, stepsEnabled = true)
+        val weightRelease = CompletableDeferred<Unit>()
+        fixture.weight.run = { weightRelease.await(); HealthConnectSyncResult.Synced }
+        val viewModel = fixture.home()
+        try {
+            viewModel.syncConfigured(today())
+            runCurrent()
+            val dates = burnedEnergySyncDeltaDates(today())
+            assertEquals(dates + dates, fixture.calorieReads)
+            val activeRun = fixture.log.runs.first().last()
+            assertEquals(com.maksimowiczm.foodyou.sync.SyncLogStatus.Running, activeRun.status)
+            assertEquals(1, activeRun.steps.count {
+                it.title == "Kalorienänderung nach Schritt- und Trainingsabgleich berechnen" &&
+                    it.status == com.maksimowiczm.foodyou.sync.SyncLogStatus.Success
+            })
+            weightRelease.complete(Unit)
+            runCurrent()
+            assertEquals(dates + dates, fixture.calorieReads)
+            assertEquals(com.maksimowiczm.foodyou.sync.SyncLogStatus.Success, fixture.log.runs.first().last().status)
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
+
     @Test
     fun openingHomeDoesNotSyncWeightAndManualSyncHonorsSetting() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -181,11 +211,12 @@ class ManualSyncTriggersTest {
 
     private class TestWeightSync : HealthConnectWeightSync {
         var imports = 0
+        var run: suspend () -> HealthConnectSyncResult = { HealthConnectSyncResult.Synced }
         override suspend fun availability() = HealthConnectAvailability.Available
         override suspend fun hasWeightPermission() = true
         override suspend fun syncHistorical(): HealthConnectSyncResult {
             imports++
-            return HealthConnectSyncResult.Synced
+            return run()
         }
         override suspend fun writeFoodYouEntry(entry: DailyWeightEntry) = error("No export expected")
     }
