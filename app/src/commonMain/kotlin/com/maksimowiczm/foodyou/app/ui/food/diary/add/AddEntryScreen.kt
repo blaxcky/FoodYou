@@ -356,14 +356,15 @@ internal fun FoodEntryForm(
                                     servingUnit = servingUnit,
                                 )
 
+                                // Directly below the amount so it stays visible above the keyboard.
+                                saveButton()
+
                                 PortionListOptions(
                                     state = state.measurementState,
                                     servingUnit = servingUnit,
                                     portions = (food as? ProductModel)?.portions.orEmpty(),
                                     onSavePortions = onSavePortions,
                                 )
-
-                                saveButton()
                             }
                         }
 

@@ -128,19 +128,26 @@ internal fun PortionListOptions(
         )
     }
 
-    val rows = remember(state.options) { state.options.sortedBy { it.listOrder() } }
+    val sortedOptions = remember(state.options) { state.options.sortedBy { it.listOrder() } }
+    val rows =
+        sortedOptions
+            .map { option ->
+                PortionRow(
+                    option = option,
+                    label = option.rowLabel(servingUnit),
+                    weight = option.rowWeight(state),
+                )
+            }
+            .withoutRepeatedStandardRows(selected = state.selectedOption)
     var expanded by rememberSaveable { mutableStateOf(false) }
     val collapsible = rows.size > COLLAPSED_ROW_LIMIT + 1
+    // Grams or milliliters come first, so they always stay visible when collapsed.
     val visibleRows =
         if (!collapsible || expanded) {
             rows
         } else {
-            rows.filterIndexed { index, option ->
-                index < COLLAPSED_ROW_LIMIT ||
-                    option == state.selectedOption ||
-                    (option is MeasurementPickerOption.Standard &&
-                        (option.type == MeasurementType.Gram ||
-                            option.type == MeasurementType.Milliliter))
+            rows.filterIndexed { index, row ->
+                index < COLLAPSED_ROW_LIMIT || row.option == state.selectedOption
             }
         }
     val canEdit = onSavePortions != null
@@ -167,12 +174,13 @@ internal fun PortionListOptions(
 
         // Rows are inset so the label and its weight stay visually close together.
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-            visibleRows.forEachIndexed { index, option ->
+            visibleRows.forEachIndexed { index, row ->
                 if (index > 0) PortionRowDivider()
+                val option = row.option
                 val portion = (option as? MeasurementPickerOption.Portion)?.portion
                 PortionOptionRow(
-                    label = option.rowLabel(servingUnit),
-                    weight = option.rowWeight(state),
+                    label = row.label,
+                    weight = row.weight,
                     selected = option == state.selectedOption,
                     onClick = { state.selectFromList(option) },
                     onLongClick =
@@ -455,11 +463,40 @@ private fun MeasurementPickerState.selectFromList(option: MeasurementPickerOptio
     selectOption(option = option, inputTextOverride = if (selectsSingleUnit) "1" else null)
 }
 
+@Immutable
+private data class PortionRow(
+    val option: MeasurementPickerOption,
+    val label: String,
+    val weight: String?,
+)
+
+/**
+ * Hides a package or serving row when a product portion repeats it with the same label and weight,
+ * e.g. an imported "Packung" portion. A selected row stays visible.
+ */
+private fun List<PortionRow>.withoutRepeatedStandardRows(
+    selected: MeasurementPickerOption
+): List<PortionRow> {
+    val portionRows = filter { it.option is MeasurementPickerOption.Portion }
+    return filterNot { row ->
+        val type = row.option.type
+        row.option is MeasurementPickerOption.Standard &&
+            (type == MeasurementType.Package || type == MeasurementType.Serving) &&
+            row.option != selected &&
+            row.weight != null &&
+            portionRows.any { portionRow ->
+                portionRow.weight == row.weight &&
+                    portionRow.label.trim().equals(row.label.trim(), ignoreCase = true)
+            }
+    }
+}
+
 private fun MeasurementPickerOption.listOrder(): Int =
     when {
-        this is MeasurementPickerOption.Portion -> 0
-        type == MeasurementType.Package || type == MeasurementType.Serving -> 1
-        type == MeasurementType.Gram || type == MeasurementType.Milliliter -> 2
+        this is MeasurementPickerOption.Standard &&
+            (type == MeasurementType.Gram || type == MeasurementType.Milliliter) -> 0
+        this is MeasurementPickerOption.Portion -> 1
+        type == MeasurementType.Package || type == MeasurementType.Serving -> 2
         else -> 3
     }
 

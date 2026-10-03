@@ -25,6 +25,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -97,6 +98,24 @@ class PortionListAmountPickerScreenshotTest {
         compose.onNodeWithText("× mittelgroße = 150 g").assertExists()
         assertEquals(Measurement.Gram(150.0), pickerState.measurement)
         capture("portion-preselected")
+    }
+
+    @Test
+    fun gramsAreListedFirst() {
+        show()
+        val gramsTop = compose.onNodeWithText("Gramm").getUnclippedBoundsInRoot().top
+        val portionTop = compose.onNodeWithText("mittelgroße").getUnclippedBoundsInRoot().top
+        assertTrue(gramsTop < portionTop)
+    }
+
+    @Test
+    fun portionRepeatingPackageHidesPackageRow() {
+        portions.value = defaultPortions + ProductPortion("Packung", 500.0, ProductPortion.Unit.Gram)
+        show(selected = Measurement.Gram(100.0))
+        compose.onAllNodesWithText("Packung").assertCountEquals(1)
+        compose.onNodeWithText("Packung").performClick()
+        compose.onNodeWithText("× Packung = 500 g").assertExists()
+        assertEquals(Measurement.Gram(500.0), pickerState.measurement)
     }
 
     @Test
