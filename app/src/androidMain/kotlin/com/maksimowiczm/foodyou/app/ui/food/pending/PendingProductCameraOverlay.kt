@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
@@ -71,6 +70,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_close
@@ -245,7 +245,10 @@ internal fun PendingProductCameraOverlay(
     }
 }
 
-/** Shrinks the frozen viewfinder frame from full screen into [target] with a spring. */
+/**
+ * Lifts the frozen viewfinder frame into a card, holds it so the photo can actually be seen, then
+ * shrinks it into [target] with a spring.
+ */
 @Composable
 private fun CaptureFlightImage(
     flight: CaptureFlight<ImageBitmap>,
@@ -253,51 +256,85 @@ private fun CaptureFlightImage(
     onFinished: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val progress = remember(flight.id) { Animatable(0f) }
+    val lift = remember(flight.id) { Animatable(0f) }
+    val fly = remember(flight.id) { Animatable(0f) }
     val latestOnFinished by rememberUpdatedState(onFinished)
     LaunchedEffect(flight.id) {
-        progress.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 380f))
+        lift.animateTo(1f, spring(dampingRatio = 0.78f, stiffness = 500f))
+        delay(CAPTURE_HOLD_MILLIS)
+        fly.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 380f))
         latestOnFinished(flight.id)
     }
     val borderColor = Color.White
-    Image(
-        bitmap = flight.frame,
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier
-            .layout { measurable, constraints ->
-                val full = Rect(0f, 0f, constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
-                val bounds = lerp(full, target, progress.value)
-                val placeable = measurable.measure(
-                    Constraints.fixed(
-                        bounds.width.roundToInt().coerceAtLeast(1),
-                        bounds.height.roundToInt().coerceAtLeast(1),
-                    )
-                )
-                layout(constraints.maxWidth, constraints.maxHeight) {
-                    placeable.place(bounds.left.roundToInt(), bounds.top.roundToInt())
+    Box(modifier) {
+        Box(
+            Modifier.fillMaxSize()
+                .graphicsLayer {
+                    alpha = 0.55f * lift.value.coerceIn(0f, 1f) * (1f - fly.value.coerceIn(0f, 1f))
                 }
-            }
-            .graphicsLayer {
-                val fraction = progress.value.coerceIn(0f, 1f)
-                shape = RoundedCornerShape(CornerSize(50f * fraction))
-                clip = true
-                shadowElevation = 8.dp.toPx() * fraction
-            }
-            .drawWithContent {
-                drawContent()
-                val fraction = ((progress.value - 0.5f) * 2f).coerceIn(0f, 1f)
-                if (fraction > 0f) {
-                    val shape = RoundedCornerShape(CornerSize(50f * progress.value.coerceIn(0f, 1f)))
-                    drawOutline(
-                        outline = shape.createOutline(size, layoutDirection, this),
-                        color = borderColor.copy(alpha = fraction),
-                        style = Stroke(width = 2.dp.toPx() * 2),
+                .background(Color.Black)
+        )
+        Image(
+            bitmap = flight.frame,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+                .layout { measurable, constraints ->
+                    val width = constraints.maxWidth.toFloat()
+                    val height = constraints.maxHeight.toFloat()
+                    val full = Rect(0f, 0f, width, height)
+                    val bounds = lerp(lerp(full, holdBounds(width, height), lift.value), target, fly.value)
+                    val placeable = measurable.measure(
+                        Constraints.fixed(
+                            bounds.width.roundToInt().coerceAtLeast(1),
+                            bounds.height.roundToInt().coerceAtLeast(1),
+                        )
                     )
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        placeable.place(bounds.left.roundToInt(), bounds.top.roundToInt())
+                    }
                 }
-            },
-    )
+                .graphicsLayer {
+                    shape = RoundedCornerShape(flightCornerRadius(lift.value, fly.value, size.minDimension))
+                    clip = true
+                    shadowElevation = 12.dp.toPx() * lift.value.coerceIn(0f, 1f)
+                }
+                .drawWithContent {
+                    drawContent()
+                    val fraction = ((fly.value - 0.5f) * 2f).coerceIn(0f, 1f)
+                    if (fraction > 0f) {
+                        val shape =
+                            RoundedCornerShape(flightCornerRadius(lift.value, fly.value, size.minDimension))
+                        drawOutline(
+                            outline = shape.createOutline(size, layoutDirection, this),
+                            color = borderColor.copy(alpha = fraction),
+                            style = Stroke(width = 2.dp.toPx() * 2),
+                        )
+                    }
+                },
+        )
+    }
 }
+
+/** The held card keeps the viewfinder's aspect ratio and stays clear of the top pill and shutter. */
+private fun Density.holdBounds(width: Float, height: Float): Rect {
+    val top = 64.dp.toPx()
+    val bottom = 144.dp.toPx()
+    val side = 24.dp.toPx()
+    val scale = minOf((width - 2 * side) / width, (height - top - bottom) / height)
+    val holdWidth = width * scale
+    val holdHeight = height * scale
+    val left = (width - holdWidth) / 2
+    val holdTop = top + (height - top - bottom - holdHeight) / 2
+    return Rect(left, holdTop, left + holdWidth, holdTop + holdHeight)
+}
+
+private fun Density.flightCornerRadius(lift: Float, fly: Float, minDimension: Float): Float {
+    val card = 28.dp.toPx() * lift.coerceIn(0f, 1f)
+    return card + (minDimension / 2 - card) * fly.coerceIn(0f, 1f)
+}
+
+private const val CAPTURE_HOLD_MILLIS = 850L
 
 @Composable
 private fun CaptureThumbnail(
