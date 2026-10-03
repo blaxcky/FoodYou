@@ -1,6 +1,5 @@
 package com.maksimowiczm.foodyou.food.infrastructure
 
-import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiarySyncEntryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
@@ -11,7 +10,6 @@ import com.maksimowiczm.foodyou.food.domain.repository.PendingProductRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.food.domain.repository.RecipeRepository
 import com.maksimowiczm.foodyou.food.domain.repository.RemoteProductRequestFactory
-import com.maksimowiczm.foodyou.food.infrastructure.fddb.FddbCredentialsRepositoryImpl
 import com.maksimowiczm.foodyou.food.infrastructure.network.RemoteProductMapper
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFddbDiarySyncEntryRepository
 import com.maksimowiczm.foodyou.food.infrastructure.repository.RoomFddbProductSyncStatusRepository
@@ -53,7 +51,6 @@ fun Module.foodInfrastructureModule() {
     factoryOf(::RoomPendingProductRepository).bind<PendingProductRepository>()
     factoryOf(::RoomProductRepository).bind<ProductRepository>()
     factoryOf(::RoomRecipeRepository).bind<RecipeRepository>()
-    factoryOf(::FddbCredentialsRepositoryImpl).bind<FddbCredentialsRepository>()
 
     factoryOf(::RemoteProductRequestFactoryImpl).bind<RemoteProductRequestFactory>()
     factoryOf(::RemoteProductMapper)

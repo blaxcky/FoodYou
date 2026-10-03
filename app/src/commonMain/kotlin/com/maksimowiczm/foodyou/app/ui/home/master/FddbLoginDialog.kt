@@ -24,16 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbDiaryGateway
 import foodyou.app.generated.resources.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 @Composable
 internal fun FddbLoginDialog(onDismissRequest: () -> Unit) {
-    val credentialsRepository: FddbCredentialsRepository = koinInject()
     val diaryGateway: FddbDiaryGateway = koinInject()
     val scope = rememberCoroutineScope()
     val login = rememberTextFieldState()
@@ -58,10 +57,12 @@ internal fun FddbLoginDialog(onDismissRequest: () -> Unit) {
                         val passwordText = password.text.toString()
                         runCatching { diaryGateway.login(username, passwordText) }
                             .onSuccess {
-                                credentialsRepository.store(username, passwordText)
                                 onDismissRequest()
                             }
-                            .onFailure { hasError = true }
+                            .onFailure {
+                                if (it is CancellationException) throw it
+                                hasError = true
+                            }
                         isLoading = false
                     }
                 },
