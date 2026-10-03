@@ -6,16 +6,28 @@ import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRep
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.SyncLogOutcome
+import com.maksimowiczm.foodyou.sync.recordSyncStep
 
 class SyncFddbProductUseCase(
     private val statusRepository: FddbProductSyncStatusRepository,
     private val resyncFddbProductUseCase: ResyncFddbProductUseCase,
     private val dateProvider: DateProvider,
     private val settingsRepository: UserPreferencesRepository<Settings>,
+    private val syncLog: SyncLog? = null,
 ) {
     suspend fun sync(
         productId: FoodId.Product
-    ): Result<Unit, ResyncFddbProductError> {
+    ): Result<Unit, ResyncFddbProductError> = syncLog.recordSyncStep("FDDB-Produkt aktualisieren · ${productId.id}", { result ->
+        when (result) {
+            is Result.Success -> SyncLogOutcome.success("Produkt aktualisiert")
+            is Result.Error -> SyncLogOutcome.failed(if (result.error == ResyncFddbProductError.Blocked)
+                "FDDB-Zugriff blockiert" else "Produktabgleich fehlgeschlagen")
+        }
+    }) { syncProduct(productId) }
+
+    private suspend fun syncProduct(productId: FoodId.Product): Result<Unit, ResyncFddbProductError> {
         val attemptedAt = dateProvider.nowInstant()
         settingsRepository.update {
             copy(fddbProductSyncLastAttemptEpochSeconds = attemptedAt.epochSeconds)

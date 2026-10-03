@@ -18,6 +18,9 @@ import com.maksimowiczm.foodyou.activity.domain.usecase.mergeStepExclusionPeriod
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.logOutcome
+import com.maksimowiczm.foodyou.sync.recordSyncStep
 import java.io.IOException
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.first
@@ -37,6 +40,7 @@ actual fun Module.healthConnectActivitySync() {
             repository = get(),
             settingsRepository = userPreferencesRepository(),
             context = androidContext(),
+            syncLog = get(),
         )
     }
 }
@@ -45,6 +49,7 @@ private class AndroidHealthConnectActivitySync(
     private val repository: ActivityRepository,
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val context: Context,
+    private val syncLog: SyncLog,
 ) : HealthConnectActivitySync {
     override suspend fun availability(): HealthConnectAvailability =
         when (HealthConnectClient.getSdkStatus(context)) {
@@ -71,7 +76,10 @@ private class AndroidHealthConnectActivitySync(
         }
     }
 
-    override suspend fun syncSteps(dates: List<LocalDate>): HealthConnectSyncResult {
+    override suspend fun syncSteps(dates: List<LocalDate>): HealthConnectSyncResult =
+        syncLog.recordSyncStep("Schritte synchronisieren · ${dates.distinct().size} Tage", HealthConnectSyncResult::logOutcome) { syncStepsInternal(dates) }
+
+    private suspend fun syncStepsInternal(dates: List<LocalDate>): HealthConnectSyncResult {
         if (!settingsRepository.observe().first().healthConnectStepsEnabled) {
             return HealthConnectSyncResult.Disabled
         }

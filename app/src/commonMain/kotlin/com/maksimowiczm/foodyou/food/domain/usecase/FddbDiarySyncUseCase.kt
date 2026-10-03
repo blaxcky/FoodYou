@@ -19,6 +19,10 @@ import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.DiaryFoodProduct
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CreateFoodDiaryEntryUseCase
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.SyncLogOutcome
+import com.maksimowiczm.foodyou.sync.SyncLogStatus
+import com.maksimowiczm.foodyou.sync.recordSyncStep
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -36,13 +40,22 @@ class FddbDiarySyncUseCase(
     private val createFoodDiaryEntryUseCase: CreateFoodDiaryEntryUseCase,
     private val transactionProvider: TransactionProvider,
     private val dateProvider: DateProvider,
+    private val syncLog: SyncLog? = null,
 ) {
     suspend fun hasCredentials(): Boolean = credentialsRepository.hasCredentials().first()
 
-    suspend fun sync(referenceDate: LocalDate = today()): FddbDiarySyncResult {
+    suspend fun sync(referenceDate: LocalDate = today()): FddbDiarySyncResult =
+        syncLog.recordSyncStep("FDDB-Tagebuch: 7 Tage abgleichen", { result ->
+            SyncLogOutcome(if (result.failed > 0) SyncLogStatus.Failed else SyncLogStatus.Success,
+                "${result.imported} übernommen · ${result.skipped} bereits vorhanden/übersprungen · ${result.failed} Fehler")
+        }) { syncDiary(referenceDate) }
+
+    private suspend fun syncDiary(referenceDate: LocalDate): FddbDiarySyncResult {
         val dates = (0..6).map { referenceDate.minus(it, DateTimeUnit.DAY) }.toSet()
         val meals = mealRepository.observeMeals().first().sortedBy { it.rank }
-        val diaryEntries = diaryGateway.getLastSevenDays(referenceDate).filter { it.date in dates }
+        val diaryEntries = syncLog.recordSyncStep("FDDB-Tagebucheinträge laden", { entries ->
+            SyncLogOutcome.success("${entries.size} Einträge empfangen")
+        }) { diaryGateway.getLastSevenDays(referenceDate).filter { it.date in dates } }
         var imported = 0
         var skipped = 0
         var failed = 0
@@ -109,7 +122,9 @@ class FddbDiarySyncUseCase(
     }
 
     private suspend fun resolveProduct(entry: FddbDiaryEntry): Product? {
-        val fddbProduct = productGateway.getProduct(entry.productUrl, FddbRequestPriority.Diary)
+        val fddbProduct = syncLog.recordSyncStep("Tagebuchprodukt laden: ${entry.productName}") {
+            productGateway.getProduct(entry.productUrl, FddbRequestPriority.Diary)
+        }
         return transactionProvider.withTransaction {
             when (val result = productRepository.upsertFddbProduct(entry.productUrl, fddbProduct)) {
                 is FddbProductUpsertResult.Inserted -> result.product

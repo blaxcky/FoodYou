@@ -29,6 +29,7 @@ val uiModule = module {
             manualFddbDiarySyncUseCase = get(),
             fddbCredentialsRepository = get<FddbCredentialsRepository>(),
             healthConnectWeightSync = get(),
+            syncLog = get(),
         )
     }
     viewModel {

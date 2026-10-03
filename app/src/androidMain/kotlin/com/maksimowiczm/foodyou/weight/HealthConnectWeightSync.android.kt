@@ -17,6 +17,9 @@ import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
 import com.maksimowiczm.foodyou.weight.domain.usecase.foodYouHealthConnectDate
 import com.maksimowiczm.foodyou.weight.domain.usecase.isExportableFoodYouWeightEntry
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.logOutcome
+import com.maksimowiczm.foodyou.sync.recordSyncStep
 import java.io.IOException
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -36,6 +39,7 @@ actual fun Module.healthConnectWeightSync() {
             repository = get(),
             settingsRepository = userPreferencesRepository(),
             context = androidContext(),
+            syncLog = get(),
         )
     }
 }
@@ -44,6 +48,7 @@ private class AndroidHealthConnectWeightSync(
     private val repository: WeightRepository,
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val context: Context,
+    private val syncLog: SyncLog,
 ) : HealthConnectWeightSync {
     private val syncMutex = Mutex()
     private val backfillWindowSeconds = 30L * 24 * 60 * 60
@@ -73,7 +78,10 @@ private class AndroidHealthConnectWeightSync(
         }
     }
 
-    override suspend fun syncHistorical(): HealthConnectSyncResult {
+    override suspend fun syncHistorical(): HealthConnectSyncResult =
+        syncLog.recordSyncStep("Gewicht mit Health Connect abgleichen", HealthConnectSyncResult::logOutcome) { syncHistoricalInternal() }
+
+    private suspend fun syncHistoricalInternal(): HealthConnectSyncResult {
         if (!settingsRepository.observe().first().healthConnectWeightEnabled) {
             return HealthConnectSyncResult.Disabled
         }
@@ -133,11 +141,13 @@ private class AndroidHealthConnectWeightSync(
             syncMutex.withLock {
                 val end = java.time.Instant.ofEpochSecond(java.time.Instant.now().epochSecond + 60)
                 val start = end.minusSeconds(backfillWindowSeconds)
-                repository.upsertAll(readWeightRecords(start, end).map(::toEntry))
+                syncLog.recordSyncStep("Gewicht: Letzte 30 Tage lesen und speichern") {
+                    repository.upsertAll(readWeightRecords(start, end).map(::toEntry))
+                }
                 settingsRepository.update {
                     copy(healthConnectWeightLastSyncedEpochSeconds = Clock.System.now().epochSeconds)
                 }
-                backfillAvailableHistory(start)
+                syncLog.recordSyncStep("Gewicht: Ältere Historie nachladen") { backfillAvailableHistory(start) }
             }
             HealthConnectSyncResult.Synced
         } catch (_: SecurityException) {

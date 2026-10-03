@@ -2,18 +2,20 @@ package com.maksimowiczm.foodyou.training
 
 import android.content.Context
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
+import com.maksimowiczm.foodyou.sync.SyncLog
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-internal fun createTrainingSync(context: Context, dao: TrainingImportDao): TrainingSync = TrainingSyncCoordinator(
+internal fun createTrainingSync(context: Context, dao: TrainingImportDao, syncLog: SyncLog): TrainingSync = TrainingSyncCoordinator(
     FirebaseTrainingRemote.create(context),
     FileTrainingSyncStorage(File(context.noBackupFilesDir, "training-sync")),
     dao::importDocument,
     CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     onAccountChanged = { updateCalorieWidgetValues() },
+    syncLog = syncLog,
 )
 
 @Serializable

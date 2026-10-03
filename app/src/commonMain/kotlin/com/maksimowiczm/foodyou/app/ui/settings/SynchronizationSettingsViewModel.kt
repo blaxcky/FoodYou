@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
 import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
+import com.maksimowiczm.foodyou.sync.SyncLog
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +31,14 @@ internal class SynchronizationSettingsViewModel(
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     fddbCredentialsRepository: FddbCredentialsRepository,
     private val healthConnectWeightSync: HealthConnectWeightSync,
+    private val syncLog: SyncLog,
 ) : ViewModel() {
+
+    val syncLogRuns = syncLog.runs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(2_000), emptyList())
+
+    fun clearSyncLog() {
+        viewModelScope.launch { syncLog.clearCompleted() }
+    }
 
     private val fddbSyncInProgress = MutableStateFlow(false)
     private val weightSyncAvailable = MutableStateFlow(false)

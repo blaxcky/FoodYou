@@ -1,6 +1,10 @@
 package com.maksimowiczm.foodyou.training
 
 import kotlin.time.Clock
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.SyncLogOutcome
+import com.maksimowiczm.foodyou.sync.SyncLogStatus
+import com.maksimowiczm.foodyou.sync.recordSyncStep
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -60,6 +64,7 @@ class TrainingSyncCoordinator(
     private val importDocument: suspend (TrainingAccount, TrainingDocument, Long) -> TrainingImportResult,
     scope: CoroutineScope,
     private val onAccountChanged: suspend () -> Unit = {},
+    private val syncLog: SyncLog? = null,
 ) : TrainingSync {
     override val account = remote.account
     private fun snapshot() = TrainingSyncState(remote.configured, account.value,
@@ -108,7 +113,18 @@ class TrainingSyncCoordinator(
         mutableState.value = state.value.copy(enabled = enabled)
     }
 
-    override suspend fun sync(): TrainingSyncReport? {
+    override suspend fun sync(): TrainingSyncReport? = syncLog.recordSyncStep("Trainings synchronisieren", { report ->
+        if (report == null) SyncLogOutcome.skipped(when {
+            !remote.configured -> "Trainingsquelle nicht eingerichtet"
+            account.value == null -> "Nicht angemeldet"
+            !state.value.enabled -> "Trainings-Sync deaktiviert"
+            state.value.busy -> "Ein Trainings-Sync läuft bereits"
+            else -> "Anmeldung oder Sync-Einstellung hat sich geändert"
+        }) else SyncLogOutcome(if (report.successful) SyncLogStatus.Success else SyncLogStatus.Failed,
+            report.description())
+    }) { syncTraining() }
+
+    private suspend fun syncTraining(): TrainingSyncReport? {
         if (!remote.configured || !state.value.enabled || !runMutex.tryLock()) return null
         val owner = account.value
         if (owner == null) { runMutex.unlock(); return null }
@@ -124,27 +140,34 @@ class TrainingSyncCoordinator(
                     var failed = 0
                     val errors = mutableListOf<String>()
                     try {
-                        val documents = withTimeout(60_000) { remote.fetch(owner) }
-                        for (document in documents) {
-                            ensureActive()
-                            if (!stillCurrent()) throw CancellationException("Account changed")
-                            try {
-                                when (importDocument(owner, document, Clock.System.now().toEpochMilliseconds())) {
-                                    TrainingImportResult.Imported -> imported++
-                                    TrainingImportResult.AlreadyImported -> existing++
-                                    TrainingImportResult.ZeroCalories -> zero++
-                                    TrainingImportResult.Conflict -> {
-                                        failed++
-                                        if (errors.size < 20) errors += "Trainingsabschluss wurde nachträglich verändert; vorhandener Import bleibt erhalten."
+                        val documents = syncLog.recordSyncStep("Trainings vom Server laden", { documents ->
+                            SyncLogOutcome.success("${documents.size} Trainings empfangen")
+                        }) { withTimeout(60_000) { remote.fetch(owner) } }
+                        syncLog.recordSyncStep("Trainings lokal übernehmen", { _: Unit ->
+                            SyncLogOutcome(if (failed > 0) SyncLogStatus.Failed else SyncLogStatus.Success,
+                                "$imported übernommen · $existing bereits vorhanden · $zero ohne Kalorien · $failed Fehler")
+                        }) {
+                            for (document in documents) {
+                                ensureActive()
+                                if (!stillCurrent()) throw CancellationException("Account changed")
+                                try {
+                                    when (importDocument(owner, document, Clock.System.now().toEpochMilliseconds())) {
+                                        TrainingImportResult.Imported -> imported++
+                                        TrainingImportResult.AlreadyImported -> existing++
+                                        TrainingImportResult.ZeroCalories -> zero++
+                                        TrainingImportResult.Conflict -> {
+                                            failed++
+                                            if (errors.size < 20) errors += "Trainingsabschluss wurde nachträglich verändert; vorhandener Import bleibt erhalten."
+                                        }
                                     }
+                                } catch (cancel: CancellationException) { throw cancel
+                                } catch (invalid: TrainingValidationException) {
+                                    failed++
+                                    if (errors.size < 20) errors += invalid.message.orEmpty()
+                                } catch (_: Exception) {
+                                    failed++
+                                    if (errors.size < 20) errors += "Ein Training konnte lokal nicht gespeichert werden."
                                 }
-                            } catch (cancel: CancellationException) { throw cancel
-                            } catch (invalid: TrainingValidationException) {
-                                failed++
-                                if (errors.size < 20) errors += invalid.message.orEmpty()
-                            } catch (_: Exception) {
-                                failed++
-                                if (errors.size < 20) errors += "Ein Training konnte lokal nicht gespeichert werden."
                             }
                         }
                     } catch (_: TimeoutCancellationException) {

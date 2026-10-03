@@ -65,6 +65,7 @@ fun Module.foodDomainModule() {
             settingsRepository = userPreferencesRepository(),
             diarySyncUseCase = get(),
             fddbProductSyncCoordinator = get(),
+            syncLog = get(),
         )
     }
     factory {
@@ -95,6 +96,7 @@ fun Module.foodDomainModule() {
         SyncFddbProductUseCase(
             statusRepository = get(),
             resyncFddbProductUseCase = get(),
+            syncLog = get(),
             dateProvider = get(),
             settingsRepository = userPreferencesRepository(),
         )
@@ -105,6 +107,7 @@ fun Module.foodDomainModule() {
             settingsRepository = userPreferencesRepository(),
             statusRepository = get(),
             syncDueFddbProductsUseCase = get(),
+            syncLog = get(),
             syncFddbProductUseCase = get(),
         )
     }

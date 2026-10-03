@@ -15,6 +15,10 @@ import com.maksimowiczm.foodyou.settings.domain.entity.FddbDiarySyncStatus
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.fddbDiarySyncStatus
 import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.recordSyncRun
+import com.maksimowiczm.foodyou.sync.recordSyncStep
+import com.maksimowiczm.foodyou.sync.recordSyncSkipped
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
@@ -99,6 +103,7 @@ internal class HomeViewModel(
     private val manualFddbDiarySyncUseCase: ManualFddbDiarySyncUseCase,
     private val fddbCredentialsRepository: FddbCredentialsRepository,
     private val trainingSync: com.maksimowiczm.foodyou.training.TrainingSync,
+    private val syncLog: SyncLog? = null,
 ) : ViewModel() {
 
     private val _homeOrder = settingsRepository.observe().map { it.homeCardOrder }
@@ -239,56 +244,63 @@ internal class HomeViewModel(
         if (isSyncing.value || fddbSyncInProgress.value) return
 
         configuredSyncRunner.launch {
-            val settings = settingsRepository.observe().first()
-            val syncAccount = trainingSync.account.value
-            val deltaDates = burnedEnergySyncDeltaDates(date)
-            val before = deltaDates.associateWith { dailyBurnedEnergyKcal(it, settingsRepository, activityRepository) }
-            clearBurnedEnergySyncDelta()
-            val result =
-                syncConfiguredHomeSync(
-                    date = date,
-                    settings = settings,
-                    settingsRepository = settingsRepository,
-                    syncHealthConnect = {
-                        if (!isSyncing.value) {
-                            isSyncing.value = true
-                            clearBurnedEnergySyncDelta()
-                            try {
-                                syncActivitiesForBurnedEnergyDelta(
-                                        date = date,
-                                        settingsRepository = settingsRepository,
-                                        healthConnectActivitySync = healthConnectActivitySync,
-                                        activityRepository = activityRepository,
-                                    )
-                            } finally {
-                                nowEpochSeconds.value = Clock.System.now().epochSeconds
-                                isSyncing.value = false
+            syncLog.recordSyncRun("Startseite · $date") {
+                val settings = settingsRepository.observe().first()
+                val syncAccount = trainingSync.account.value
+                val deltaDates = burnedEnergySyncDeltaDates(date)
+                val before = syncLog.recordSyncStep("Kalorienstand vor dem Sync lesen") {
+                    deltaDates.associateWith { dailyBurnedEnergyKcal(it, settingsRepository, activityRepository) }
+                }
+                clearBurnedEnergySyncDelta()
+                val result =
+                    syncConfiguredHomeSync(
+                        date = date,
+                        settings = settings,
+                        settingsRepository = settingsRepository,
+                        syncLog = syncLog,
+                        syncHealthConnect = {
+                            if (!isSyncing.value) {
+                                isSyncing.value = true
+                                clearBurnedEnergySyncDelta()
+                                try {
+                                    syncActivitiesForBurnedEnergyDelta(
+                                            date = date,
+                                            settingsRepository = settingsRepository,
+                                            healthConnectActivitySync = healthConnectActivitySync,
+                                            activityRepository = activityRepository,
+                                        )
+                                } finally {
+                                    nowEpochSeconds.value = Clock.System.now().epochSeconds
+                                    isSyncing.value = false
+                                }
                             }
-                        }
-                    },
-                    syncWeight = { healthConnectWeightSync.syncHistorical() },
-                    syncTraining = { trainingSync.sync() != null },
-                    hasFddbCredentials = manualFddbDiarySyncUseCase::hasCredentials,
-                    syncFddbDiary = { selectedDate ->
-                        if (fddbSyncInProgress.value) {
-                            Result.Success(FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0))
-                        } else {
-                            fddbSyncInProgress.value = true
-                            try {
-                                manualFddbDiarySyncUseCase.sync(selectedDate)
-                            } finally {
-                                fddbSyncInProgress.value = false
+                        },
+                        syncWeight = { healthConnectWeightSync.syncHistorical() },
+                        syncTraining = { trainingSync.sync() != null },
+                        hasFddbCredentials = manualFddbDiarySyncUseCase::hasCredentials,
+                        syncFddbDiary = { selectedDate ->
+                            if (fddbSyncInProgress.value) {
+                                Result.Success(FddbDiarySyncResult(imported = 0, skipped = 0, failed = 0))
+                            } else {
+                                fddbSyncInProgress.value = true
+                                try {
+                                    manualFddbDiarySyncUseCase.sync(selectedDate)
+                                } finally {
+                                    fddbSyncInProgress.value = false
+                                }
                             }
-                        }
-                    },
-                )
-            if (syncAccount == trainingSync.account.value) {
-                showBurnedEnergySyncDelta(deltaDates.associateWith {
-                    burnedEnergySyncDeltaKcal(before.getValue(it), dailyBurnedEnergyKcal(it, settingsRepository, activityRepository))
-                })
-            }
-            if (result.healthConnectSynced || result.fddbDiarySynced || result.trainingSynced) {
-                updateCalorieWidgetValues()
+                        },
+                    )
+                if (syncAccount == trainingSync.account.value) {
+                    syncLog.recordSyncStep("Kalorienänderung nach dem Sync berechnen") {
+                        showBurnedEnergySyncDelta(deltaDates.associateWith {
+                            burnedEnergySyncDeltaKcal(before.getValue(it), dailyBurnedEnergyKcal(it, settingsRepository, activityRepository))
+                        })
+                    }
+                }
+                if (result.healthConnectSynced || result.fddbDiarySynced || result.trainingSynced) {
+                    syncLog.recordSyncStep("Kalorien-Widgets aktualisieren") { updateCalorieWidgetValues() }
+                }
             }
         }
     }
@@ -347,6 +359,7 @@ internal suspend fun syncConfiguredHomeSync(
     syncFddbDiary: suspend (LocalDate) -> Result<FddbDiarySyncResult, Throwable>,
     syncWeight: suspend () -> Unit = {},
     syncTraining: suspend () -> Boolean = { false },
+    syncLog: SyncLog? = null,
 ): HomeConfiguredSyncResult = supervisorScope {
     val training = async {
         var completed = false
@@ -354,23 +367,31 @@ internal suspend fun syncConfiguredHomeSync(
         completed
     }
     val health = async {
-        if (!settings.homeSyncHealthConnectEnabled) false
+        if (!settings.homeSyncHealthConnectEnabled) {
+            syncLog.recordSyncSkipped("Schritte synchronisieren", "Startseiten-Sync für Schritte deaktiviert")
+            false
+        }
         else syncBranch { syncHealthConnect() }
     }
     val weight = async {
         if (settings.healthConnectWeightEnabled) syncBranch { syncWeight() }
+        else syncLog.recordSyncSkipped("Gewicht synchronisieren", "Gewichts-Sync deaktiviert")
     }
     val diary = async {
         var synced = false
         var missingCredentials = false
         if (settings.homeSyncFddbDiaryEnabled) {
             syncBranch {
-                if (hasFddbCredentials()) {
+                if (syncLog.recordSyncStep("FDDB-Anmeldung prüfen") { hasFddbCredentials() }) {
                     synced = syncFddbDiary(date) is Result.Success
                 } else {
                     missingCredentials = true
+                    syncLog.recordSyncSkipped("FDDB-Tagebuch synchronisieren", "Nicht bei FDDB angemeldet")
                 }
             }
+        }
+        if (!settings.homeSyncFddbDiaryEnabled) {
+            syncLog.recordSyncSkipped("FDDB-Tagebuch synchronisieren", "Startseiten-Sync für FDDB deaktiviert")
         }
         synced to missingCredentials
     }

@@ -7,6 +7,10 @@ import com.maksimowiczm.foodyou.food.domain.repository.FddbProductSyncStatusRepo
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.SyncLogOutcome
+import com.maksimowiczm.foodyou.sync.logOutcome
+import com.maksimowiczm.foodyou.sync.recordSyncStep
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,6 +20,7 @@ class FddbProductSyncCoordinator(
     private val statusRepository: FddbProductSyncStatusRepository,
     private val syncDueFddbProductsUseCase: SyncDueFddbProductsUseCase,
     private val syncFddbProductUseCase: SyncFddbProductUseCase,
+    private val syncLog: SyncLog? = null,
 ) {
     private val mutex = Mutex()
 
@@ -48,15 +53,19 @@ class FddbProductSyncCoordinator(
     suspend fun syncNext(
         limit: Int,
         onProgress: (FddbProductSyncBatchProgress) -> Unit = {},
-    ): ManualFddbProductSyncResult = mutex.withLock {
-        require(limit > 0) { "The FDDB product sync limit must be positive." }
-        syncNextLocked(limit, onProgress)
+    ): ManualFddbProductSyncResult = syncLog.recordSyncStep("FDDB-Produktstapel · bis zu $limit Produkte", ManualFddbProductSyncResult::logOutcome) {
+        mutex.withLock {
+            require(limit > 0) { "The FDDB product sync limit must be positive." }
+            syncNextLocked(limit, onProgress)
+        }
     }
 
     suspend fun syncNow(
         productId: FoodId.Product
-    ): Result<Unit, ResyncFddbProductError> = mutex.withLock {
-        syncFddbProductUseCase.sync(productId)
+    ): Result<Unit, ResyncFddbProductError> = syncLog.recordSyncStep("FDDB-Einzelproduktabgleich · Produkt ${productId.id}", { result ->
+        if (result is Result.Success) SyncLogOutcome.success() else SyncLogOutcome.failed("Produktabgleich fehlgeschlagen")
+    }) {
+        mutex.withLock { syncFddbProductUseCase.sync(productId) }
     }
 
     companion object {

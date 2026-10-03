@@ -5,6 +5,10 @@ import com.maksimowiczm.foodyou.common.result.Err
 import com.maksimowiczm.foodyou.common.result.Ok
 import com.maksimowiczm.foodyou.common.result.Result
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.SyncLogOutcome
+import com.maksimowiczm.foodyou.sync.logOutcome
+import com.maksimowiczm.foodyou.sync.recordSyncStep
 import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 
@@ -12,10 +16,20 @@ class ManualFddbDiarySyncUseCase(
     private val settingsRepository: UserPreferencesRepository<Settings>,
     private val diarySyncUseCase: FddbDiarySyncUseCase,
     private val fddbProductSyncCoordinator: FddbProductSyncCoordinator,
+    private val syncLog: SyncLog? = null,
 ) {
     suspend fun hasCredentials(): Boolean = diarySyncUseCase.hasCredentials()
 
-    suspend fun sync(referenceDate: LocalDate): Result<FddbDiarySyncResult, Throwable> {
+    suspend fun sync(referenceDate: LocalDate): Result<FddbDiarySyncResult, Throwable> =
+        syncLog.recordSyncStep("FDDB-Tagebuch und Produktnachsync · $referenceDate", { result ->
+            when (result) {
+                is Result.Error -> SyncLogOutcome.failed("Tagebuchabgleich fehlgeschlagen")
+                is Result.Success -> if (result.data.failed > 0) SyncLogOutcome.failed("${result.data.failed} Tagebuchfehler")
+                    else SyncLogOutcome.success()
+            }
+        }) { syncDiaryAndProducts(referenceDate) }
+
+    private suspend fun syncDiaryAndProducts(referenceDate: LocalDate): Result<FddbDiarySyncResult, Throwable> {
         val diaryResult =
             try {
                 diarySyncUseCase.sync(referenceDate)
@@ -25,8 +39,12 @@ class ManualFddbDiarySyncUseCase(
                 return Err(throwable)
             }
 
-        settingsRepository.recordFddbDiarySyncResult(diaryResult)
-        fddbProductSyncCoordinator.onManualFddbSyncCompleted()
+        syncLog.recordSyncStep("FDDB-Tagebuchstatus speichern") {
+            settingsRepository.recordFddbDiarySyncResult(diaryResult)
+        }
+        syncLog.recordSyncStep("FDDB-Produktnachsync", ManualFddbProductSyncResult::logOutcome) {
+            fddbProductSyncCoordinator.onManualFddbSyncCompleted()
+        }
 
         return Ok(diaryResult)
     }

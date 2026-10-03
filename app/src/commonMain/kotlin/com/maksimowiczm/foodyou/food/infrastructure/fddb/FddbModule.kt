@@ -13,7 +13,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.onClose
 
 internal fun Module.fddbModule() {
-    single { FddbRequestQueue() }
+    single { FddbRequestQueue(syncLog = get()) }
     single(named(FddbRemoteDataSource::class.qualifiedName!!)) {
             HttpClient {
                 install(HttpTimeout)

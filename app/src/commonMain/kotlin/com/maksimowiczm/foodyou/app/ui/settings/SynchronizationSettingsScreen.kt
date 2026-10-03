@@ -30,6 +30,8 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.MonitorWeight
+import androidx.compose.material.icons.outlined.History
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -87,6 +89,17 @@ internal fun SynchronizationSettingsScreen(
     val model = viewModel.model.collectAsStateWithLifecycle().value
     var showFddbLoginDialog by remember { mutableStateOf(false) }
     var showFddbProductSyncPolicyDialog by remember { mutableStateOf(false) }
+    var showSyncLog by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = showSyncLog) { showSyncLog = false }
+    if (showSyncLog) {
+        SyncLogContent(
+            runs = viewModel.syncLogRuns.collectAsStateWithLifecycle().value,
+            onBack = { showSyncLog = false },
+            onClear = viewModel::clearSyncLog,
+            modifier = modifier,
+        )
+        return
+    }
     val weightPermissionRequester =
         rememberHealthConnectWeightPermissionRequester { granted ->
             if (granted) viewModel.setWeightSyncEnabled(true)
@@ -110,6 +123,7 @@ internal fun SynchronizationSettingsScreen(
         },
         onFddbProductSyncQueue = onFddbProductSyncQueue,
         onFddbProductSyncPolicy = { showFddbProductSyncPolicyDialog = true },
+        onSyncLog = { showSyncLog = true },
         modifier = modifier,
         trainingContent = { com.maksimowiczm.foodyou.training.TrainingSyncSettings() },
     )
@@ -141,6 +155,7 @@ internal fun SynchronizationSettingsContent(
     onFddbProductSyncQueue: () -> Unit,
     onFddbProductSyncPolicy: () -> Unit,
     modifier: Modifier = Modifier,
+    onSyncLog: () -> Unit = {},
     initialErrorDetailsExpanded: Boolean = false,
     trainingContent: @Composable () -> Unit = {},
 ) {
@@ -160,6 +175,15 @@ internal fun SynchronizationSettingsContent(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = paddingValues,
         ) {
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(Res.string.headline_sync_log)) },
+                    supportingContent = { Text(stringResource(Res.string.description_sync_log_entry)) },
+                    leadingContent = { Icon(Icons.Outlined.History, contentDescription = null) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null) },
+                    modifier = Modifier.clickable(onClick = onSyncLog),
+                )
+            }
             item {
                 SynchronizationSectionHeader(
                     title = stringResource(Res.string.headline_home_sync),

@@ -1,5 +1,9 @@
 package com.maksimowiczm.foodyou.training
 
+import com.maksimowiczm.foodyou.sync.SyncLog
+import com.maksimowiczm.foodyou.sync.SyncLogRun
+import com.maksimowiczm.foodyou.sync.SyncLogStatus
+import com.maksimowiczm.foodyou.sync.SyncLogStore
 import kotlin.test.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +29,31 @@ internal class FakeTrainingRemote : TrainingRemote {
 }
 
 class TrainingSyncCoordinatorTest {
+    @Test fun syncLogReportsPartialImportFailureAndDisabledSkip() = runTest {
+        val store = object : SyncLogStore {
+            override val runs = MutableStateFlow(emptyList<SyncLogRun>())
+            override suspend fun update(transform: (List<SyncLogRun>) -> List<SyncLogRun>) {
+                runs.value = transform(runs.value)
+            }
+        }
+        val remote = FakeTrainingRemote().apply { fetch = { listOf(trainingDocument("bad"), trainingDocument()) } }
+        val log = SyncLog(store)
+        val coordinator = TrainingSyncCoordinator(remote, MemoryTrainingStorage(), { _, document, _ ->
+            validateTrainingDocument(document)
+            TrainingImportResult.Imported
+        }, backgroundScope, syncLog = log)
+        runCurrent()
+        assertEquals(1, coordinator.sync()!!.failed)
+        val run = store.runs.value.single()
+        assertEquals(SyncLogStatus.Failed, run.status)
+        assertEquals(listOf("Trainings synchronisieren", "Trainings vom Server laden", "Trainings lokal übernehmen"),
+            run.steps.map { it.title })
+        assertEquals(SyncLogStatus.Failed, run.steps.last().status)
+        coordinator.setEnabled(false)
+        assertNull(coordinator.sync())
+        assertEquals(SyncLogStatus.Skipped, store.runs.value.last().steps.single().status)
+    }
+
     @Test fun onlyManualSyncFetchesAndReportsCommittedResults() = runTest {
         val remote = FakeTrainingRemote()
         val coordinator = TrainingSyncCoordinator(remote, MemoryTrainingStorage(), { _, _, _ -> TrainingImportResult.Imported }, backgroundScope)
