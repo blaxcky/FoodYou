@@ -28,6 +28,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.common.compose.utility.LocalClipboardManager
@@ -69,7 +70,7 @@ internal fun SyncLogContent(
                 navigationIcon = { ArrowBackIconButton(onBack) },
                 actions = {
                     IconButton(onClick = { clipboard.copy(title, formatSyncLog(runs, now)) }, enabled = runs.isNotEmpty()) {
-                        Icon(Icons.Filled.ContentCopy, stringResource(Res.string.action_copy))
+                        Icon(Icons.Filled.ContentCopy, stringResource(Res.string.action_sync_log_copy_all))
                     }
                     IconButton(onClick = { showClearDialog = true }, enabled = runs.any { it.status != SyncLogStatus.Running }) {
                         Icon(Icons.Outlined.DeleteSweep, stringResource(Res.string.action_clear))
@@ -90,7 +91,12 @@ internal fun SyncLogContent(
                 Text(stringResource(Res.string.neutral_sync_log_empty), Modifier.padding(16.dp))
             }
             items(runs.asReversed(), key = { it.id }) { run ->
-                SyncLogRunCard(run, now, initiallyExpanded = run.id == runs.lastOrNull()?.id)
+                SyncLogRunCard(
+                    run = run,
+                    now = now,
+                    initiallyExpanded = run.id == runs.lastOrNull()?.id,
+                    onCopy = { clipboard.copy("$title · ${run.title}", formatSyncLog(listOf(run), now)) },
+                )
             }
         }
     }
@@ -108,13 +114,16 @@ internal fun SyncLogContent(
 }
 
 @Composable
-private fun SyncLogRunCard(run: SyncLogRun, now: Long, initiallyExpanded: Boolean) {
+private fun SyncLogRunCard(run: SyncLogRun, now: Long, initiallyExpanded: Boolean, onCopy: () -> Unit) {
     var expanded by rememberSaveable(run.id) { mutableStateOf(initiallyExpanded) }
     OutlinedCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Column(Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(run.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                IconButton(onClick = onCopy) {
+                    Icon(Icons.Filled.ContentCopy, stringResource(Res.string.action_sync_log_copy_run, run.title))
+                }
                 Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                     stringResource(if (expanded) Res.string.action_sync_log_collapse else Res.string.action_sync_log_expand))
             }

@@ -744,7 +744,9 @@
     <string name="neutral_removed_from_favorites">Aus Favoriten entfernt</string>
     <string name="headline_sync_log">Sync-Protokoll</string>
     <string name="description_sync_log_entry">Reihenfolge, Dauer und Ergebnisse der letzten Syncs</string>
-    <string name="description_sync_log">Die letzten 30 Sync-Läufe bleiben auf diesem Gerät gespeichert. Schritte sind in Startreihenfolge nummeriert. Der Zeitversatz zeigt parallele Abläufe; überlappende Dauern lassen sich nicht addieren. Lauf antippen für Details oder das gesamte Protokoll kopieren.</string>
+    <string name="description_sync_log">Die letzten 30 Sync-Läufe bleiben auf diesem Gerät gespeichert. Schritte sind in Startreihenfolge nummeriert. Der Zeitversatz zeigt parallele Abläufe; überlappende Dauern lassen sich nicht addieren. Lauf antippen für Details. Das Kopiersymbol am Lauf kopiert nur diesen Lauf, das Symbol oben alle Läufe.</string>
+    <string name="action_sync_log_copy_run">Sync-Lauf %1$s kopieren</string>
+    <string name="action_sync_log_copy_all">Alle Sync-Protokolle kopieren</string>
     <string name="neutral_sync_log_empty">Noch kein Sync protokolliert. Starte einen Sync, um hier den Ablauf zu sehen.</string>
     <string name="headline_sync_log_clear">Sync-Protokoll löschen?</string>
     <string name="description_sync_log_clear">Abgeschlossene Läufe werden gelöscht. Laufende Syncs bleiben im Protokoll.</string>

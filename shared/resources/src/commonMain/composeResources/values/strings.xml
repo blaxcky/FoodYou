@@ -870,7 +870,9 @@
     <string name="neutral_removed_from_favorites">Removed from favorites</string>
     <string name="headline_sync_log">Sync log</string>
     <string name="description_sync_log_entry">Order, duration and results of recent syncs</string>
-    <string name="description_sync_log">The last 30 sync runs are kept on this device. Steps are numbered in start order. Start offsets show parallel work; overlapping durations must not be added together. Tap a run for details, or copy the complete log.</string>
+    <string name="description_sync_log">The last 30 sync runs are kept on this device. Steps are numbered in start order. Start offsets show parallel work; overlapping durations must not be added together. Tap a run for details. The copy icon on a run copies only that run; the icon at the top copies all runs.</string>
+    <string name="action_sync_log_copy_run">Copy sync run %1$s</string>
+    <string name="action_sync_log_copy_all">Copy all sync logs</string>
     <string name="neutral_sync_log_empty">No syncs recorded yet. Start a sync to see its progress here.</string>
     <string name="headline_sync_log_clear">Clear sync log?</string>
     <string name="description_sync_log_clear">Completed runs will be deleted. Active syncs will remain in the log.</string>
