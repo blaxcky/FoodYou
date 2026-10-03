@@ -209,7 +209,7 @@ def crop_photo(image, box, padding):
 # --- Inference ---------------------------------------------------------------------------------
 
 def fit_patch_budget(image):
-    """Downscales with a proper filter so the native preprocessor does not resize again."""
+    """Pre-scales with Lanczos; the native preprocessor still fits the result to the budget."""
     scale = min(1.0, (PATCH_PIXEL_BUDGET * 0.98 / (image.width * image.height)) ** 0.5)
     if scale >= 1.0:
         return image

@@ -279,6 +279,7 @@ seitenverhältnistreu auf höchstens 2520 Patches, kleinere Bilder auch hoch
 | A | wie oben, Host-GPU (WebGPU) für Text und Vision | 6/6 |
 | A | wie oben, CPU mit fp16-Aktivierungen | 6/6 |
 | A | Prompt-Stand `4a421ca5` (vor 2026-10-02), Host-GPU | 5/6 (175 g → `{"value":0}`) |
+| A | unveränderte Test-Assets inkl. App-UI und Tastatur, Host-GPU | 3/3 |
 | A | aktueller Prompt, Bild um 90° bzw. 270° gedreht | 4/6 bzw. 1/6, falsche Ziffern (501, 55, 500 …), kein `null` |
 | B | Abschreib-Prompt aller Anzeigewerte, ganzes Bild | 0/6 |
 | C | manueller Anzeigeausschnitt + Abschreib-Prompt | 3/6 |
