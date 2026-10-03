@@ -690,6 +690,14 @@ internal actual fun PendingProductPhotoCapture(
                     capture.takePendingProductPhoto(
                         context = context,
                         photoDirectory = photoDirectory,
+                        onCaptureStarted = {
+                            if (showCapturePreview) {
+                                // Freeze the viewfinder when the sensor actually starts exposing,
+                                // not on tap, so the frame matches the saved photo.
+                                val frame = runCatching { previewView.bitmap }.getOrNull()
+                                capturePreview.captureStarted(frame?.asImageBitmap())
+                            }
+                        },
                         onSaved = {
                             photoSaving = false
                             if (showCapturePreview) {
@@ -703,11 +711,6 @@ internal actual fun PendingProductPhotoCapture(
                             photoSaveError = true
                         },
                     )
-                    if (showCapturePreview) {
-                        // Freeze the viewfinder after the capture request so it adds no latency.
-                        val frame = runCatching { previewView.bitmap }.getOrNull()
-                        capturePreview.captureStarted(frame?.asImageBitmap())
-                    }
                 }
             },
             onClose = onClose?.let { close ->
@@ -724,6 +727,7 @@ internal actual fun PendingProductPhotoCapture(
 private fun ImageCapture.takePendingProductPhoto(
     context: android.content.Context,
     photoDirectory: String,
+    onCaptureStarted: () -> Unit,
     onSaved: (String) -> Unit,
     onError: () -> Unit,
 ) {
@@ -736,6 +740,10 @@ private fun ImageCapture.takePendingProductPhoto(
         outputOptions,
         ContextCompat.getMainExecutor(context),
         object : ImageCapture.OnImageSavedCallback {
+            override fun onCaptureStarted() {
+                onCaptureStarted()
+            }
+
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                 onSaved(file.name)
             }

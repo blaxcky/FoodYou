@@ -73,7 +73,8 @@ internal class CapturePhotoPreviewState<T>(
     }
 
     fun photoFailed() {
-        if (closed) return
+        // Without a started capture there is no provisional thumbnail to roll back.
+        if (closed || !capturing) return
         capturing = false
         captureGeneration++
         flight = null

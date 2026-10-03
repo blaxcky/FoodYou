@@ -46,7 +46,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,7 +79,6 @@ import foodyou.app.generated.resources.neutral_photo_save_failed
 import foodyou.app.generated.resources.neutral_take_nutrition_photo
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -102,9 +100,17 @@ internal fun PendingProductCameraOverlay(
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHapticFeedback.current
-    val scope = rememberCoroutineScope()
     val dim = remember { Animatable(0f) }
     var thumbnailBounds by remember { mutableStateOf<Rect?>(null) }
+
+    // The shutter blink marks the real exposure, which can lag the tap by a few hundred ms.
+    LaunchedEffect(flight?.id) {
+        if (flight != null) {
+            dim.snapTo(0f)
+            dim.animateTo(0.45f, tween(60))
+            dim.animateTo(0f, tween(160))
+        }
+    }
 
     Box(modifier) {
         if (showCapturePreview && flight != null) {
@@ -161,11 +167,6 @@ internal fun PendingProductCameraOverlay(
                 if (!photoSaving) {
                     if (showCapturePreview) {
                         haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        scope.launch {
-                            dim.snapTo(0f)
-                            dim.animateTo(0.45f, tween(60))
-                            dim.animateTo(0f, tween(160))
-                        }
                     }
                     onCapture()
                 }

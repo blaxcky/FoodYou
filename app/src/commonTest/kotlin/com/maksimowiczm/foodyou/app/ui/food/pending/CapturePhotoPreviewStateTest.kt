@@ -81,6 +81,18 @@ class CapturePhotoPreviewStateTest {
     }
 
     @Test
+    fun failureBeforeExposureKeepsCurrentThumbnail() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        preview.captureStarted("first frame")
+        preview.photoSaved("first.jpg")
+        runCurrent()
+        val first = preview.thumbnail
+        // The camera can fail before it reports that exposure started.
+        preview.photoFailed()
+        assertEquals(first, preview.thumbnail)
+    }
+
+    @Test
     fun lateDecodeOfOlderPhotoCannotReplaceNewerThumbnail() = runTest {
         val oldImage = CompletableDeferred<String?>()
         val preview = CapturePhotoPreviewState(backgroundScope) { path: String, _: Int ->
