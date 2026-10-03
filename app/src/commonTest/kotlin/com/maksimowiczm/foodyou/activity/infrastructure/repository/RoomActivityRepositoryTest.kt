@@ -19,6 +19,29 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 
 class RoomActivityRepositoryTest {
+    @Test
+    fun bulkOperationsUseOneDaoCallAndKeepDayValuesAndExclusionsSeparate() = runTest {
+        val stepDao = InMemoryStepSummaryDao()
+        val exclusionDao = InMemoryExclusionDao()
+        val repository = RoomActivityRepository(InMemoryManualDao(), stepDao, exclusionDao)
+        val yesterday = LocalDate(2026, 8, 27)
+        val periods = listOf(StepExclusionPeriod(yesterday, 480, 540), StepExclusionPeriod(date, 600, 660))
+        repository.replaceStepExclusionPeriods(yesterday, periods.filter { it.date == yesterday })
+        repository.replaceStepExclusionPeriods(date, periods.filter { it.date == date })
+        repository.replaceStepExclusionPeriods(LocalDate(2026, 1, 1), listOf(StepExclusionPeriod(LocalDate(2026, 1, 1), 60, 120)))
+        assertEquals(periods, repository.readStepExclusionPeriods(listOf(yesterday, date, date)))
+        assertEquals(1, exclusionDao.bulkReads)
+        assertEquals(listOf(yesterday.toEpochDays(), date.toEpochDays()), exclusionDao.lastRequestedDates)
+        repository.upsertStepSummaries(listOf(
+            DailyStepSummary(yesterday, 1_000, 250, Instant.DISTANT_PAST),
+            DailyStepSummary(date, 2_000, 0, Instant.DISTANT_PAST),
+        ))
+        assertEquals(1, stepDao.bulkWrites)
+        assertEquals(0, stepDao.singleWrites)
+        assertEquals(7.5, repository.observeDailySummary(yesterday, 0.01).first().stepEnergyKcal)
+        assertEquals(20.0, repository.observeDailySummary(date, 0.01).first().stepEnergyKcal)
+    }
+
     private val date = LocalDate(2026, 8, 28)
 
     @Test
@@ -64,21 +87,37 @@ class RoomActivityRepositoryTest {
 }
 
 private class InMemoryStepSummaryDao : DailyStepSummaryDao {
+    var bulkWrites = 0
+    var singleWrites = 0
     private val entries = MutableStateFlow<Map<Long, DailyStepSummaryEntity>>(emptyMap())
 
     override fun observe(dateEpochDay: Long): Flow<DailyStepSummaryEntity?> =
         entries.map { it[dateEpochDay] }
 
+    override suspend fun upsertAll(summaries: List<DailyStepSummaryEntity>) {
+        bulkWrites++
+        entries.value = entries.value + summaries.associateBy { it.dateEpochDay }
+    }
+
     override suspend fun upsert(summary: DailyStepSummaryEntity) {
+        singleWrites++
         entries.value = entries.value + (summary.dateEpochDay to summary)
     }
 }
 
 private class InMemoryExclusionDao : StepExclusionPeriodDao {
+    var bulkReads = 0
+    var lastRequestedDates = emptyList<Long>()
     private val entries = MutableStateFlow<List<StepExclusionPeriodEntity>>(emptyList())
 
     override fun observeAll(dateEpochDay: Long): Flow<List<StepExclusionPeriodEntity>> =
         entries.map { list -> list.filter { it.dateEpochDay == dateEpochDay } }
+
+    override suspend fun readAll(dateEpochDays: List<Long>): List<StepExclusionPeriodEntity> {
+        bulkReads++
+        lastRequestedDates = dateEpochDays
+        return entries.value.filter { it.dateEpochDay in dateEpochDays }
+    }
 
     override suspend fun deleteAll(dateEpochDay: Long) {
         entries.value = entries.value.filterNot { it.dateEpochDay == dateEpochDay }

@@ -27,6 +27,27 @@ import kotlinx.datetime.LocalDate
 
 class DataStoreSettingsRepositoryTest {
     @Test
+    fun stepFullSyncCoverageDefaultsRoundTripsAndCanBeReset() = runTest {
+        val store = InMemoryPreferencesDataStore()
+        val repository = DataStoreSettingsRepository(store)
+        assertNull(repository.observe().first().healthConnectStepsLastFullSyncEpochDay)
+        assertNull(repository.observe().first().healthConnectStepsLastFullSyncTimeZoneId)
+        repository.update {
+            copy(healthConnectStepsLastFullSyncEpochDay = 20_729,
+                healthConnectStepsLastFullSyncTimeZoneId = "Europe/Vienna")
+        }
+        val reloaded = DataStoreSettingsRepository(store).observe().first()
+        assertEquals(20_729L, reloaded.healthConnectStepsLastFullSyncEpochDay)
+        assertEquals("Europe/Vienna", reloaded.healthConnectStepsLastFullSyncTimeZoneId)
+        repository.update {
+            copy(healthConnectStepsLastFullSyncEpochDay = null,
+                healthConnectStepsLastFullSyncTimeZoneId = null)
+        }
+        assertNull(DataStoreSettingsRepository(store).observe().first().healthConnectStepsLastFullSyncEpochDay)
+        assertNull(DataStoreSettingsRepository(store).observe().first().healthConnectStepsLastFullSyncTimeZoneId)
+    }
+
+    @Test
     fun legacyAndUnknownModesResetFrequencyAndCounterButCurrentModesPreserveThem() = runTest {
         for (mode in listOf("EveryThirtyMinutes", "Unknown", "WithManualFddbSync", "Disabled")) {
             val store = InMemoryPreferencesDataStore(mutablePreferencesOf(

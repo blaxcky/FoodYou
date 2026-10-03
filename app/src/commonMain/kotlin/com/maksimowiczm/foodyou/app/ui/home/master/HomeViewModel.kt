@@ -92,7 +92,6 @@ internal data class HomeConfiguredSyncResult(
     val trainingSynced: Boolean = false,
 )
 
-private const val HEALTH_CONNECT_STEPS_SYNC_LOOKBACK_DAYS = 30
 private const val BURNED_ENERGY_SYNC_DELTA_VISIBLE_MILLIS = 120_000L
 
 internal class HomeViewModel(
@@ -423,7 +422,7 @@ internal suspend fun syncActivitiesForBurnedEnergyDelta(
         targetDates.associateWith { targetDate ->
             dailyBurnedEnergyKcal(targetDate, settingsRepository, activityRepository)
         }
-    return when (healthConnectActivitySync.syncSteps(healthConnectStepsSyncDates(date, today))) {
+    return when (healthConnectActivitySync.syncStepsForHome(date)) {
         HealthConnectSyncResult.MissingPermission,
         HealthConnectSyncResult.Unavailable,
         HealthConnectSyncResult.UpdateRequired,
@@ -465,25 +464,6 @@ internal fun burnedEnergySyncDeltaDates(
     selectedDate: LocalDate,
     today: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
 ): List<LocalDate> = listOf(selectedDate, today, today.minus(1, DateTimeUnit.DAY)).distinct()
-
-internal fun healthConnectStepsSyncDates(
-    selectedDate: LocalDate,
-    today: LocalDate =
-        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-    lookbackDays: Int = HEALTH_CONNECT_STEPS_SYNC_LOOKBACK_DAYS,
-): List<LocalDate> {
-    val start = today.minus(lookbackDays, DateTimeUnit.DAY)
-    val dates = mutableListOf<LocalDate>()
-    var date = start
-    while (date <= today) {
-        dates += date
-        date = date.plus(1, DateTimeUnit.DAY)
-    }
-    if (selectedDate !in dates) {
-        dates += selectedDate
-    }
-    return dates.distinct().sorted()
-}
 
 /** Owns the complete manual sync lifetime, including a weight-only sync. */
 internal class HomeSyncRunner(private val scope: CoroutineScope) {

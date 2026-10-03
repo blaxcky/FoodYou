@@ -152,6 +152,9 @@ class StepExclusionsViewModelTest {
 
         override suspend fun availability() = HealthConnectAvailability.Available
         override suspend fun hasReadStepsPermission() = true
+        override suspend fun syncStepsForHome(selectedDate: LocalDate): HealthConnectSyncResult =
+            error("Exclusion edits must explicitly sync their date")
+
         override suspend fun syncSteps(dates: List<LocalDate>): HealthConnectSyncResult {
             syncedDates += dates
             return results.removeFirstOrNull() ?: HealthConnectSyncResult.Synced

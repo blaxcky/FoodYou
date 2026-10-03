@@ -9,28 +9,15 @@ import androidx.health.connect.client.request.AggregateRequest
 import androidx.work.CoroutineWorker
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
-import com.maksimowiczm.foodyou.activity.domain.entity.StepExclusionPeriod
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
-import com.maksimowiczm.foodyou.activity.domain.usecase.MINUTES_PER_DAY
-import com.maksimowiczm.foodyou.activity.domain.usecase.boundedExcludedSteps
-import com.maksimowiczm.foodyou.activity.domain.usecase.mergeStepExclusionPeriods
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.sync.SyncLog
-import com.maksimowiczm.foodyou.sync.logOutcome
-import com.maksimowiczm.foodyou.sync.recordSyncStep
 import java.io.IOException
-import kotlin.time.Clock
-import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.atTime
-import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 
@@ -76,68 +63,50 @@ private class AndroidHealthConnectActivitySync(
         }
     }
 
+    private val coordinator = StepSyncCoordinator(
+        repository = repository,
+        settingsRepository = settingsRepository,
+        source = object : StepAggregationSource {
+            override suspend fun aggregate(start: kotlin.time.Instant, end: kotlin.time.Instant): Long =
+                withStepReadPermission {
+                    client().aggregateSteps(start.toJavaInstant(), end.toJavaInstant())
+                }
+
+            override suspend fun aggregateByDay(
+                start: kotlin.time.Instant,
+                end: kotlin.time.Instant,
+                timeZone: TimeZone,
+            ): Map<LocalDate, Long> = withStepReadPermission {
+                client().aggregateGroupByDuration(
+                    androidx.health.connect.client.request.AggregateGroupByDurationRequest(
+                        metrics = setOf(StepsRecord.COUNT_TOTAL),
+                        timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(
+                            start.toJavaInstant(), end.toJavaInstant(),
+                        ),
+                        timeRangeSlicer = java.time.Duration.ofDays(1),
+                    )
+                ).associate { bucket ->
+                    kotlin.time.Instant.fromEpochSeconds(bucket.startTime.epochSecond, bucket.startTime.nano)
+                        .toLocalDateTime(timeZone).date to (bucket.result[StepsRecord.COUNT_TOTAL] ?: 0L)
+                }
+            }
+        },
+        checkAccess = {
+            when (availability()) {
+                HealthConnectAvailability.Unavailable -> HealthConnectSyncResult.Unavailable
+                HealthConnectAvailability.UpdateRequired -> HealthConnectSyncResult.UpdateRequired
+                HealthConnectAvailability.Available ->
+                    if (hasReadStepsPermission()) null else HealthConnectSyncResult.MissingPermission
+            }
+        },
+        syncLog = syncLog,
+    )
+
+    override suspend fun syncStepsForHome(selectedDate: LocalDate): HealthConnectSyncResult =
+        coordinator.syncForHome(selectedDate)
+
     override suspend fun syncSteps(dates: List<LocalDate>): HealthConnectSyncResult =
-        syncLog.recordSyncStep("Schritte synchronisieren · ${dates.distinct().size} Tage", HealthConnectSyncResult::logOutcome) { syncStepsInternal(dates) }
-
-    private suspend fun syncStepsInternal(dates: List<LocalDate>): HealthConnectSyncResult {
-        if (!settingsRepository.observe().first().healthConnectStepsEnabled) {
-            return HealthConnectSyncResult.Disabled
-        }
-
-        return when (availability()) {
-            HealthConnectAvailability.Unavailable -> HealthConnectSyncResult.Unavailable
-            HealthConnectAvailability.UpdateRequired -> HealthConnectSyncResult.UpdateRequired
-            HealthConnectAvailability.Available -> syncAvailableSteps(dates)
-        }
-    }
-
-    private suspend fun syncAvailableSteps(dates: List<LocalDate>): HealthConnectSyncResult {
-        if (!hasReadStepsPermission()) return HealthConnectSyncResult.MissingPermission
-
-        return try {
-            val client = client()
-            val timeZone = TimeZone.currentSystemDefault()
-            dates.distinct().forEach { date ->
-                val rawSteps = client.aggregateSteps(date.dayStart(timeZone), date.dayEnd(timeZone))
-                val periods =
-                    mergeStepExclusionPeriods(
-                        repository.observeStepExclusionPeriods(date).first()
-                    )
-                val excludedSteps =
-                    boundedExcludedSteps(
-                        rawSteps = rawSteps,
-                        intervalSteps =
-                            periods.map { period ->
-                                client.aggregateSteps(
-                                    period.startInstant(timeZone),
-                                    period.endInstant(timeZone),
-                                )
-                            },
-                    )
-                repository.upsertStepSummary(
-                    DailyStepSummary(
-                        date = date,
-                        rawSteps = rawSteps,
-                        excludedSteps = excludedSteps,
-                        syncedAt = Clock.System.now(),
-                    )
-                )
-            }
-            settingsRepository.update {
-                copy(healthConnectStepsLastSyncedEpochSeconds = Clock.System.now().epochSeconds)
-            }
-            HealthConnectSyncResult.Synced
-        } catch (_: SecurityException) {
-            HealthConnectSyncResult.MissingPermission
-        } catch (_: IOException) {
-            HealthConnectSyncResult.Failed
-        } catch (_: RemoteException) {
-            HealthConnectSyncResult.Failed
-        } catch (exception: RuntimeException) {
-            if (exception is kotlinx.coroutines.CancellationException) throw exception
-            HealthConnectSyncResult.Failed
-        }
-    }
+        coordinator.syncDates(dates)
 
     private fun client(): HealthConnectClient = HealthConnectClient.getOrCreate(context)
 
@@ -158,22 +127,6 @@ private suspend fun HealthConnectClient.aggregateSteps(
         )
     )[StepsRecord.COUNT_TOTAL] ?: 0
 
-private fun LocalDate.dayStart(timeZone: TimeZone): java.time.Instant =
-    atStartOfDayIn(timeZone).toJavaInstant()
-
-private fun LocalDate.dayEnd(timeZone: TimeZone): java.time.Instant =
-    plus(1, kotlinx.datetime.DateTimeUnit.DAY).atStartOfDayIn(timeZone).toJavaInstant()
-
-private fun StepExclusionPeriod.startInstant(timeZone: TimeZone): java.time.Instant =
-    date.atTime(LocalTime(startMinute / 60, startMinute % 60)).toInstant(timeZone).toJavaInstant()
-
-private fun StepExclusionPeriod.endInstant(timeZone: TimeZone): java.time.Instant =
-    if (endMinute == MINUTES_PER_DAY) {
-        date.dayEnd(timeZone)
-    } else {
-        date.atTime(LocalTime(endMinute / 60, endMinute % 60)).toInstant(timeZone).toJavaInstant()
-    }
-
 private fun kotlin.time.Instant.toJavaInstant(): java.time.Instant =
     java.time.Instant.ofEpochSecond(epochSeconds, nanosecondsOfSecond.toLong())
 
@@ -192,3 +145,6 @@ class ActivityStepsSyncWorker(context: Context, params: WorkerParameters) :
         const val NAME = "activity_steps_sync"
     }
 }
+
+private suspend fun <T> withStepReadPermission(block: suspend () -> T): T =
+    try { block() } catch (_: SecurityException) { throw StepSyncPermissionException() }

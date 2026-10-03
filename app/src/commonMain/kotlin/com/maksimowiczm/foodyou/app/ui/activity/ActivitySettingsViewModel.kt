@@ -122,7 +122,7 @@ internal class ActivitySettingsViewModel(
                 return@launch
             }
 
-            settingsRepository.update { copy(healthConnectStepsEnabled = true) }
+            settingsRepository.update { enableStepSync() }
             healthConnectStatus.value = ActivityHealthConnectStatus.Available
         }
     }
@@ -141,7 +141,7 @@ internal class ActivitySettingsViewModel(
                 }
                 HealthConnectAvailability.Available -> {
                     if (healthConnectActivitySync.hasReadStepsPermission()) {
-                        settingsRepository.update { copy(healthConnectStepsEnabled = true) }
+                        settingsRepository.update { enableStepSync() }
                         healthConnectStatus.value = ActivityHealthConnectStatus.Available
                     } else {
                         healthConnectStatus.value = ActivityHealthConnectStatus.PermissionMissing
@@ -174,3 +174,12 @@ internal fun String.toCompleteKcalPerStepOrNull(): Double? {
     if (normalized.endsWith(".")) return null
     return normalized.toDoubleOrNull()?.takeIf { it >= 0.0 }
 }
+
+/** Re-enabling must refresh history even if a full sync already ran today. */
+internal fun Settings.enableStepSync(): Settings = copy(
+    healthConnectStepsEnabled = true,
+    healthConnectStepsLastFullSyncEpochDay =
+        if (healthConnectStepsEnabled) healthConnectStepsLastFullSyncEpochDay else null,
+    healthConnectStepsLastFullSyncTimeZoneId =
+        if (healthConnectStepsEnabled) healthConnectStepsLastFullSyncTimeZoneId else null,
+)

@@ -53,6 +53,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 this[SettingsPreferencesKeys.healthConnectWeightEnabled] ?: false,
             healthConnectStepsLastSyncedEpochSeconds =
                 this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds],
+            healthConnectStepsLastFullSyncEpochDay =
+                this[SettingsPreferencesKeys.healthConnectStepsLastFullSyncEpochDay],
+            healthConnectStepsLastFullSyncTimeZoneId =
+                this[SettingsPreferencesKeys.healthConnectStepsLastFullSyncTimeZoneId],
             healthConnectWeightLastSyncedEpochSeconds =
                 this[SettingsPreferencesKeys.healthConnectWeightLastSyncedEpochSeconds],
             healthConnectWeightBackfillBeforeEpochSeconds =
@@ -117,6 +121,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.healthConnectWeightEnabled] = updated.healthConnectWeightEnabled
         this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds] =
             updated.healthConnectStepsLastSyncedEpochSeconds
+        this[SettingsPreferencesKeys.healthConnectStepsLastFullSyncEpochDay] =
+            updated.healthConnectStepsLastFullSyncEpochDay
+        this[SettingsPreferencesKeys.healthConnectStepsLastFullSyncTimeZoneId] =
+            updated.healthConnectStepsLastFullSyncTimeZoneId
         this[SettingsPreferencesKeys.healthConnectWeightLastSyncedEpochSeconds] =
             updated.healthConnectWeightLastSyncedEpochSeconds
         this[SettingsPreferencesKeys.healthConnectWeightBackfillBeforeEpochSeconds] =
@@ -420,6 +428,10 @@ private object SettingsPreferencesKeys {
     val stepsCaloriesPerStepKcal = doublePreferencesKey("settings:stepsCaloriesPerStepKcal")
     val healthConnectStepsEnabled = booleanPreferencesKey("settings:healthConnectStepsEnabled")
     val healthConnectWeightEnabled = booleanPreferencesKey("settings:healthConnectWeightEnabled")
+    val healthConnectStepsLastFullSyncEpochDay =
+        longPreferencesKey("settings:healthConnectStepsLastFullSyncEpochDay")
+    val healthConnectStepsLastFullSyncTimeZoneId =
+        stringPreferencesKey("settings:healthConnectStepsLastFullSyncTimeZoneId")
     val healthConnectStepsLastSyncedEpochSeconds =
         longPreferencesKey("settings:healthConnectStepsLastSyncedEpochSeconds")
     val healthConnectWeightLastSyncedEpochSeconds =

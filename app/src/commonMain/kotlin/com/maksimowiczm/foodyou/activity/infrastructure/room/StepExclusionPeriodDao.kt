@@ -15,6 +15,10 @@ interface StepExclusionPeriodDao {
     )
     fun observeAll(dateEpochDay: Long): Flow<List<StepExclusionPeriodEntity>>
 
+    @Query("SELECT * FROM StepExclusionPeriod WHERE dateEpochDay IN (:dateEpochDays) " +
+        "ORDER BY dateEpochDay, startMinute, endMinute")
+    suspend fun readAll(dateEpochDays: List<Long>): List<StepExclusionPeriodEntity>
+
     @Query("DELETE FROM StepExclusionPeriod WHERE dateEpochDay = :dateEpochDay")
     suspend fun deleteAll(dateEpochDay: Long)
 

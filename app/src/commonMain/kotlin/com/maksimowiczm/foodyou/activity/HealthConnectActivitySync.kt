@@ -8,6 +8,8 @@ interface HealthConnectActivitySync {
 
     suspend fun hasReadStepsPermission(): Boolean
 
+    suspend fun syncStepsForHome(selectedDate: LocalDate): HealthConnectSyncResult
+
     suspend fun syncSteps(dates: List<LocalDate>): HealthConnectSyncResult
 
     fun cancelPeriodicSync()

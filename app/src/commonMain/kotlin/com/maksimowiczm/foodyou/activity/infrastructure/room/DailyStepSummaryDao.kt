@@ -10,5 +10,7 @@ interface DailyStepSummaryDao {
     @Query("SELECT * FROM DailyStepSummary WHERE dateEpochDay = :dateEpochDay")
     fun observe(dateEpochDay: Long): Flow<DailyStepSummaryEntity?>
 
+    @Upsert suspend fun upsertAll(summaries: List<DailyStepSummaryEntity>)
+
     @Upsert suspend fun upsert(summary: DailyStepSummaryEntity)
 }

@@ -23,6 +23,8 @@ data class Settings(
     val healthConnectStepsEnabled: Boolean,
     val healthConnectWeightEnabled: Boolean = false,
     val healthConnectStepsLastSyncedEpochSeconds: Long?,
+    val healthConnectStepsLastFullSyncEpochDay: Long? = null,
+    val healthConnectStepsLastFullSyncTimeZoneId: String? = null,
     val healthConnectWeightLastSyncedEpochSeconds: Long? = null,
     val healthConnectWeightBackfillBeforeEpochSeconds: Long? = null,
     val healthConnectWeightBackfillComplete: Boolean = false,

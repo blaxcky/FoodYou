@@ -104,6 +104,13 @@ internal class RoomActivityRepository(
         manualDao.delete(id.value)
     }
 
+    override suspend fun readStepExclusionPeriods(dates: List<LocalDate>): List<StepExclusionPeriod> =
+        exclusionDao.readAll(dates.distinct().map { it.toEpochDays() }).map { it.toModel() }
+
+    override suspend fun upsertStepSummaries(summaries: List<DailyStepSummary>) {
+        stepDao.upsertAll(summaries.map { it.toEntity() })
+    }
+
     override suspend fun upsertStepSummary(summary: DailyStepSummary) {
         stepDao.upsert(summary.toEntity())
     }
