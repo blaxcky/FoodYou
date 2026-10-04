@@ -56,6 +56,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -857,8 +858,9 @@ private fun WeeklyDifferenceBarRow(
             difference > 0 -> WeeklyOverGoalTextColor
             else -> GoalsTextColor
         }
-    // The sign stays for color-blind and screen-reader users, but lighter and thinner than the
-    // digits, since bar direction and color already carry it visually.
+    // The sign stays for color-blind and screen-reader users, but smaller, lighter and thinner
+    // than the digits, since bar direction and color already carry it visually. A hair space keeps
+    // it apart from the digits without looking like the wider digit-group space.
     val differenceText = buildAnnotatedString {
         when {
             difference > 0 -> "+"
@@ -866,9 +868,16 @@ private fun WeeklyDifferenceBarRow(
             else -> null
         }?.let { sign ->
             withStyle(
-                SpanStyle(color = differenceColor.copy(alpha = 0.6f), fontWeight = FontWeight.Light)
+                SpanStyle(
+                    color = differenceColor.copy(alpha = 0.9f),
+                    fontSize = (MaterialTheme.typography.bodyMedium.fontSize.value - 2).sp,
+                    fontWeight = FontWeight.Light,
+                    // Re-centers the smaller sign on the digits' height.
+                    baselineShift = BaselineShift(0.08f),
+                )
             ) {
                 append(sign)
+                append('\u200A')
             }
         }
         append(abs(difference).toString().groupDigits())
