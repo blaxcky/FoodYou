@@ -804,13 +804,17 @@ private fun WeeklyDetailsRow(
  * One row per day: the difference to the goal as a bar that grows left of the center line below
  * the goal and right of it above the goal, scaled to the largest difference of the week. Goal and
  * consumed energy are already visible in the weekly chart, so only the signed difference is shown.
+ * Fine lines between the rows tie each bar to its day and its number.
  */
 @Composable
 internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
     val dateFormatter = LocalDateFormatter.current
     val maxDifference = days.maxOfOrNull { abs(it.difference) }?.coerceAtLeast(1) ?: 1
     Column(modifier = modifier.fillMaxWidth()) {
-        days.forEach { day ->
+        days.forEachIndexed { index, day ->
+            if (index > 0) {
+                HorizontalDivider(thickness = 0.5.dp, color = NormalGoalComparisonBorderColor)
+            }
             WeeklyDifferenceBarRow(
                 day = day.tableLabel(dateFormatter.weekDayNamesShort),
                 difference = day.difference,
