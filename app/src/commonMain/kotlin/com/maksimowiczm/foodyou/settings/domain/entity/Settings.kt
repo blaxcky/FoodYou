@@ -48,6 +48,7 @@ data class Settings(
     val quickCaptureAggregateSameFoods: Boolean = false,
     val foodEntryAmountPickerStyle: FoodEntryAmountPickerStyle =
         FoodEntryAmountPickerStyle.PortionList,
+    val weeklyDetailsStyle: WeeklyDetailsStyle = WeeklyDetailsStyle.DifferenceBars,
 ) : UserPreferences
 
 data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)
@@ -127,6 +128,15 @@ enum class FoodEntryAmountPickerStyle {
 
     /** Amount field followed by a selectable list of portions and units. */
     PortionList,
+}
+
+/** How the days are listed in the expanded weekly goals details. */
+enum class WeeklyDetailsStyle {
+    /** Goal, consumed, difference and percent columns per day. */
+    Table,
+
+    /** One bar per day that grows left of a center line below the goal and right above it. */
+    DifferenceBars,
 }
 
 enum class PendingProductPhotoQuality {

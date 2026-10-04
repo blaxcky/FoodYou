@@ -69,6 +69,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
@@ -128,6 +129,9 @@ private val OptimizedGoalAccentColor = GoalsProgressColor
 internal val DietGoalAccentColor = Color(0xFFC98A00)
 private val DietGoalReachedTextColor = Color(0xFF2E7D32)
 private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
+private val WeeklyOverGoalBarColor = Color(0xFFC57484)
+private val WeeklyOverGoalTextColor = Color(0xFF9B3F55)
+private val WeeklyUnderGoalBarColor = Color(0xFFA8DABB)
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)
@@ -222,6 +226,7 @@ internal fun WeeklyGoalsCard(
 ) {
     val weekModel = viewModel.weekModel.collectAsStateWithLifecycle().value
     val expanded = viewModel.expandGoalsCard.collectAsStateWithLifecycle().value
+    val detailsStyle = viewModel.weeklyDetailsStyle.collectAsStateWithLifecycle().value
 
     if (weekModel == null) {
         WeeklyGoalsSkeleton(modifier = modifier)
@@ -229,6 +234,7 @@ internal fun WeeklyGoalsCard(
         WeeklyGoalsContent(
             model = weekModel,
             expanded = expanded,
+            detailsStyle = detailsStyle,
             onExpandedChange = viewModel::setExpandGoalsCard,
             onWeightClick = onWeightClick,
             modifier = modifier,
@@ -452,6 +458,7 @@ internal fun calorieGoalProgress(netEnergy: Int, energyGoal: Int, percentageEner
 private fun WeeklyGoalsContent(
     model: WeekSummaryModel,
     expanded: Boolean,
+    detailsStyle: WeeklyDetailsStyle,
     onExpandedChange: (Boolean) -> Unit,
     onWeightClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -484,7 +491,10 @@ private fun WeeklyGoalsContent(
                         onClick = { onExpandedChange(!expanded) },
                     )
                     if (expanded) {
-                        WeeklyDetailsTable(model.days)
+                        when (detailsStyle) {
+                            WeeklyDetailsStyle.Table -> WeeklyDetailsTable(model.days)
+                            WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
+                        }
                         HorizontalDivider(color = GoalsTrackColor)
                         WeeklySummaryFooter(model, onWeightClick = onWeightClick)
                     }
@@ -633,7 +643,7 @@ private fun WeeklyBar(
                                     Modifier.fillMaxWidth()
                                         .weight(1f - goalFraction)
                                         .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                        .background(Color(0xFFC57484))
+                                        .background(WeeklyOverGoalBarColor)
                             )
                             Spacer(Modifier.height(overflowSegmentGap))
                             Box(
@@ -787,6 +797,131 @@ private fun WeeklyDetailsRow(
             softWrap = false,
         )
         Text(percent, modifier = Modifier.weight(0.9f), style = valueStyle, fontWeight = weight)
+    }
+}
+
+/**
+ * One row per day: the difference to the goal as a bar that grows left of the center line below
+ * the goal and right of it above the goal, scaled to the largest difference of the week. Goal and
+ * consumed energy are already visible in the weekly chart, so only the signed difference is shown.
+ */
+@Composable
+internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
+    val dateFormatter = LocalDateFormatter.current
+    val maxDifference = days.maxOfOrNull { abs(it.difference) }?.coerceAtLeast(1) ?: 1
+    Column(modifier = modifier.fillMaxWidth()) {
+        days.forEach { day ->
+            WeeklyDifferenceBarRow(
+                day = day.tableLabel(dateFormatter.weekDayNamesShort),
+                difference = day.difference,
+                fraction = abs(day.difference).toFloat() / maxDifference,
+                locked = day.locked,
+                dietGoalReached = day.dietGoalReached,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeeklyDifferenceBarRow(
+    day: String,
+    difference: Int,
+    fraction: Float,
+    locked: Boolean,
+    dietGoalReached: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val dietGoalReachedDescription = stringResource(Res.string.weekly_diet_goal_reached)
+    val under = difference < 0
+    val barFraction = if (difference == 0) 0f else fraction.coerceIn(0.02f, 1f)
+    val differenceText =
+        (if (difference > 0) "+" else "") +
+            difference.toString().groupDigits().replace('-', '\u2212')
+    val differenceColor =
+        when {
+            difference < 0 -> DietGoalReachedTextColor
+            difference > 0 -> WeeklyOverGoalTextColor
+            else -> GoalsTextColor
+        }
+    val rowModifier =
+        if (dietGoalReached) {
+            modifier.semantics(mergeDescendants = true) {
+                stateDescription = dietGoalReachedDescription
+            }
+        } else {
+            modifier.semantics(mergeDescendants = true) {}
+        }
+
+    Row(
+        modifier = rowModifier.fillMaxWidth().height(36.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(modifier = Modifier.width(48.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = day,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (dietGoalReached) DietGoalReachedTextColor else GoalsTextColor,
+                maxLines = 1,
+            )
+            if (locked) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = stringResource(Res.string.locked_day_status),
+                    tint = GoalsTextColor,
+                    modifier = Modifier.padding(start = 2.dp).size(12.dp),
+                )
+            }
+        }
+        Row(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                if (under) {
+                    Box(
+                        modifier =
+                            Modifier.fillMaxWidth(barFraction)
+                                .height(20.dp)
+                                .clip(RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
+                                .background(WeeklyUnderGoalBarColor)
+                    )
+                }
+            }
+            Box(
+                modifier =
+                    Modifier.width(1.dp).fillMaxHeight().background(NormalGoalComparisonBorderColor)
+            )
+            Box(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (difference > 0) {
+                    Box(
+                        modifier =
+                            Modifier.fillMaxWidth(barFraction)
+                                .height(20.dp)
+                                .clip(RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))
+                                .background(WeeklyOverGoalBarColor)
+                    )
+                }
+            }
+        }
+        Text(
+            text = differenceText,
+            modifier = Modifier.width(64.dp),
+            style =
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = interNumberFontFamily(),
+                    fontFeatureSettings = "tnum",
+                    textAlign = TextAlign.End,
+                ),
+            fontWeight = FontWeight.Medium,
+            color = differenceColor,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 

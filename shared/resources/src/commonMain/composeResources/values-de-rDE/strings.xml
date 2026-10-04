@@ -329,6 +329,10 @@
     <string name="weekly_difference">Differenz</string>
     <string name="weekly_percent">Prozent</string>
     <string name="weekly_diet_goal_reached">Diät-Defizit erreicht</string>
+    <string name="headline_weekly_details_style">Wochendetails</string>
+    <string name="description_weekly_details_style">Darstellung der Tage in den Wochendetails</string>
+    <string name="weekly_details_style_table">Tabelle</string>
+    <string name="weekly_details_style_bars">Balkendiagramm</string>
     <string name="weekly_per_day">pro Tag</string>
     <string name="weekly_reached">erreicht</string>
     <string name="weekly_weight_lost">abgenommen</string>

@@ -23,6 +23,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
@@ -85,6 +86,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                 } else 0,
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
             foodEntryAmountPickerStyle = this.getFoodEntryAmountPickerStyle(),
+            weeklyDetailsStyle = this.getWeeklyDetailsStyle(),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
             todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
@@ -165,6 +167,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             updated.fddbProductSyncManualTriggerCount.coerceIn(0, 2)
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
         setFoodEntryAmountPickerStyle(updated.foodEntryAmountPickerStyle)
+        setWithNull(SettingsPreferencesKeys.weeklyDetailsStyle, updated.weeklyDetailsStyle.name)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
         setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
@@ -340,6 +343,13 @@ private fun Preferences.getFoodEntryAmountPickerStyle(): FoodEntryAmountPickerSt
         }
         .getOrElse { FoodEntryAmountPickerStyle.PortionList }
 
+private fun Preferences.getWeeklyDetailsStyle(): WeeklyDetailsStyle =
+    runCatching {
+            this[SettingsPreferencesKeys.weeklyDetailsStyle]?.let(WeeklyDetailsStyle::valueOf)
+                ?: WeeklyDetailsStyle.DifferenceBars
+        }
+        .getOrElse { WeeklyDetailsStyle.DifferenceBars }
+
 private fun Preferences.getFddbProductSyncMode(): FddbProductSyncMode =
     runCatching {
             this[SettingsPreferencesKeys.fddbProductSyncMode]?.let(FddbProductSyncMode::valueOf)
@@ -459,6 +469,7 @@ private object SettingsPreferencesKeys {
         intPreferencesKey("settings:fddbProductSyncManualTriggerCountV2")
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val foodEntryAmountPickerStyle = stringPreferencesKey("settings:foodEntryAmountPickerStyle")
+    val weeklyDetailsStyle = stringPreferencesKey("settings:weeklyDetailsStyle")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
     val todayEnergyGoalAdjustmentEpochDay =

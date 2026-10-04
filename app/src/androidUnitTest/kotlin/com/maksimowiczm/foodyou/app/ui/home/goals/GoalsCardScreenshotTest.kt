@@ -21,6 +21,7 @@ import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatterProvider
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Test
@@ -71,8 +72,10 @@ class GoalsCardScreenshotTest {
                                 onBack = {},
                                 goalCardModeSwitchingEnabled = modeSwitching,
                                 supplementalGoalsEnabled = supplemental,
+                                weeklyDetailsStyle = WeeklyDetailsStyle.DifferenceBars,
                                 onModeSwitchingChange = {},
                                 onSupplementalGoalsChange = {},
+                                onWeeklyDetailsStyleChange = {},
                             )
                         }
                     }
@@ -278,6 +281,64 @@ class GoalsCardScreenshotTest {
                                         energy = 1_400,
                                         goal = 2_000,
                                         dietGoalReached = true,
+                                    ),
+                                ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun weeklyDifferenceBarsNarrowPhone() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-difference-bars-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 300),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Box(Modifier.requiredSize(320.dp, 300.dp).background(Color.White).padding(24.dp)) {
+                        WeeklyDifferenceBars(
+                            days =
+                                listOf(
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 9, 28),
+                                        energy = 2_145,
+                                        goal = 2_733,
+                                        dietGoalReached = true,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 9, 29),
+                                        energy = 3_374,
+                                        goal = 2_863,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 9, 30),
+                                        energy = 1_676,
+                                        goal = 2_763,
+                                        dietGoalReached = true,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 10, 1),
+                                        energy = 4_952,
+                                        goal = 2_739,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 10, 2),
+                                        energy = 6_028,
+                                        goal = 2_325,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 10, 3),
+                                        energy = 3_784,
+                                        goal = 2_784,
+                                        locked = true,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 10, 4),
+                                        energy = 0,
+                                        goal = 2_151,
                                     ),
                                 ),
                         )

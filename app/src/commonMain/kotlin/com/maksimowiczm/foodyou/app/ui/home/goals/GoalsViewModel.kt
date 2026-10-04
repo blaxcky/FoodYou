@@ -13,6 +13,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as Settin
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.lockedDaySurplus
@@ -60,6 +61,14 @@ internal class GoalsViewModel(
     fun setExpandGoalsCard(expand: Boolean) {
         viewModelScope.launch { settingsRepository.update { copy(expandGoalCard = expand) } }
     }
+
+    private val _weeklyDetailsStyle = settingsRepository.observe().map { it.weeklyDetailsStyle }
+    val weeklyDetailsStyle: StateFlow<WeeklyDetailsStyle> =
+        _weeklyDetailsStyle.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _weeklyDetailsStyle.first() },
+        )
 
     fun setGoalDisplayMode(goalDisplayMode: SettingsGoalDisplayMode) {
         viewModelScope.launch {
