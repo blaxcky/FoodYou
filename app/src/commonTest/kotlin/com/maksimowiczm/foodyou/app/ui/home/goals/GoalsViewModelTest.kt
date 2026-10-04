@@ -36,6 +36,9 @@ import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
+import com.maksimowiczm.foodyou.weight.domain.entity.WeightGoal
+import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalDisplayMode as CardGoalDisplayMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -241,6 +244,7 @@ class GoalsViewModelTest {
                     ),
                 goalsRepository = FixedGoalsRepository,
                 activityRepository = FixedActivityRepository,
+                weightRepository = EmptyWeightRepository,
                 dateProvider = dateProvider,
             )
             .also { viewModel = it }
@@ -283,6 +287,28 @@ class GoalsViewModelTest {
                     map = emptyMap(),
                 )
             )
+    }
+
+    private object EmptyWeightRepository : WeightRepository {
+        override fun observeEntries(): Flow<List<DailyWeightEntry>> = flowOf(emptyList())
+
+        override fun observeMeasurements(): Flow<List<DailyWeightEntry>> = flowOf(emptyList())
+
+        override fun observeToday(): Flow<DailyWeightEntry?> = flowOf(null)
+
+        override fun observeGoal(): Flow<WeightGoal> = flowOf(WeightGoal(targetWeightKg = null))
+
+        override suspend fun upsertToday(weightKg: Double): DailyWeightEntry? = null
+
+        override suspend fun upsert(entry: DailyWeightEntry) = Unit
+
+        override suspend fun upsertAll(entries: List<DailyWeightEntry>) = Unit
+
+        override suspend fun entry(date: LocalDate): DailyWeightEntry? = null
+
+        override suspend fun setHidden(id: String, hidden: Boolean) = Unit
+
+        override suspend fun updateGoal(goal: WeightGoal) = Unit
     }
 
     private object FixedActivityRepository : ActivityRepository {

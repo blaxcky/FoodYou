@@ -49,6 +49,7 @@ fun Module.home() {
             observeDiaryMealsUseCase = get(),
             goalsRepository = get(),
             activityRepository = get(),
+            weightRepository = get(),
             dateProvider = get(),
         )
     }

@@ -1,7 +1,9 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -342,6 +344,49 @@ class GoalsCardScreenshotTest {
                                     ),
                                 ),
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun weeklySummaryFooterWeightNarrowPhone() {
+        val model =
+            WeekSummaryModel(
+                days =
+                    listOf(
+                        WeekDaySummaryModel(date = LocalDate(2026, 9, 28), energy = 3_374, goal = 2_863),
+                        WeekDaySummaryModel(date = LocalDate(2026, 9, 29), energy = 4_952, goal = 2_739),
+                    ),
+                totalEnergy = 8_326,
+                totalGoal = 5_602,
+                today = LocalDate(2026, 9, 29),
+            )
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-summary-footer-weight-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 470),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Column(
+                        modifier =
+                            Modifier.requiredSize(320.dp, 470.dp).background(Color.White).padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(28.dp),
+                    ) {
+                        for (status in
+                            listOf(
+                                WeeklyWeightStatus.Recent(weightKg = 78.43, daysAgo = 2),
+                                WeeklyWeightStatus.Stale(daysAgo = 9),
+                                WeeklyWeightStatus.Stale(daysAgo = null),
+                            )) {
+                            WeeklySummaryFooter(
+                                model = model,
+                                weightStatus = status,
+                                onWeightClick = {},
+                                onWeightEntryClick = {},
+                            )
+                        }
                     }
                 }
             }

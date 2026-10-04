@@ -158,11 +158,19 @@ fun FoodYouAppNavHost(
                     }
                 },
                 onEditFoodClick = { navController.navigateSingleTop(UpdateProduct(it.id)) },
-                onWeightReportClick = { navController.navigateSingleTop(WeightReport) },
+                onWeightReportClick = { navController.navigateSingleTop(WeightReport()) },
+                onWeightEntryClick = {
+                    navController.navigateSingleTop(WeightReport(enterWeight = true))
+                },
             )
         }
         forwardBackwardComposable<WeightReport> {
-            WeightReportScreen(onBack = { navController.popBackStackInclusive<WeightReport>() })
+            val (enterWeight) = it.toRoute<WeightReport>()
+
+            WeightReportScreen(
+                onBack = { navController.popBackStackInclusive<WeightReport>() },
+                enterWeightOnStart = enterWeight,
+            )
         }
         forwardBackwardComposable<Settings> {
             SettingsScreen(
@@ -625,7 +633,7 @@ internal fun NavController.openQuickCapturePhotos() {
 
 @Serializable private object Settings
 
-@Serializable private object WeightReport
+@Serializable private data class WeightReport(val enterWeight: Boolean = false)
 
 @Serializable private object PendingProducts
 

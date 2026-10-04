@@ -17,6 +17,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.lockedDaySurplus
+import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +42,7 @@ internal class GoalsViewModel(
     private val observeDiaryMealsUseCase: ObserveDiaryMealsUseCase,
     private val goalsRepository: GoalsRepository,
     private val activityRepository: ActivityRepository,
+    private val weightRepository: WeightRepository,
     private val dateProvider: DateProvider,
 ) : ViewModel() {
 
@@ -387,6 +389,20 @@ internal class GoalsViewModel(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
                 initialValue = null,
+            )
+
+    val latestWeight: StateFlow<LatestWeightState> =
+        weightRepository
+            .observeEntries()
+            .map { entries ->
+                entries.firstOrNull()?.let { LatestWeightState.Measured(it.weightKg, it.date) }
+                    ?: LatestWeightState.None
+            }
+            .distinctUntilChanged()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(2_000),
+                initialValue = LatestWeightState.Loading,
             )
 }
 

@@ -337,6 +337,18 @@
     <string name="weekly_reached">erreicht</string>
     <string name="weekly_weight_lost">abgenommen</string>
     <string name="weekly_weight_gained">zugenommen</string>
+    <string name="weekly_weight_measured_today">heute</string>
+    <string name="weekly_weight_measured_yesterday">gestern</string>
+    <plurals name="weekly_weight_measured_days_ago">
+        <item quantity="one">vor %1$d Tag</item>
+        <item quantity="other">vor %1$d Tagen</item>
+    </plurals>
+    <string name="weekly_weight_not_measured">noch nicht gewogen</string>
+    <plurals name="weekly_weight_last_measured_days_ago">
+        <item quantity="one">vor %1$d Tag gewogen</item>
+        <item quantity="other">vor %1$d Tagen gewogen</item>
+    </plurals>
+    <string name="action_weigh_in">Wiegen</string>
     <string name="neutral_today_short">Heute</string>
     <string name="nutriment_saturated_fats">Gesättigte Fettsäuren</string>
     <string name="nutriment_polyunsaturated_fats">Mehrfach ungesättigte Fettsäuren</string>

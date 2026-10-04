@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -24,6 +25,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -32,6 +35,8 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.outlined.LocalFireDepartment as OutlinedLocalFireDepartment
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -104,8 +109,14 @@ import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_per_day
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.weekly_reached
+import foodyou.app.generated.resources.action_weigh_in
 import foodyou.app.generated.resources.weekly_weight_gained
+import foodyou.app.generated.resources.weekly_weight_last_measured_days_ago
 import foodyou.app.generated.resources.weekly_weight_lost
+import foodyou.app.generated.resources.weekly_weight_measured_days_ago
+import foodyou.app.generated.resources.weekly_weight_measured_today
+import foodyou.app.generated.resources.weekly_weight_measured_yesterday
+import foodyou.app.generated.resources.weekly_weight_not_measured
 import foodyou.app.generated.resources.weekly_so_far
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
@@ -116,6 +127,7 @@ import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import org.jetbrains.compose.resources.Font
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -235,10 +247,12 @@ internal fun GoalsCard(
 internal fun WeeklyGoalsCard(
     homeState: HomeState,
     onWeightClick: () -> Unit,
+    onWeightEntryClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
     val weekModel = viewModel.weekModel.collectAsStateWithLifecycle().value
+    val latestWeight = viewModel.latestWeight.collectAsStateWithLifecycle().value
     val expanded = viewModel.expandGoalsCard.collectAsStateWithLifecycle().value
     val detailsStyle = viewModel.weeklyDetailsStyle.collectAsStateWithLifecycle().value
 
@@ -250,7 +264,9 @@ internal fun WeeklyGoalsCard(
             expanded = expanded,
             detailsStyle = detailsStyle,
             onExpandedChange = viewModel::setExpandGoalsCard,
+            latestWeight = latestWeight,
             onWeightClick = onWeightClick,
+            onWeightEntryClick = onWeightEntryClick,
             modifier = modifier,
         )
     }
@@ -474,7 +490,9 @@ private fun WeeklyGoalsContent(
     expanded: Boolean,
     detailsStyle: WeeklyDetailsStyle,
     onExpandedChange: (Boolean) -> Unit,
+    latestWeight: LatestWeightState,
     onWeightClick: () -> Unit,
+    onWeightEntryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -510,7 +528,12 @@ private fun WeeklyGoalsContent(
                             WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
                         }
                         HorizontalDivider(color = GoalsTrackColor)
-                        WeeklySummaryFooter(model, onWeightClick = onWeightClick)
+                        WeeklySummaryFooter(
+                            model = model,
+                            weightStatus = weeklyWeightStatus(latestWeight, model.today),
+                            onWeightClick = onWeightClick,
+                            onWeightEntryClick = onWeightEntryClick,
+                        )
                     }
                 }
             }
@@ -965,9 +988,11 @@ private fun WeeklyDifferenceBarRow(
 }
 
 @Composable
-private fun WeeklySummaryFooter(
+internal fun WeeklySummaryFooter(
     model: WeekSummaryModel,
+    weightStatus: WeeklyWeightStatus?,
     onWeightClick: () -> Unit,
+    onWeightEntryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val remaining = model.totalGoal - model.totalEnergy
@@ -1017,7 +1042,9 @@ private fun WeeklySummaryFooter(
             icon = Icons.Filled.MonitorWeight,
             value = "$estimatedWeightKg kg",
             label = weightChangeLabel,
+            weightStatus = weightStatus,
             onClick = onWeightClick,
+            onWeightEntryClick = onWeightEntryClick,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -1060,7 +1087,9 @@ private fun WeeklyFooterWeightEstimate(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
     label: String,
+    weightStatus: WeeklyWeightStatus?,
     onClick: () -> Unit,
+    onWeightEntryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val text =
@@ -1069,27 +1098,105 @@ private fun WeeklyFooterWeightEstimate(
             append(" ")
             append(label)
         }
+    val staleLabel =
+        when (weightStatus) {
+            is WeeklyWeightStatus.Stale ->
+                weightStatus.daysAgo?.let {
+                    pluralStringResource(Res.plurals.weekly_weight_last_measured_days_ago, it, it)
+                } ?: stringResource(Res.string.weekly_weight_not_measured)
+            else -> null
+        }
 
     Row(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = GoalsTextColor,
-            modifier = Modifier.size(22.dp).alpha(0.95f),
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = GoalsTextColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            modifier = Modifier.weight(1f).defaultMinSize(minHeight = 40.dp).clickable(onClick = onClick),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = GoalsTextColor,
+                modifier = Modifier.size(22.dp).alpha(0.95f),
+            )
+            Spacer(Modifier.width(6.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GoalsTextColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (staleLabel != null) {
+                    Text(
+                        text = staleLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GoalsMutedTextColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (weightStatus is WeeklyWeightStatus.Recent) {
+                Spacer(Modifier.width(8.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${weightStatus.weightKg.formatKgMeasurement()} kg",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = GoalsTextColor,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                    Text(
+                        text = measuredDaysAgoLabel(weightStatus.daysAgo),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GoalsMutedTextColor,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = GoalsMutedTextColor,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+        if (weightStatus is WeeklyWeightStatus.Stale) {
+            FilledTonalButton(
+                onClick = onWeightEntryClick,
+                colors =
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = GoalsTrackColor,
+                        contentColor = GoalsProgressColor,
+                    ),
+                contentPadding = PaddingValues(start = 10.dp, end = 14.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(text = stringResource(Res.string.action_weigh_in), maxLines = 1, softWrap = false)
+            }
+        }
     }
 }
+
+@Composable
+private fun measuredDaysAgoLabel(daysAgo: Int): String =
+    when (daysAgo) {
+        0 -> stringResource(Res.string.weekly_weight_measured_today)
+        1 -> stringResource(Res.string.weekly_weight_measured_yesterday)
+        else -> pluralStringResource(Res.plurals.weekly_weight_measured_days_ago, daysAgo, daysAgo)
+    }
 
 @Composable
 private fun CaloriesOverview(
@@ -2143,6 +2250,12 @@ internal fun String.groupDigits(): String {
 private fun Double.formatKgEstimate(): String {
     val centiKg = (this * 100).roundToInt()
     return "${centiKg / 100}.${(centiKg % 100).toString().padStart(2, '0')}"
+}
+
+/** One decimal with a dot, matching [formatKgEstimate] on the same footer row. */
+private fun Double.formatKgMeasurement(): String {
+    val deciKg = (this * 10).roundToInt()
+    return "${deciKg / 10}.${deciKg % 10}"
 }
 
 private fun WeekDaySummaryModel.chartLabel(

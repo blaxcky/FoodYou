@@ -96,6 +96,7 @@ fun HomeScreen(
     onEditDiaryEntryClick: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
     onEditFoodClick: (FoodId.Product) -> Unit,
     onWeightReportClick: () -> Unit,
+    onWeightEntryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = koinViewModel()
@@ -356,6 +357,7 @@ fun HomeScreen(
                         homeState = homeState,
                         viewModel = goalsViewModel,
                         onWeightClick = onWeightReportClick,
+                        onWeightEntryClick = onWeightEntryClick,
                         modifier =
                             Modifier.padding(horizontal = 8.dp)
                                 .padding(bottom = DefaultHomeCardSpacing),

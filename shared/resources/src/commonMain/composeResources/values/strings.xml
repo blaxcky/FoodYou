@@ -164,6 +164,18 @@
     <string name="weekly_reached">reached</string>
     <string name="weekly_weight_lost">lost</string>
     <string name="weekly_weight_gained">gained</string>
+    <string name="weekly_weight_measured_today">today</string>
+    <string name="weekly_weight_measured_yesterday">yesterday</string>
+    <plurals name="weekly_weight_measured_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <string name="weekly_weight_not_measured">not weighed yet</string>
+    <plurals name="weekly_weight_last_measured_days_ago">
+        <item quantity="one">weighed %1$d day ago</item>
+        <item quantity="other">weighed %1$d days ago</item>
+    </plurals>
+    <string name="action_weigh_in">Weigh in</string>
     <string name="neutral_today_short">Today</string>
     <string name="nutriment_saturated_fats">Saturated fats</string>
     <string name="nutriment_polyunsaturated_fats">Polyunsaturated fats</string>

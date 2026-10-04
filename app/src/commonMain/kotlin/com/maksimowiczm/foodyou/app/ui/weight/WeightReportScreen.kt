@@ -52,6 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -128,6 +129,7 @@ private const val HealthConnectScaleDeviceType = 3
 internal fun WeightReportScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    enterWeightOnStart: Boolean = false,
     viewModel: WeightReportViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -140,6 +142,7 @@ internal fun WeightReportScreen(
         onSaveWeight = viewModel::setWeight,
         onHealthConnectClick = permissionRequester::request,
         onToggleHidden = viewModel::setHidden,
+        enterWeightOnStart = enterWeightOnStart,
         modifier = modifier,
     )
 }
@@ -151,9 +154,22 @@ internal fun WeightReportContent(
     onSaveWeight: (Double) -> Unit,
     onHealthConnectClick: () -> Unit,
     onToggleHidden: (String, Boolean) -> Unit = { _, _ -> },
+    enterWeightOnStart: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var draftWeightKg by rememberSaveable { mutableStateOf<Double?>(null) }
+    val enterWeight = {
+        val base = state.todayWeightKg ?: state.suggestedWeightKg
+        draftWeightKg = base?.let { (round(it * 10.0) / 10.0).coerceAtLeast(0.1) }
+    }
+    var pendingEnterWeight by rememberSaveable { mutableStateOf(enterWeightOnStart) }
+    // The initial state has no date yet; wait for the loaded report before seeding the dialog.
+    LaunchedEffect(pendingEnterWeight, state.today) {
+        if (pendingEnterWeight && state.today != null) {
+            pendingEnterWeight = false
+            enterWeight()
+        }
+    }
     draftWeightKg?.let { weightKg ->
         WeightEntryDialog(
             weightKg = weightKg,
@@ -208,10 +224,7 @@ internal fun WeightReportContent(
                     progressWeightKg = state.currentWeightKg,
                     targetWeightKg = state.targetWeightKg,
                     lastMeasurementDate = state.entries.maxOfOrNull { it.date },
-                    onEnterWeight = {
-                        val base = state.todayWeightKg ?: state.suggestedWeightKg
-                        draftWeightKg = base?.let { (round(it * 10.0) / 10.0).coerceAtLeast(0.1) }
-                    },
+                    onEnterWeight = enterWeight,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 )
             }
