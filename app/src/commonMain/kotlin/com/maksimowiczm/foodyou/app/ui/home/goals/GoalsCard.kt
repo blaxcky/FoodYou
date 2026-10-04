@@ -54,6 +54,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -147,6 +148,18 @@ private enum class GoalCardView {
 
 @Composable
 private fun interNumberFontFamily(): FontFamily = FontFamily(Font(Res.font.inter))
+
+/** [interNumberFontFamily] plus a light instance of the variable font for subdued signs. */
+@Composable
+private fun interNumberWithLightFontFamily(): FontFamily =
+    FontFamily(
+        Font(Res.font.inter),
+        Font(
+            Res.font.inter,
+            weight = FontWeight.Light,
+            variationSettings = FontVariation.Settings(FontVariation.weight(300)),
+        ),
+    )
 
 @Composable
 internal fun GoalsCard(
@@ -838,15 +851,28 @@ private fun WeeklyDifferenceBarRow(
     val dietGoalReachedDescription = stringResource(Res.string.weekly_diet_goal_reached)
     val under = difference < 0
     val barFraction = if (difference == 0) 0f else fraction.coerceIn(0.02f, 1f)
-    val differenceText =
-        (if (difference > 0) "+" else "") +
-            difference.toString().groupDigits().replace('-', '\u2212')
     val differenceColor =
         when {
             difference < 0 -> DietGoalReachedTextColor
             difference > 0 -> WeeklyOverGoalTextColor
             else -> GoalsTextColor
         }
+    // The sign stays for color-blind and screen-reader users, but lighter and thinner than the
+    // digits, since bar direction and color already carry it visually.
+    val differenceText = buildAnnotatedString {
+        when {
+            difference > 0 -> "+"
+            difference < 0 -> "\u2212"
+            else -> null
+        }?.let { sign ->
+            withStyle(
+                SpanStyle(color = differenceColor.copy(alpha = 0.6f), fontWeight = FontWeight.Light)
+            ) {
+                append(sign)
+            }
+        }
+        append(abs(difference).toString().groupDigits())
+    }
     val rowModifier =
         if (dietGoalReached) {
             modifier.semantics(mergeDescendants = true) {
@@ -917,7 +943,7 @@ private fun WeeklyDifferenceBarRow(
             modifier = Modifier.width(64.dp),
             style =
                 MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = interNumberFontFamily(),
+                    fontFamily = interNumberWithLightFontFamily(),
                     fontFeatureSettings = "tnum",
                     textAlign = TextAlign.End,
                 ),
