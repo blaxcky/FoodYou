@@ -45,15 +45,14 @@ class MainActivity : FoodYouAbstractActivity() {
         CalorieWidgetProvider.updateAll(this)
         CalorieRingWidget.requestUpdateAll(this)
     }
+}
 
-    private fun Intent?.toLaunchRequest(): FoodYouLaunchRequest? =
+internal fun Intent?.toLaunchRequest(): FoodYouLaunchRequest? {
+    val launchAction =
         when (this?.action) {
-            ACTION_SCAN_BARCODE ->
-                FoodYouLaunchRequest(
-                    action = FoodYouLaunchAction.ScanBarcode,
-                    nonce = System.nanoTime(),
-                )
-
-            else -> null
+            ACTION_SCAN_BARCODE -> FoodYouLaunchAction.ScanBarcode
+            ACTION_QUICK_CAPTURE_PHOTOS -> FoodYouLaunchAction.QuickCapturePhotos
+            else -> return null
         }
+    return FoodYouLaunchRequest(action = launchAction, nonce = System.nanoTime())
 }

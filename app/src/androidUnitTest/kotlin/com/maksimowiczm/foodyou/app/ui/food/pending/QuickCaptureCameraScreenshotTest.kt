@@ -99,6 +99,18 @@ class QuickCaptureCameraScreenshotTest {
     }
 
     @Test
+    fun closeButtonInvokesCloseCallbackWithoutCapturing() {
+        var captures = 0
+        var closes = 0
+        show(onCapture = { captures++ }, onClose = { closes++ })
+
+        compose.onNodeWithTag("camera-close").performClick()
+
+        assertEquals(1, closes)
+        assertEquals(0, captures)
+    }
+
+    @Test
     fun tappingExpandedPhotoCollapsesWithoutCapturing() {
         var captures = 0
         show(expanded = true, onCapture = { captures++ })
@@ -122,6 +134,7 @@ class QuickCaptureCameraScreenshotTest {
         error: Boolean = false,
         expanded: Boolean = false,
         onCapture: () -> Unit = {},
+        onClose: () -> Unit = {},
     ) {
         val bitmap = fixture(landscapePhoto).asImageBitmap()
         activity = Robolectric.buildActivity(ComponentActivity::class.java).setup()
@@ -144,7 +157,7 @@ class QuickCaptureCameraScreenshotTest {
                         onThumbnailClick = { isExpanded = true },
                         onCollapse = { isExpanded = false },
                         onCapture = onCapture,
-                        onClose = {},
+                        onClose = onClose,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

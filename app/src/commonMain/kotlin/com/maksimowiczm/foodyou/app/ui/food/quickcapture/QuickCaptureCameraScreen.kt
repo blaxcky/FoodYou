@@ -25,7 +25,11 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun QuickCaptureCameraScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
+fun QuickCaptureCameraScreen(
+    onBack: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val viewModel: QuickCaptureCameraViewModel = koinViewModel()
     val photoCount by viewModel.photoCount.collectAsStateWithLifecycle()
 
@@ -34,7 +38,7 @@ fun QuickCaptureCameraScreen(onClose: () -> Unit, modifier: Modifier = Modifier)
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.headline_quick_capture)) },
-                navigationIcon = { ArrowBackIconButton(onClose) },
+                navigationIcon = { ArrowBackIconButton(onBack) },
             )
         },
     ) { padding ->

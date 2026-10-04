@@ -170,6 +170,7 @@ fun QuickCaptureScreen(
     onTransfer: (QuickCaptureTransferRequest) -> Unit,
     onAiSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    showPhotos: Boolean = false,
 ) {
     val ai: com.maksimowiczm.foodyou.ai.AiController = org.koin.compose.koinInject()
     val aiSettings by ai.settings.collectAsStateWithLifecycle()
@@ -187,7 +188,9 @@ fun QuickCaptureScreen(
     val cameraOpen by viewModel.cameraOpen.collectAsStateWithLifecycle()
     val copiedEntryIds by viewModel.copiedEntryIds.collectAsStateWithLifecycle()
     val csvImportState by viewModel.csvImportState.collectAsStateWithLifecycle()
-    var selectedTab by rememberSaveable { mutableStateOf(QuickCaptureTab.Log) }
+    var selectedTab by rememberSaveable {
+        mutableStateOf(if (showPhotos) QuickCaptureTab.Photos else QuickCaptureTab.Log)
+    }
     var showEntryForm by rememberSaveable { mutableStateOf(false) }
     var showCsvImport by rememberSaveable { mutableStateOf(false) }
     var csvText by rememberSaveable { mutableStateOf("") }

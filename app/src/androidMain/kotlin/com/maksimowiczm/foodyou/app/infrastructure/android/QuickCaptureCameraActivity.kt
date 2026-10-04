@@ -26,16 +26,34 @@ class QuickCaptureCameraActivity : FoodYouAbstractActivity() {
         setContent {
             FoodYouTheme {
                 Surface(Modifier.fillMaxSize()) {
-                    QuickCaptureCameraScreen(onClose = ::closeCamera)
+                    QuickCaptureCameraScreen(
+                        onBack = ::openPhotos,
+                        onClose = ::closeCamera,
+                    )
                 }
             }
         }
     }
 
-    private fun closeCamera() {
+    internal fun openPhotos() {
+        startActivity(quickCapturePhotosIntent(this))
+        closeCamera()
+    }
+
+    internal fun closeCamera() {
         finishAndRemoveTask()
     }
 }
+
+internal fun quickCapturePhotosIntent(context: Context): Intent =
+    Intent(context, MainActivity::class.java).apply {
+        action = ACTION_QUICK_CAPTURE_PHOTOS
+        addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        )
+    }
 
 internal fun quickCaptureCameraIntent(context: Context): Intent =
     Intent(context, QuickCaptureCameraActivity::class.java).apply {
@@ -49,3 +67,6 @@ internal fun quickCaptureCameraIntent(context: Context): Intent =
 
 internal const val ACTION_QUICK_CAPTURE_CAMERA =
     "com.maksimowiczm.foodyou.action.QUICK_CAPTURE_CAMERA"
+
+internal const val ACTION_QUICK_CAPTURE_PHOTOS =
+    "com.maksimowiczm.foodyou.action.QUICK_CAPTURE_PHOTOS"

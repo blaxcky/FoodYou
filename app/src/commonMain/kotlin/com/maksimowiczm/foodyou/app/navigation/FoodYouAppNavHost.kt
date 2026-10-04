@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.navigation
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
@@ -98,6 +99,8 @@ fun FoodYouAppNavHost(
                 )
             }
 
+            FoodYouLaunchAction.QuickCapturePhotos -> navController.openQuickCapturePhotos()
+
             null -> Unit
         }
     }
@@ -107,7 +110,7 @@ fun FoodYouAppNavHost(
             HomeScreen(
                 onSettings = { navController.navigateSingleTop(Settings) },
                 onPendingProducts = { navController.navigateSingleTop(PendingProducts) },
-                onQuickCapture = { navController.navigateSingleTop(QuickCapture) },
+                onQuickCapture = { navController.navigateSingleTop(QuickCapture()) },
                 onTitle = { navController.navigateSingleTop(About) },
                 onMealCardAddClick = { epochDay, mealId ->
                     navController.navigateSingleTop(FoodDiarySearch(epochDay, mealId))
@@ -184,7 +187,9 @@ fun FoodYouAppNavHost(
             )
         }
         forwardBackwardComposable<QuickCapture> {
+            val route = it.toRoute<QuickCapture>()
             QuickCaptureScreen(
+                showPhotos = route.showPhotos,
                 onAiSettings = { navController.navigateSingleTop(AiSettings) },
                 onBack = { navController.popBackStackInclusive<QuickCapture>() },
                 onPhoto = { navController.navigate(QuickCapturePhoto(it)) },
@@ -609,7 +614,14 @@ fun FoodYouAppNavHost(
     }
 }
 
-@Serializable private object Home
+internal fun NavController.openQuickCapturePhotos() {
+    navigate(QuickCapture(showPhotos = true)) {
+        popUpTo<Home>()
+        launchSingleTop = true
+    }
+}
+
+@Serializable internal object Home
 
 @Serializable private object Settings
 
@@ -617,7 +629,7 @@ fun FoodYouAppNavHost(
 
 @Serializable private object PendingProducts
 
-@Serializable private object QuickCapture
+@Serializable internal data class QuickCapture(val showPhotos: Boolean = false)
 
 @Serializable private data class QuickCapturePhoto(val entryId: Long)
 
