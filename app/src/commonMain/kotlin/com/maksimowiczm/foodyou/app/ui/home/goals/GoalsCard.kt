@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -49,6 +48,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -125,6 +126,8 @@ internal val GoalsErrorColor = Color(0xFFC51F1F)
 private val NormalGoalComparisonBorderColor = Color(0xFFDADCE0)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 internal val DietGoalAccentColor = Color(0xFFC98A00)
+private val DietGoalReachedTextColor = Color(0xFF2E7D32)
+private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)
@@ -702,7 +705,7 @@ private fun WeeklyDetailsToggle(expanded: Boolean, onClick: () -> Unit) {
 @Composable
 internal fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
     val dateFormatter = LocalDateFormatter.current
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         WeeklyDetailsRow(
             day = "",
             goal = stringResource(Res.string.goal_goal).replaceFirstChar { it.uppercase() },
@@ -716,27 +719,11 @@ internal fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modif
                 day = day.tableLabel(dateFormatter.weekDayNamesShort),
                 goal = day.goal.toString().groupDigits(),
                 soFar = day.energy.toString().groupDigits(),
-                difference = day.difference.toString().groupDigits(),
+                difference = day.difference.toString().groupDigits().replace('-', '\u2212'),
                 percent = day.percent.toString(),
                 locked = day.locked,
                 dietGoalReached = day.dietGoalReached,
             )
-        }
-        if (days.any { it.dietGoalReached }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = DietGoalAccentColor,
-                    modifier = Modifier.size(12.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = stringResource(Res.string.weekly_diet_goal_reached),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = GoalsMutedTextColor,
-                )
-            }
         }
     }
 }
@@ -756,12 +743,31 @@ private fun WeeklyDetailsRow(
     val numberFontFamily = interNumberFontFamily()
     val style =
         if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
-    val valueStyle = if (header) style else style.copy(fontFamily = numberFontFamily)
+    val valueStyle =
+        if (header) style.copy(textAlign = TextAlign.End)
+        else style.copy(fontFamily = numberFontFamily, fontFeatureSettings = "tnum", textAlign = TextAlign.End)
     val weight = if (header) FontWeight.SemiBold else FontWeight.Normal
+    val dietGoalReachedDescription = stringResource(Res.string.weekly_diet_goal_reached)
+    val rowModifier =
+        if (dietGoalReached) {
+            modifier
+                .background(DietGoalReachedRowColor, RoundedCornerShape(8.dp))
+                .semantics(mergeDescendants = true) { stateDescription = dietGoalReachedDescription }
+        } else {
+            modifier
+        }
 
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = rowModifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Row(modifier = Modifier.weight(0.65f), verticalAlignment = Alignment.CenterVertically) {
-            Text(day, style = style, fontWeight = FontWeight.SemiBold)
+            Text(
+                day,
+                style = style,
+                fontWeight = FontWeight.SemiBold,
+                color = if (dietGoalReached) DietGoalReachedTextColor else Color.Unspecified,
+            )
             if (locked) {
                 Icon(
                     imageVector = Icons.Filled.Lock,
@@ -772,23 +778,14 @@ private fun WeeklyDetailsRow(
         }
         Text(goal, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
         Text(soFar, modifier = Modifier.weight(1f), style = valueStyle, fontWeight = weight)
-        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                difference,
-                style = valueStyle,
-                fontWeight = weight,
-                maxLines = 1,
-                softWrap = false,
-            )
-            if (dietGoalReached) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = stringResource(Res.string.weekly_diet_goal_reached),
-                    tint = DietGoalAccentColor,
-                    modifier = Modifier.padding(start = 2.dp).size(12.dp),
-                )
-            }
-        }
+        Text(
+            difference,
+            modifier = Modifier.weight(1f),
+            style = valueStyle,
+            fontWeight = weight,
+            maxLines = 1,
+            softWrap = false,
+        )
         Text(percent, modifier = Modifier.weight(0.9f), style = valueStyle, fontWeight = weight)
     }
 }
