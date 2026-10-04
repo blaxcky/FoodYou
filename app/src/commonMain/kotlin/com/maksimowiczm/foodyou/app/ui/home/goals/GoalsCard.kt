@@ -1020,18 +1020,21 @@ internal fun WeeklySummaryFooter(
                 icon = Icons.Filled.Speed,
                 value = "${absoluteRemaining.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
                 label = stringResource(if (remaining >= 0) Res.string.goal_left else Res.string.goal_too_much),
+                horizontalArrangement = Arrangement.Start,
                 modifier = Modifier.weight(1f),
             )
             WeeklyFooterMetric(
                 icon = Icons.Filled.LocalFireDepartment,
                 value = "${average.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
                 label = stringResource(Res.string.weekly_per_day),
+                horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.weight(1f),
             )
             WeeklyFooterMetric(
                 icon = Icons.Filled.CheckCircleOutline,
                 value = "$percent %",
                 label = stringResource(Res.string.weekly_reached),
+                horizontalArrangement = Arrangement.End,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -1055,9 +1058,15 @@ private fun WeeklyFooterMetric(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
     label: String,
+    horizontalArrangement: Arrangement.Horizontal,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    // Edge cells align to the card edges so the row lines up with the weight row below.
+    Row(
+        modifier = modifier,
+        horizontalArrangement = horizontalArrangement,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
