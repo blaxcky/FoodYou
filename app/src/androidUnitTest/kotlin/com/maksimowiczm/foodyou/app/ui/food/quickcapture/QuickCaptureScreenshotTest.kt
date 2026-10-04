@@ -28,6 +28,7 @@ import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureFoodName
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureWeightMode
 import kotlin.time.Instant
+import kotlinx.datetime.TimeZone
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -68,7 +69,6 @@ class QuickCaptureScreenshotTest {
                         direct(3, 2, "Apfel", 125.5),
                     ),
                 aggregate = true,
-                onAggregateChange = {},
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
@@ -76,6 +76,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = true,
                 onQuickAdd = {},
                 onTransfer = {},
+                timeZone = TimeZone.UTC,
             )
         }
         capture("log-grouped")
@@ -87,7 +88,6 @@ class QuickCaptureScreenshotTest {
             QuickCaptureLog(
                 entries = listOf(beforeAfter(4, 3, "Haferflocken", 420.0)),
                 aggregate = false,
-                onAggregateChange = {},
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
@@ -95,6 +95,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                timeZone = TimeZone.UTC,
             )
         }
         capture("pending-after")
@@ -106,7 +107,6 @@ class QuickCaptureScreenshotTest {
             QuickCaptureLog(
                 entries = listOf(direct(5, 2, "Apfel", 180.0, completed = true)),
                 aggregate = false,
-                onAggregateChange = {},
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
@@ -114,9 +114,10 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                timeZone = TimeZone.UTC,
             )
         }
-        compose.onNodeWithText("Erledigt").performClick()
+        compose.onNodeWithText("Erledigt · 1").performClick()
         compose.waitForIdle()
         capture("completed")
     }
@@ -178,7 +179,6 @@ class QuickCaptureScreenshotTest {
             QuickCaptureLog(
                 entries = listOf(direct(1, 1, "Skyr Natur", 200.0)),
                 aggregate = false,
-                onAggregateChange = {},
                 onCompleteAfter = { _, _ -> },
                 onDelete = { deleted = true },
                 onClearCompleted = {},
@@ -186,14 +186,22 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                timeZone = TimeZone.UTC,
             )
         }
 
-        compose.onNodeWithContentDescription("Löschen").performClick()
+        val swipeRow = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions))
+        swipeRow.performTouchInput { swipeLeft() }
         compose.runOnIdle { kotlin.test.assertFalse(deleted) }
         compose.onNodeWithText("Abbrechen").performClick()
         compose.runOnIdle { kotlin.test.assertFalse(deleted) }
-        compose.onNodeWithContentDescription("Löschen").performClick()
+        compose.runOnIdle {
+            swipeRow
+                .fetchSemanticsNode()
+                .config[SemanticsActions.CustomActions]
+                .single { it.label == "Löschen" }
+                .action()
+        }
         compose.onNodeWithText("Löschen").performClick()
         compose.runOnIdle { kotlin.test.assertTrue(deleted) }
     }
@@ -205,7 +213,6 @@ class QuickCaptureScreenshotTest {
             QuickCaptureLog(
                 entries = listOf(direct(1, 1, "Skyr Natur", 200.0, completed = true)),
                 aggregate = false,
-                onAggregateChange = {},
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = { cleared = true },
@@ -213,10 +220,11 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                timeZone = TimeZone.UTC,
             )
         }
 
-        compose.onNodeWithText("Erledigt").performClick()
+        compose.onNodeWithText("Erledigt · 1").performClick()
         compose.onNodeWithText("Alle erledigten löschen").performClick()
         compose.runOnIdle { kotlin.test.assertFalse(cleared) }
         compose.onNodeWithText("Löschen").performClick()
@@ -237,9 +245,9 @@ class QuickCaptureScreenshotTest {
             }
         }
 
-        compose.onNodeWithContentDescription("Log-Eintrag hinzufügen").performClick()
+        compose.onNodeWithText("Neuer Eintrag", useUnmergedTree = true).performClick()
         compose.onNodeWithContentDescription("Fotos aufnehmen").performClick()
-        compose.onNodeWithContentDescription("Log-Eintrag hinzufügen").assertDoesNotExist()
+        compose.onNodeWithText("Neuer Eintrag", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithContentDescription("Fotos aufnehmen").assertDoesNotExist()
     }
 
@@ -402,7 +410,6 @@ class QuickCaptureScreenshotTest {
             QuickCaptureLog(
                 entries = listOf(direct(1, 1, "Skyr Natur", 200.0)),
                 aggregate = false,
-                onAggregateChange = {},
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
@@ -410,13 +417,35 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = hasCopiedBatch,
                 onQuickAdd = { opened = true },
                 onTransfer = {},
+                timeZone = TimeZone.UTC,
             )
         }
 
-        compose.onNodeWithContentDescription("CSV als Schnelleintrag eintragen").assertIsNotEnabled()
-        compose.onNodeWithContentDescription("Prompt kopieren").performClick()
-        compose.onNodeWithContentDescription("CSV als Schnelleintrag eintragen").performClick()
+        compose.onNodeWithText("CSV einfügen").assertDoesNotExist()
+        compose.onNodeWithText("Prompt kopieren").performClick()
+        compose.onNodeWithContentDescription("Prompt kopieren").assertIsEnabled()
+        compose.onNodeWithText("CSV einfügen").performClick()
         compose.runOnIdle { kotlin.test.assertTrue(opened) }
+    }
+
+    @Test
+    fun aggregateToggleLivesInOverflowMenu() {
+        var aggregate = false
+        show {
+            var checked by remember { mutableStateOf(false) }
+            QuickCaptureLogMenu(
+                aggregate = checked,
+                onAggregateChange = {
+                    checked = it
+                    aggregate = it
+                },
+            )
+        }
+
+        compose.onNodeWithText("Gleiche Lebensmittel addieren").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Mehr anzeigen").performClick()
+        compose.onNodeWithText("Gleiche Lebensmittel addieren").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(aggregate) }
     }
 
     @Test

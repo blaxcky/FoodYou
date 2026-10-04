@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
@@ -135,6 +134,24 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import kotlin.time.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.pluralStringResource
 
 data class QuickCaptureTransferRequest(
     val entryIds: List<Long>,
@@ -230,6 +247,14 @@ fun QuickCaptureScreen(
                         if (cameraOpen) viewModel::closeCamera else onBack
                     )
                 },
+                actions = {
+                    if (!cameraOpen && selectedTab == QuickCaptureTab.Log) {
+                        QuickCaptureLogMenu(
+                            aggregate = aggregate,
+                            onAggregateChange = viewModel::setAggregateSameFoods,
+                        )
+                    }
+                },
             )
         },
         floatingActionButton = {
@@ -290,7 +315,6 @@ fun QuickCaptureScreen(
                     QuickCaptureLog(
                         entries = entries,
                         aggregate = aggregate,
-                        onAggregateChange = viewModel::setAggregateSameFoods,
                         onCompleteAfter = viewModel::completeAfter,
                         onDelete = { viewModel.delete(listOf(it)) },
                         onClearCompleted = { viewModel.delete(entries.filter { it.isCompleted }) },
@@ -347,6 +371,23 @@ fun QuickCaptureScreen(
 }
 
 @Composable
+internal fun QuickCaptureLogMenu(aggregate: Boolean, onAggregateChange: (Boolean) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(Res.string.action_show_more))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.headline_quick_capture_aggregate)) },
+                onClick = { onAggregateChange(!aggregate) },
+                trailingIcon = { Checkbox(checked = aggregate, onCheckedChange = null) },
+            )
+        }
+    }
+}
+
+@Composable
 internal fun QuickCaptureFloatingActionButton(
     selectedTab: QuickCaptureTab,
     cameraOpen: Boolean,
@@ -358,13 +399,11 @@ internal fun QuickCaptureFloatingActionButton(
 
     when (selectedTab) {
         QuickCaptureTab.Log ->
-            FloatingActionButton(onClick = onAddEntry) {
-                Icon(
-                    Icons.Outlined.Add,
-                    contentDescription =
-                        stringResource(Res.string.action_quick_capture_open_entry_form),
-                )
-            }
+            ExtendedFloatingActionButton(
+                onClick = onAddEntry,
+                icon = { Icon(Icons.Outlined.Add, contentDescription = null) },
+                text = { Text(stringResource(Res.string.headline_quick_capture_new_entry)) },
+            )
         QuickCaptureTab.Photos ->
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -387,7 +426,6 @@ internal fun QuickCaptureFloatingActionButton(
 internal fun QuickCaptureLog(
     entries: List<QuickCaptureLogEntry>,
     aggregate: Boolean,
-    onAggregateChange: (Boolean) -> Unit,
     onCompleteAfter: (Long, Double) -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
     onClearCompleted: () -> Unit,
@@ -395,13 +433,17 @@ internal fun QuickCaptureLog(
     hasCopiedBatch: Boolean,
     onQuickAdd: () -> Unit,
     onTransfer: (QuickCaptureLogGroup) -> Unit,
+    timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) {
     var completed by rememberSaveable { mutableStateOf(false) }
     var afterEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
     var deleteEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
     var confirmClearCompleted by remember { mutableStateOf(false) }
     val expandedGroups = remember { mutableStateListOf<String>() }
-    val visibleEntries = entries.filter { it.isCompleted == completed && !it.isPendingPhoto }
+    val logEntries = entries.filter { !it.isPendingPhoto }
+    val openCount = logEntries.count { !it.isCompleted }
+    val completedCount = logEntries.count { it.isCompleted }
+    val visibleEntries = logEntries.filter { it.isCompleted == completed }
     val groups = if (completed) emptyList() else entries.quickCaptureGroups(aggregate)
 
     afterEntry?.let { entry ->
@@ -440,48 +482,38 @@ internal fun QuickCaptureLog(
         contentPadding = PaddingValues(bottom = 96.dp),
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                FilterChip(
+                SegmentedButton(
                     selected = !completed,
                     onClick = { completed = false },
-                    label = { Text(stringResource(Res.string.headline_quick_capture_open)) },
-                )
-                FilterChip(
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    icon = {},
+                ) {
+                    Text("${stringResource(Res.string.headline_quick_capture_open)} · $openCount")
+                }
+                SegmentedButton(
                     selected = completed,
                     onClick = { completed = true },
-                    label = { Text(stringResource(Res.string.headline_quick_capture_completed)) },
-                )
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    icon = {},
+                ) {
+                    Text("${stringResource(Res.string.headline_quick_capture_completed)} · $completedCount")
+                }
             }
         }
         if (!completed) {
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(Res.string.headline_quick_capture_aggregate)) },
-                    leadingContent = {
-                        Checkbox(checked = aggregate, onCheckedChange = onAggregateChange)
-                    },
-                    trailingContent = {
-                        Row {
-                            IconButton(onClick = onCopyPrompt, enabled = groups.isNotEmpty()) {
-                                Icon(
-                                    Icons.Outlined.ContentCopy,
-                                    contentDescription = stringResource(Res.string.action_quick_capture_copy_prompt),
-                                )
-                            }
-                            IconButton(onClick = onQuickAdd, enabled = hasCopiedBatch) {
-                                Icon(
-                                    Icons.Outlined.Bolt,
-                                    contentDescription =
-                                        stringResource(Res.string.action_quick_capture_import_csv),
-                                )
-                            }
-                        }
-                    },
-                )
+            if (groups.isNotEmpty() || hasCopiedBatch) {
+                item {
+                    QuickCaptureBatchCard(
+                        groups = groups,
+                        hasCopiedBatch = hasCopiedBatch,
+                        onCopyPrompt = onCopyPrompt,
+                        onQuickAdd = onQuickAdd,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
         } else if (visibleEntries.isNotEmpty()) {
             item {
@@ -509,6 +541,19 @@ internal fun QuickCaptureLog(
                 QuickCaptureCompletedRow(entry = entry, onDelete = { deleteEntry = entry })
             }
         } else {
+            items(groups, key = { it.key }) { group ->
+                val expanded = group.key in expandedGroups
+                QuickCaptureGroupRow(
+                    group = group,
+                    expanded = expanded,
+                    timeZone = timeZone,
+                    onToggleExpanded = {
+                        if (expanded) expandedGroups.remove(group.key) else expandedGroups.add(group.key)
+                    },
+                    onTransfer = { onTransfer(group) },
+                    onDelete = { deleteEntry = it },
+                )
+            }
             val pending = visibleEntries.filter { !it.isReady }
             items(pending, key = { "pending-${it.id}" }) { entry ->
                 QuickCapturePendingRow(
@@ -517,17 +562,74 @@ internal fun QuickCaptureLog(
                     onDelete = { deleteEntry = entry },
                 )
             }
-            items(groups, key = { it.key }) { group ->
-                val expanded = group.key in expandedGroups
-                QuickCaptureGroupRow(
-                    group = group,
-                    expanded = expanded,
-                    onToggleExpanded = {
-                        if (expanded) expandedGroups.remove(group.key) else expandedGroups.add(group.key)
-                    },
-                    onTransfer = { onTransfer(group) },
-                    onDelete = { deleteEntry = it },
+        }
+    }
+}
+
+@Composable
+private fun QuickCaptureBatchCard(
+    groups: List<QuickCaptureLogGroup>,
+    hasCopiedBatch: Boolean,
+    onCopyPrompt: () -> Unit,
+    onQuickAdd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text =
+                        stringResource(
+                            Res.string.headline_quick_capture_ready_weight,
+                            groups.sumOf { it.weightInGrams }.formatQuickCaptureWeight(),
+                        ),
+                    style = MaterialTheme.typography.titleMedium,
                 )
+                Text(
+                    text =
+                        pluralStringResource(
+                            Res.plurals.description_quick_capture_ready_entries,
+                            groups.size,
+                            groups.size,
+                        ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (hasCopiedBatch) {
+                IconButton(onClick = onCopyPrompt, enabled = groups.isNotEmpty()) {
+                    Icon(
+                        Icons.Outlined.ContentCopy,
+                        contentDescription = stringResource(Res.string.action_quick_capture_copy_prompt),
+                    )
+                }
+                Button(onClick = onQuickAdd) {
+                    Icon(
+                        Icons.Outlined.Bolt,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(stringResource(Res.string.action_quick_capture_paste_csv))
+                }
+            } else {
+                Button(onClick = onCopyPrompt) {
+                    Icon(
+                        Icons.Outlined.ContentCopy,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(stringResource(Res.string.action_quick_capture_copy_prompt))
+                }
             }
         }
     }
@@ -872,96 +974,169 @@ private fun WeightField(
 }
 
 @Composable
+private fun SwipeToDeleteBox(
+    enabled: Boolean,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val state = rememberSwipeToDismissBoxState()
+    val coroutineScope = rememberCoroutineScope()
+    val deleteLabel = stringResource(Res.string.action_delete)
+    SwipeToDismissBox(
+        state = state,
+        backgroundContent = {
+            Box(
+                modifier =
+                    Modifier.fillMaxSize()
+                        .background(MaterialTheme.colorScheme.errorContainer)
+                        .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        },
+        modifier =
+            if (enabled) {
+                Modifier.semantics {
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction(deleteLabel) {
+                                onDelete()
+                                true
+                            }
+                        )
+                }
+            } else {
+                Modifier
+            },
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = enabled,
+        gesturesEnabled = enabled,
+        onDismiss = {
+            coroutineScope.launch { state.reset() }
+            onDelete()
+        },
+    ) {
+        content()
+    }
+}
+
+@Composable
 private fun QuickCapturePendingRow(
     entry: QuickCaptureLogEntry,
     onCompleteAfter: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    ListItem(
-        headlineContent = { Text(entry.foodName.orEmpty()) },
-        supportingContent = {
-            Column {
-                Text(stringResource(Res.string.headline_quick_capture_waiting_after))
-                Text(stringResource(Res.string.description_quick_capture_pending_excluded))
-            }
-        },
-        leadingContent = {
-            entry.photoPath?.let {
-                PendingProductPhoto(
-                    photoPath = it,
-                    photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
-                    modifier = Modifier.size(56.dp),
-                )
-            }
-        },
-        trailingContent = {
-            Row {
-                IconButton(onClick = onCompleteAfter) {
-                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(Res.string.action_quick_capture_save_after))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
-                }
-            }
-        },
-    )
+    Column {
+        SwipeToDeleteBox(enabled = true, onDelete = onDelete) {
+            ListItem(
+                headlineContent = { Text(entry.foodName.orEmpty()) },
+                supportingContent = {
+                    Text(
+                        stringResource(Res.string.headline_quick_capture_waiting_after),
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                },
+                leadingContent =
+                    entry.photoPath?.let {
+                        {
+                            PendingProductPhoto(
+                                photoPath = it,
+                                photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
+                                modifier = Modifier.size(56.dp),
+                            )
+                        }
+                    },
+                trailingContent = {
+                    FilledTonalButton(onClick = onCompleteAfter) {
+                        Text(stringResource(Res.string.headline_quick_capture_after))
+                    }
+                },
+            )
+        }
+        HorizontalDivider()
+    }
 }
 
 @Composable
 private fun QuickCaptureGroupRow(
     group: QuickCaptureLogGroup,
     expanded: Boolean,
+    timeZone: TimeZone,
     onToggleExpanded: () -> Unit,
     onTransfer: () -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
 ) {
     Column {
-        ListItem(
-            modifier = Modifier.clickable(enabled = group.entries.size > 1, onClick = onToggleExpanded),
-            headlineContent = { Text(group.foodName) },
-            supportingContent = {
-                if (group.entries.size > 1) {
-                    Text(stringResource(Res.string.headline_quick_capture_items, group.entries.size))
-                }
-            },
-            leadingContent = {
-                group.entries.firstNotNullOfOrNull { it.photoPath }?.let {
-                    PendingProductPhoto(
-                        photoPath = it,
-                        photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
-                        modifier = Modifier.size(56.dp),
+        SwipeToDeleteBox(
+            enabled = group.entries.size == 1,
+            onDelete = { onDelete(group.entries.single()) },
+        ) {
+            ListItem(
+                modifier = Modifier.clickable(enabled = group.entries.size > 1, onClick = onToggleExpanded),
+                headlineContent = { Text(group.foodName) },
+                supportingContent = {
+                    Text(
+                        if (group.entries.size > 1) {
+                            stringResource(Res.string.headline_quick_capture_items, group.entries.size)
+                        } else {
+                            group.entries.single().createdAt.formatQuickCaptureTime(timeZone)
+                        }
                     )
-                }
-            },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("${group.weightInGrams.formatQuickCaptureWeight()} g")
-                    IconButton(onClick = onTransfer) {
-                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = stringResource(Res.string.action_quick_capture_to_diary))
-                    }
-                    if (group.entries.size == 1) {
-                        IconButton(onClick = { onDelete(group.entries.single()) }) {
-                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
+                },
+                leadingContent =
+                    group.entries.firstNotNullOfOrNull { it.photoPath }?.let {
+                        {
+                            PendingProductPhoto(
+                                photoPath = it,
+                                photoDirectory = QUICK_CAPTURE_PHOTO_DIRECTORY,
+                                modifier = Modifier.size(56.dp),
+                            )
+                        }
+                    },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "${group.weightInGrams.formatQuickCaptureWeight()} g",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        IconButton(onClick = onTransfer) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.Send,
+                                contentDescription = stringResource(Res.string.action_quick_capture_to_diary),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
                         }
                     }
-                }
-            },
-        )
+                },
+            )
+        }
         if (expanded) {
             group.entries.forEach { entry ->
                 ListItem(
                     headlineContent = { Text("${requireNotNull(entry.effectiveWeightInGrams).formatQuickCaptureWeight()} g") },
-                    leadingContent = { Icon(Icons.Outlined.Fastfood, contentDescription = null) },
+                    supportingContent = { Text(entry.createdAt.formatQuickCaptureTime(timeZone)) },
                     trailingContent = {
                         IconButton(onClick = { onDelete(entry) }) {
                             Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
                         }
                     },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 )
             }
         }
         HorizontalDivider()
     }
+}
+
+private fun Instant.formatQuickCaptureTime(timeZone: TimeZone): String {
+    val time = toLocalDateTime(timeZone).time
+    return "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
 }
 
 @Composable
