@@ -870,7 +870,7 @@ private fun WeeklyDifferenceBarRow(
             withStyle(
                 SpanStyle(
                     color = differenceColor.copy(alpha = 0.9f),
-                    fontSize = (MaterialTheme.typography.bodyMedium.fontSize.value - 2).sp,
+                    fontSize = (MaterialTheme.typography.bodyMedium.fontSize.value - 4).sp,
                     fontWeight = FontWeight.Light,
                     // Re-centers the smaller sign on the digits' height.
                     baselineShift = BaselineShift(0.08f),
