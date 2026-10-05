@@ -72,7 +72,7 @@ class QuickCaptureScreenshotTest {
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
-                onCopyPrompt = {},
+                onSharePrompt = {},
                 hasCopiedBatch = true,
                 onQuickAdd = {},
                 onTransfer = {},
@@ -91,7 +91,7 @@ class QuickCaptureScreenshotTest {
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
-                onCopyPrompt = {},
+                onSharePrompt = {},
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
@@ -110,7 +110,7 @@ class QuickCaptureScreenshotTest {
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
-                onCopyPrompt = {},
+                onSharePrompt = {},
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
@@ -182,7 +182,7 @@ class QuickCaptureScreenshotTest {
                 onCompleteAfter = { _, _ -> },
                 onDelete = { deleted = true },
                 onClearCompleted = {},
-                onCopyPrompt = {},
+                onSharePrompt = {},
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
@@ -216,7 +216,7 @@ class QuickCaptureScreenshotTest {
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = { cleared = true },
-                onCopyPrompt = {},
+                onSharePrompt = {},
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
@@ -403,7 +403,7 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
-    fun quickAddRequiresCopiedBatchAndOpensImport() {
+    fun quickAddRequiresSharedBatchAndOpensImport() {
         var opened = false
         show {
             var hasCopiedBatch by remember { mutableStateOf(false) }
@@ -413,7 +413,7 @@ class QuickCaptureScreenshotTest {
                 onCompleteAfter = { _, _ -> },
                 onDelete = {},
                 onClearCompleted = {},
-                onCopyPrompt = { hasCopiedBatch = true },
+                onSharePrompt = { hasCopiedBatch = true },
                 hasCopiedBatch = hasCopiedBatch,
                 onQuickAdd = { opened = true },
                 onTransfer = {},
@@ -422,8 +422,9 @@ class QuickCaptureScreenshotTest {
         }
 
         compose.onNodeWithText("CSV einfügen").assertDoesNotExist()
-        compose.onNodeWithText("Prompt kopieren").performClick()
-        compose.onNodeWithContentDescription("Prompt kopieren").assertIsEnabled()
+        capture("ready-for-chatgpt")
+        compose.onNodeWithText("An ChatGPT teilen").performClick()
+        compose.onNodeWithContentDescription("An ChatGPT teilen").assertIsEnabled()
         compose.onNodeWithText("CSV einfügen").performClick()
         compose.runOnIdle { kotlin.test.assertTrue(opened) }
     }

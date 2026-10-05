@@ -722,7 +722,7 @@
     <string name="headline_quick_capture_items">%1$d Einträge</string>
     <string name="action_quick_capture_add">Zum Log hinzufügen</string>
     <string name="action_quick_capture_open_entry_form">Log-Eintrag hinzufügen</string>
-    <string name="action_quick_capture_copy_prompt">Prompt kopieren</string>
+    <string name="action_quick_capture_share_prompt">An ChatGPT teilen</string>
     <string name="action_quick_capture_import_csv">CSV als Schnelleintrag eintragen</string>
     <string name="action_quick_capture_import_csv_confirm">Eintragen</string>
     <string name="action_quick_capture_to_diary">In FoodYou eintragen</string>
@@ -742,9 +742,9 @@
     <string name="neutral_quick_capture_empty_log">Noch keine Schnellerfassungs-Einträge</string>
     <string name="neutral_quick_capture_empty_photos">Keine Fotos zur Nachbearbeitung</string>
     <string name="neutral_quick_capture_empty_library">Verwendete Namen erscheinen hier</string>
-    <string name="neutral_quick_capture_prompt_copied">Prompt kopiert</string>
+    <string name="neutral_quick_capture_chatgpt_copy_fallback">ChatGPT konnte nicht geöffnet werden. Prompt wurde kopiert.</string>
     <string name="headline_quick_capture_csv_import">Schnelleintrag importieren</string>
-    <string name="description_quick_capture_csv_import">Füge die von ChatGPT zurückgegebene CSV ein. Sie wird heute in die passende Mahlzeit eingetragen und die im kopierten Prompt enthaltenen Einträge werden erledigt.</string>
+    <string name="description_quick_capture_csv_import">Füge die von ChatGPT zurückgegebene CSV ein. Sie wird heute in die passende Mahlzeit eingetragen und die im Prompt enthaltenen Einträge werden erledigt.</string>
     <string name="neutral_quick_capture_csv_imported">Schnelleintrag erstellt</string>
     <string name="error_quick_capture_csv_no_meal">Für den Schnelleintrag ist keine Mahlzeit verfügbar.</string>
     <string name="error_quick_capture_csv_save">Der Schnelleintrag konnte nicht gespeichert werden. Es wurde nichts geändert.</string>

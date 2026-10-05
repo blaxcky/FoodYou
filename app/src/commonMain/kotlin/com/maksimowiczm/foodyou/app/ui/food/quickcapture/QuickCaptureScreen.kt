@@ -32,13 +32,13 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
@@ -197,7 +197,8 @@ fun QuickCaptureScreen(
     val snackbar = remember { SnackbarHostState() }
     val clipboard = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
-    val copiedMessage = stringResource(Res.string.neutral_quick_capture_prompt_copied)
+    val sharePrompt = rememberShareQuickCapturePromptAction()
+    val fallbackMessage = stringResource(Res.string.neutral_quick_capture_chatgpt_copy_fallback)
     val importedMessage = stringResource(Res.string.neutral_quick_capture_csv_imported)
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
@@ -321,14 +322,20 @@ fun QuickCaptureScreen(
                         onCompleteAfter = viewModel::completeAfter,
                         onDelete = { viewModel.delete(listOf(it)) },
                         onClearCompleted = { viewModel.delete(entries.filter { it.isCompleted }) },
-                        onCopyPrompt = {
+                        onSharePrompt = {
                             val groups = entries.quickCaptureGroups(aggregate)
                             if (groups.isNotEmpty()) {
-                                clipboard.copy("FoodYou quick capture prompt", groups.quickCapturePrompt())
+                                val shared = shareOrCopyQuickCapturePrompt(
+                                    prompt = groups.quickCapturePrompt(),
+                                    share = sharePrompt,
+                                    copy = { clipboard.copy("FoodYou quick capture prompt", it) },
+                                )
                                 viewModel.rememberCopiedBatch(
                                     groups.flatMap { group -> group.entries.map { it.id } }
                                 )
-                                coroutineScope.launch { snackbar.showSnackbar(copiedMessage) }
+                                if (!shared) {
+                                    coroutineScope.launch { snackbar.showSnackbar(fallbackMessage) }
+                                }
                             }
                         },
                         hasCopiedBatch = copiedEntryIds.isNotEmpty(),
@@ -432,7 +439,7 @@ internal fun QuickCaptureLog(
     onCompleteAfter: (Long, Double) -> Unit,
     onDelete: (QuickCaptureLogEntry) -> Unit,
     onClearCompleted: () -> Unit,
-    onCopyPrompt: () -> Unit,
+    onSharePrompt: () -> Unit,
     hasCopiedBatch: Boolean,
     onQuickAdd: () -> Unit,
     onTransfer: (QuickCaptureLogGroup) -> Unit,
@@ -512,7 +519,7 @@ internal fun QuickCaptureLog(
                     QuickCaptureBatchCard(
                         groups = groups,
                         hasCopiedBatch = hasCopiedBatch,
-                        onCopyPrompt = onCopyPrompt,
+                        onSharePrompt = onSharePrompt,
                         onQuickAdd = onQuickAdd,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
@@ -573,7 +580,7 @@ internal fun QuickCaptureLog(
 private fun QuickCaptureBatchCard(
     groups: List<QuickCaptureLogGroup>,
     hasCopiedBatch: Boolean,
-    onCopyPrompt: () -> Unit,
+    onSharePrompt: () -> Unit,
     onQuickAdd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -608,10 +615,10 @@ private fun QuickCaptureBatchCard(
                 )
             }
             if (hasCopiedBatch) {
-                IconButton(onClick = onCopyPrompt, enabled = groups.isNotEmpty()) {
+                IconButton(onClick = onSharePrompt, enabled = groups.isNotEmpty()) {
                     Icon(
-                        Icons.Outlined.ContentCopy,
-                        contentDescription = stringResource(Res.string.action_quick_capture_copy_prompt),
+                        Icons.Outlined.Share,
+                        contentDescription = stringResource(Res.string.action_quick_capture_share_prompt),
                     )
                 }
                 Button(onClick = onQuickAdd) {
@@ -624,14 +631,14 @@ private fun QuickCaptureBatchCard(
                     Text(stringResource(Res.string.action_quick_capture_paste_csv))
                 }
             } else {
-                Button(onClick = onCopyPrompt) {
+                Button(onClick = onSharePrompt) {
                     Icon(
-                        Icons.Outlined.ContentCopy,
+                        Icons.Outlined.Share,
                         contentDescription = null,
                         modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(stringResource(Res.string.action_quick_capture_copy_prompt))
+                    Text(stringResource(Res.string.action_quick_capture_share_prompt))
                 }
             }
         }
