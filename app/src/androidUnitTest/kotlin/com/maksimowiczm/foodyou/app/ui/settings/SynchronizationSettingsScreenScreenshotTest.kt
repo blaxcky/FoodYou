@@ -87,11 +87,11 @@ class SynchronizationSettingsScreenScreenshotTest {
                 ) {
                     SynchronizationSettingsContent(
                         model = model,
-                        trainingContent = { if (training) {
+                        trainingContent = if (training) { {
                             com.maksimowiczm.foodyou.training.TrainingSyncSettingsContent(
                                 com.maksimowiczm.foodyou.training.TrainingSyncState(configured = true),
-                                { _, _ -> }, {}, {})
-                        } },
+                                { _, _ -> }, {})
+                        } } else null,
                         onBack = {},
                         onHomeSyncHealthConnectEnabledChange = {},
                         onWeightSyncEnabledChange = {},

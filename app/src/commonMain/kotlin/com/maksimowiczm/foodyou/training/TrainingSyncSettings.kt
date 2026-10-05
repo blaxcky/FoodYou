@@ -20,7 +20,7 @@ fun TrainingSyncSettings() {
     val scope = rememberCoroutineScope()
     TrainingSyncSettingsContent(state,
         onSignIn = { email, password -> scope.launch { controller.signIn(email, password) } },
-        onSignOut = controller::signOut, onEnabled = controller::setEnabled)
+        onSignOut = controller::signOut)
 }
 
 @Composable
@@ -28,14 +28,13 @@ internal fun TrainingSyncSettingsContent(
     state: TrainingSyncState,
     onSignIn: (String, String) -> Unit,
     onSignOut: () -> Unit,
-    onEnabled: (Boolean) -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") } // Never saveable or written to preferences.
     OutlinedCard(Modifier.fillMaxWidth().padding(16.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Trainings-App", style = MaterialTheme.typography.titleMedium)
-            Text("Krafttraining und Cardio beim manuellen Sync übernehmen. Nur das angemeldete Konto zählt zur Tagesbilanz.")
+            Text("Trainings unter „Aktivität eintragen“ mit „Trainings jetzt importieren“ übernehmen. Nur das angemeldete Konto zählt zur Tagesbilanz.")
             if (!state.configured) Text("Nicht eingerichtet – Firebase-Projektkonfiguration fehlt.")
             else if (state.account == null) {
                 Text("Mit demselben bestehenden Konto wie in der Trainings-App anmelden.")
@@ -50,10 +49,6 @@ internal fun TrainingSyncSettingsContent(
                     enabled = !state.busy && email.isNotBlank() && password.isNotEmpty()) { Text("Anmelden") }
             } else {
                 Text(state.account.email ?: "Angemeldet")
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Text("Beim manuellen Sync übernehmen", Modifier.weight(1f))
-                    Switch(state.enabled, onCheckedChange = onEnabled)
-                }
                 TextButton(onClick = onSignOut) { Text("Abmelden") }
             }
             if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())

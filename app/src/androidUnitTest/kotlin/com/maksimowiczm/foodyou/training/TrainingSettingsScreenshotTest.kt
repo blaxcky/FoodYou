@@ -19,16 +19,16 @@ class TrainingSettingsScreenshotTest {
     @Test fun login() = capture("login", TrainingSyncState(configured = true))
     @Test fun imported() = capture("imported", TrainingSyncState(
         configured = true, account = TrainingAccount(uid = "test", email = "training@example.test"),
-        enabled = true, report = TrainingSyncReport(1790500000000, imported = 2, existing = 5, zeroCalories = 1)))
+        report = TrainingSyncReport(1790500000000, imported = 2, existing = 5, zeroCalories = 1)))
     @Test fun failure() = capture("failure", TrainingSyncState(
         configured = true, account = TrainingAccount(uid = "test", email = "training@example.test"),
-        enabled = true, report = TrainingSyncReport(1790500000000, failed = 1, errors = listOf("Unbekannte Schema-Version."))))
+        report = TrainingSyncReport(1790500000000, failed = 1, errors = listOf("Unbekannte Schema-Version."))))
     private fun capture(name: String, state: TrainingSyncState) {
         captureRoboImage(
             filePath = "TrainingSettingsScreenshotTest.$name.png",
             roborazziComposeOptions = RoborazziComposeOptions.Builder().size(390, 844).locale("de-rDE").build(),
         ) { MaterialTheme { Surface(Modifier.fillMaxSize()) {
-            Column { TrainingSyncSettingsContent(state, { _, _ -> }, {}, {}) }
+            Column { TrainingSyncSettingsContent(state, { _, _ -> }, {}) }
         } } }
     }
 }

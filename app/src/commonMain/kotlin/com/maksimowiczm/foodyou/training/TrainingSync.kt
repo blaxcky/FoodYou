@@ -35,12 +35,19 @@ data class TrainingSyncProgress(
 
 @Serializable
 data class StoredTrainingSync(
-    val enabled: Boolean = true,
     val report: TrainingSyncReport? = null,
     val progress: TrainingSyncProgress = TrainingSyncProgress(),
 )
 
 data class TrainingPage(val documents: List<TrainingDocument>)
+
+@Serializable
+data class ImportedTrainingSession(
+    val sessionId: String,
+    val activityDate: String,
+    val strengthKcal: Long,
+    val cardioKcal: Long,
+)
 
 @Serializable
 data class TrainingSyncReport(
@@ -51,6 +58,7 @@ data class TrainingSyncReport(
     val failed: Int = 0,
     val errors: List<String> = emptyList(),
     val pending: Int = 0,
+    val importedSessions: List<ImportedTrainingSession> = emptyList(),
 ) {
     val successful: Boolean get() = failed == 0 && pending == 0
     fun description(): String = "$imported Trainings übernommen · $existing bereits vorhanden · $zeroCalories ohne Kalorien · $failed Fehler" +
@@ -61,7 +69,6 @@ data class TrainingSyncReport(
 data class TrainingSyncState(
     val configured: Boolean = false,
     val account: TrainingAccount? = null,
-    val enabled: Boolean = false,
     val busy: Boolean = false,
     val report: TrainingSyncReport? = null,
     val message: String? = null,
@@ -72,7 +79,8 @@ interface TrainingSync {
     val state: StateFlow<TrainingSyncState>
     suspend fun signIn(email: String, password: String)
     fun signOut()
-    fun setEnabled(enabled: Boolean)
+    /** Starts an explicit import in the application scope, independently of the current screen. */
+    fun startManualSync()
     suspend fun sync(): TrainingSyncReport?
     /** Stops and joins imports, signs out and resets progress before replacing the database. */
     suspend fun withPausedSyncForRestore(restore: suspend () -> Unit)
@@ -89,7 +97,6 @@ interface TrainingRemote {
 
 interface TrainingSyncStorage {
     suspend fun load(account: TrainingAccount): StoredTrainingSync
-    suspend fun setEnabled(account: TrainingAccount, enabled: Boolean)
     suspend fun saveReport(account: TrainingAccount, report: TrainingSyncReport)
     suspend fun saveProgress(account: TrainingAccount, progress: TrainingSyncProgress)
     suspend fun resetAllProgress()
@@ -105,6 +112,7 @@ class TrainingSyncCoordinator(
     private val scope: CoroutineScope,
     private val onAccountChanged: suspend () -> Unit = {},
     private val syncLog: SyncLog? = null,
+    private val onImported: () -> Unit = {},
 ) : TrainingSync {
     override val account = remote.account
     private val ownerContext = scope.coroutineContext.minusKey(Job)
@@ -112,14 +120,14 @@ class TrainingSyncCoordinator(
     override val state = mutableState.asStateFlow()
     private val runMutex = Mutex()
     private var running: Job? = null
-    private var settingsWrite: Job? = null
+    private var manualRun: Job? = null
     private var generation = 0L
     private var restoring = false
 
     private suspend fun snapshot(owner: TrainingAccount? = account.value): TrainingSyncState {
         val stored = owner?.let { storage.load(it) }
-        return TrainingSyncState(remote.configured, owner, stored?.enabled ?: false,
-            busy = restoring, report = stored?.report)
+        return TrainingSyncState(remote.configured, owner,
+            busy = restoring || manualRun?.isActive == true, report = stored?.report)
     }
 
     init {
@@ -129,20 +137,20 @@ class TrainingSyncCoordinator(
                 val changed = next != previous
                 if (changed) {
                     generation++
+                    manualRun?.cancel()
                     running?.cancel()
                     previous = next
                 }
                 val currentGeneration = generation
                 mutableState.value = TrainingSyncState(remote.configured, next, busy = restoring)
                 try {
-                    settingsWrite?.join()
                     runMutex.withLock {
                         val loaded = snapshot(next)
                         if (generation == currentGeneration && account.value == next) mutableState.value = loaded
                     }
                 } catch (cancel: CancellationException) { throw cancel
                 } catch (_: Exception) {
-                    if (account.value == next) mutableState.value = state.value.copy(message = "Trainings-Sync-Einstellungen konnten nicht gelesen werden.")
+                    if (account.value == next) mutableState.value = state.value.copy(message = "Trainingsfortschritt konnte nicht gelesen werden.")
                 }
                 if (changed) onAccountChanged()
             }
@@ -160,27 +168,30 @@ class TrainingSyncCoordinator(
 
     override fun signOut() {
         generation++
+        manualRun?.cancel()
         running?.cancel()
         remote.signOut()
         mutableState.value = TrainingSyncState(remote.configured, account.value, busy = restoring)
     }
 
-    override fun setEnabled(enabled: Boolean) {
+    override fun startManualSync() {
+        if (!remote.configured || restoring || state.value.busy || manualRun?.isActive == true) return
         val owner = account.value ?: return
-        if (restoring) return
-        if (enabled != state.value.enabled) generation++
-        if (!enabled) running?.cancel()
-        mutableState.value = state.value.copy(enabled = enabled)
-        val previousWrite = settingsWrite
-        settingsWrite = scope.launch {
-            previousWrite?.join()
-            try { storage.setEnabled(owner, enabled) }
-            catch (cancel: CancellationException) { throw cancel
-            } catch (_: Exception) {
-                if (account.value == owner) mutableState.value = state.value.copy(enabled = false,
-                    message = "Trainings-Sync-Einstellung konnte nicht gespeichert werden.")
+        val runGeneration = generation
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            try {
+                // Account initialization also holds this lock while reading local progress.
+                runMutex.withLock { }
+                if (account.value == owner && generation == runGeneration && !restoring) sync()
+            } finally {
+                if (account.value == owner && generation == runGeneration && !restoring) {
+                    mutableState.value = state.value.copy(busy = false)
+                }
             }
         }
+        manualRun = job
+        mutableState.value = state.value.copy(busy = true, message = null)
+        job.start()
     }
 
     override suspend fun withPausedSyncForRestore(restore: suspend () -> Unit) = withContext(ownerContext) {
@@ -188,8 +199,8 @@ class TrainingSyncCoordinator(
         restoring = true
         generation++
         try {
+            manualRun?.cancelAndJoin()
             running?.cancelAndJoin()
-            settingsWrite?.join()
             runMutex.withLock {
                 remote.signOut()
                 mutableState.value = TrainingSyncState(remote.configured, busy = true)
@@ -208,9 +219,8 @@ class TrainingSyncCoordinator(
                 restoring -> "Wiederherstellung läuft"
                 !remote.configured -> "Trainingsquelle nicht eingerichtet"
                 account.value == null -> "Nicht angemeldet"
-                !state.value.enabled -> "Trainings-Sync deaktiviert"
                 state.value.busy -> "Ein Trainings-Sync läuft bereits"
-                else -> "Anmeldung oder Sync-Einstellung hat sich geändert"
+                else -> "Anmeldung hat sich geändert"
             }) else SyncLogOutcome(if (report.successful) SyncLogStatus.Success else SyncLogStatus.Failed,
                 report.description())
         }) { syncTraining() }
@@ -222,8 +232,8 @@ class TrainingSyncCoordinator(
         if (owner == null) { runMutex.unlock(); return null }
         val runGeneration = generation
         fun stillCurrent() = account.value == owner && generation == runGeneration && !restoring
+        var hasImported = false
         try {
-            settingsWrite?.join()
             if (!stillCurrent()) return null
             val stored = try { storage.load(owner) } catch (cancel: CancellationException) { throw cancel
             } catch (_: Exception) {
@@ -232,14 +242,15 @@ class TrainingSyncCoordinator(
                     mutableState.value = state.value.copy(report = it)
                 }
             }
-            if (!stillCurrent() || !stored.enabled || !state.value.enabled) return null
-            mutableState.value = state.value.copy(account = owner, enabled = true, busy = true, message = null, report = stored.report)
+            if (!stillCurrent()) return null
+            mutableState.value = state.value.copy(account = owner, busy = true, message = null, report = stored.report)
             return supervisorScope {
                 val job = async(start = CoroutineStart.LAZY) {
                     var progress = stored.progress
                     val retryIds = progress.pendingIds.distinct().take(20)
                     val pending = linkedSetOf<String>().apply { addAll(progress.pendingIds) }
                     var imported = 0
+                    val importedSessions = mutableListOf<ImportedTrainingSession>()
                     var existing = 0
                     var zero = 0
                     var failed = 0
@@ -265,8 +276,15 @@ class TrainingSyncCoordinator(
                         checkCurrent()
                         var success = false
                         try {
+                            val session = validateTrainingDocument(document)
                             when (importDocument(owner, document, Clock.System.now().toEpochMilliseconds())) {
-                                TrainingImportResult.Imported -> { imported++; success = true }
+                                TrainingImportResult.Imported -> {
+                                    imported++
+                                    hasImported = true
+                                    success = true
+                                    importedSessions += ImportedTrainingSession(session.sessionId,
+                                        session.activityDate, session.strengthKcal, session.cardioKcal)
+                                }
                                 TrainingImportResult.AlreadyImported -> { existing++; success = true }
                                 TrainingImportResult.ZeroCalories -> { zero++; success = true }
                                 TrainingImportResult.Conflict -> failure("Trainingsabschluss wurde nachträglich verändert; vorhandener Import bleibt erhalten.")
@@ -350,7 +368,7 @@ class TrainingSyncCoordinator(
                     }
                     ensureActive()
                     checkCurrent()
-                    var report = TrainingSyncReport(Clock.System.now().toEpochMilliseconds(), imported, existing, zero, failed, errors.toList(), pending.size)
+                    var report = TrainingSyncReport(Clock.System.now().toEpochMilliseconds(), imported, existing, zero, failed, errors.toList(), pending.size, importedSessions.toList())
                     try { storage.saveReport(owner, report) }
                     catch (cancel: CancellationException) { throw cancel
                     } catch (_: Exception) {
@@ -373,6 +391,10 @@ class TrainingSyncCoordinator(
             running = null
             mutableState.value = state.value.copy(busy = restoring)
             runMutex.unlock()
+            if (hasImported) {
+                try { onImported() }
+                catch (_: Exception) { /* Widget refresh is best-effort; imports are already committed. */ }
+            }
         }
     }
 }

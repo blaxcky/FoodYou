@@ -157,7 +157,7 @@ internal fun SynchronizationSettingsContent(
     modifier: Modifier = Modifier,
     onSyncLog: () -> Unit = {},
     initialErrorDetailsExpanded: Boolean = false,
-    trainingContent: @Composable () -> Unit = {},
+    trainingContent: (@Composable () -> Unit)? = null,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -222,7 +222,13 @@ internal fun SynchronizationSettingsContent(
                 )
             }
 
-            item { trainingContent() }
+            if (trainingContent != null) {
+                item {
+                    SynchronizationSectionHeader("Trainingsimport",
+                        "Manuell unter „Aktivität eintragen“ starten.")
+                }
+                item { trainingContent() }
+            }
 
             item { SynchronizationSectionHeader(stringResource(Res.string.headline_fddb_diary)) }
             item {

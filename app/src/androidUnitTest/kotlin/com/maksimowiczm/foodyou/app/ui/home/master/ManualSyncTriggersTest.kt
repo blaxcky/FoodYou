@@ -20,6 +20,7 @@ import com.maksimowiczm.foodyou.weight.HealthConnectWeightSync
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import java.lang.reflect.Proxy
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.first
@@ -27,6 +28,8 @@ import kotlin.time.Clock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -55,7 +58,7 @@ class ManualSyncTriggersTest {
             val activeRun = fixture.log.runs.first().last()
             assertEquals(com.maksimowiczm.foodyou.sync.SyncLogStatus.Running, activeRun.status)
             assertEquals(1, activeRun.steps.count {
-                it.title == "Kalorienänderung nach Schritt- und Trainingsabgleich berechnen" &&
+                it.title == "Kalorienänderung nach Schrittabgleich berechnen" &&
                     it.status == com.maksimowiczm.foodyou.sync.SyncLogStatus.Success
             })
             weightRelease.complete(Unit)
@@ -92,22 +95,29 @@ class ManualSyncTriggersTest {
     }
 
     @Test
-    fun homeReadsCaloriesOnlyBeforeAndAfterTrainingFinishes() = runTest {
+    fun homeNeverStartsOrWaitsForTrainingEvenWhileIndependentImportRuns() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val fixture = Fixture(true, stepsEnabled = true)
         val release = CompletableDeferred<Unit>()
         fixture.training.run = { release.await(); TrainingSyncReport(0) }
+        fixture.training.state.value = TrainingSyncState(busy = true,
+            report = TrainingSyncReport(0, failed = 1))
+        val independentImport = backgroundScope.launch { fixture.training.sync() }
         val viewModel = fixture.home()
         try {
+            runCurrent()
             viewModel.syncConfigured(today())
             runCurrent()
             val dates = burnedEnergySyncDeltaDates(today())
-            assertEquals(dates, fixture.calorieReads)
-            assertEquals(1, fixture.weight.imports)
-            release.complete(Unit)
-            runCurrent()
             assertEquals(dates + dates, fixture.calorieReads)
+            assertEquals(1, fixture.training.calls)
+            assertFalse(independentImport.isCompleted)
+            assertEquals(com.maksimowiczm.foodyou.sync.SyncLogStatus.Success,
+                fixture.log.runs.first().last().status)
+            assertTrue(fixture.log.runs.first().last().steps.none { it.title.contains("Training") })
+            assertFalse(viewModel.homeSyncState.value.isSyncing)
         } finally {
+            independentImport.cancelAndJoin()
             viewModel.viewModelScope.cancel()
             Dispatchers.resetMain()
         }
@@ -116,10 +126,9 @@ class ManualSyncTriggersTest {
     @Test
     fun trainingAccountChangeSuppressesAfterSnapshot() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-        val fixture = Fixture(true)
-        fixture.training.run = {
+        val fixture = Fixture(true, stepsEnabled = true)
+        fixture.onSteps = {
             fixture.training.account.value = TrainingAccount(uid = "other", email = null)
-            TrainingSyncReport(0)
         }
         val viewModel = fixture.home()
         try {
@@ -154,6 +163,7 @@ class ManualSyncTriggersTest {
         val settings = TestSettings(weightEnabled, stepsEnabled)
         val weight = TestWeightSync()
         val training = TestTrainingSync()
+        var onSteps: () -> Unit = {}
         val calorieReads = mutableListOf<LocalDate>()
         private val activities: ActivityRepository = stub { name, args ->
             check(name == "observeDailySummary") { "Unexpected activity call: $name" }
@@ -185,6 +195,7 @@ class ManualSyncTriggersTest {
         fun home() = HomeViewModel(settings,
             stub<HealthConnectActivitySync> { name, _ ->
                 check(name == "syncStepsForHome") { "Unexpected step call: $name" }
+                onSteps()
                 HealthConnectSyncResult.Synced
             }, weight, activities, diary, credentials, training, log)
     }
@@ -225,11 +236,12 @@ class ManualSyncTriggersTest {
         override val account = MutableStateFlow<TrainingAccount?>(TrainingAccount(uid = "first", email = null))
         override val state = MutableStateFlow(TrainingSyncState())
         var run: suspend () -> TrainingSyncReport? = { null }
-        override suspend fun sync() = run()
+        var calls = 0
+        override suspend fun sync(): TrainingSyncReport? { calls++; return run() }
         override suspend fun signIn(email: String, password: String) = error("Not used")
         override suspend fun withPausedSyncForRestore(restore: suspend () -> Unit) = error("Not used")
         override fun signOut() = error("Not used")
-        override fun setEnabled(enabled: Boolean) = error("Not used")
+        override fun startManualSync() = error("Not used")
     }
 
     companion object {

@@ -17,6 +17,7 @@ internal fun createTrainingSync(context: Context, dao: TrainingImportDao, syncLo
     CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     onAccountChanged = { updateCalorieWidgetValues() },
     syncLog = syncLog,
+    onImported = { updateCalorieWidgetValues() },
 )
 
 /** All file access is serialized and runs off the UI thread. */
@@ -52,7 +53,6 @@ internal class FileTrainingSyncStorage(private val directory: File) : TrainingSy
             write(target, transform(read(target)))
         }
     }
-    override suspend fun setEnabled(account: TrainingAccount, enabled: Boolean) = update(account) { it.copy(enabled = enabled) }
     override suspend fun saveReport(account: TrainingAccount, report: TrainingSyncReport) = update(account) { it.copy(report = report) }
     override suspend fun saveProgress(account: TrainingAccount, progress: TrainingSyncProgress) = update(account) { it.copy(progress = progress) }
     override suspend fun resetAllProgress() = withContext(Dispatchers.IO) {

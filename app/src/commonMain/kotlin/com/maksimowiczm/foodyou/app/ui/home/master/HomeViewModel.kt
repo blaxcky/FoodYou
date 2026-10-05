@@ -67,7 +67,6 @@ internal data class HomeSyncState(
     val healthConnectEnabled: Boolean,
     val fddbDiaryEnabled: Boolean,
     val configuredSyncInProgress: Boolean = false,
-    val trainingState: com.maksimowiczm.foodyou.training.TrainingSyncState = com.maksimowiczm.foodyou.training.TrainingSyncState(),
 ) {
     val isSyncing: Boolean
         get() =
@@ -89,7 +88,6 @@ internal data class HomeConfiguredSyncResult(
     val healthConnectSynced: Boolean,
     val fddbDiarySynced: Boolean,
     val fddbMissingCredentials: Boolean,
-    val trainingSynced: Boolean = false,
 )
 
 private const val BURNED_ENERGY_SYNC_DELTA_VISIBLE_MILLIS = 120_000L
@@ -173,18 +171,16 @@ internal class HomeViewModel(
             )
 
     val homeSyncState: StateFlow<HomeSyncState> =
-        combine(settingsRepository.observe(), activitySyncState, fddbSyncState, configuredSyncInProgress, trainingSync.state) {
+        combine(settingsRepository.observe(), activitySyncState, fddbSyncState, configuredSyncInProgress) {
                 settings,
                 activityState,
                 fddbState,
                 configuredSyncing,
-                trainingState,
             ->
                 HomeSyncState(
                     activitySyncState = activityState,
                     fddbSyncState = fddbState,
                     configuredSyncInProgress = configuredSyncing,
-                    trainingState = trainingState,
                     healthConnectEnabled = settings.homeSyncHealthConnectEnabled,
                     fddbDiaryEnabled = settings.homeSyncFddbDiaryEnabled,
                 )
@@ -272,10 +268,9 @@ internal class HomeViewModel(
                             }
                         },
                         syncWeight = { healthConnectWeightSync.syncHistorical() },
-                        syncTraining = { trainingSync.sync() != null },
                         onActivitiesSynced = {
                             if (syncAccount == trainingSync.account.value) {
-                                syncLog.recordSyncStep("Kalorienänderung nach Schritt- und Trainingsabgleich berechnen") {
+                                syncLog.recordSyncStep("Kalorienänderung nach Schrittabgleich berechnen") {
                                     val after = readBurnedEnergySnapshot(deltaDates, settingsRepository, activityRepository)
                                     showBurnedEnergySyncDelta(deltaDates.associateWith {
                                         burnedEnergySyncDeltaKcal(before.getValue(it), after.getValue(it))
@@ -297,7 +292,7 @@ internal class HomeViewModel(
                             }
                         },
                     )
-                if (result.healthConnectSynced || result.fddbDiarySynced || result.trainingSynced) {
+                if (result.healthConnectSynced || result.fddbDiarySynced) {
                     syncLog.recordSyncStep("Kalorien-Widgets aktualisieren") { updateCalorieWidgetValues() }
                 }
             }
@@ -357,15 +352,9 @@ internal suspend fun syncConfiguredHomeSync(
     hasFddbCredentials: suspend () -> Boolean,
     syncFddbDiary: suspend (LocalDate) -> Result<FddbDiarySyncResult, Throwable>,
     syncWeight: suspend () -> Unit = {},
-    syncTraining: suspend () -> Boolean = { false },
     syncLog: SyncLog? = null,
     onActivitiesSynced: suspend () -> Unit = {},
 ): HomeConfiguredSyncResult = supervisorScope {
-    val training = async {
-        var completed = false
-        syncBranch { completed = syncTraining() }
-        completed
-    }
     val health = async {
         if (!settings.homeSyncHealthConnectEnabled) {
             syncLog.recordSyncSkipped("Schritte synchronisieren", "Startseiten-Sync für Schritte deaktiviert")
@@ -396,12 +385,11 @@ internal suspend fun syncConfiguredHomeSync(
         synced to missingCredentials
     }
     val healthSynced = health.await()
-    val trainingSynced = training.await()
     // Publish activity calories as soon as their sources finish, while diary and weight continue.
     syncBranch { onActivitiesSynced() }
     val (diarySynced, missingCredentials) = diary.await()
     weight.await()
-    HomeConfiguredSyncResult(healthSynced, diarySynced, missingCredentials, trainingSynced)
+    HomeConfiguredSyncResult(healthSynced, diarySynced, missingCredentials)
 }
 
 private suspend fun syncBranch(block: suspend () -> Unit): Boolean =

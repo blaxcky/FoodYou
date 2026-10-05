@@ -14,7 +14,6 @@ internal open class MemoryTrainingStorage : TrainingSyncStorage {
     var failProgressWrites = false
     private fun key(account: TrainingAccount) = account.project to account.uid
     override suspend fun load(account: TrainingAccount) = records[key(account)] ?: StoredTrainingSync()
-    override suspend fun setEnabled(account: TrainingAccount, enabled: Boolean) { records[key(account)] = load(account).copy(enabled = enabled) }
     override suspend fun saveReport(account: TrainingAccount, report: TrainingSyncReport) { records[key(account)] = load(account).copy(report = report) }
     override suspend fun saveProgress(account: TrainingAccount, progress: TrainingSyncProgress) {
         if (failProgressWrites) error("disk full")
@@ -49,7 +48,147 @@ internal class FakeTrainingRemote : TrainingRemote {
 private fun session(number: Int) = trainingDocument("00000000-0000-4000-8000-" + number.toString().padStart(12, '0'))
 
 class TrainingSyncCoordinatorTest {
-    @Test fun syncLogReportsPartialImportFailureAndDisabledSkip() = runTest {
+    @Test fun manualButtonWaitsForInitialProgressRead() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val storage = object : MemoryTrainingStorage() {
+            var initializing = true
+            override suspend fun load(account: TrainingAccount): StoredTrainingSync {
+                if (initializing) {
+                    initializing = false
+                    release.await()
+                }
+                return super.load(account)
+            }
+        }
+        val remote = FakeTrainingRemote()
+        val coordinator = TrainingSyncCoordinator(remote, storage,
+            { _, _, _ -> TrainingImportResult.Imported }, backgroundScope)
+        runCurrent()
+        coordinator.startManualSync()
+        runCurrent()
+        assertTrue(coordinator.state.value.busy)
+        assertEquals(0, remote.calls)
+        release.complete(Unit)
+        runCurrent()
+        assertEquals(1, remote.calls)
+        assertEquals(1, coordinator.state.value.report!!.imported)
+        assertFalse(coordinator.state.value.busy)
+    }
+
+    @Test fun manualButtonStartsOnceAndSurvivesScreenCancellation() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val remote = FakeTrainingRemote().apply { fetch = { release.await(); listOf(trainingDocument()) } }
+        val storage = MemoryTrainingStorage()
+        var widgetUpdates = 0
+        val coordinator = TrainingSyncCoordinator(remote, storage,
+            { _, _, _ -> TrainingImportResult.Imported }, backgroundScope,
+            onImported = { widgetUpdates++ })
+        runCurrent()
+        assertEquals(0, remote.calls)
+        val screen = launch {
+            coordinator.startManualSync()
+            coordinator.startManualSync()
+            awaitCancellation()
+        }
+        runCurrent()
+        assertEquals(1, remote.calls)
+        assertTrue(coordinator.state.value.busy)
+        screen.cancelAndJoin()
+        coordinator.startManualSync()
+        runCurrent()
+        assertEquals(1, remote.calls)
+        release.complete(Unit)
+        runCurrent()
+        assertFalse(coordinator.state.value.busy)
+        val report = coordinator.state.value.report!!
+        assertEquals(1, report.imported)
+        assertEquals(listOf(ImportedTrainingSession(TEST_SESSION, "2026-09-27", 210, 120)), report.importedSessions)
+        assertEquals(report, storage.load(remote.account.value!!).report)
+        assertEquals(1, widgetUpdates)
+    }
+
+    @Test fun partialImportsAndSuccessfulRetriesIncludeDetailsAndRefreshWidgets() = runTest {
+        val documents = listOf(session(1), session(2), session(3), session(4))
+        val remote = FakeTrainingRemote().apply { fetch = { documents } }
+        val storage = MemoryTrainingStorage()
+        var failSecond = true
+        var widgetUpdates = 0
+        val coordinator = TrainingSyncCoordinator(remote, storage, { _, d, _ ->
+            when (d.id) {
+                session(2).id -> if (failSecond) error("write failed") else TrainingImportResult.Imported
+                session(3).id -> TrainingImportResult.AlreadyImported
+                session(4).id -> TrainingImportResult.ZeroCalories
+                else -> TrainingImportResult.Imported
+            }
+        }, backgroundScope, onImported = { widgetUpdates++ })
+        runCurrent()
+        val partial = coordinator.sync()!!
+        assertEquals(1, partial.imported)
+        assertEquals(1, partial.failed)
+        assertEquals(1, partial.pending)
+        assertEquals(1, partial.existing)
+        assertEquals(1, partial.zeroCalories)
+        assertEquals(listOf(session(1).id), partial.importedSessions.map { it.sessionId })
+        assertEquals(1, widgetUpdates)
+        failSecond = false
+        val retry = coordinator.sync()!!
+        assertTrue(retry.successful)
+        assertEquals(listOf(session(2).id), retry.importedSessions.map { it.sessionId })
+        assertEquals(2, widgetUpdates)
+        assertTrue(coordinator.sync()!!.importedSessions.isEmpty())
+        assertEquals(2, widgetUpdates)
+    }
+
+    @Test fun manualRunIsStoppedAndJoinedOnSignOutOrRestore() = runTest {
+        for (restore in listOf(false, true)) {
+            var stopped = false
+            val remote = FakeTrainingRemote().apply {
+                fetch = { try { awaitCancellation() } finally { stopped = true } }
+            }
+            val storage = MemoryTrainingStorage()
+            val coordinator = TrainingSyncCoordinator(remote, storage,
+                { _, _, _ -> error("No response yet") }, backgroundScope)
+            runCurrent()
+            coordinator.startManualSync()
+            assertTrue(coordinator.state.value.busy)
+            runCurrent()
+            assertEquals(1, remote.calls)
+            if (restore) coordinator.withPausedSyncForRestore { assertTrue(stopped) }
+            else coordinator.signOut()
+            runCurrent()
+            assertTrue(stopped)
+            assertFalse(coordinator.state.value.busy)
+            assertNull(coordinator.account.value)
+            assertNull(coordinator.state.value.report)
+            coordinator.startManualSync()
+            runCurrent()
+            assertEquals(1, remote.calls)
+        }
+    }
+
+    @Test fun manualRunIsCancelledOnAccountChangeAndNewAccountCanStart() = runTest {
+        val remote = FakeTrainingRemote().apply { fetch = { awaitCancellation() } }
+        val writes = mutableListOf<String>()
+        val coordinator = TrainingSyncCoordinator(remote, MemoryTrainingStorage(), { a, _, _ ->
+            writes += a.uid
+            TrainingImportResult.Imported
+        }, backgroundScope)
+        runCurrent()
+        coordinator.startManualSync()
+        runCurrent()
+        remote.account.value = TrainingAccount(uid = "B", email = null)
+        runCurrent()
+        assertFalse(coordinator.state.value.busy)
+        assertNull(coordinator.state.value.report)
+        assertTrue(writes.isEmpty())
+        remote.fetch = { listOf(trainingDocument()) }
+        coordinator.startManualSync()
+        runCurrent()
+        assertEquals(listOf("B"), writes)
+        assertEquals(1, coordinator.state.value.report!!.imported)
+    }
+
+    @Test fun syncLogReportsPartialImportFailureAndSignedOutSkip() = runTest {
         val store = object : SyncLogStore {
             override val runs = MutableStateFlow(emptyList<SyncLogRun>())
             override suspend fun update(transform: (List<SyncLogRun>) -> List<SyncLogRun>) {
@@ -69,7 +208,7 @@ class TrainingSyncCoordinatorTest {
         assertEquals(listOf("Trainings synchronisieren", "Trainings vom Server laden", "Trainings lokal übernehmen"),
             run.steps.map { it.title })
         assertEquals(SyncLogStatus.Failed, run.steps.last().status)
-        coordinator.setEnabled(false)
+        coordinator.signOut()
         assertNull(coordinator.sync())
         assertEquals(SyncLogStatus.Skipped, store.runs.value.last().steps.single().status)
     }
@@ -82,7 +221,7 @@ class TrainingSyncCoordinatorTest {
         val report = coordinator.sync()!!
         assertEquals(1, report.imported)
         assertTrue(report.successful)
-        coordinator.setEnabled(false)
+        coordinator.signOut()
         assertNull(coordinator.sync())
         assertEquals(1, remote.calls)
     }
@@ -102,7 +241,6 @@ class TrainingSyncCoordinatorTest {
         assertEquals("B", coordinator.state.value.account?.uid)
         assertNull(coordinator.state.value.report)
         assertFalse(coordinator.state.value.busy)
-        assertTrue(coordinator.state.value.enabled)
         remote.fetch = { emptyList() }
         assertTrue(coordinator.sync()!!.successful)
     }
@@ -152,12 +290,16 @@ class TrainingSyncCoordinatorTest {
             if (receipts.add(d.id)) TrainingImportResult.Imported else TrainingImportResult.AlreadyImported
         }, backgroundScope)
         runCurrent()
-        assertEquals(401, coordinator.sync()!!.imported)
+        val firstReport = coordinator.sync()!!
+        assertEquals(401, firstReport.imported)
+        assertEquals(documents.map { it.id }, firstReport.importedSessions.map { it.sessionId })
         assertEquals(3, remote.calls)
         val saved = storage.load(remote.account.value!!).progress
         assertEquals(TrainingCursor.of(documents.last()), saved.cursor)
         assertTrue(saved.initialImportComplete)
-        assertEquals(0, coordinator.sync()!!.existing)
+        val emptyReport = coordinator.sync()!!
+        assertEquals(0, emptyReport.existing)
+        assertTrue(emptyReport.importedSessions.isEmpty())
         assertEquals(4, remote.calls)
         assertEquals(saved.cursor, remote.pageRequests.last())
         // A late upload has an old booking date and a smaller ID, but a newer server timestamp.
@@ -189,7 +331,9 @@ class TrainingSyncCoordinatorTest {
         val storage = MemoryTrainingStorage()
         val coordinator = TrainingSyncCoordinator(remote, storage, { _, _, _ -> TrainingImportResult.Imported }, backgroundScope)
         runCurrent()
-        assertEquals(401, coordinator.sync()!!.imported)
+        val firstReport = coordinator.sync()!!
+        assertEquals(401, firstReport.imported)
+        assertEquals(documents.map { it.id }, firstReport.importedSessions.map { it.sessionId })
         assertEquals(90_000, testScheduler.currentTime)
         val second = FakeTrainingRemote().apply {
             page = { after, limit ->
@@ -274,16 +418,18 @@ class TrainingSyncCoordinatorTest {
         val remote = FakeTrainingRemote().apply { fetch = { documents } }
         val storage = MemoryTrainingStorage()
         val receipts = mutableSetOf<String>()
+        var widgetUpdates = 0
         val coordinator = TrainingSyncCoordinator(remote, storage, { _, d, _ ->
             if (d.id == documents.last().id) awaitCancellation()
             receipts += d.id
             TrainingImportResult.Imported
-        }, backgroundScope)
+        }, backgroundScope, onImported = { widgetUpdates++ })
         runCurrent()
         val running = launch { coordinator.sync() }
         runCurrent()
         running.cancelAndJoin()
         assertEquals(1, receipts.size)
+        assertEquals(1, widgetUpdates)
         assertNull(storage.load(remote.account.value!!).progress.cursor)
         val restarted = TrainingSyncCoordinator(remote, storage, { _, d, _ ->
             if (receipts.add(d.id)) TrainingImportResult.Imported else TrainingImportResult.AlreadyImported
@@ -310,7 +456,6 @@ class TrainingSyncCoordinatorTest {
         val storage = MemoryTrainingStorage()
         val owner = remote.account.value!!
         val other = TrainingAccount(project = "other-project", uid = owner.uid, email = null)
-        storage.setEnabled(other, false)
         storage.saveProgress(other, TrainingSyncProgress(TrainingCursor.of(session(5)), true, listOf(session(3).id)))
         var stopped = false
         val coordinator = TrainingSyncCoordinator(remote, storage, { _, _, _ ->
@@ -326,7 +471,6 @@ class TrainingSyncCoordinatorTest {
                 coordinator.signIn("B", "password")
                 assertNull(remote.account.value)
                 assertEquals(TrainingSyncProgress(), storage.load(other).progress)
-                assertFalse(storage.load(other).enabled)
                 error("restore rollback")
             }
         }
@@ -349,22 +493,20 @@ class TrainingSyncCoordinatorTest {
         assertEquals(2, remote.calls)
     }
 
-    @Test fun disablingOrSigningOutCancelsImportWithoutConfirmingCursor() = runTest {
-        for (disable in listOf(true, false)) {
-            val remote = FakeTrainingRemote()
-            val storage = MemoryTrainingStorage()
-            val owner = remote.account.value!!
-            val coordinator = TrainingSyncCoordinator(remote, storage, { _, _, _ -> awaitCancellation() }, backgroundScope)
-            runCurrent()
-            val running = async { coordinator.sync() }
-            runCurrent()
-            if (disable) coordinator.setEnabled(false) else coordinator.signOut()
-            runCurrent()
-            assertNull(running.await())
-            assertNull(storage.load(owner).progress.cursor)
-            assertFalse(coordinator.state.value.enabled)
-            assertNull(coordinator.sync())
-        }
+    @Test fun signingOutCancelsImportWithoutConfirmingCursor() = runTest {
+        val remote = FakeTrainingRemote()
+        val storage = MemoryTrainingStorage()
+        val owner = remote.account.value!!
+        val coordinator = TrainingSyncCoordinator(remote, storage, { _, _, _ -> awaitCancellation() }, backgroundScope)
+        runCurrent()
+        val running = async { coordinator.sync() }
+        runCurrent()
+        coordinator.signOut()
+        runCurrent()
+        assertNull(running.await())
+        assertNull(storage.load(owner).progress.cursor)
+        assertNull(coordinator.account.value)
+        assertNull(coordinator.sync())
     }
 
     @Test fun badStoredCursorAndFailedRestoreResetNeverReachServerOrDatabaseReplacement() = runTest {

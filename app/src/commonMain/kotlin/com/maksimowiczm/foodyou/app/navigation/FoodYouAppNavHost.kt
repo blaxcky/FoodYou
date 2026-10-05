@@ -316,6 +316,7 @@ fun FoodYouAppNavHost(
                 importedId = route.importedId,
                 onBack = { navController.popBackStackInclusive<ManualActivity>() },
                 onSave = { navController.popBackStackInclusive<ManualActivity>() },
+                onTrainingSettings = { navController.navigateSingleTop(SynchronizationSettings) },
             )
         }
         forwardBackwardComposable<StepExclusions> {

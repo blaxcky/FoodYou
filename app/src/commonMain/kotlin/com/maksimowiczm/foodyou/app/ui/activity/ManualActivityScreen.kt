@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -32,10 +34,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.training.TrainingImportCard
+import com.maksimowiczm.foodyou.training.TrainingSync
 import foodyou.app.generated.resources.*
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun ManualActivityScreen(
@@ -44,11 +49,14 @@ fun ManualActivityScreen(
     importedId: Long?,
     onBack: () -> Unit,
     onSave: () -> Unit,
+    onTrainingSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     require(manualId == null || importedId == null)
     val isExisting = manualId != null || importedId != null
     val viewModel: ManualActivityViewModel = koinViewModel()
+    val trainingSync: TrainingSync = koinInject()
+    val trainingState by trainingSync.state.collectAsStateWithLifecycle()
     LaunchedEffect(manualId, importedId) {
         when {
             manualId != null -> viewModel.loadManual(manualId)
@@ -110,6 +118,7 @@ fun ManualActivityScreen(
                 Modifier.fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
                     .padding(padding)
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -174,6 +183,9 @@ fun ManualActivityScreen(
             }
             Button(onClick = { viewModel.save(date, manualId, importedId, onSave) }) {
                 Text(stringResource(Res.string.action_save))
+            }
+            if (!isExisting) {
+                TrainingImportCard(trainingState, trainingSync::startManualSync, onTrainingSettings)
             }
             if (isExisting) {
                 TextButton(onClick = { showDeleteDialog = true }) {

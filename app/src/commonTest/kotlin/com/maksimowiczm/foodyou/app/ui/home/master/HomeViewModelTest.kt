@@ -42,43 +42,36 @@ import kotlinx.datetime.LocalDate
 
 class HomeViewModelTest {
     @Test
-    fun activityCompletionWaitsForStepsAndTrainingButNotDiaryOrWeight() = runTest {
-        for (stepsFirst in listOf(false, true)) {
-            val settings = FakeSettingsRepository(defaultSettings().copy(
-                homeSyncHealthConnectEnabled = true, homeSyncFddbDiaryEnabled = true,
-                healthConnectWeightEnabled = true,
-            ))
-            val stepsRelease = CompletableDeferred<Unit>()
-            val trainingRelease = CompletableDeferred<Unit>()
-            val diaryRelease = CompletableDeferred<Unit>()
-            val weightRelease = CompletableDeferred<Unit>()
-            var notifications = 0
-            val sync = async {
-                syncConfiguredHomeSync(
-                    LocalDate(2026, 5, 18), settings.value, settings,
-                    syncHealthConnect = { stepsRelease.await() },
-                    syncTraining = { trainingRelease.await(); true },
-                    syncWeight = { weightRelease.await() }, hasFddbCredentials = { true },
-                    syncFddbDiary = { diaryRelease.await(); Ok(FddbDiarySyncResult(0, 0, 0)) },
-                    onActivitiesSynced = { notifications++ },
-                )
-            }
-            runCurrent()
-            assertEquals(0, notifications)
-            (if (stepsFirst) stepsRelease else trainingRelease).complete(Unit)
-            runCurrent()
-            assertEquals(0, notifications)
-            (if (stepsFirst) trainingRelease else stepsRelease).complete(Unit)
-            runCurrent()
-            assertEquals(1, notifications)
-            assertFalse(sync.isCompleted)
-            diaryRelease.complete(Unit)
-            runCurrent()
-            assertFalse(sync.isCompleted)
-            weightRelease.complete(Unit)
-            assertTrue(sync.await().trainingSynced)
-            assertEquals(1, notifications)
+    fun activityCompletionWaitsForStepsButNotDiaryOrWeight() = runTest {
+        val settings = FakeSettingsRepository(defaultSettings().copy(
+            homeSyncHealthConnectEnabled = true, homeSyncFddbDiaryEnabled = true,
+            healthConnectWeightEnabled = true,
+        ))
+        val stepsRelease = CompletableDeferred<Unit>()
+        val diaryRelease = CompletableDeferred<Unit>()
+        val weightRelease = CompletableDeferred<Unit>()
+        var notifications = 0
+        val sync = async {
+            syncConfiguredHomeSync(
+                LocalDate(2026, 5, 18), settings.value, settings,
+                syncHealthConnect = { stepsRelease.await() },
+                syncWeight = { weightRelease.await() }, hasFddbCredentials = { true },
+                syncFddbDiary = { diaryRelease.await(); Ok(FddbDiarySyncResult(0, 0, 0)) },
+                onActivitiesSynced = { notifications++ },
+            )
         }
+        runCurrent()
+        assertEquals(0, notifications)
+        stepsRelease.complete(Unit)
+        runCurrent()
+        assertEquals(1, notifications)
+        assertFalse(sync.isCompleted)
+        diaryRelease.complete(Unit)
+        runCurrent()
+        assertFalse(sync.isCompleted)
+        weightRelease.complete(Unit)
+        assertTrue(sync.await().healthConnectSynced)
+        assertEquals(1, notifications)
     }
 
     @Test
@@ -124,7 +117,7 @@ class HomeViewModelTest {
             syncConfiguredHomeSync(
                 date, settings.value, settings,
                 syncHealthConnect = { syncHomeSteps(date, settings, steps) },
-                syncWeight = { release.await() }, syncTraining = { release.await(); true },
+                syncWeight = { release.await() },
                 hasFddbCredentials = { true },
                 syncFddbDiary = { release.await(); Ok(FddbDiarySyncResult(0, 0, 0)) },
             )
@@ -203,25 +196,20 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun trainingSyncRunsWhenOtherSourcesAreDisabled() = runTest {
+    fun configuredSyncDoesNoWorkWhenAllSourcesAreDisabled() = runTest {
         val settings = FakeSettingsRepository().value.copy(
             homeSyncHealthConnectEnabled = false, homeSyncFddbDiaryEnabled = false,
             healthConnectWeightEnabled = false,
         )
-        var otherInvocations = 0
-        var trainingInvocations = 0
         val result = syncConfiguredHomeSync(
             date = LocalDate(2026, 9, 27), settings = settings,
             settingsRepository = FakeSettingsRepository(),
-            syncHealthConnect = { otherInvocations++ },
-            syncWeight = { otherInvocations++ },
-            syncTraining = { trainingInvocations++; true },
-            hasFddbCredentials = { otherInvocations++; true },
-            syncFddbDiary = { otherInvocations++; Ok(FddbDiarySyncResult(0, 0, 0)) },
+            syncHealthConnect = { error("Steps disabled") },
+            syncWeight = { error("Weight disabled") },
+            hasFddbCredentials = { error("Diary disabled") },
+            syncFddbDiary = { error("Diary disabled") },
         )
-        assertEquals(0, otherInvocations)
-        assertEquals(1, trainingInvocations)
-        assertEquals(HomeConfiguredSyncResult(false, false, false, trainingSynced = true), result)
+        assertEquals(HomeConfiguredSyncResult(false, false, false), result)
     }
 
     @Test
@@ -240,7 +228,6 @@ class HomeViewModelTest {
                 settingsRepository = FakeSettingsRepository(),
                 syncHealthConnect = { started.add("steps"); release.await() },
                 syncWeight = { started.add("weight"); weightRelease.await() },
-                syncTraining = { started.add("training"); release.await(); true },
                 hasFddbCredentials = { true },
                 syncFddbDiary = {
                     started.add("diary"); release.await()
@@ -249,7 +236,7 @@ class HomeViewModelTest {
             )
         }
         runCurrent()
-        assertEquals(setOf("steps", "weight", "diary", "training"), started)
+        assertEquals(setOf("steps", "weight", "diary"), started)
         release.complete(Unit)
         runCurrent()
         assertFalse(sync.isCompleted)
@@ -268,7 +255,6 @@ class HomeViewModelTest {
             date = LocalDate(2026, 9, 27), settings = settings,
             settingsRepository = FakeSettingsRepository(),
             syncHealthConnect = { error("Health Connect unavailable") },
-            syncTraining = { error("Firestore offline") },
             syncWeight = { weightRan = true }, hasFddbCredentials = { true },
             syncFddbDiary = { Ok(FddbDiarySyncResult(0, 0, 0)) },
         )
