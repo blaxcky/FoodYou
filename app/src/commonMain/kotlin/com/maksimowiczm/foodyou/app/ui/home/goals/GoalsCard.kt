@@ -145,11 +145,7 @@ private val WeeklyOverGoalBarColor = Color(0xFFC57484)
 private val WeeklyOverGoalTextColor = Color(0xFF9B3F55)
 private val WeeklyUnderGoalBarColor = Color(0xFFA8DABB)
 private val DifferenceTrackColor = Color(0xFFF7F2F0)
-private val DifferenceOverChipColor = Color(0xFFFBE2E7)
-private val DifferenceUnderChipColor = Color(0xFFDDF2E4)
-private val WeeklyHeaderColor = Color(0xFFFFE1D6)
-private val WeeklyHeaderTextColor = Color(0xFF5A1F12)
-private val WeeklyHeaderMutedTextColor = Color(0xFF7A3B26)
+private val WeeklyHeaderIconColor = Color(0xFFFFECE9)
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)
@@ -541,7 +537,7 @@ private fun WeeklyGoalsContent(
     }
 }
 
-/** A tinted band across the top of the card with the week's energy and its goal. */
+/** The top of the card with the week's energy and its goal. */
 @Composable
 internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Modifier) {
     val energyFormatter = LocalEnergyFormatter.current
@@ -550,14 +546,12 @@ internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Mod
     val goal = energyFormatter.formatEnergy(model.totalGoal, withSuffix = false).groupDigits()
     Row(
         modifier =
-            modifier.fillMaxWidth()
-                .background(WeeklyHeaderColor)
-                .padding(horizontal = 24.dp, vertical = 18.dp),
+            modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(46.dp).background(Color.White, CircleShape),
+            modifier = Modifier.size(46.dp).background(WeeklyHeaderIconColor, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -570,7 +564,7 @@ internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Mod
         Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 text = "$energy $unit",
-                color = WeeklyHeaderTextColor,
+                color = GoalsTextColor,
                 style =
                     MaterialTheme.typography.titleLarge.copy(
                         fontFamily = interNumberFontFamily(),
@@ -581,7 +575,7 @@ internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Mod
             )
             Text(
                 text = stringResource(Res.string.weekly_goal_of, "$goal $unit"),
-                color = WeeklyHeaderMutedTextColor,
+                color = GoalsMutedTextColor,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -837,7 +831,8 @@ private fun WeeklyDetailsRow(
  * One row per day: the difference to the goal as a bar that grows left of the center line below
  * the goal and right of it above the goal. Only the signed difference is shown; goal and consumed
  * energy are in the weekly header and the optional daily chart. Light tracks behind both halves
- * show the full scale, and the day sits in a chip tinted like its result.
+ * show the full scale. The day's name is red above the goal, green when the diet goal was reached,
+ * and black otherwise.
  *
  * A final row, marked with the gauge icon, sums the differences of the shown days, which only run
  * up to today, so it is the remaining or exceeded energy of the week so far. All rows share one
@@ -903,11 +898,11 @@ private fun WeeklyDifferenceBarRow(
             difference > 0 -> WeeklyOverGoalTextColor
             else -> GoalsTextColor
         }
-    val (chipColor, chipTextColor) =
+    val dayColor =
         when {
-            dietGoalReached -> DifferenceUnderChipColor to DietGoalReachedTextColor
-            difference > 0 -> DifferenceOverChipColor to WeeklyOverGoalTextColor
-            else -> DifferenceTrackColor to GoalsTextColor
+            dietGoalReached -> DietGoalReachedTextColor
+            difference > 0 -> WeeklyOverGoalTextColor
+            else -> GoalsTextColor
         }
     val barHeight = if (total) 28.dp else 22.dp
     val barCorner = if (total) 8.dp else 6.dp
@@ -951,26 +946,14 @@ private fun WeeklyDifferenceBarRow(
     ) {
         Box(modifier = Modifier.width(52.dp)) {
             if (dayIcon != null) {
-                Box(
-                    modifier =
-                        Modifier.size(width = 36.dp, height = 32.dp)
-                            .background(GoalsTextColor, RoundedCornerShape(9.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = dayIcon,
-                        contentDescription = dayDescription,
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+                Icon(
+                    imageVector = dayIcon,
+                    contentDescription = dayDescription,
+                    tint = GoalsTextColor,
+                    modifier = Modifier.size(26.dp),
+                )
             } else {
-                Row(
-                    modifier =
-                        Modifier.background(chipColor, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 6.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = day,
                         modifier =
@@ -981,14 +964,14 @@ private fun WeeklyDifferenceBarRow(
                             },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = chipTextColor,
+                        color = dayColor,
                         maxLines = 1,
                     )
                     if (locked) {
                         Icon(
                             imageVector = Icons.Filled.Lock,
                             contentDescription = stringResource(Res.string.locked_day_status),
-                            tint = chipTextColor,
+                            tint = dayColor,
                             modifier = Modifier.padding(start = 2.dp).size(11.dp),
                         )
                     }
