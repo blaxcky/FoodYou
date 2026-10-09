@@ -70,14 +70,18 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.common.infrastructure.koin.applicationCoroutineScopeQualifier
 import com.maksimowiczm.foodyou.food.infrastructure.PENDING_PRODUCT_PHOTO_DIRECTORY
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.*
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -581,7 +585,10 @@ internal actual fun PendingProductPhotoCapture(
     var shutterVisible by remember { mutableStateOf(false) }
     var photoSaving by remember { mutableStateOf(false) }
     var photoSaveError by remember { mutableStateOf(false) }
+    var captureStartedId by remember { mutableStateOf(0) }
     val latestOnPhotoTaken by rememberUpdatedState(onPhotoTaken)
+    val applicationScope: CoroutineScope = koinInject(applicationCoroutineScopeQualifier)
+    val photoProcessor = remember(applicationScope) { CapturedPhotoProcessor(applicationScope) }
     val previewScope = rememberCoroutineScope()
     val capturePreview = remember(previewScope, photoDirectory) {
         CapturePhotoPreviewState(previewScope) { path: String, maxSizePx: Int ->
@@ -673,6 +680,7 @@ internal actual fun PendingProductPhotoCapture(
             photoSaving = photoSaving,
             photoSaveError = photoSaveError,
             shutterVisible = shutterVisible,
+            captureStartedId = captureStartedId,
             showCapturePreview = showCapturePreview,
             flight = capturePreview.flight,
             thumbnail = capturePreview.thumbnail,
@@ -681,36 +689,70 @@ internal actual fun PendingProductPhotoCapture(
             onFlightFinished = capturePreview::flightFinished,
             onThumbnailClick = capturePreview::expand,
             onCollapse = capturePreview::collapse,
-            onCapture = {
+            onCapture = capturePhoto@ {
                 val capture = imageCapture
                 if (capture != null && !photoSaving) {
                     photoSaving = true
                     shutterVisible = !showCapturePreview
                     photoSaveError = false
-                    capture.takePendingProductPhoto(
-                        context = context,
-                        photoDirectory = photoDirectory,
-                        onCaptureStarted = {
-                            if (showCapturePreview) {
-                                // Freeze the viewfinder when the sensor actually starts exposing,
-                                // not on tap, so the frame matches the saved photo.
-                                val frame = runCatching { previewView.bitmap }.getOrNull()
-                                capturePreview.captureStarted(frame?.asImageBitmap())
-                            }
-                        },
-                        onSaved = {
-                            photoSaving = false
-                            if (showCapturePreview) {
-                                capturePreview.photoSaved(it)
-                            }
-                            latestOnPhotoTaken(it)
-                        },
-                        onError = {
-                            photoSaving = false
-                            capturePreview.photoFailed()
-                            photoSaveError = true
-                        },
-                    )
+                    if (showCapturePreview) {
+                        val id = capturePreview.beginCapture() ?: return@capturePhoto
+                        val capturedOnPhotoTaken = latestOnPhotoTaken
+                        val file = context.filesDir.resolve(photoDirectory)
+                            .resolve("${UUID.randomUUID()}.jpg")
+                        capture.takePendingProductPhotoInMemory(
+                            scope = applicationScope,
+                            onCaptureStarted = {
+                                if (capturePreview.isCurrentCapture(id)) captureStartedId = id
+                            },
+                            onCaptured = { photo ->
+                                photoProcessor.process(
+                                    photo = photo,
+                                    file = file,
+                                    onPreview = { preview ->
+                                        capturePreview.photoCaptured(
+                                            id, preview.frame.asImageBitmap(),
+                                            preview.thumbnail.asImageBitmap(),
+                                        )
+                                    },
+                                    onSaved = { path ->
+                                        if (capturePreview.isCurrentCapture(id)) {
+                                            photoSaving = false
+                                            capturePreview.photoSaved(id, path)
+                                        }
+                                        capturedOnPhotoTaken(path)
+                                    },
+                                    onError = {
+                                        if (capturePreview.isCurrentCapture(id)) {
+                                            photoSaving = false
+                                            capturePreview.photoFailed(id)
+                                            photoSaveError = true
+                                        }
+                                    },
+                                )
+                            },
+                            onError = {
+                                if (capturePreview.isCurrentCapture(id)) {
+                                    photoSaving = false
+                                    capturePreview.photoFailed(id)
+                                    photoSaveError = true
+                                }
+                            },
+                        )
+                    } else {
+                        capture.takePendingProductPhoto(
+                            context = context,
+                            photoDirectory = photoDirectory,
+                            onSaved = {
+                                photoSaving = false
+                                latestOnPhotoTaken(it)
+                            },
+                            onError = {
+                                photoSaving = false
+                                photoSaveError = true
+                            },
+                        )
+                    }
                 }
             },
             onClose = onClose?.let { close ->
@@ -727,7 +769,6 @@ internal actual fun PendingProductPhotoCapture(
 private fun ImageCapture.takePendingProductPhoto(
     context: android.content.Context,
     photoDirectory: String,
-    onCaptureStarted: () -> Unit,
     onSaved: (String) -> Unit,
     onError: () -> Unit,
 ) {
@@ -740,10 +781,6 @@ private fun ImageCapture.takePendingProductPhoto(
         outputOptions,
         ContextCompat.getMainExecutor(context),
         object : ImageCapture.OnImageSavedCallback {
-            override fun onCaptureStarted() {
-                onCaptureStarted()
-            }
-
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                 onSaved(file.name)
             }
@@ -751,6 +788,36 @@ private fun ImageCapture.takePendingProductPhoto(
             override fun onError(exception: ImageCaptureException) {
                 file.delete()
                 onError()
+            }
+        },
+    )
+}
+
+private fun ImageCapture.takePendingProductPhotoInMemory(
+    scope: CoroutineScope,
+    onCaptureStarted: () -> Unit,
+    onCaptured: (CapturedPhoto) -> Unit,
+    onError: () -> Unit,
+) {
+    takePicture(
+        Dispatchers.Default.asExecutor(),
+        object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureStarted() {
+                scope.launch(Dispatchers.Main.immediate) { onCaptureStarted() }
+            }
+
+            override fun onCaptureSuccess(image: androidx.camera.core.ImageProxy) {
+                val photo = try {
+                    image.copyCapturedPhoto()
+                } catch (_: Exception) {
+                    scope.launch(Dispatchers.Main.immediate) { onError() }
+                    return
+                }
+                onCaptured(photo)
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                scope.launch(Dispatchers.Main.immediate) { onError() }
             }
         },
     )

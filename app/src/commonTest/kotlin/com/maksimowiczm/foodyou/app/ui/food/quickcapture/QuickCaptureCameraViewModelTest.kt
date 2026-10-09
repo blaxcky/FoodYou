@@ -37,6 +37,7 @@ class QuickCaptureCameraViewModelTest {
                 QuickCaptureCameraViewModel(
                     observe = ObserveQuickCaptureUseCase(repository),
                     capture = CaptureQuickCapturePhotoUseCase(repository, FixedDateProvider),
+                    photoRegistrationScope = this,
                 )
             viewModel = cameraViewModel
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -60,6 +61,25 @@ class QuickCaptureCameraViewModelTest {
         } finally {
             viewModel?.viewModelScope?.cancel()
             advanceUntilIdle()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun savedPhotoIsRegisteredAfterCameraViewModelIsClosed() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val repository = RecordingQuickCaptureRepository()
+            val viewModel = QuickCaptureCameraViewModel(
+                observe = ObserveQuickCaptureUseCase(repository),
+                capture = CaptureQuickCapturePhotoUseCase(repository, FixedDateProvider),
+                photoRegistrationScope = this,
+            )
+            viewModel.viewModelScope.cancel()
+            viewModel.capturePhoto("late.jpg")
+            advanceUntilIdle()
+            assertEquals(listOf("late.jpg"), repository.capturedPaths)
+        } finally {
             Dispatchers.resetMain()
         }
     }

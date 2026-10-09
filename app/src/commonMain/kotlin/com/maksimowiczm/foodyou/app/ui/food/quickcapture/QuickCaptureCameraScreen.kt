@@ -17,6 +17,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.CaptureQuickCapturePhotoUseC
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveQuickCaptureUseCase
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.headline_quick_capture
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -56,6 +57,7 @@ fun QuickCaptureCameraScreen(
 internal class QuickCaptureCameraViewModel(
     observe: ObserveQuickCaptureUseCase,
     private val capture: CaptureQuickCapturePhotoUseCase,
+    private val photoRegistrationScope: CoroutineScope,
 ) : ViewModel() {
     val photoCount =
         observe.entries()
@@ -63,6 +65,6 @@ internal class QuickCaptureCameraViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     fun capturePhoto(path: String) {
-        viewModelScope.launch { capture.capture(path) }
+        photoRegistrationScope.launch { capture.capture(path) }
     }
 }

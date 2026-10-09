@@ -98,14 +98,15 @@ internal fun PendingProductCameraOverlay(
     onCapture: () -> Unit,
     onClose: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    captureStartedId: Int = 0,
 ) {
     val haptics = LocalHapticFeedback.current
     val dim = remember { Animatable(0f) }
     var thumbnailBounds by remember { mutableStateOf<Rect?>(null) }
 
-    // The shutter blink marks the real exposure, which can lag the tap by a few hundred ms.
-    LaunchedEffect(flight?.id) {
-        if (flight != null) {
+    // The shutter blink follows capture start, independently of image decoding and saving.
+    LaunchedEffect(captureStartedId) {
+        if (captureStartedId != 0) {
             dim.snapTo(0f)
             dim.animateTo(0.45f, tween(60))
             dim.animateTo(0f, tween(160))
@@ -247,7 +248,7 @@ internal fun PendingProductCameraOverlay(
 }
 
 /**
- * Lifts the frozen viewfinder frame into a card, holds it so the photo can actually be seen, then
+ * Lifts the captured photo into a card, holds it so the photo can actually be seen, then
  * shrinks it into [target] with a spring.
  */
 @Composable

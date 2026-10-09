@@ -123,6 +123,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1423,6 +1424,7 @@ internal class QuickCaptureViewModel(
     private val csvParser: QuickAddCsvParser,
     private val csvImporter: QuickCaptureCsvImporter,
     private val savedStateHandle: SavedStateHandle,
+    private val photoRegistrationScope: CoroutineScope,
 ) : ViewModel() {
     val entries =
         observe.entries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -1444,7 +1446,7 @@ internal class QuickCaptureViewModel(
     fun closeCamera() { cameraOpen.value = false }
 
     fun capturePhoto(path: String) {
-        viewModelScope.launch { capture.capture(path) }
+        photoRegistrationScope.launch { capture.capture(path) }
     }
 
     fun save(

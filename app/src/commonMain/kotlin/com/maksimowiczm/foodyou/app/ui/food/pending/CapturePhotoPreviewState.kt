@@ -9,13 +9,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** A frozen viewfinder frame that animates from full screen into the thumbnail slot. */
+/** The captured photo that animates from full screen into the thumbnail slot. */
 internal data class CaptureFlight<T>(val id: Int, val frame: T)
 
 /**
  * Keeps the last captured photo as a thumbnail next to the shutter, independent of the camera's
- * capture lock. The frozen viewfinder frame stands in for the thumbnail until the saved photo is
- * decoded, so the capture animation never waits for disk or decoder.
+ * capture lock. Image availability and saving can finish in either order; only images and paths
+ * belonging to the current capture may update the preview.
  */
 internal class CapturePhotoPreviewState<T>(
     private val scope: CoroutineScope,
@@ -34,53 +34,60 @@ internal class CapturePhotoPreviewState<T>(
     private var previousThumbnail: T? = null
     private var previousThumbnailPath: String? = null
     private var capturing = false
-    private var flightCount = 0
     private var captureGeneration = 0
+    private var capturedImageAvailable = false
+    private var savedPath: String? = null
     private var expandGeneration = 0
-    private var thumbnailJob: Job? = null
     private var expandJob: Job? = null
     private var closed = false
 
-    fun captureStarted(frame: T?) {
-        if (closed) return
+    fun isCurrentCapture(id: Int): Boolean = !closed && id == captureGeneration
+
+    fun beginCapture(): Int? {
+        if (closed) return null
         collapse()
         captureGeneration++
-        thumbnailJob?.cancel()
         capturing = true
+        capturedImageAvailable = false
+        savedPath = null
+        flight = null
         previousThumbnail = thumbnail
         previousThumbnailPath = thumbnailPath
-        if (frame != null) {
-            flight = CaptureFlight(++flightCount, frame)
-            thumbnail = frame
-        }
+        return captureGeneration
+    }
+
+    fun photoCaptured(id: Int, frame: T, thumbnail: T) {
+        if (closed || id != captureGeneration || capturedImageAvailable) return
+        collapse()
+        capturedImageAvailable = true
+        flight = CaptureFlight(id, frame)
+        this.thumbnail = thumbnail
+        thumbnailPath = savedPath
     }
 
     fun flightFinished(id: Int) {
         if (flight?.id == id) flight = null
     }
 
-    fun photoSaved(path: String) {
-        if (closed) return
+    fun photoSaved(id: Int, path: String) {
+        if (closed || id != captureGeneration || !capturing) return
         capturing = false
-        thumbnailPath = path
+        savedPath = path
+        if (capturedImageAvailable) thumbnailPath = path
         previousThumbnail = null
-        val request = captureGeneration
-        thumbnailJob = scope.launch {
-            val image = load(path, THUMBNAIL_SIZE_PX)
-            if (closed || request != captureGeneration || image == null) return@launch
-            thumbnail = image
-        }
+        previousThumbnailPath = null
     }
 
-    fun photoFailed() {
-        // Without a started capture there is no provisional thumbnail to roll back.
-        if (closed || !capturing) return
+    fun photoFailed(id: Int) {
+        if (closed || id != captureGeneration || !capturing) return
         capturing = false
         captureGeneration++
         flight = null
         thumbnail = previousThumbnail
         thumbnailPath = previousThumbnailPath
         previousThumbnail = null
+        previousThumbnailPath = null
+        savedPath = null
     }
 
     fun expand() {
@@ -115,12 +122,13 @@ internal class CapturePhotoPreviewState<T>(
         closed = true
         captureGeneration++
         expandGeneration++
-        thumbnailJob?.cancel()
         expandJob?.cancel()
         flight = null
         thumbnail = null
         thumbnailPath = null
         previousThumbnail = null
+        previousThumbnailPath = null
+        savedPath = null
         expanded = false
         expandedPhoto = null
     }

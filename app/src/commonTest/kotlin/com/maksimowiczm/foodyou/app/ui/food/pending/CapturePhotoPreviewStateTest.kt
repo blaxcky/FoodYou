@@ -17,175 +17,150 @@ class CapturePhotoPreviewStateTest {
     private fun decoded(path: String, maxSizePx: Int) = "$path@$maxSizePx"
 
     @Test
-    fun frozenFrameFliesAndStandsInUntilSavedPhotoIsDecoded() = runTest {
-        val thumbnail = CompletableDeferred<String?>()
-        val preview = CapturePhotoPreviewState(backgroundScope) { _: String, _: Int ->
-            thumbnail.await()
-        }
-        preview.captureStarted("frame")
-        val flight = assertNotNull(preview.flight)
-        assertEquals("frame", flight.frame)
-        assertEquals("frame", preview.thumbnail)
-
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        assertEquals("frame", preview.thumbnail)
-        thumbnail.complete("first thumbnail")
-        runCurrent()
-        assertEquals("first thumbnail", preview.thumbnail)
-
-        preview.flightFinished(flight.id)
-        assertNull(preview.flight)
-    }
-
-    @Test
-    fun captureWithoutFrameShowsDecodedThumbnailWithoutFlight() = runTest {
+    fun animationStartsFromCapturedPhotoBeforeSavingCompletes() = runTest {
         val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
-        preview.captureStarted(null)
+        val id = assertNotNull(preview.beginCapture())
         assertNull(preview.flight)
-        assertNull(preview.thumbnail)
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        assertEquals("first.jpg@${CapturePhotoPreviewState.THUMBNAIL_SIZE_PX}", preview.thumbnail)
-    }
-
-    @Test
-    fun staleFlightCannotClearNewerFlight() = runTest {
-        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
-        preview.captureStarted("first frame")
-        val first = assertNotNull(preview.flight)
-        preview.photoSaved("first.jpg")
-        preview.captureStarted("second frame")
-        val second = assertNotNull(preview.flight)
-        preview.flightFinished(first.id)
-        assertEquals(second, preview.flight)
-    }
-
-    @Test
-    fun failedSaveRestoresPreviousThumbnail() = runTest {
-        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
-        preview.captureStarted("first frame")
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        val first = preview.thumbnail
-
-        preview.captureStarted("second frame")
-        assertEquals("second frame", preview.thumbnail)
-        preview.photoFailed()
-        assertNull(preview.flight)
-        assertEquals(first, preview.thumbnail)
-
+        preview.photoCaptured(id, "actual photo", "actual thumbnail")
+        assertEquals("actual photo", assertNotNull(preview.flight).frame)
+        assertEquals("actual thumbnail", preview.thumbnail)
         preview.expand()
         runCurrent()
-        assertEquals("first.jpg@${CapturePhotoPreviewState.EXPANDED_SIZE_PX}", preview.expandedPhoto)
-    }
-
-    @Test
-    fun failureBeforeExposureKeepsCurrentThumbnail() = runTest {
-        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
-        preview.captureStarted("first frame")
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        val first = preview.thumbnail
-        // The camera can fail before it reports that exposure started.
-        preview.photoFailed()
-        assertEquals(first, preview.thumbnail)
-    }
-
-    @Test
-    fun lateDecodeOfOlderPhotoCannotReplaceNewerThumbnail() = runTest {
-        val oldImage = CompletableDeferred<String?>()
-        val preview = CapturePhotoPreviewState(backgroundScope) { path: String, _: Int ->
-            if (path == "first.jpg") withContext(NonCancellable) { oldImage.await() } else path
-        }
-        preview.captureStarted("first frame")
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        preview.captureStarted("second frame")
-        preview.photoSaved("second.jpg")
-        runCurrent()
-        oldImage.complete("old bitmap")
-        runCurrent()
-        assertEquals("second.jpg", preview.thumbnail)
-    }
-
-    @Test
-    fun failedThumbnailDecodeKeepsFrozenFrame() = runTest {
-        val preview = CapturePhotoPreviewState<String>(backgroundScope) { _, _ ->
-            error("Unreadable photo")
-        }
-        preview.captureStarted("frame")
-        preview.photoSaved("broken.jpg")
-        runCurrent()
-        assertEquals("frame", preview.thumbnail)
-    }
-
-    @Test
-    fun expandDecodesSavedPhotoLazilyAndCollapseReleasesItAfterExit() = runTest {
-        var loads = 0
-        val preview = CapturePhotoPreviewState(backgroundScope) { path: String, size: Int ->
-            loads++
-            decoded(path, size)
-        }
-        preview.captureStarted(null)
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        assertEquals(1, loads)
         assertFalse(preview.expanded)
 
+        preview.photoSaved(id, "first.jpg")
         preview.expand()
         runCurrent()
-        assertEquals(2, loads)
-        assertTrue(preview.expanded)
-        assertEquals("first.jpg@${CapturePhotoPreviewState.EXPANDED_SIZE_PX}", preview.expandedPhoto)
+        assertEquals("first.jpg@1600", preview.expandedPhoto)
+        preview.flightFinished(id)
+        assertNull(preview.flight)
+        assertEquals("actual thumbnail", preview.thumbnail)
+    }
 
+    @Test
+    fun savingCanFinishBeforeCapturedImageIsDecoded() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        val id = assertNotNull(preview.beginCapture())
+        preview.photoSaved(id, "first.jpg")
+        assertNull(preview.thumbnail)
+        assertNull(preview.flight)
+        preview.photoCaptured(id, "actual photo", "thumbnail")
+        assertEquals("actual photo", assertNotNull(preview.flight).frame)
+        preview.expand()
+        runCurrent()
+        assertEquals("first.jpg@1600", preview.expandedPhoto)
+    }
+
+    @Test
+    fun olderCaptureCallbacksCannotReplaceNewerPhotoOrClearItsFlight() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        val first = assertNotNull(preview.beginCapture())
+        preview.photoSaved(first, "first.jpg")
+        val second = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(second, "second photo", "second thumbnail")
+        preview.photoCaptured(first, "late first photo", "late thumbnail")
+        preview.photoSaved(first, "first.jpg")
+        preview.photoFailed(first)
+        preview.flightFinished(first)
+        assertEquals(second, assertNotNull(preview.flight).id)
+        assertEquals("second thumbnail", preview.thumbnail)
+        preview.photoSaved(second, "second.jpg")
+        preview.expand()
+        runCurrent()
+        assertEquals("second.jpg@1600", preview.expandedPhoto)
+    }
+
+    @Test
+    fun saveFailureRestoresPreviousThumbnailAndRejectsLateDecode() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        val first = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(first, "first photo", "first thumbnail")
+        preview.photoSaved(first, "first.jpg")
+        val second = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(second, "second photo", "second thumbnail")
+        preview.photoFailed(second)
+        preview.photoCaptured(second, "late photo", "late thumbnail")
+        preview.photoSaved(second, "failed.jpg")
+        assertNull(preview.flight)
+        assertEquals("first thumbnail", preview.thumbnail)
+        preview.expand()
+        runCurrent()
+        assertEquals("first.jpg@1600", preview.expandedPhoto)
+    }
+
+    @Test
+    fun failureBeforeImageAvailabilityKeepsPreviousPhoto() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        val first = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(first, "photo", "thumbnail")
+        preview.photoSaved(first, "first.jpg")
+        val second = assertNotNull(preview.beginCapture())
+        preview.photoFailed(second)
+        assertEquals("thumbnail", preview.thumbnail)
+        preview.expand()
+        runCurrent()
+        assertEquals("first.jpg@1600", preview.expandedPhoto)
+    }
+
+    @Test
+    fun failedPreviewDecodeDoesNotAssociateOldThumbnailWithNewFile() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        val first = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(first, "photo", "thumbnail")
+        preview.photoSaved(first, "first.jpg")
+        val second = assertNotNull(preview.beginCapture())
+        preview.photoSaved(second, "second.jpg")
+        assertEquals("thumbnail", preview.thumbnail)
+        preview.expand()
+        runCurrent()
+        assertEquals("first.jpg@1600", preview.expandedPhoto)
+    }
+
+    @Test
+    fun duplicateImageAndSaveCallbacksDoNotRestartAnimationOrChangePath() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        val id = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(id, "photo", "thumbnail")
+        preview.photoSaved(id, "first.jpg")
+        preview.flightFinished(id)
+        preview.photoCaptured(id, "duplicate", "duplicate")
+        preview.photoSaved(id, "wrong.jpg")
+        assertNull(preview.flight)
+        preview.expand()
+        runCurrent()
+        assertEquals("first.jpg@1600", preview.expandedPhoto)
+    }
+
+    @Test
+    fun collapseRetainsExpandedPhotoUntilExitAndNextCaptureCollapsesIt() = runTest {
+        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
+        val id = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(id, "photo", "thumbnail")
+        preview.photoSaved(id, "first.jpg")
+        preview.expand()
+        runCurrent()
+        assertTrue(preview.expanded)
         preview.collapse()
         assertFalse(preview.expanded)
         assertNotNull(preview.expandedPhoto)
         advanceTimeBy(CapturePhotoPreviewState.EXIT_ANIMATION_MILLIS)
         runCurrent()
         assertNull(preview.expandedPhoto)
-    }
-
-    @Test
-    fun expandIsIgnoredWhileCaptureIsSaving() = runTest {
-        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
-        preview.captureStarted("first frame")
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        preview.captureStarted("second frame")
         preview.expand()
         runCurrent()
-        assertFalse(preview.expanded)
-        assertNull(preview.expandedPhoto)
-    }
-
-    @Test
-    fun nextCaptureCollapsesExpandedPhoto() = runTest {
-        val preview = CapturePhotoPreviewState(backgroundScope, ::decoded)
-        preview.captureStarted(null)
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        preview.expand()
-        runCurrent()
-        assertTrue(preview.expanded)
-        preview.captureStarted("frame")
+        preview.beginCapture()
         assertFalse(preview.expanded)
     }
 
     @Test
     fun collapseInvalidatesPendingExpandDecode() = runTest {
         val expandedImage = CompletableDeferred<String?>()
-        val preview = CapturePhotoPreviewState(backgroundScope) { path: String, size: Int ->
-            if (size == CapturePhotoPreviewState.EXPANDED_SIZE_PX) {
-                withContext(NonCancellable) { expandedImage.await() }
-            } else {
-                path
-            }
+        val preview = CapturePhotoPreviewState(backgroundScope) { _: String, _: Int ->
+            withContext(NonCancellable) { expandedImage.await() }
         }
-        preview.captureStarted(null)
-        preview.photoSaved("first.jpg")
-        runCurrent()
+        val id = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(id, "photo", "thumbnail")
+        preview.photoSaved(id, "first.jpg")
         preview.expand()
         runCurrent()
         preview.collapse()
@@ -196,24 +171,26 @@ class CapturePhotoPreviewStateTest {
     }
 
     @Test
-    fun closeDiscardsDecodeAndIgnoresLateCameraCallbacks() = runTest {
-        val thumbnail = CompletableDeferred<String?>()
+    fun closeDiscardsPendingDecodeAndIgnoresLateCaptureCallbacks() = runTest {
+        val expandedImage = CompletableDeferred<String?>()
         val preview = CapturePhotoPreviewState(backgroundScope) { _: String, _: Int ->
-            withContext(NonCancellable) { thumbnail.await() }
+            withContext(NonCancellable) { expandedImage.await() }
         }
-        preview.captureStarted("frame")
-        preview.photoSaved("first.jpg")
-        runCurrent()
-        preview.close()
-        thumbnail.complete("bitmap")
-        preview.captureStarted("late frame")
-        preview.photoSaved("late.jpg")
-        runCurrent()
+        val id = assertNotNull(preview.beginCapture())
+        preview.photoCaptured(id, "photo", "thumbnail")
+        preview.photoSaved(id, "first.jpg")
         preview.expand()
         runCurrent()
+        preview.close()
+        expandedImage.complete("bitmap")
+        preview.photoCaptured(id, "late", "late")
+        preview.photoSaved(id, "late.jpg")
+        preview.photoFailed(id)
+        runCurrent()
+        assertNull(preview.beginCapture())
+        assertFalse(preview.isCurrentCapture(id))
         assertNull(preview.flight)
         assertNull(preview.thumbnail)
-        assertFalse(preview.expanded)
         assertNull(preview.expandedPhoto)
     }
 }

@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -45,6 +46,21 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class QuickCaptureViewModelTest {
+    @Test
+    fun savedPhotoIsRegisteredAfterQuickCaptureViewModelIsClosed() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        try {
+            val repository = CsvImportViewModelQuickCaptureRepository()
+            val viewModel = viewModel(repository = repository)
+            viewModel.viewModelScope.cancel()
+            viewModel.capturePhoto("late.jpg")
+            advanceUntilIdle()
+            assertEquals(listOf("late.jpg"), repository.capturedPaths)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test
     fun copiedBatchKeepsExactDistinctIdsAndIsReplacedByNextCopy() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
@@ -149,7 +165,8 @@ class QuickCaptureViewModelTest {
         }
     }
 
-    private fun viewModel(
+    private fun TestScope.viewModel(
+        repository: CsvImportViewModelQuickCaptureRepository = CsvImportViewModelQuickCaptureRepository(),
         parser: suspend (String) -> QuickAddCsvParseResult = {
             QuickAddCsvParseResult.Success(CsvData)
         },
@@ -157,7 +174,6 @@ class QuickCaptureViewModelTest {
             QuickCaptureCsvImportResult.Success
         },
     ): QuickCaptureViewModel {
-        val repository = CsvImportViewModelQuickCaptureRepository()
         return QuickCaptureViewModel(
             observe = ObserveQuickCaptureUseCase(repository),
             saveEntry = SaveQuickCaptureEntryUseCase(repository, CsvImportViewModelDateProvider),
@@ -177,6 +193,7 @@ class QuickCaptureViewModelTest {
             csvParser = { parser(it) },
             csvImporter = { data, ids -> importer(data, ids) },
             savedStateHandle = SavedStateHandle(),
+            photoRegistrationScope = this,
         )
     }
 
@@ -187,6 +204,7 @@ class QuickCaptureViewModelTest {
 }
 
 private class CsvImportViewModelQuickCaptureRepository : QuickCaptureRepository {
+    val capturedPaths = mutableListOf<String>()
     override fun observeFoodNames(): Flow<List<QuickCaptureFoodName>> = flowOf(emptyList())
 
     override fun observeEntries(): Flow<List<QuickCaptureLogEntry>> = flowOf(emptyList())
@@ -202,8 +220,10 @@ private class CsvImportViewModelQuickCaptureRepository : QuickCaptureRepository 
         createdAt: Instant,
     ): Long = error("Not used")
 
-    override suspend fun capturePhoto(photoPath: String, createdAt: Instant): Long =
-        error("Not used")
+    override suspend fun capturePhoto(photoPath: String, createdAt: Instant): Long {
+        capturedPaths += photoPath
+        return 42
+    }
 
     override suspend fun processPhoto(
         id: Long,

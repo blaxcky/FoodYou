@@ -8,7 +8,7 @@ import org.koin.core.scope.Scope
 
 private const val APPLICATION_COROUTINE_SCOPE = "APPLICATION_COROUTINE_SCOPE"
 
-private val applicationCoroutineScopeQualifier = named(APPLICATION_COROUTINE_SCOPE)
+internal val applicationCoroutineScopeQualifier = named(APPLICATION_COROUTINE_SCOPE)
 
 fun Module.applicationCoroutineScope(definition: Scope.(ParametersHolder) -> CoroutineScope) =
     single(applicationCoroutineScopeQualifier, false, definition)
