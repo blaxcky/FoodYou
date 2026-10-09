@@ -923,8 +923,7 @@ internal fun QuickCaptureNameField(
     var focused by remember { mutableStateOf(false) }
     val suggestions =
         remember(value, names) {
-            if (value.isBlank()) emptyList()
-            else names.filter { it.name.contains(value, ignoreCase = true) }.take(8)
+            quickCaptureNameSuggestions(value, names)
         }
     val menuExpanded = expanded && focused && suggestions.isNotEmpty()
     ExposedDropdownMenuBox(
