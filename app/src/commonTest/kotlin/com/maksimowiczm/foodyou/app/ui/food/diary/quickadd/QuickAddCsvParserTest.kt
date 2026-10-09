@@ -171,6 +171,14 @@ class QuickAddCsvParserTest {
     }
 
     @Test
+    fun rejectsMultipleCollapsedDataRows() = runBlocking {
+        assertEquals(
+            QuickAddCsvError.InvalidDataRowCount,
+            parser.parse(CollapsedQuickCaptureCsvExample.csv).errorOrFail(),
+        )
+    }
+
+    @Test
     fun rejectsMultipleDataRows() = runBlocking {
         val result =
             parser.parse(

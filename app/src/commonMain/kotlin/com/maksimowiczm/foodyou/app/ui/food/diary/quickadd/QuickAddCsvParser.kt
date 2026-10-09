@@ -63,9 +63,28 @@ internal class QuickAddCsvTableParserImpl(private val csvParser: CsvParser) : Qu
         }
 
         val normalizedCsv = csv.withoutLeadingText().normalizeMissingHeaderLineBreak()
+        val result = parseNormalizedCsv(normalizedCsv, singleRowOnly)
+        if (
+            result !is QuickAddCsvTableParseResult.Failure ||
+                result.error != QuickAddCsvError.InvalidDataRowCount
+        ) {
+            return result
+        }
+
+        val repairedCsv = normalizedCsv.restoreMissingDataLineBreaks() ?: return result
+        return when (val repairedResult = parseNormalizedCsv(repairedCsv, singleRowOnly)) {
+            is QuickAddCsvTableParseResult.Success -> repairedResult
+            is QuickAddCsvTableParseResult.Failure -> result
+        }
+    }
+
+    private suspend fun parseNormalizedCsv(
+        csv: String,
+        singleRowOnly: Boolean,
+    ): QuickAddCsvTableParseResult {
         val records =
             try {
-                csvParser.parse(normalizedCsv.encodeToByteArray().toList().asFlow()).toList()
+                csvParser.parse(csv.encodeToByteArray().toList().asFlow()).toList()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -89,6 +108,60 @@ internal class QuickAddCsvTableParserImpl(private val csvParser: CsvParser) : Qu
             }
         }
         return QuickAddCsvTableParseResult.Success(data)
+    }
+
+    /** Only horizontal whitespace after a complete fifth field can replace a record separator. */
+    private fun String.restoreMissingDataLineBreaks(): String? {
+        val repaired = StringBuilder()
+        var copiedUntil = 0
+        var fieldStart = 0
+        var column = 0
+        var inQuotes = false
+        var index = 0
+
+        while (index < length) {
+            val character = this[index]
+            if (inQuotes) {
+                if (character == '"') {
+                    if (getOrNull(index + 1) == '"') {
+                        index += 2
+                        continue
+                    }
+                    inQuotes = false
+                }
+            } else {
+                when (character) {
+                    '"' -> if (index == fieldStart) inQuotes = true
+                    ',' -> {
+                        column += 1
+                        fieldStart = index + 1
+                    }
+                    '\r', '\n' -> {
+                        column = 0
+                        fieldStart = index + 1
+                    }
+                    ' ', '\t' -> if (column == Header.lastIndex) {
+                        val value = substring(fieldStart, index).trim().removeSurrounding("\"")
+                        if (value.toDoubleOrNull()?.isFinite() == true) {
+                            var next = index + 1
+                            while (getOrNull(next) == ' ' || getOrNull(next) == '\t') next += 1
+                            if (next < length && this[next] !in ",\r\n") {
+                                repaired.append(this, copiedUntil, index).append('\n')
+                                copiedUntil = next
+                                fieldStart = next
+                                column = 0
+                                index = next
+                                continue
+                            }
+                        }
+                    }
+                }
+            }
+            index += 1
+        }
+
+        if (copiedUntil == 0 || inQuotes) return null
+        return repaired.append(this, copiedUntil, length).toString()
     }
 
     private fun parseRow(row: List<String?>): QuickAddCsvParseResult {

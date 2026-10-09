@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.CollapsedQuickCaptureCsvExample
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvTableParserImpl
 import com.maksimowiczm.foodyou.common.infrastructure.csv.CsvParserImpl
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvData
@@ -50,6 +51,38 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class QuickCaptureViewModelTest {
+    @Test
+    fun collapsedCsvImportsAllFiveRowsOnlyWhenTheBatchCountMatches() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val importedRows = mutableListOf<List<QuickAddCsvData>>()
+        val importedIds = mutableListOf<List<Long>>()
+        val viewModel = viewModel(importer = { rows, ids ->
+            importedRows += rows
+            importedIds += ids
+            QuickCaptureCsvImportResult.Success
+        })
+        val ids = listOf(1L, 2L, 3L, 4L, 5L)
+        try {
+            viewModel.rememberCopiedBatch(ids, expectedRowCount = 4)
+            viewModel.importCsv(CollapsedQuickCaptureCsvExample.csv)
+            advanceUntilIdle()
+            assertEquals(QuickCaptureCsvImportState.RowCountMismatch(4, 5), viewModel.csvImportState.value)
+            assertEquals(ids, viewModel.copiedEntryIds.value)
+            assertTrue(importedRows.isEmpty())
+
+            viewModel.rememberCopiedBatch(ids, expectedRowCount = 5)
+            viewModel.importCsv(CollapsedQuickCaptureCsvExample.csv)
+            advanceUntilIdle()
+            assertEquals(listOf(CollapsedQuickCaptureCsvExample.rows), importedRows)
+            assertEquals(listOf(ids), importedIds)
+            assertEquals(QuickCaptureCsvImportState.Idle, viewModel.csvImportState.value)
+            assertTrue(viewModel.copiedEntryIds.value.isEmpty())
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test
     fun savedPhotoIsRegisteredAfterQuickCaptureViewModelIsClosed() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
