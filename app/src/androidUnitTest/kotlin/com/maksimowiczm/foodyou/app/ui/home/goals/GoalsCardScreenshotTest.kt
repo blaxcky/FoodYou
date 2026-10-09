@@ -353,6 +353,36 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun weeklyHeaderNarrowPhone() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-header-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 90),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    WeeklyGoalsHeader(
+                        model =
+                            WeekSummaryModel(
+                                days =
+                                    listOf(
+                                        WeekDaySummaryModel(
+                                            date = LocalDate(2026, 10, 5),
+                                            energy = 13_944,
+                                            goal = 12_882,
+                                        )
+                                    ),
+                                totalEnergy = 13_944,
+                                totalGoal = 12_882,
+                                today = LocalDate(2026, 10, 5),
+                            ),
+                        modifier = Modifier.requiredSize(320.dp, 90.dp),
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
     fun weeklySummaryFooterWeightNarrowPhone() {
         val model =
             WeekSummaryModel(

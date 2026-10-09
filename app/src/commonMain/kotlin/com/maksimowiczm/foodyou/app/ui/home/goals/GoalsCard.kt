@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -104,6 +105,7 @@ import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.weekly_diet_goal_reached
 import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_sum
+import foodyou.app.generated.resources.weekly_goal_of
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.action_weigh_in
 import foodyou.app.generated.resources.weekly_weight_gained
@@ -143,14 +145,11 @@ private val WeeklyOverGoalBarColor = Color(0xFFC57484)
 private val WeeklyOverGoalTextColor = Color(0xFF9B3F55)
 private val WeeklyUnderGoalBarColor = Color(0xFFA8DABB)
 private val DifferenceTrackColor = Color(0xFFF7F2F0)
-private val DifferenceOverBarColor = Color(0xFFD45C74)
-private val DifferenceOverTotalBarColor = Color(0xFFB83656)
-private val DifferenceOverTextColor = Color(0xFF9B2442)
 private val DifferenceOverChipColor = Color(0xFFFBE2E7)
-private val DifferenceUnderBarColor = Color(0xFF4DB27A)
-private val DifferenceUnderTotalBarColor = Color(0xFF34965F)
-private val DifferenceUnderTextColor = Color(0xFF1D6E3D)
 private val DifferenceUnderChipColor = Color(0xFFDDF2E4)
+private val WeeklyHeaderColor = Color(0xFFFFE1D6)
+private val WeeklyHeaderTextColor = Color(0xFF5A1F12)
+private val WeeklyHeaderMutedTextColor = Color(0xFF7A3B26)
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)
@@ -513,59 +512,79 @@ private fun WeeklyGoalsContent(
 
         FoodYouHomeCard(color = GoalsCardColor, shape = GoalsCardShape) {
             if (model.days.isNotEmpty()) {
-                Column(
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     WeeklyGoalsHeader(model)
-                    if (chartEnabled) {
-                        WeeklyGoalsChart(days = model.days, today = model.today)
+                    Column(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .padding(start = 24.dp, top = 18.dp, end = 24.dp, bottom = 18.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                    ) {
+                        if (chartEnabled) {
+                            WeeklyGoalsChart(days = model.days, today = model.today)
+                        }
+                        when (detailsStyle) {
+                            WeeklyDetailsStyle.Table -> WeeklyDetailsTable(model.days)
+                            WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
+                        }
+                        HorizontalDivider(color = GoalsTrackColor)
+                        WeeklySummaryFooter(
+                            model = model,
+                            weightStatus = weeklyWeightStatus(latestWeight, model.today),
+                            onWeightClick = onWeightClick,
+                            onWeightEntryClick = onWeightEntryClick,
+                        )
                     }
-                    when (detailsStyle) {
-                        WeeklyDetailsStyle.Table -> WeeklyDetailsTable(model.days)
-                        WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
-                    }
-                    HorizontalDivider(color = GoalsTrackColor)
-                    WeeklySummaryFooter(
-                        model = model,
-                        weightStatus = weeklyWeightStatus(latestWeight, model.today),
-                        onWeightClick = onWeightClick,
-                        onWeightEntryClick = onWeightEntryClick,
-                    )
                 }
             }
         }
     }
 }
 
+/** A tinted band across the top of the card with the week's energy and its goal. */
 @Composable
-private fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Modifier) {
+internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Modifier) {
     val energyFormatter = LocalEnergyFormatter.current
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            imageVector = Icons.Filled.LocalFireDepartment,
-            contentDescription = null,
-            tint = FatColor,
-            modifier = Modifier.size(32.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text =
-                energyFormatter.formatEnergy(model.totalEnergy, withSuffix = false).groupDigits() +
-                    "/" +
-                    energyFormatter.formatEnergy(model.totalGoal, withSuffix = false).groupDigits() +
-                    " " +
-                    stringResource(Res.string.unit_kcal),
-            color = GoalsTextColor,
-            style =
-                MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = interNumberFontFamily(),
-                    fontSize = 20.sp,
-                    lineHeight = 24.sp,
-                ),
-        )
+    val unit = stringResource(Res.string.unit_kcal)
+    val energy = energyFormatter.formatEnergy(model.totalEnergy, withSuffix = false).groupDigits()
+    val goal = energyFormatter.formatEnergy(model.totalGoal, withSuffix = false).groupDigits()
+    Row(
+        modifier =
+            modifier.fillMaxWidth()
+                .background(WeeklyHeaderColor)
+                .padding(horizontal = 24.dp, vertical = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(46.dp).background(Color.White, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.LocalFireDepartment,
+                contentDescription = null,
+                tint = FatColor,
+                modifier = Modifier.size(28.dp),
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = "$energy $unit",
+                color = WeeklyHeaderTextColor,
+                style =
+                    MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = interNumberFontFamily(),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
+                    ),
+            )
+            Text(
+                text = stringResource(Res.string.weekly_goal_of, "$goal $unit"),
+                color = WeeklyHeaderMutedTextColor,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
 
@@ -845,7 +864,7 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
         }
         if (days.isNotEmpty()) {
             // Set apart like the total line under a column of figures: more space, a dark rule,
-            // and a taller, darker bar in the days' colors.
+            // and a taller bar in the days' colors.
             Spacer(Modifier.height(12.dp))
             HorizontalDivider(thickness = 1.5.dp, color = GoalsTextColor)
             Spacer(Modifier.height(8.dp))
@@ -880,14 +899,14 @@ private fun WeeklyDifferenceBarRow(
     val barFraction = if (difference == 0) 0f else fraction.coerceIn(0.02f, 1f)
     val differenceColor =
         when {
-            difference < 0 -> DifferenceUnderTextColor
-            difference > 0 -> DifferenceOverTextColor
+            difference < 0 -> DietGoalReachedTextColor
+            difference > 0 -> WeeklyOverGoalTextColor
             else -> GoalsTextColor
         }
     val (chipColor, chipTextColor) =
         when {
-            dietGoalReached -> DifferenceUnderChipColor to DifferenceUnderTextColor
-            difference > 0 -> DifferenceOverChipColor to DifferenceOverTextColor
+            dietGoalReached -> DifferenceUnderChipColor to DietGoalReachedTextColor
+            difference > 0 -> DifferenceOverChipColor to WeeklyOverGoalTextColor
             else -> DifferenceTrackColor to GoalsTextColor
         }
     val barHeight = if (total) 28.dp else 22.dp
@@ -993,10 +1012,7 @@ private fun WeeklyDifferenceBarRow(
                         modifier =
                             Modifier.fillMaxWidth(barFraction)
                                 .fillMaxHeight()
-                                .background(
-                                    if (total) DifferenceUnderTotalBarColor
-                                    else DifferenceUnderBarColor
-                                )
+                                .background(WeeklyUnderGoalBarColor)
                     )
                 }
             }
@@ -1013,10 +1029,7 @@ private fun WeeklyDifferenceBarRow(
                         modifier =
                             Modifier.fillMaxWidth(barFraction)
                                 .fillMaxHeight()
-                                .background(
-                                    if (total) DifferenceOverTotalBarColor
-                                    else DifferenceOverBarColor
-                                )
+                                .background(WeeklyOverGoalBarColor)
                     )
                 }
             }
