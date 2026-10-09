@@ -296,11 +296,11 @@ class GoalsCardScreenshotTest {
     fun weeklyDifferenceBarsNarrowPhone() {
         captureRoboImage(
             filePath = "GoalsCardScreenshotTest.weekly-difference-bars-narrow-phone.png",
-            roborazziComposeOptions = goalsCardOptions(width = 320, height = 340),
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 370),
         ) {
             EnergyFormatterProvider(EnergyFormatter.kilocalories) {
                 MaterialTheme {
-                    Box(Modifier.requiredSize(320.dp, 340.dp).background(Color.White).padding(24.dp)) {
+                    Box(Modifier.requiredSize(320.dp, 370.dp).background(Color.White).padding(24.dp)) {
                         WeeklyDifferenceBars(
                             days =
                                 listOf(

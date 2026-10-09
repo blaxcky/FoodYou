@@ -869,7 +869,11 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
             )
         }
         if (days.isNotEmpty()) {
-            HorizontalDivider(color = GoalsTrackColor)
+            // Set apart like the total line under a column of figures: more space, a dark rule,
+            // and a taller bar in the strong text color instead of the days' pastel tones.
+            Spacer(Modifier.height(10.dp))
+            HorizontalDivider(thickness = 1.5.dp, color = GoalsTextColor)
+            Spacer(Modifier.height(4.dp))
             WeeklyDifferenceBarRow(
                 day = "\u03A3",
                 dayDescription = stringResource(Res.string.weekly_sum),
@@ -877,7 +881,7 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
                 fraction = abs(sum).toFloat() / maxDifference,
                 locked = false,
                 dietGoalReached = false,
-                differenceFontWeight = FontWeight.Bold,
+                total = true,
             )
         }
     }
@@ -892,7 +896,7 @@ private fun WeeklyDifferenceBarRow(
     dietGoalReached: Boolean,
     modifier: Modifier = Modifier,
     dayDescription: String? = null,
-    differenceFontWeight: FontWeight = FontWeight.Medium,
+    total: Boolean = false,
 ) {
     val dietGoalReachedDescription = stringResource(Res.string.weekly_diet_goal_reached)
     val under = difference < 0
@@ -903,6 +907,9 @@ private fun WeeklyDifferenceBarRow(
             difference > 0 -> WeeklyOverGoalTextColor
             else -> GoalsTextColor
         }
+    val barHeight = if (total) 26.dp else 20.dp
+    val underBarColor = if (total) DietGoalReachedTextColor else WeeklyUnderGoalBarColor
+    val overBarColor = if (total) WeeklyOverGoalTextColor else WeeklyOverGoalBarColor
     // The sign stays for color-blind and screen-reader users, but smaller, lighter and thinner
     // than the digits, since bar direction and color already carry it visually. A hair space keeps
     // it apart from the digits without looking like the wider digit-group space.
@@ -937,7 +944,7 @@ private fun WeeklyDifferenceBarRow(
         }
 
     Row(
-        modifier = rowModifier.fillMaxWidth().height(36.dp),
+        modifier = rowModifier.fillMaxWidth().height(if (total) 44.dp else 36.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -950,8 +957,10 @@ private fun WeeklyDifferenceBarRow(
                     } else {
                         Modifier
                     },
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
+                style =
+                    if (total) MaterialTheme.typography.titleLarge
+                    else MaterialTheme.typography.bodyMedium,
+                fontWeight = if (total) FontWeight.Bold else FontWeight.SemiBold,
                 color = if (dietGoalReached) DietGoalReachedTextColor else GoalsTextColor,
                 maxLines = 1,
             )
@@ -973,9 +982,9 @@ private fun WeeklyDifferenceBarRow(
                     Box(
                         modifier =
                             Modifier.fillMaxWidth(barFraction)
-                                .height(20.dp)
+                                .height(barHeight)
                                 .clip(RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
-                                .background(WeeklyUnderGoalBarColor)
+                                .background(underBarColor)
                     )
                 }
             }
@@ -991,26 +1000,38 @@ private fun WeeklyDifferenceBarRow(
                     Box(
                         modifier =
                             Modifier.fillMaxWidth(barFraction)
-                                .height(20.dp)
+                                .height(barHeight)
                                 .clip(RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))
-                                .background(WeeklyOverGoalBarColor)
+                                .background(overBarColor)
                     )
                 }
             }
         }
-        Text(
+        // The width stays that of the day rows so all center lines align; the larger total
+        // shrinks back to the day size only if a five-digit sum would not fit.
+        val differenceStyle =
+            MaterialTheme.typography.bodyMedium.copy(
+                color = differenceColor,
+                fontFamily = interNumberWithLightFontFamily(),
+                fontFeatureSettings = "tnum",
+                fontWeight = if (total) FontWeight.Bold else FontWeight.Medium,
+                textAlign = TextAlign.End,
+            )
+        BasicText(
             text = differenceText,
             modifier = Modifier.width(64.dp),
-            style =
-                MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = interNumberWithLightFontFamily(),
-                    fontFeatureSettings = "tnum",
-                    textAlign = TextAlign.End,
-                ),
-            fontWeight = differenceFontWeight,
-            color = differenceColor,
+            style = differenceStyle,
             maxLines = 1,
             softWrap = false,
+            autoSize =
+                if (total) {
+                    TextAutoSize.StepBased(
+                        minFontSize = differenceStyle.fontSize,
+                        maxFontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    )
+                } else {
+                    null
+                },
         )
     }
 }
