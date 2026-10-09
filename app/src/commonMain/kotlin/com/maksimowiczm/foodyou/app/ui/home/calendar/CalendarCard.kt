@@ -20,18 +20,24 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -147,18 +153,47 @@ internal fun CalendarCard(
     }
 
     FoodYouHomeCard(onClick = { showDatePicker = true }, modifier = modifier) {
-        Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(text = dateFormatter.formatMonthYear(calendarState.firstVisibleDate))
-
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = stringResource(Res.string.action_show_calendar),
+                Text(
+                    text = dateFormatter.formatMonthYear(calendarState.firstVisibleDate),
+                    modifier =
+                        Modifier.weight(1f)
+                            .clickable(
+                                onClickLabel = stringResource(Res.string.action_show_calendar),
+                                onClick = { showDatePicker = true },
+                            )
+                            .padding(vertical = 12.dp),
                 )
+
+                TooltipBox(
+                    positionProvider =
+                        TooltipDefaults.rememberTooltipPositionProvider(
+                            TooltipAnchorPosition.Above
+                        ),
+                    tooltip = {
+                        PlainTooltip { Text(stringResource(Res.string.action_go_to_today)) }
+                    },
+                    state = rememberTooltipState(),
+                ) {
+                    IconButton(
+                        onClick = {
+                            calendarState.onDateSelect(
+                                date = calendarState.referenceDate,
+                                scroll = true,
+                            )
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Today,
+                            contentDescription = stringResource(Res.string.action_go_to_today),
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(8.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
