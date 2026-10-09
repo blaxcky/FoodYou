@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.MoreVert
@@ -15,8 +16,10 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -175,85 +178,93 @@ internal fun AiAnalysisControls(
             val fraction = if (progress.total > 0) progress.completed.toFloat() / progress.total else 0f
             LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().height(3.dp))
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(start = 16.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                Icons.Outlined.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            val status = when {
-                progress.running ->
-                    "Analysiere · ${progress.completed} von ${progress.total} · ${progress.recognized} erkannt"
-                !canStart -> "${provider.label} · nicht eingerichtet"
-                progress.total > 0 ->
-                    "${provider.label} · ${progress.recognized} von ${progress.total} erkannt"
-                else -> provider.label
-            }
-            Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-                Text(
-                    status,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val showStopwatch = progress.running || progress.total > 0
+            val stopwatchBelowStatus = maxWidth < 360.dp || LocalDensity.current.fontScale > 1.3f
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(start = 16.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
-                if (provider == AiProvider.Gemini) {
+                val status = when {
+                    progress.running ->
+                        "Analysiere · ${progress.completed} von ${progress.total} · ${progress.recognized} erkannt"
+                    !canStart -> "${provider.label} · nicht eingerichtet"
+                    progress.total > 0 ->
+                        "${provider.label} · ${progress.recognized} von ${progress.total} erkannt"
+                    else -> provider.label
+                }
+                Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
                     Text(
-                        "Analysierte Fotos werden an Google gesendet",
-                        style = MaterialTheme.typography.labelSmall,
+                        status,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-            }
-            if (progress.paused && !progress.running) {
-                Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Pause,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    if (showStopwatch && stopwatchBelowStatus) {
+                        AnalysisStopwatch(progress.elapsedMillis)
+                    }
+                    if (provider == AiProvider.Gemini) {
                         Text(
-                            "Angehalten",
+                            "Analysierte Fotos werden an Google gesendet",
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    if (progress.paused && !progress.running) {
+                        Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Pause,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    "Angehalten",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
-            }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Outlined.MoreVert, contentDescription = "Weitere KI-Optionen")
+                if (showStopwatch && !stopwatchBelowStatus) {
+                    AnalysisStopwatch(progress.elapsedMillis)
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Alle offenen Fotos erneut analysieren") },
-                        leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
-                        enabled = hasPhotos && canStart && !progress.running,
-                        onClick = {
-                            menuOpen = false
-                            onReanalyze()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("KI-Einstellungen") },
-                        leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onSettings()
-                        },
-                    )
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Outlined.MoreVert, contentDescription = "Weitere KI-Optionen")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Alle offenen Fotos erneut analysieren") },
+                            leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
+                            enabled = hasPhotos && canStart && !progress.running,
+                            onClick = {
+                                menuOpen = false
+                                onReanalyze()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("KI-Einstellungen") },
+                            leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                onSettings()
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -267,6 +278,37 @@ internal fun AiAnalysisControls(
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
+}
+
+@Composable
+private fun AnalysisStopwatch(elapsedMillis: Long) {
+    Row(
+        modifier = Modifier.semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            Icons.Outlined.Timer,
+            contentDescription = "Laufzeit",
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            formatAnalysisElapsedTime(elapsedMillis),
+            style = MaterialTheme.typography.labelMedium,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+internal fun formatAnalysisElapsedTime(elapsedMillis: Long): String {
+    val seconds = elapsedMillis.coerceAtLeast(0) / 1_000
+    val minutesAndSeconds = "${(seconds / 60 % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}"
+    return if (seconds >= 3_600) "${(seconds / 3_600).toString().padStart(2, '0')}:$minutesAndSeconds"
+    else minutesAndSeconds
 }
 
 /** Extended FAB next to the camera button: starts or cancels weight recognition. */

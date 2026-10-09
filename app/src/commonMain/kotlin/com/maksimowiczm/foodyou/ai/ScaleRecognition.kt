@@ -1,12 +1,17 @@
 package com.maksimowiczm.foodyou.ai
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.*
+import kotlin.time.TimeSource
 
 enum class AiProvider(val label: String) {
     Local("Gemma 4 E4B lokal"),
@@ -119,10 +124,11 @@ data class AnalysisProgress(
     val recognized: Int = 0,
     val message: String? = null,
     val paused: Boolean = false,
+    val elapsedMillis: Long = 0,
 )
 
 /** One session per batch; persistence must atomically check that the photo is still pending. */
-class ScaleAnalysisCoordinator {
+class ScaleAnalysisCoordinator(private val timeSource: TimeSource = TimeSource.Monotonic) {
     private val mutex = Mutex()
     private val mutableProgress = MutableStateFlow(AnalysisProgress())
     val progress: StateFlow<AnalysisProgress> = mutableProgress
@@ -134,46 +140,63 @@ class ScaleAnalysisCoordinator {
         save: suspend (AnalysisPhoto, ScaleRecognitionResult) -> Unit,
     ) {
         if (!mutex.tryLock()) return
-        var recognizer: ScaleWeightRecognizer? = null
-        mutableProgress.value = AnalysisProgress(running = true, total = photos.size)
         try {
-            if (photos.isEmpty()) {
-                mutableProgress.value = mutableProgress.value.copy(message = "Keine offenen Fotos ohne Gewichtsvorschlag vorhanden.")
-                return
+            coroutineScope {
+                val started = timeSource.markNow()
+                var recognizer: ScaleWeightRecognizer? = null
+                mutableProgress.value = AnalysisProgress(running = true, total = photos.size)
+                val stopwatch = launch {
+                    while (true) {
+                        delay(1_000)
+                        mutableProgress.update {
+                            if (it.running) it.copy(elapsedMillis = started.elapsedNow().inWholeMilliseconds) else it
+                        }
+                    }
+                }
+                try {
+                    if (photos.isEmpty()) {
+                        mutableProgress.update { it.copy(message = "Keine offenen Fotos ohne Gewichtsvorschlag vorhanden.") }
+                        return@coroutineScope
+                    }
+                    recognizer = open()
+                    for (photo in photos) {
+                        currentCoroutineContext().ensureActive()
+                        if (!isPending(photo.id)) {
+                            mutableProgress.update { it.copy(completed = it.completed + 1) }
+                            continue
+                        }
+                        val result = recognizer.recognize(photo.path)
+                        currentCoroutineContext().ensureActive()
+                        save(photo, result)
+                        mutableProgress.update {
+                            it.copy(completed = it.completed + 1,
+                                recognized = it.recognized + if (result is ScaleRecognitionResult.Recognized) 1 else 0)
+                        }
+                        if (result is ScaleRecognitionResult.Error) {
+                            mutableProgress.update { it.copy(message = result.message) }
+                            if (result.fatal) break
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    mutableProgress.update { it.copy(paused = true) }
+                    throw e
+                } catch (_: LinkageError) {
+                    mutableProgress.update { it.copy(message = "Die lokale KI wird auf diesem Gerät nicht unterstützt. Google AI Studio kann in den Einstellungen ausgewählt werden.") }
+                } catch (_: Exception) {
+                    mutableProgress.update { it.copy(message = "Analyse konnte nicht gestartet werden. KI-Einstellungen, Modell und freien Arbeitsspeicher prüfen.") }
+                } finally {
+                    try { recognizer?.close() } catch (_: Exception) {
+                        mutableProgress.update { it.copy(message = "Die KI-Sitzung konnte nicht vollständig beendet werden. Bitte die App neu starten.") }
+                    } finally {
+                        stopwatch.cancel()
+                        mutableProgress.update {
+                            it.copy(running = false, elapsedMillis = started.elapsedNow().inWholeMilliseconds)
+                        }
+                    }
+                }
             }
-            recognizer = open()
-            for (photo in photos) {
-                currentCoroutineContext().ensureActive()
-                if (!isPending(photo.id)) {
-                    mutableProgress.value = mutableProgress.value.copy(completed = mutableProgress.value.completed + 1)
-                    continue
-                }
-                val result = recognizer.recognize(photo.path)
-                currentCoroutineContext().ensureActive()
-                save(photo, result)
-                mutableProgress.value = mutableProgress.value.let {
-                    it.copy(completed = it.completed + 1,
-                        recognized = it.recognized + if (result is ScaleRecognitionResult.Recognized) 1 else 0)
-                }
-                if (result is ScaleRecognitionResult.Error) {
-                    mutableProgress.value = mutableProgress.value.copy(message = result.message)
-                    if (result.fatal) break
-                }
-            }
-        } catch (e: CancellationException) {
-            mutableProgress.value = mutableProgress.value.copy(paused = true)
-            throw e
-        } catch (_: LinkageError) {
-            mutableProgress.value = mutableProgress.value.copy(message = "Die lokale KI wird auf diesem Gerät nicht unterstützt. Google AI Studio kann in den Einstellungen ausgewählt werden.")
-        } catch (_: Exception) {
-            mutableProgress.value = mutableProgress.value.copy(message = "Analyse konnte nicht gestartet werden. KI-Einstellungen, Modell und freien Arbeitsspeicher prüfen.")
         } finally {
-            try { recognizer?.close() } catch (_: Exception) {
-                mutableProgress.value = mutableProgress.value.copy(message = "Die KI-Sitzung konnte nicht vollständig beendet werden. Bitte die App neu starten.")
-            } finally {
-                mutableProgress.value = mutableProgress.value.copy(running = false)
-                mutex.unlock()
-            }
+            mutex.unlock()
         }
     }
 }

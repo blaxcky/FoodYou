@@ -1,10 +1,73 @@
 package com.maksimowiczm.foodyou.ai
 
 import kotlin.test.*
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TestTimeSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 
 class ScaleRecognitionTest {
+    @Test fun stopwatchIncludesLoadingUpdatesDuringRecognitionAndFreezesUntilNextRun() = runTest {
+        val time = TestTimeSource()
+        val coordinator = ScaleAnalysisCoordinator(time)
+        val loaded = CompletableDeferred<Unit>()
+        val reading = CompletableDeferred<ScaleRecognitionResult>()
+        val recognizer = object : ScaleWeightRecognizer {
+            override suspend fun recognize(photoPath: String) = reading.await()
+            override suspend fun close() { time += 50.milliseconds }
+        }
+        val job = launch {
+            coordinator.run(listOf(AnalysisPhoto(1, "a")),
+                { loaded.await(); recognizer }, { true }, { _, _ -> })
+        }
+        runCurrent()
+        assertEquals(0L, coordinator.progress.value.elapsedMillis)
+        time += 1_200.milliseconds
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(1_200L, coordinator.progress.value.elapsedMillis)
+        assertEquals(0, coordinator.progress.value.completed)
+
+        coordinator.run(listOf(AnalysisPhoto(2, "b")),
+            { error("Must not reset the active stopwatch") }, { true }, { _, _ -> })
+        assertEquals(1_200L, coordinator.progress.value.elapsedMillis)
+        loaded.complete(Unit)
+        runCurrent()
+        time += 800.milliseconds
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(2_000L, coordinator.progress.value.elapsedMillis)
+        time += 345.milliseconds
+        reading.complete(ScaleRecognitionResult.Recognized(100.0))
+        job.join()
+        assertFalse(coordinator.progress.value.running)
+        assertEquals(1, coordinator.progress.value.completed)
+        assertEquals(1, coordinator.progress.value.recognized)
+        assertEquals(2_395L, coordinator.progress.value.elapsedMillis)
+
+        time += 5_000.milliseconds
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(2_395L, coordinator.progress.value.elapsedMillis)
+        coordinator.run(listOf(AnalysisPhoto(2, "b")),
+            open = {
+                assertEquals(0L, coordinator.progress.value.elapsedMillis)
+                recognizer
+            }, isPending = { true }, save = { _, _ -> })
+        assertEquals(50L, coordinator.progress.value.elapsedMillis)
+    }
+
+    @Test fun stopwatchStopsWhenLoadingFails() = runTest {
+        val time = TestTimeSource()
+        val coordinator = ScaleAnalysisCoordinator(time)
+        coordinator.run(listOf(AnalysisPhoto(1, "a")),
+            open = { time += 700.milliseconds; error("Loading failed") },
+            isPending = { true }, save = { _, _ -> })
+        assertFalse(coordinator.progress.value.running)
+        assertNotNull(coordinator.progress.value.message)
+        assertEquals(700L, coordinator.progress.value.elapsedMillis)
+    }
+
     @Test fun acceptsOnlyWholeGramsWithExactKilogramConversion() {
         for ((raw, unit, grams) in listOf(
             Triple("161", "g", 161.0), Triple("269", "g", 269.0),
@@ -107,7 +170,8 @@ class ScaleRecognitionTest {
     }
 
     @Test fun cancellationKeepsCompletedResultsAndPreventsOverlappingSessions() = runTest {
-        val coordinator = ScaleAnalysisCoordinator()
+        val time = TestTimeSource()
+        val coordinator = ScaleAnalysisCoordinator(time)
         var closed = 0
         val saved = mutableListOf<Long>()
         val recognizer = object : ScaleWeightRecognizer {
@@ -121,21 +185,27 @@ class ScaleRecognitionTest {
             { recognizer }, { true }, { photo, _ -> saved += photo.id }) }
         runCurrent()
         coordinator.run(listOf(AnalysisPhoto(3,"c")), { error("Must not open a second engine") }, { true }, { _, _ -> })
+        time += 350.milliseconds
         job.cancelAndJoin()
         assertEquals(listOf(1L), saved)
         assertEquals(1, closed)
         assertFalse(coordinator.progress.value.running)
+        assertTrue(coordinator.progress.value.paused)
+        assertEquals(350L, coordinator.progress.value.elapsedMillis)
         coordinator.run(listOf(AnalysisPhoto(3,"c")), { recognizer }, { true }, { photo, _ -> saved += photo.id })
         assertEquals(listOf(1L,3L), saved)
+        assertEquals(0L, coordinator.progress.value.elapsedMillis)
     }
 
     @Test fun fatalErrorStopsRemainingPhotosAndClosesEngine() = runTest {
-        val coordinator = ScaleAnalysisCoordinator()
+        val time = TestTimeSource()
+        val coordinator = ScaleAnalysisCoordinator(time)
         var calls = 0
         var closed = false
         val recognizer = object : ScaleWeightRecognizer {
             override suspend fun recognize(photoPath: String): ScaleRecognitionResult {
                 calls++
+                time += 1_500.milliseconds
                 return ScaleRecognitionResult.Error("quota", true)
             }
             override suspend fun close() { closed = true }
@@ -144,5 +214,6 @@ class ScaleRecognitionTest {
         assertEquals(1, calls)
         assertTrue(closed)
         assertEquals("quota", coordinator.progress.value.message)
+        assertEquals(1_500L, coordinator.progress.value.elapsedMillis)
     }
 }

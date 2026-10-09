@@ -14,6 +14,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.*
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.android.controller.ActivityController
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
@@ -59,13 +60,51 @@ class AiSettingsScreenshotTest {
     }
 
     @Test fun batchProgress() {
+        val progress = AnalysisProgress(true, 7, 10, 6, elapsedMillis = 83_000)
         show {
             Column {
-                AiAnalysisControls(AiProvider.Local, AnalysisProgress(true, 7, 10, 6), true, true, {}, {})
-                AiAnalysisActionButton(AnalysisProgress(true, 7, 10, 6), true, true, {}, {})
+                AiAnalysisControls(AiProvider.Local, progress, true, true, {}, {})
+                AiAnalysisActionButton(progress, true, true, {}, {})
             }
         }
+        compose.onNodeWithText("01:23").assertIsDisplayed()
+        compose.onNodeWithText("Analysiere · 7 von 10 · 6 erkannt").assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-progress.png")
+    }
+
+    @Test fun batchCompleted() {
+        show {
+            AiAnalysisControls(AiProvider.Local,
+                AnalysisProgress(completed = 10, total = 10, recognized = 9, elapsedMillis = 125_999),
+                true, true, {}, {})
+        }
+        compose.onNodeWithText("02:05").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-completed.png")
+    }
+
+    @Test fun batchPaused() {
+        show {
+            AiAnalysisControls(AiProvider.Local,
+                AnalysisProgress(completed = 7, total = 10, recognized = 6, paused = true, elapsedMillis = 3_661_000),
+                true, true, {}, {})
+        }
+        compose.onNodeWithText("01:01:01").assertIsDisplayed()
+        compose.onNodeWithText("Angehalten").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-paused.png")
+    }
+
+    @Test
+    @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
+    fun batchNarrowLargeFont() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        show {
+            AiAnalysisControls(AiProvider.Gemini,
+                AnalysisProgress(true, 77, 100, 66, elapsedMillis = 3_661_000),
+                true, true, {}, {})
+        }
+        compose.onNodeWithText("01:01:01").assertIsDisplayed()
+        compose.onNodeWithText("Analysiere · 77 von 100 · 66 erkannt").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-narrow-large-font.png")
     }
 
     private fun showSettings(settings: AiSettings, download: ModelDownloadState, name: String) {
