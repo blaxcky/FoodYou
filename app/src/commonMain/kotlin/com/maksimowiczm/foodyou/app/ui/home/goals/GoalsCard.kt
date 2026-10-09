@@ -870,7 +870,7 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
         }
         if (days.isNotEmpty()) {
             // Set apart like the total line under a column of figures: more space, a dark rule,
-            // and a taller bar in the strong text color instead of the days' pastel tones.
+            // and a taller bar in the days' colors.
             Spacer(Modifier.height(10.dp))
             HorizontalDivider(thickness = 1.5.dp, color = GoalsTextColor)
             Spacer(Modifier.height(4.dp))
@@ -908,8 +908,6 @@ private fun WeeklyDifferenceBarRow(
             else -> GoalsTextColor
         }
     val barHeight = if (total) 26.dp else 20.dp
-    val underBarColor = if (total) DietGoalReachedTextColor else WeeklyUnderGoalBarColor
-    val overBarColor = if (total) WeeklyOverGoalTextColor else WeeklyOverGoalBarColor
     // The sign stays for color-blind and screen-reader users, but smaller, lighter and thinner
     // than the digits, since bar direction and color already carry it visually. A hair space keeps
     // it apart from the digits without looking like the wider digit-group space.
@@ -984,7 +982,7 @@ private fun WeeklyDifferenceBarRow(
                             Modifier.fillMaxWidth(barFraction)
                                 .height(barHeight)
                                 .clip(RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
-                                .background(underBarColor)
+                                .background(WeeklyUnderGoalBarColor)
                     )
                 }
             }
@@ -1002,7 +1000,7 @@ private fun WeeklyDifferenceBarRow(
                             Modifier.fillMaxWidth(barFraction)
                                 .height(barHeight)
                                 .clip(RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))
-                                .background(overBarColor)
+                                .background(WeeklyOverGoalBarColor)
                     )
                 }
             }
