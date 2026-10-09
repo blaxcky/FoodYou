@@ -142,6 +142,15 @@ private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
 private val WeeklyOverGoalBarColor = Color(0xFFC57484)
 private val WeeklyOverGoalTextColor = Color(0xFF9B3F55)
 private val WeeklyUnderGoalBarColor = Color(0xFFA8DABB)
+private val DifferenceTrackColor = Color(0xFFF7F2F0)
+private val DifferenceOverBarColor = Color(0xFFD45C74)
+private val DifferenceOverTotalBarColor = Color(0xFFB83656)
+private val DifferenceOverTextColor = Color(0xFF9B2442)
+private val DifferenceOverChipColor = Color(0xFFFBE2E7)
+private val DifferenceUnderBarColor = Color(0xFF4DB27A)
+private val DifferenceUnderTotalBarColor = Color(0xFF34965F)
+private val DifferenceUnderTextColor = Color(0xFF1D6E3D)
+private val DifferenceUnderChipColor = Color(0xFFDDF2E4)
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)
@@ -808,8 +817,8 @@ private fun WeeklyDetailsRow(
 /**
  * One row per day: the difference to the goal as a bar that grows left of the center line below
  * the goal and right of it above the goal. Only the signed difference is shown; goal and consumed
- * energy are in the weekly header and the optional daily chart. Fine lines between the rows tie
- * each bar to its day and its number.
+ * energy are in the weekly header and the optional daily chart. Light tracks behind both halves
+ * show the full scale, and the day sits in a chip tinted like its result.
  *
  * A final row, marked with the gauge icon, sums the differences of the shown days, which only run
  * up to today, so it is the remaining or exceeded energy of the week so far. All rows share one
@@ -824,7 +833,7 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
     Column(modifier = modifier.fillMaxWidth()) {
         days.forEachIndexed { index, day ->
             if (index > 0) {
-                HorizontalDivider(thickness = 0.5.dp, color = NormalGoalComparisonBorderColor)
+                Spacer(Modifier.height(8.dp))
             }
             WeeklyDifferenceBarRow(
                 day = day.tableLabel(dateFormatter.weekDayNamesShort),
@@ -836,10 +845,10 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
         }
         if (days.isNotEmpty()) {
             // Set apart like the total line under a column of figures: more space, a dark rule,
-            // and a taller bar in the days' colors.
-            Spacer(Modifier.height(10.dp))
+            // and a taller, darker bar in the days' colors.
+            Spacer(Modifier.height(12.dp))
             HorizontalDivider(thickness = 1.5.dp, color = GoalsTextColor)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
             WeeklyDifferenceBarRow(
                 day = "",
                 dayIcon = Icons.Filled.Speed,
@@ -871,11 +880,18 @@ private fun WeeklyDifferenceBarRow(
     val barFraction = if (difference == 0) 0f else fraction.coerceIn(0.02f, 1f)
     val differenceColor =
         when {
-            difference < 0 -> DietGoalReachedTextColor
-            difference > 0 -> WeeklyOverGoalTextColor
+            difference < 0 -> DifferenceUnderTextColor
+            difference > 0 -> DifferenceOverTextColor
             else -> GoalsTextColor
         }
-    val barHeight = if (total) 26.dp else 20.dp
+    val (chipColor, chipTextColor) =
+        when {
+            dietGoalReached -> DifferenceUnderChipColor to DifferenceUnderTextColor
+            difference > 0 -> DifferenceOverChipColor to DifferenceOverTextColor
+            else -> DifferenceTrackColor to GoalsTextColor
+        }
+    val barHeight = if (total) 28.dp else 22.dp
+    val barCorner = if (total) 8.dp else 6.dp
     // The sign stays for color-blind and screen-reader users, but smaller, lighter and thinner
     // than the digits, since bar direction and color already carry it visually. A hair space keeps
     // it apart from the digits without looking like the wider digit-group space.
@@ -910,74 +926,97 @@ private fun WeeklyDifferenceBarRow(
         }
 
     Row(
-        modifier = rowModifier.fillMaxWidth().height(if (total) 44.dp else 36.dp),
+        modifier = rowModifier.fillMaxWidth().height(if (total) 40.dp else 30.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(modifier = Modifier.width(48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.width(52.dp)) {
             if (dayIcon != null) {
-                Icon(
-                    imageVector = dayIcon,
-                    contentDescription = dayDescription,
-                    tint = GoalsTextColor,
-                    modifier = Modifier.size(26.dp),
-                )
-            } else {
-                Text(
-                    text = day,
+                Box(
                     modifier =
-                        if (dayDescription != null) {
-                            Modifier.semantics { contentDescription = dayDescription }
-                        } else {
-                            Modifier
-                        },
-                    style =
-                        if (total) MaterialTheme.typography.titleLarge
-                        else MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (total) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (dietGoalReached) DietGoalReachedTextColor else GoalsTextColor,
-                    maxLines = 1,
-                )
-            }
-            if (locked) {
-                Icon(
-                    imageVector = Icons.Filled.Lock,
-                    contentDescription = stringResource(Res.string.locked_day_status),
-                    tint = GoalsTextColor,
-                    modifier = Modifier.padding(start = 2.dp).size(12.dp),
-                )
+                        Modifier.size(width = 36.dp, height = 32.dp)
+                            .background(GoalsTextColor, RoundedCornerShape(9.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = dayIcon,
+                        contentDescription = dayDescription,
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            } else {
+                Row(
+                    modifier =
+                        Modifier.background(chipColor, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = day,
+                        modifier =
+                            if (dayDescription != null) {
+                                Modifier.semantics { contentDescription = dayDescription }
+                            } else {
+                                Modifier
+                            },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = chipTextColor,
+                        maxLines = 1,
+                    )
+                    if (locked) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = stringResource(Res.string.locked_day_status),
+                            tint = chipTextColor,
+                            modifier = Modifier.padding(start = 2.dp).size(11.dp),
+                        )
+                    }
+                }
             }
         }
-        Row(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        Row(
+            modifier = Modifier.weight(1f).height(barHeight),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Box(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+                modifier =
+                    Modifier.weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(topStart = barCorner, bottomStart = barCorner))
+                        .background(DifferenceTrackColor),
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 if (under) {
                     Box(
                         modifier =
                             Modifier.fillMaxWidth(barFraction)
-                                .height(barHeight)
-                                .clip(RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
-                                .background(WeeklyUnderGoalBarColor)
+                                .fillMaxHeight()
+                                .background(
+                                    if (total) DifferenceUnderTotalBarColor
+                                    else DifferenceUnderBarColor
+                                )
                     )
                 }
             }
             Box(
                 modifier =
-                    Modifier.width(1.dp).fillMaxHeight().background(NormalGoalComparisonBorderColor)
-            )
-            Box(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+                    Modifier.weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(topEnd = barCorner, bottomEnd = barCorner))
+                        .background(DifferenceTrackColor),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 if (difference > 0) {
                     Box(
                         modifier =
                             Modifier.fillMaxWidth(barFraction)
-                                .height(barHeight)
-                                .clip(RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))
-                                .background(WeeklyOverGoalBarColor)
+                                .fillMaxHeight()
+                                .background(
+                                    if (total) DifferenceOverTotalBarColor
+                                    else DifferenceOverBarColor
+                                )
                     )
                 }
             }
@@ -989,7 +1028,7 @@ private fun WeeklyDifferenceBarRow(
                 color = differenceColor,
                 fontFamily = interNumberWithLightFontFamily(),
                 fontFeatureSettings = "tnum",
-                fontWeight = if (total) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.End,
             )
         BasicText(
