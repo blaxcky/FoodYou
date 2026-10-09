@@ -10,7 +10,6 @@ data class Settings(
     val nutrientsOrder: List<NutrientsOrder>,
     val secureScreen: Boolean,
     val homeCardOrder: List<HomeCard>,
-    val expandGoalCard: Boolean,
     val supplementalGoalsEnabled: Boolean = true,
     val goalCardModeSwitchingEnabled: Boolean = true,
     val goalDisplayMode: GoalDisplayMode,
@@ -49,6 +48,7 @@ data class Settings(
     val foodEntryAmountPickerStyle: FoodEntryAmountPickerStyle =
         FoodEntryAmountPickerStyle.PortionList,
     val weeklyDetailsStyle: WeeklyDetailsStyle = WeeklyDetailsStyle.DifferenceBars,
+    val weeklyChartEnabled: Boolean = true,
 ) : UserPreferences
 
 data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)

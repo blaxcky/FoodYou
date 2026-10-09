@@ -161,8 +161,8 @@
     <string name="description_weekly_details_style">How the days are shown in the weekly details</string>
     <string name="weekly_details_style_table">Table</string>
     <string name="weekly_details_style_bars">Bar chart</string>
-    <string name="weekly_per_day">per day</string>
-    <string name="weekly_reached">reached</string>
+    <string name="weekly_chart_title">Show daily chart</string>
+    <string name="weekly_chart_description">Show the bar chart of the single days above the weekly details.</string>
     <string name="weekly_weight_lost">lost</string>
     <string name="weekly_weight_gained">gained</string>
     <string name="weekly_weight_measured_today">today</string>
@@ -281,7 +281,6 @@
     <string name="action_copy_and_open_bug_report">Copy and open bug report</string>
     <string name="action_copy_and_report" description="Copy bug report and report a bug">Copy &amp; report</string>
     <string name="action_show_details">Show details</string>
-    <string name="action_details">Details</string>
     <string name="action_browse_usda">Browse FoodData Central (USDA)</string>
     <string name="action_set_key">Set key</string>
     <string name="action_obtain_key">Obtain key</string>

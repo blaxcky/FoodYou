@@ -205,7 +205,7 @@ class ManualSyncTriggersTest {
             lastRememberedVersion = null, hidePreviewDialog = false,
             showTranslationWarning = false, nutrientsOrder = NutrientsOrder.defaultOrder,
             secureScreen = false, homeCardOrder = HomeCard.defaultOrder,
-            expandGoalCard = false, goalDisplayMode = GoalDisplayMode.Normal,
+            goalDisplayMode = GoalDisplayMode.Normal,
             dietEnergyDeficitKcal = null, onboardingFinished = true,
             energyFormat = EnergyFormat.DEFAULT, appLaunchInfo = AppLaunchInfo(null, null, 0),
             stepsCaloriesPerStepKcal = null, healthConnectStepsEnabled = stepsEnabled,

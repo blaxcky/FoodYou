@@ -48,6 +48,7 @@ internal fun GoalsCardSettings(
             goalCardModeSwitchingEnabled = current.goalCardModeSwitchingEnabled,
             supplementalGoalsEnabled = current.supplementalGoalsEnabled,
             weeklyDetailsStyle = current.weeklyDetailsStyle,
+            weeklyChartEnabled = current.weeklyChartEnabled,
             onModeSwitchingChange = { enabled ->
                 scope.launch { repository.update { copy(goalCardModeSwitchingEnabled = enabled) } }
             },
@@ -56,6 +57,9 @@ internal fun GoalsCardSettings(
             },
             onWeeklyDetailsStyleChange = { style ->
                 scope.launch { repository.update { copy(weeklyDetailsStyle = style) } }
+            },
+            onWeeklyChartChange = { enabled ->
+                scope.launch { repository.update { copy(weeklyChartEnabled = enabled) } }
             },
             modifier = modifier,
         )
@@ -68,9 +72,11 @@ internal fun GoalsCardSettingsContent(
     goalCardModeSwitchingEnabled: Boolean,
     supplementalGoalsEnabled: Boolean,
     weeklyDetailsStyle: WeeklyDetailsStyle,
+    weeklyChartEnabled: Boolean,
     onModeSwitchingChange: (Boolean) -> Unit,
     onSupplementalGoalsChange: (Boolean) -> Unit,
     onWeeklyDetailsStyleChange: (WeeklyDetailsStyle) -> Unit,
+    onWeeklyChartChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var previewMode by remember { mutableStateOf(GoalDisplayMode.Normal) }
@@ -138,6 +144,14 @@ internal fun GoalsCardSettingsContent(
                 WeeklyDetailsStyleSetting(
                     style = weeklyDetailsStyle,
                     onChange = onWeeklyDetailsStyleChange,
+                )
+            }
+            item {
+                GoalCardSettingSwitch(
+                    title = stringResource(Res.string.weekly_chart_title),
+                    description = stringResource(Res.string.weekly_chart_description),
+                    checked = weeklyChartEnabled,
+                    onCheckedChange = onWeeklyChartChange,
                 )
             }
         }

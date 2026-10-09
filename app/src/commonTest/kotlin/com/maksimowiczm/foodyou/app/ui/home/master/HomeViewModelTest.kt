@@ -687,7 +687,6 @@ class HomeViewModelTest {
                 nutrientsOrder = NutrientsOrder.defaultOrder,
                 secureScreen = false,
                 homeCardOrder = HomeCard.defaultOrder,
-                expandGoalCard = false,
                 goalDisplayMode = GoalDisplayMode.Normal,
                 dietEnergyDeficitKcal = null,
                 onboardingFinished = true,

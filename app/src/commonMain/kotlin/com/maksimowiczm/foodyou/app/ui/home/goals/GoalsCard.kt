@@ -27,9 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonitorWeight
@@ -83,7 +80,6 @@ import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 import foodyou.app.generated.resources.Res
-import foodyou.app.generated.resources.action_details
 import foodyou.app.generated.resources.goal_burned
 import foodyou.app.generated.resources.goal_carbs_short
 import foodyou.app.generated.resources.goal_eaten
@@ -108,9 +104,7 @@ import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.weekly_diet_goal_reached
 import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_sum
-import foodyou.app.generated.resources.weekly_per_day
 import foodyou.app.generated.resources.weekly_percent
-import foodyou.app.generated.resources.weekly_reached
 import foodyou.app.generated.resources.action_weigh_in
 import foodyou.app.generated.resources.weekly_weight_gained
 import foodyou.app.generated.resources.weekly_weight_last_measured_days_ago
@@ -255,7 +249,7 @@ internal fun WeeklyGoalsCard(
 ) {
     val weekModel = viewModel.weekModel.collectAsStateWithLifecycle().value
     val latestWeight = viewModel.latestWeight.collectAsStateWithLifecycle().value
-    val expanded = viewModel.expandGoalsCard.collectAsStateWithLifecycle().value
+    val chartEnabled = viewModel.weeklyChartEnabled.collectAsStateWithLifecycle().value
     val detailsStyle = viewModel.weeklyDetailsStyle.collectAsStateWithLifecycle().value
 
     if (weekModel == null) {
@@ -263,9 +257,8 @@ internal fun WeeklyGoalsCard(
     } else {
         WeeklyGoalsContent(
             model = weekModel,
-            expanded = expanded,
+            chartEnabled = chartEnabled,
             detailsStyle = detailsStyle,
-            onExpandedChange = viewModel::setExpandGoalsCard,
             latestWeight = latestWeight,
             onWeightClick = onWeightClick,
             onWeightEntryClick = onWeightEntryClick,
@@ -489,9 +482,8 @@ internal fun calorieGoalProgress(netEnergy: Int, energyGoal: Int, percentageEner
 @Composable
 private fun WeeklyGoalsContent(
     model: WeekSummaryModel,
-    expanded: Boolean,
+    chartEnabled: Boolean,
     detailsStyle: WeeklyDetailsStyle,
-    onExpandedChange: (Boolean) -> Unit,
     latestWeight: LatestWeightState,
     onWeightClick: () -> Unit,
     onWeightEntryClick: () -> Unit,
@@ -519,24 +511,20 @@ private fun WeeklyGoalsContent(
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     WeeklyGoalsHeader(model)
-                    WeeklyGoalsChart(days = model.days, today = model.today)
-                    WeeklyDetailsToggle(
-                        expanded = expanded,
-                        onClick = { onExpandedChange(!expanded) },
-                    )
-                    if (expanded) {
-                        when (detailsStyle) {
-                            WeeklyDetailsStyle.Table -> WeeklyDetailsTable(model.days)
-                            WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
-                        }
-                        HorizontalDivider(color = GoalsTrackColor)
-                        WeeklySummaryFooter(
-                            model = model,
-                            weightStatus = weeklyWeightStatus(latestWeight, model.today),
-                            onWeightClick = onWeightClick,
-                            onWeightEntryClick = onWeightEntryClick,
-                        )
+                    if (chartEnabled) {
+                        WeeklyGoalsChart(days = model.days, today = model.today)
                     }
+                    when (detailsStyle) {
+                        WeeklyDetailsStyle.Table -> WeeklyDetailsTable(model.days)
+                        WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
+                    }
+                    HorizontalDivider(color = GoalsTrackColor)
+                    WeeklySummaryFooter(
+                        model = model,
+                        weightStatus = weeklyWeightStatus(latestWeight, model.today),
+                        onWeightClick = onWeightClick,
+                        onWeightEntryClick = onWeightEntryClick,
+                    )
                 }
             }
         }
@@ -730,28 +718,6 @@ private fun WeeklyBar(
 }
 
 @Composable
-private fun WeeklyDetailsToggle(expanded: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(Res.string.action_details),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.width(8.dp))
-        Icon(
-            imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-    }
-}
-
-@Composable
 internal fun WeeklyDetailsTable(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
     val dateFormatter = LocalDateFormatter.current
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -841,13 +807,13 @@ private fun WeeklyDetailsRow(
 
 /**
  * One row per day: the difference to the goal as a bar that grows left of the center line below
- * the goal and right of it above the goal. Goal and consumed energy are already visible in the
- * weekly chart, so only the signed difference is shown. Fine lines between the rows tie each bar
- * to its day and its number.
+ * the goal and right of it above the goal. Only the signed difference is shown; goal and consumed
+ * energy are in the weekly header and the optional daily chart. Fine lines between the rows tie
+ * each bar to its day and its number.
  *
- * A final row sums the differences of the shown days, which only run up to today, so it matches
- * the remaining or exceeded energy of the weekly footer. All rows share one scale, so the sum can
- * be compared with the single days.
+ * A final row, marked with the gauge icon, sums the differences of the shown days, which only run
+ * up to today, so it is the remaining or exceeded energy of the week so far. All rows share one
+ * scale, so the sum can be compared with the single days.
  */
 @Composable
 internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
@@ -875,7 +841,8 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
             HorizontalDivider(thickness = 1.5.dp, color = GoalsTextColor)
             Spacer(Modifier.height(4.dp))
             WeeklyDifferenceBarRow(
-                day = "\u03A3",
+                day = "",
+                dayIcon = Icons.Filled.Speed,
                 dayDescription = stringResource(Res.string.weekly_sum),
                 difference = sum,
                 fraction = abs(sum).toFloat() / maxDifference,
@@ -895,6 +862,7 @@ private fun WeeklyDifferenceBarRow(
     locked: Boolean,
     dietGoalReached: Boolean,
     modifier: Modifier = Modifier,
+    dayIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     dayDescription: String? = null,
     total: Boolean = false,
 ) {
@@ -947,21 +915,30 @@ private fun WeeklyDifferenceBarRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(modifier = Modifier.width(48.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = day,
-                modifier =
-                    if (dayDescription != null) {
-                        Modifier.semantics { contentDescription = dayDescription }
-                    } else {
-                        Modifier
-                    },
-                style =
-                    if (total) MaterialTheme.typography.titleLarge
-                    else MaterialTheme.typography.bodyMedium,
-                fontWeight = if (total) FontWeight.Bold else FontWeight.SemiBold,
-                color = if (dietGoalReached) DietGoalReachedTextColor else GoalsTextColor,
-                maxLines = 1,
-            )
+            if (dayIcon != null) {
+                Icon(
+                    imageVector = dayIcon,
+                    contentDescription = dayDescription,
+                    tint = GoalsTextColor,
+                    modifier = Modifier.size(26.dp),
+                )
+            } else {
+                Text(
+                    text = day,
+                    modifier =
+                        if (dayDescription != null) {
+                            Modifier.semantics { contentDescription = dayDescription }
+                        } else {
+                            Modifier
+                        },
+                    style =
+                        if (total) MaterialTheme.typography.titleLarge
+                        else MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (total) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (dietGoalReached) DietGoalReachedTextColor else GoalsTextColor,
+                    maxLines = 1,
+                )
+            }
             if (locked) {
                 Icon(
                     imageVector = Icons.Filled.Lock,
@@ -1050,92 +1027,16 @@ internal fun WeeklySummaryFooter(
             if (remaining >= 0) Res.string.weekly_weight_lost
             else Res.string.weekly_weight_gained
         )
-    val average = if (model.days.isEmpty()) 0 else model.totalEnergy / model.days.size
-    val percent =
-        if (model.totalGoal <= 0) 0 else (model.totalEnergy.toFloat() / model.totalGoal * 100).roundToInt()
 
-    Column(
+    WeeklyFooterWeightEstimate(
+        icon = Icons.Filled.MonitorWeight,
+        value = "$estimatedWeightKg kg",
+        label = weightChangeLabel,
+        weightStatus = weightStatus,
+        onClick = onWeightClick,
+        onWeightEntryClick = onWeightEntryClick,
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            WeeklyFooterMetric(
-                icon = Icons.Filled.Speed,
-                value = "${absoluteRemaining.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
-                label = stringResource(if (remaining >= 0) Res.string.goal_left else Res.string.goal_too_much),
-                horizontalArrangement = Arrangement.Start,
-                modifier = Modifier.weight(1f),
-            )
-            WeeklyFooterMetric(
-                icon = Icons.Filled.LocalFireDepartment,
-                value = "${average.toString().groupDigits()} ${stringResource(Res.string.unit_kcal)}",
-                label = stringResource(Res.string.weekly_per_day),
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f),
-            )
-            WeeklyFooterMetric(
-                icon = Icons.Filled.CheckCircleOutline,
-                value = "$percent %",
-                label = stringResource(Res.string.weekly_reached),
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        HorizontalDivider(color = GoalsTrackColor)
-
-        WeeklyFooterWeightEstimate(
-            icon = Icons.Filled.MonitorWeight,
-            value = "$estimatedWeightKg kg",
-            label = weightChangeLabel,
-            weightStatus = weightStatus,
-            onClick = onWeightClick,
-            onWeightEntryClick = onWeightEntryClick,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun WeeklyFooterMetric(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    value: String,
-    label: String,
-    horizontalArrangement: Arrangement.Horizontal,
-    modifier: Modifier = Modifier,
-) {
-    // Edge cells align to the card edges so the row lines up with the weight row below.
-    Row(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = GoalsTextColor,
-            modifier = Modifier.size(22.dp).alpha(0.95f),
-        )
-        Spacer(Modifier.width(6.dp))
-        Column {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = GoalsTextColor,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Normal,
-                color = GoalsTextColor,
-            )
-        }
-    }
+    )
 }
 
 @Composable

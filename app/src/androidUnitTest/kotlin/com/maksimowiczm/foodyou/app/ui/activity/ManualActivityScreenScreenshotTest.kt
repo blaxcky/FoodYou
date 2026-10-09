@@ -98,7 +98,7 @@ class ManualActivityScreenScreenshotTest {
             override fun observe() = flowOf(Settings(
                 lastRememberedVersion = null, hidePreviewDialog = false, showTranslationWarning = false,
                 nutrientsOrder = NutrientsOrder.defaultOrder, secureScreen = false,
-                homeCardOrder = HomeCard.defaultOrder, expandGoalCard = false,
+                homeCardOrder = HomeCard.defaultOrder,
                 goalDisplayMode = GoalDisplayMode.Normal, dietEnergyDeficitKcal = null,
                 onboardingFinished = true, energyFormat = EnergyFormat.DEFAULT,
                 appLaunchInfo = AppLaunchInfo(null, null, 0), stepsCaloriesPerStepKcal = null,

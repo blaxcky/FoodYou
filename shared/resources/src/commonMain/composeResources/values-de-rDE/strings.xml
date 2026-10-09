@@ -334,8 +334,8 @@
     <string name="description_weekly_details_style">Darstellung der Tage in den Wochendetails</string>
     <string name="weekly_details_style_table">Tabelle</string>
     <string name="weekly_details_style_bars">Balkendiagramm</string>
-    <string name="weekly_per_day">pro Tag</string>
-    <string name="weekly_reached">erreicht</string>
+    <string name="weekly_chart_title">Tagesdiagramm anzeigen</string>
+    <string name="weekly_chart_description">Zeigt das Balkendiagramm der einzelnen Tage über den Wochendetails.</string>
     <string name="weekly_weight_lost">abgenommen</string>
     <string name="weekly_weight_gained">zugenommen</string>
     <string name="weekly_weight_measured_today">heute</string>
@@ -451,7 +451,6 @@
     <string name="action_copy_and_open_bug_report">Kopiere und erstelle Bug-Report</string>
     <string name="action_copy_and_report" description="Copy bug report and report a bug">Kopieren &amp; melden</string>
     <string name="action_show_details">Details anzeigen</string>
-    <string name="action_details">Details</string>
     <string name="action_browse_usda">Durchsuche FoodData Central (USDA)</string>
     <string name="action_set_key">Schlüssel setzen</string>
     <string name="action_obtain_key">Schlüssel erhalten</string>

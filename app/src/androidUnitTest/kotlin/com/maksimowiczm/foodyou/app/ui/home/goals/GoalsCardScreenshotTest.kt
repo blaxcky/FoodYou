@@ -75,9 +75,11 @@ class GoalsCardScreenshotTest {
                                 goalCardModeSwitchingEnabled = modeSwitching,
                                 supplementalGoalsEnabled = supplemental,
                                 weeklyDetailsStyle = WeeklyDetailsStyle.DifferenceBars,
+                                weeklyChartEnabled = true,
                                 onModeSwitchingChange = {},
                                 onSupplementalGoalsChange = {},
                                 onWeeklyDetailsStyleChange = {},
+                                onWeeklyChartChange = {},
                             )
                         }
                     }
@@ -365,13 +367,13 @@ class GoalsCardScreenshotTest {
             )
         captureRoboImage(
             filePath = "GoalsCardScreenshotTest.weekly-summary-footer-weight-narrow-phone.png",
-            roborazziComposeOptions = goalsCardOptions(width = 320, height = 470),
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 280),
         ) {
             EnergyFormatterProvider(EnergyFormatter.kilocalories) {
                 MaterialTheme {
                     Column(
                         modifier =
-                            Modifier.requiredSize(320.dp, 470.dp).background(Color.White).padding(24.dp),
+                            Modifier.requiredSize(320.dp, 280.dp).background(Color.White).padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(28.dp),
                     ) {
                         for (status in

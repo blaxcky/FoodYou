@@ -52,17 +52,13 @@ internal class GoalsViewModel(
         dateState.value = date
     }
 
-    private val _expandGoalsCard = settingsRepository.observe().map { it.expandGoalCard }
-    val expandGoalsCard: StateFlow<Boolean> =
-        _expandGoalsCard.stateIn(
+    private val _weeklyChartEnabled = settingsRepository.observe().map { it.weeklyChartEnabled }
+    val weeklyChartEnabled: StateFlow<Boolean> =
+        _weeklyChartEnabled.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(2_000),
-            initialValue = runBlocking { _expandGoalsCard.first() },
+            initialValue = runBlocking { _weeklyChartEnabled.first() },
         )
-
-    fun setExpandGoalsCard(expand: Boolean) {
-        viewModelScope.launch { settingsRepository.update { copy(expandGoalCard = expand) } }
-    }
 
     private val _weeklyDetailsStyle = settingsRepository.observe().map { it.weeklyDetailsStyle }
     val weeklyDetailsStyle: StateFlow<WeeklyDetailsStyle> =

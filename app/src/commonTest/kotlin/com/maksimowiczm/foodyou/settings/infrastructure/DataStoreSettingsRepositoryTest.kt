@@ -19,7 +19,9 @@ import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDefici
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -400,6 +402,19 @@ class DataStoreSettingsRepositoryTest {
 
             assertEquals(style, repository.observe().first().weeklyDetailsStyle)
         }
+    }
+
+    @Test
+    fun weeklyChartEnabledDefaultsToTrueAndRoundTripsThroughDataStore() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        assertTrue(repository.observe().first().weeklyChartEnabled)
+
+        repository.update { copy(weeklyChartEnabled = false) }
+        assertFalse(repository.observe().first().weeklyChartEnabled)
+
+        repository.update { copy(weeklyChartEnabled = true) }
+        assertTrue(repository.observe().first().weeklyChartEnabled)
     }
 
     @Test

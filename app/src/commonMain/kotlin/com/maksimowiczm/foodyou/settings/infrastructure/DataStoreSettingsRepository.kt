@@ -38,7 +38,6 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             nutrientsOrder = this.getNutrientsOrder(SettingsPreferencesKeys.nutrientsOrder),
             secureScreen = this[SettingsPreferencesKeys.secureScreen] ?: false,
             homeCardOrder = this.getHomeCardOrder(SettingsPreferencesKeys.homeCardOrder),
-            expandGoalCard = this[SettingsPreferencesKeys.expandGoalCard] ?: true,
             goalCardModeSwitchingEnabled = this[SettingsPreferencesKeys.goalCardModeSwitchingEnabled] ?: true,
             supplementalGoalsEnabled = this[SettingsPreferencesKeys.supplementalGoalsEnabled] ?: true,
             goalDisplayMode = this.getGoalDisplayMode(),
@@ -87,6 +86,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
             foodEntryAmountPickerStyle = this.getFoodEntryAmountPickerStyle(),
             weeklyDetailsStyle = this.getWeeklyDetailsStyle(),
+            weeklyChartEnabled = this[SettingsPreferencesKeys.weeklyChartEnabled] ?: true,
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
             todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
@@ -106,7 +106,6 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setNutrientsOrder(SettingsPreferencesKeys.nutrientsOrder, updated.nutrientsOrder)
         this[SettingsPreferencesKeys.secureScreen] = updated.secureScreen
         setHomeCardOrder(SettingsPreferencesKeys.homeCardOrder, updated.homeCardOrder)
-        this[SettingsPreferencesKeys.expandGoalCard] = updated.expandGoalCard
         this[SettingsPreferencesKeys.goalCardModeSwitchingEnabled] = updated.goalCardModeSwitchingEnabled
         this[SettingsPreferencesKeys.supplementalGoalsEnabled] = updated.supplementalGoalsEnabled
         setGoalDisplayMode(updated.goalDisplayMode)
@@ -168,6 +167,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
         setFoodEntryAmountPickerStyle(updated.foodEntryAmountPickerStyle)
         setWithNull(SettingsPreferencesKeys.weeklyDetailsStyle, updated.weeklyDetailsStyle.name)
+        this[SettingsPreferencesKeys.weeklyChartEnabled] = updated.weeklyChartEnabled
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
         setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
@@ -420,7 +420,6 @@ private object SettingsPreferencesKeys {
     val nutrientsOrder = stringPreferencesKey("settings:nutrientsOrder")
     val secureScreen = booleanPreferencesKey("settings:secureScreen")
     val homeCardOrder = stringPreferencesKey("settings:homeCardOrder")
-    val expandGoalCard = booleanPreferencesKey("settings:expandGoalCard")
     val optimizedGoalDisplayEnabled =
         booleanPreferencesKey("settings:optimizedGoalDisplayEnabled")
     val goalCardModeSwitchingEnabled = booleanPreferencesKey("settings:goalCardModeSwitchingEnabled")
@@ -470,6 +469,7 @@ private object SettingsPreferencesKeys {
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val foodEntryAmountPickerStyle = stringPreferencesKey("settings:foodEntryAmountPickerStyle")
     val weeklyDetailsStyle = stringPreferencesKey("settings:weeklyDetailsStyle")
+    val weeklyChartEnabled = booleanPreferencesKey("settings:weeklyChartEnabled")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
     val todayEnergyGoalAdjustmentEpochDay =
