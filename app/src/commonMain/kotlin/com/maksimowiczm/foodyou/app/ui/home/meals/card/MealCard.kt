@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -133,23 +134,59 @@ internal fun MealCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = meal.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (showTime) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    // Keep the slot when the toggle is hidden so meal names stay aligned
+                    // across cards and do not jump when selection mode starts.
+                    if (meal.foods.isNotEmpty() && !isSelectionMode) {
+                        IconButton(
+                            onClick = onToggleCollapsed,
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                imageVector =
+                                    if (isCollapsed) {
+                                        Icons.Default.KeyboardArrowDown
+                                    } else {
+                                        Icons.Default.KeyboardArrowUp
+                                    },
+                                contentDescription =
+                                    stringResource(
+                                        if (isCollapsed) {
+                                            Res.string.action_expand_meal
+                                        } else {
+                                            Res.string.action_collapse_meal
+                                        }
+                                    ),
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.size(32.dp))
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = timeString,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.outline,
-                            fontWeight = FontWeight.Normal,
+                            text = meal.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        if (showTime) {
+                            Text(
+                                text = timeString,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.outline,
+                                fontWeight = FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
 
@@ -185,31 +222,6 @@ internal fun MealCard(
                             modifier = Modifier.size(22.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                    if (meal.foods.isNotEmpty() && !isSelectionMode) {
-                        IconButton(
-                            onClick = onToggleCollapsed,
-                            modifier = Modifier.size(32.dp),
-                        ) {
-                            Icon(
-                                imageVector =
-                                    if (isCollapsed) {
-                                        Icons.Default.KeyboardArrowDown
-                                    } else {
-                                        Icons.Default.KeyboardArrowUp
-                                    },
-                                contentDescription =
-                                    stringResource(
-                                        if (isCollapsed) {
-                                            Res.string.action_expand_meal
-                                        } else {
-                                            Res.string.action_collapse_meal
-                                        }
-                                    ),
-                                modifier = Modifier.size(22.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
                 }
             }
