@@ -6,6 +6,24 @@ import kotlinx.coroutines.test.*
 import org.junit.Test
 
 class NativeGenerationTest {
+    @Test fun localizationAnswerIsReturnedAsRawTextRatherThanParsedAsWeight() = runTest {
+        val generation = NativeGeneration(backgroundScope) { error("Must not cancel") }
+        generation.chunk("```json\n[{\"box_2d\":[465,626,")
+        generation.chunk("563,786]}]\n```")
+        generation.finish()
+        val answer = assertIs<NativeModelResponse.Answer>(generation.awaitResponse())
+        assertFalse(answer.truncated)
+        assertEquals(ScaleDisplayBox(465,626,563,786), parseScaleDisplayBox(answer.text))
+    }
+
+    @Test fun overflowingLocalizationCannotBecomeAnApparentlyValidDisplayBox() = runTest {
+        val generation = NativeGeneration(backgroundScope) { error("Must not cancel") }
+        generation.chunk("""{"box_2d":[465,626,563,786]}""")
+        generation.chunk("x".repeat(16_384))
+        generation.finish()
+        assertTrue(assertIs<NativeModelResponse.Answer>(generation.awaitResponse()).truncated)
+    }
+
     @Test fun successfulGenerationDoesNotCancelAndIgnoresLateCallbacks() = runTest {
         val generation = NativeGeneration(backgroundScope) { error("Must not cancel completed generation") }
         generation.chunk("""{"value":269,"unit":"g"}""")

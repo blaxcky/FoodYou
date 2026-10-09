@@ -60,11 +60,21 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
 
     /** Keeps every model answer, not only rejected ones, so unreadable results are explainable. */
     @Synchronized
-    fun recordResponse(outcome: String, model: String, imageSize: String, visionBackend: String, response: String) {
+    fun recordResponse(outcome: String, model: String, imageSize: String, visionBackend: String, response: String, stage: String = "read") {
         try {
             append(File(directory, "responses.log"), listOf(
-                "${System.currentTimeMillis()} result=$outcome model=$model image=$imageSize vision=$visionBackend" +
+                "${System.currentTimeMillis()} result=$outcome model=$model image=$imageSize vision=$visionBackend stage=$stage" +
                     " raw=${JsonPrimitive(response.take(2_000))}",
+            ))
+        } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
+    }
+
+    @Synchronized
+    fun recordImagePreparation(originalSize: String, cropSize: String, box: ScaleDisplayBox) {
+        try {
+            append(File(directory, "images.log"), listOf(
+                "${System.currentTimeMillis()} original=$originalSize crop=$cropSize" +
+                    " box_2d=[${box.top},${box.left},${box.bottom},${box.right}] padding=0.35",
             ))
         } catch (_: Exception) { /* Diagnostics must never break recognition. */ }
     }
@@ -108,6 +118,9 @@ internal class AiDiagnostics(private val context: Context, private val worker: B
             appendLine()
             appendLine("Letzte Modellantworten (alle Ergebnisse mit Modell und Vision-Backend, JSON-kodiert):")
             appendLine(readLog("responses.log"))
+            appendLine()
+            appendLine("Anzeigeausschnitte (orientiertes Ausgangsbild, Modellbild und normalisierter Rahmen):")
+            appendLine(readLog("images.log"))
             appendLine()
             appendLine("Native LiteRT-Meldungen des KI-Prozesses (u. a. tatsächliche Bildgröße für Gemma):")
             appendLine(readLog("native.log"))

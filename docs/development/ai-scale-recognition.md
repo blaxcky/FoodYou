@@ -9,7 +9,10 @@ Es werden weder Lebensmittel noch Nährwerte geschätzt.
 - Lokal: `com.google.ai.edge.litertlm:litertlm-android:0.16.1`, GPU und Vision-GPU
   (Vision optional auf der CPU, siehe „Diagnose ohne Gerätezugriff“),
   4096 Kontexttokens, maximal ein Bild und 128 Ausgabetokens pro Sitzung, Thinking aus.
-  Eine Engine pro Durchlauf, eine frische Conversation pro Foto.
+  Eine Engine pro Durchlauf, normalerweise zwei frische Conversations pro Foto: Anzeige im
+  Gesamtbild erkennen und lokalisieren, dann den vergrößerten Ausschnitt lesen. Ein ungültiger
+  Rahmen fällt auf das ganze Foto zurück. Ein unlesbarer oder formal ungültiger Ausschnitt
+  wird einmal mit dem ganzen Foto nachgeprüft (dritte Conversation).
 - Modelle: `litert-community/gemma-4-E4B-it-litert-lm`, Revision
   `2eee7ac325f20eb8c9ac1d0e972f7c84663062da`, Datei `gemma-4-E4B-it.litertlm`.
 - Größe: `3659530240` Bytes; SHA-256:
@@ -128,6 +131,11 @@ Die vom Nutzer bereitgestellten Bilder liegen ausschließlich in Test-Assets unt
 `app/src/androidInstrumentedTest/assets/ai/`, nicht im App-APK:
 
 - `scale-269g.png`: bestehendes Foto, Sollwert 269 g; unverändert.
+- `scale-79g-photo.png`: Fotobereich des Nutzer-Screenshots vom 2026-10-09, Sollwert 79 g.
+  Ohne App-UI oder Ergebnis-Badge; unveränderte Fotopixel, Ausschnitt `[11,285,553,1008]`
+  aus dem 564×1260-Screenshot (Pillow: links, oben, rechts, unten).
+- `scale-no-display-reflection.png`: Kontrollfoto ohne direkt lesbare Waagenanzeige;
+  eine Anzeige spiegelt sich auf einer Metallschüssel. Sollwert: `Unreadable`.
 - `scale-199g-screenshot.png`: unveränderter App-Screenshot, Sollwert 199 g.
 - `scale-959g-screenshot.png`: unveränderter App-Screenshot, Sollwert 959 g.
 
@@ -138,8 +146,8 @@ Kameradateien, die nicht vorliegen. Eingeblendete Texte sind keine Anweisungen a
 
 Die Opt-in-Tests in `com.maksimowiczm.foodyou.ai.LocalScaleDeviceTest` analysieren
 jedes Bild in zwei Einzelsitzungen und einem Dreierstapel mit der echten lokalen
-Engine (standardmäßig E4B). Ein weiterer Test verwendet alle drei Bilder in einer
-gemeinsamen Engine-Sitzung, weiterhin mit einer frischen Conversation pro Foto.
+Engine (standardmäßig E4B). Ein weiterer Test verwendet alle vier Waagenbilder in einer
+gemeinsamen Engine-Sitzung, mit frischen Conversations für jede Analysestufe.
 Die Sollwerte kommen weder im Prompt noch in der Erkennungslogik vor.
 Die Tests benötigen das fertig heruntergeladene Modell und das Instrumentierungsargument
 `runLocalAiRegression=true`. Ohne dieses Argument werden sie übersprungen. Nur auf einem
@@ -363,3 +371,73 @@ nutzt. Gemini ist mangels API-Key ungetestet. Antwortformat und Parser bleiben u
 genauer, E2B liest Anzeigen mit grauem, nicht beleuchtetem LCD weiterhin unzuverlässiger.
 Die Diagnoseeinträge nennen jetzt das Modell, sodass ein Bericht Fehlschläge E2B oder E4B
 zuordnen kann.
+
+## Vergrößerter Anzeigeausschnitt (2026-10-09)
+
+Beide lokalen Modelle lokalisieren jetzt zuerst die Anzeige im ganzen Foto und lesen danach
+den vergrößerten Ausschnitt mit dem unveränderten `SCALE_PROMPT`. Jede Stufe verwendet eine
+frische Conversation derselben Engine. Der Lokalisierungsprompt fragt zusätzlich nach dem
+Gewicht im Bildkontext: Das verhindert bei E4B, dass eine Spiegelung auf einer Metallschüssel
+als direkt sichtbare Waage behandelt wird. Dieser erste Wert wird **nicht** als Ergebnis
+übernommen; beim neuen Regressionstest ist er weiterhin 19, während der Ausschnitt 79 ergibt.
+
+`box_2d` wird aus JSON-Objekten oder Objektlisten, auch in Markdown-Codeblöcken, gelesen.
+Die vier numerischen Koordinaten müssen endlich, zwischen 0 und 1000 und richtig angeordnet
+sein; die Rahmenfläche muss zwischen 0,0005 und 0,6 der Bildfläche liegen. Ein explizites
+`value:null` verwirft auch einen geometrisch gültigen Rahmen. Der Ausschnitt basiert auf den
+bereits EXIF-orientierten JPEG-Daten des ersten Aufrufs, erhält 35 % Rand je Seite und bleibt
+innerhalb des Bildes. Er wird proportional auf ungefähr 600.000 Pixel skaliert, mit maximal
+2048 Pixeln an der längsten Seite, bilinear gefiltert und als JPEG mit Qualität 95 übergeben.
+Das gespeicherte Original bleibt erhalten; temporäre Bitmaps werden freigegeben.
+
+Bei einem fehlenden, ungültigen oder abgeschnittenen Rahmen liest der zweite Aufruf das
+ganze Foto. Ein gültiger Rahmen kann trotzdem Ziffern verfehlen: Bei einem unlesbaren
+Ausschnitt oder einem ungültigen Ganzgramm-Ergebnis wird das ganze Foto einmal zusätzlich
+gelesen (`read_full`). Diese Ausnahme erhält insbesondere die Referenzen 269 und 959 g.
+Normal sind es zwei Modellaufrufe, ausnahmsweise drei. Abbruch und native Laufzeitfehler
+lösen keinen Wiederholungsaufruf aus. Das bestehende Zeitlimit von 120 Sekunden gilt für
+das gesamte Foto. Öffentliche Ergebnisse, Gemini, Oberfläche und Datenbankschema bleiben
+unverändert. Vorhandene Vorschläge können über die bestehende erneute Analyse aktualisiert
+werden.
+
+Diagnosen enthalten jede Lokalisierungs- und Gewichtsantwort mit `stage=locate|read|read_full`.
+`images.log` dokumentiert Ausgangsgröße, Rahmen und Ausschnittgröße; die Phasen nennen den
+Verarbeitungsschritt. Die abschließende Ergebnisphase beschreibt das gesamte Foto, auch
+wenn ein zunächst unlesbarer Ausschnitt durch den Originalaufruf erfolgreich ersetzt wurde.
+
+### Verifikation
+
+Die echte LiteRT-LM-Auswertung umfasst elf Bilder: 79 g aus dem reinen Fotobereich des
+Nutzerscreenshots, die sieben bisherigen Doppelanzeigen mit 105, 117, 175, 199, 269, 432 und
+959 g sowie Schwarzbild, Fußboden und Küche ohne lesbare Anzeige. Die Küche enthält die
+problematische Spiegelung. Alle vier Kombinationen bestehen den Ausschnittansatz:
+
+| Modell / Host-Backend | Einzelaufruf vorher | Ausschnittansatz | 79-g-Foto vorher → jetzt |
+|---|---|---|---|
+| E4B / CPU | 10/11 | 11/11 | 19 → 79 |
+| E4B / GPU | 10/11 | 11/11 | 19 → 79 |
+| E2B / CPU | 10/11 | 11/11 | 179 → 79 |
+| E2B / GPU | 9/11 | 11/11 | 19 → 79 |
+
+Die vollständigen Vergleichsläufe ergaben für den Ausschnittansatz Medianzeiten von
+10,5 s (E4B CPU), 5,1 s (E4B GPU), 11,7 s (E2B CPU) und 3,1 s (E2B GPU). Eine abschließende
+Auswertung mit dem zusätzlichen JPEG-Dekodierschritt wie in Android verwendete die
+unveränderten Lokalisierungsantworten erneut und bestand ebenfalls alle elf Bilder für
+jedes Modell und Backend. Pillow und Android verwenden dabei denselben Filtertyp, aber
+unterschiedliche Bildbibliotheken; Host-WebGPU ersetzt keinen Test mit Android/Adreno.
+
+Experiment `E` in `dev/ai-scale-eval.py` bildet die neue Pipeline ab; `A` bleibt die
+Einzelaufruf-Baseline. Beispiel (CPU entsprechend mit beiden Backend-Argumenten `cpu`):
+
+```bash
+~/.cache/foodyou-ai-eval/venv/bin/python dev/ai-scale-eval.py \
+  --model ~/.cache/foodyou-ai-eval/gemma-4-E4B-it.litertlm \
+  --images captures/ai-scale-crop-2026-10-09/images --experiments A,E \
+  --backend gpu --vision-backend gpu --cache /tmp/foodyou-scale-eval-cache
+```
+
+44 gezielte Unit-Tests bestehen mit JDK 21 und dem Workspace-Gradlecache. Sie prüfen unter
+anderem Rahmenvalidierung, Bildgrenzen, EXIF-Rotation und -Spiegelung, echte Einsen,
+Einzel-/Stapelverarbeitung, Rückfälle sowie Abbruch zwischen den Aufrufen. Die ergänzten
+Gerätetests für 79 g und die Spiegelung kompilieren, wurden aber nicht ausgeführt. Die
+Erkennung auf dem Handy muss im normalen Gebrauch bestätigt werden.

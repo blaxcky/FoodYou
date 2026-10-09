@@ -89,11 +89,18 @@ class LocalAiProtocolTest {
         val worker = AiDiagnostics(context, worker = true)
         worker.recordResponse("unreadable", "E2B", "960x1280", "gpu", "{\"value\":null}")
         worker.recordResponse("recognized", "E4B", "960x1280", "cpu", "{\"value\":117,\"unit\":\"g\"}")
+        worker.recordResponse("localized", "E4B", "542x723", "gpu",
+            "{\"value\":19,\"box_2d\":[465,617,563,762]}", stage = "locate")
+        worker.recordImagePreparation("542x723", "818x733", ScaleDisplayBox(465,617,563,762))
+        worker.recordResponse("recognized", "E4B", "818x733", "gpu", "{\"value\":79,\"unit\":\"g\"}")
 
         val report = AiDiagnostics(context).report()
 
-        assertTrue(report.contains("result=unreadable model=E2B image=960x1280 vision=gpu raw=\"{\\\"value\\\":null}\""))
+        assertTrue(report.contains("result=unreadable model=E2B image=960x1280 vision=gpu stage=read raw=\"{\\\"value\\\":null}\""))
         assertTrue(report.contains("result=recognized model=E4B image=960x1280 vision=cpu"))
+        assertTrue(report.contains("result=localized model=E4B image=542x723 vision=gpu stage=locate"))
+        assertTrue(report.contains("result=recognized model=E4B image=818x733 vision=gpu stage=read"))
+        assertTrue(report.contains("original=542x723 crop=818x733 box_2d=[465,617,563,762] padding=0.35"))
         assertTrue(report.contains("Native LiteRT-Meldungen"))
     }
 

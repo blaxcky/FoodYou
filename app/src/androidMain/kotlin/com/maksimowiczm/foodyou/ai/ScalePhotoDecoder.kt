@@ -7,6 +7,42 @@ import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
+
+/** Crops the already oriented input; the stored camera file and its EXIF metadata are untouched. */
+internal fun cropScaleDisplay(photo: ScaleModelImage, box: ScaleDisplayBox): ScaleModelImage {
+    val source = requireNotNull(BitmapFactory.decodeByteArray(photo.bytes, 0, photo.bytes.size))
+    var cropped: Bitmap? = null
+    var scaled: Bitmap? = null
+    try {
+        val left = box.left / 1000.0 * source.width
+        val top = box.top / 1000.0 * source.height
+        val right = box.right / 1000.0 * source.width
+        val bottom = box.bottom / 1000.0 * source.height
+        val padX = (right - left) * 0.35
+        val padY = (bottom - top) * 0.35
+        val x = (left - padX).toInt().coerceIn(0, source.width - 1)
+        val y = (top - padY).toInt().coerceIn(0, source.height - 1)
+        val endX = (right + padX + 0.5).toInt().coerceIn(x + 1, source.width)
+        val endY = (bottom + padY + 0.5).toInt().coerceIn(y + 1, source.height)
+        cropped = Bitmap.createBitmap(source, x, y, endX - x, endY - y)
+        val scale = minOf(sqrt(600_000.0 / (cropped.width.toDouble() * cropped.height)),
+            2048.0 / maxOf(cropped.width, cropped.height))
+        scaled = Bitmap.createScaledBitmap(cropped,
+            (cropped.width * scale).roundToInt().coerceIn(1, 2048),
+            (cropped.height * scale).roundToInt().coerceIn(1, 2048), true)
+        val bytes = ByteArrayOutputStream().use { output ->
+            check(scaled.compress(Bitmap.CompressFormat.JPEG, 95, output))
+            output.toByteArray()
+        }
+        return ScaleModelImage(bytes, "${scaled.width}x${scaled.height}")
+    } finally {
+        if (scaled != null && scaled !== cropped && scaled !== source) scaled.recycle()
+        if (cropped != null && cropped !== source) cropped.recycle()
+        source.recycle()
+    }
+}
 
 internal fun decodeScalePhoto(directory: File, path: String): ByteArray {
     val file = File(directory, path).canonicalFile

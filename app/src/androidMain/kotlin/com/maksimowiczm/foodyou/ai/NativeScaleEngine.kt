@@ -56,17 +56,22 @@ internal class NativeGeneration(private val cancellationScope: CoroutineScope, p
         }
     }
 
-    suspend fun awaitResult(): ScaleRecognitionResult {
+    suspend fun awaitResponse(): NativeModelResponse {
         completion.await()
         val pendingCancel = synchronized(lock) { cancelCall }
         pendingCancel?.await()
         return synchronized(lock) {
             when {
-                cancelled -> ScaleRecognitionResult.Error("Analyse abgebrochen.", fatal = true)
-                failed -> ScaleRecognitionResult.Error("Gemma meldet einen Verarbeitungsfehler. Bitte den KI-Diagnosebericht prüfen.", fatal = true)
-                else -> parseScaleReading(response.toString(), truncated = overflow)
+                cancelled -> NativeModelResponse.Failure(ScaleRecognitionResult.Error("Analyse abgebrochen.", fatal = true))
+                failed -> NativeModelResponse.Failure(ScaleRecognitionResult.Error("Gemma meldet einen Verarbeitungsfehler. Bitte den KI-Diagnosebericht prüfen.", fatal = true))
+                else -> NativeModelResponse.Answer(response.toString(), truncated = overflow)
             }
         }
+    }
+
+    suspend fun awaitResult(): ScaleRecognitionResult = when (val answer = awaitResponse()) {
+        is NativeModelResponse.Failure -> answer.error
+        is NativeModelResponse.Answer -> parseScaleReading(answer.text, answer.truncated)
     }
 
     fun responseText(): String = synchronized(lock) { response.toString() }
@@ -83,8 +88,38 @@ internal class LiteRtScaleEngine private constructor(
     @Volatile private var cancellationRequested = false
 
     override suspend fun recognize(bytes: ByteArray, imageSize: String, timing: PhotoTiming): ScaleRecognitionResult {
+        val result = analyzeLocalScalePhoto(
+            photo = ScaleModelImage(bytes, imageSize),
+            isCancelled = { cancellationRequested },
+            crop = { photo, box ->
+                cropScaleDisplay(photo, box).also { cropped ->
+                    diagnostics.record("display_cropped")
+                    diagnostics.recordImagePreparation(photo.imageSize, cropped.imageSize, box)
+                }
+            },
+            generate = { photo, prompt, stage -> generate(photo, prompt, stage, timing) },
+        )
+        val outcome = when (result) {
+            is ScaleRecognitionResult.Recognized -> "recognized"
+            ScaleRecognitionResult.Unreadable -> "unreadable"
+            is ScaleRecognitionResult.Error -> result.kind.name
+        }
+        diagnostics.record("result_$outcome")
+        return result
+    }
+
+    private suspend fun generate(
+        photo: ScaleModelImage,
+        prompt: String,
+        stage: String,
+        timing: PhotoTiming,
+    ): NativeModelResponse {
+        currentCoroutineContext().ensureActive()
+        if (cancellationRequested) return NativeModelResponse.Failure(
+            ScaleRecognitionResult.Error("Analyse abgebrochen.", fatal = true),
+        )
         val started = System.currentTimeMillis()
-        diagnostics.record("conversation_create")
+        diagnostics.record("${stage}_conversation_create")
         val conversation = engine.createConversation(ConversationConfig(
             maxOutputToken = 128,
             thinkingConfig = ThinkingConfig(enableThinking = false),
@@ -92,11 +127,14 @@ internal class LiteRtScaleEngine private constructor(
         ))
         val current = NativeGeneration(cancellationScope) { conversation.cancelProcess() }
         try {
-            diagnostics.record("generation_start")
+            if (cancellationRequested) return NativeModelResponse.Failure(
+                ScaleRecognitionResult.Error("Analyse abgebrochen.", fatal = true),
+            )
+            diagnostics.record("${stage}_generation_start")
             try {
                 timing.generationStarted()
                 conversation.sendMessageAsync(
-                    Contents.of(Content.ImageBytes(bytes), Content.Text(SCALE_PROMPT)),
+                    Contents.of(Content.ImageBytes(photo.bytes), Content.Text(prompt)),
                     object : MessageCallback {
                         override fun onMessage(message: Message) {
                             val text = message.toString()
@@ -111,8 +149,13 @@ internal class LiteRtScaleEngine private constructor(
             // Do not call cancelProcess before sendMessageAsync has started generation.
             generation = current
             if (cancellationRequested) current.cancel()
-            val result = current.awaitResult()
-            if (result is ScaleRecognitionResult.Error && result.kind in setOf(
+            val response = current.awaitResponse()
+            val result = when (response) {
+                is NativeModelResponse.Failure -> response.error
+                is NativeModelResponse.Answer -> if (stage != "locate")
+                    parseScaleReading(response.text, response.truncated) else null
+            }
+            if (stage != "locate" && result is ScaleRecognitionResult.Error && result.kind in setOf(
                     ScaleErrorKind.ResponseFormat,
                     ScaleErrorKind.NonWholeGrams,
                     ScaleErrorKind.Truncated,
@@ -124,15 +167,17 @@ internal class LiteRtScaleEngine private constructor(
                 is ScaleRecognitionResult.Recognized -> "recognized"
                 ScaleRecognitionResult.Unreadable -> "unreadable"
                 is ScaleRecognitionResult.Error -> result.kind.name
+                null -> if (response is NativeModelResponse.Answer && !response.truncated &&
+                    parseScaleDisplayBox(response.text) != null) "localized" else "full_image_fallback"
             }
-            diagnostics.record("result_$outcome")
+            diagnostics.record("${stage}_result_$outcome")
             // Every answer is kept (bounded) so an unreadable result can be explained from one report.
-            diagnostics.recordResponse(outcome, modelName, imageSize, visionBackend, current.responseText())
+            diagnostics.recordResponse(outcome, modelName, photo.imageSize, visionBackend, current.responseText(), stage)
             diagnostics.recordNativeLog(started)
-            return result
+            return response
         } finally {
             generation = null
-            diagnostics.record("conversation_close")
+            diagnostics.record("${stage}_conversation_close")
             conversation.close()
         }
     }

@@ -2,16 +2,18 @@
 """Host-side evaluation of the local Gemma scale recognition with the real LiteRT-LM runtime.
 
 Runs the pinned .litertlm model against a folder of photos whose file names carry the expected
-weight (for example `dual-117g.png`). Sampler, thinking, context, and output limits match
+weight (for example `dual-117g.png`; `*-0g.png` expects no readable scale).
+Sampler, thinking, context, and output limits match
 `LiteRtScaleEngine`. CPU and host GPU (WebGPU) are available; neither is identical to the
 Adreno GPU path on a phone, so this separates prompt and image questions from device runtime
 questions but does not replace a device run.
 
 Experiments:
-  A  SCALE_PROMPT on the full photo (production; `--prompt-rev` selects an older revision)
+  A  SCALE_PROMPT on the full photo (single-stage baseline; `--prompt-rev` selects an older revision)
   B  transcription prompt on the full photo, selection in code
   C  transcription prompt on a manual display crop (`--manual-boxes`)
   D  Gemma box_2d localization, crop, transcription prompt, selection in code
+  E  production local pipeline: box_2d localization, padded crop, SCALE_PROMPT
 
 Setup (outside the repository, see docs/development/ai-scale-recognition.md):
   python3 -m venv ~/.cache/foodyou-ai-eval/venv
@@ -21,6 +23,7 @@ Setup (outside the repository, see docs/development/ai-scale-recognition.md):
 import argparse
 import io
 import json
+import math
 import re
 import subprocess
 import sys
@@ -148,13 +151,21 @@ def select_reading(readings):
 
 
 def parse_box(text):
-    obj = extract_json(text)
+    clean = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        obj = json.loads(clean)
+    except json.JSONDecodeError:
+        return None
     if isinstance(obj, list):
         obj = next((item for item in obj if isinstance(item, dict) and "box_2d" in item), None)
     if not isinstance(obj, dict):
         return None
+    if "value" in obj and obj["value"] is None:
+        return None
     box = obj.get("box_2d")
-    if not (isinstance(box, list) and len(box) == 4 and all(isinstance(v, (int, float)) for v in box)):
+    if not (isinstance(box, list) and len(box) == 4 and all(
+        type(v) in (int, float) and math.isfinite(v) and 0 <= v <= 1000 for v in box
+    )):
         return None
     ymin, xmin, ymax, xmax = (int(v) for v in box)
     if not (0 <= ymin < ymax <= 1000 and 0 <= xmin < xmax <= 1000):
@@ -190,7 +201,7 @@ def full_photo(path, source_long_side=None, rotate=0):
     return image
 
 
-def crop_photo(image, box, padding):
+def crop_photo(image, box, padding, production=False):
     ymin, xmin, ymax, xmax = box
     width, height = image.size
     left, right = xmin / 1000 * width, xmax / 1000 * width
@@ -202,6 +213,11 @@ def crop_photo(image, box, padding):
     )
     crop = image.crop(region)
     scale = (CROP_TARGET_PIXELS / (crop.width * crop.height)) ** 0.5
+    if production:
+        scale = min(scale, 2048 / max(crop.size))
+        size = (max(1, int(crop.width * scale + 0.5)), max(1, int(crop.height * scale + 0.5)))
+        # Bitmap.createScaledBitmap(filter=true) uses bilinear filtering in the app.
+        return crop.resize(size, Image.BILINEAR), region
     size = (max(1, int(crop.width * scale)), max(1, int(crop.height * scale)))
     return crop.resize(size, Image.LANCZOS), region
 
@@ -254,7 +270,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", required=True)
     parser.add_argument("--images", required=True, type=Path)
-    parser.add_argument("--experiments", default="A,B,C,D")
+    parser.add_argument("--experiments", default="A,E")
     parser.add_argument("--manual-boxes", type=Path, help="JSON: {file name: [ymin,xmin,ymax,xmax]}")
     parser.add_argument("--padding", type=float, default=0.35, help="crop margin per side, relative to box")
     parser.add_argument("--threads", type=int, default=8)
@@ -289,6 +305,8 @@ def main():
     rows = []
     for photo in photos:
         expected = int(re.search(r"-(\d+)g\.\w+$", photo.name).group(1))
+        if expected == 0:
+            expected = "unreadable"
         image = full_photo(photo, args.source_long_side, args.rotate)
         full = jpeg(fit_patch_budget(image) if args.presize else image)
         for experiment in experiments:
@@ -300,7 +318,7 @@ def main():
             elif experiment == "B":
                 text, elapsed = gemma.generate(full, readings_prompt)
                 row.update(raw=text, result=select_reading(parse_readings(text)), seconds=round(elapsed, 1))
-            elif experiment in ("C", "D"):
+            elif experiment in ("C", "D", "E"):
                 elapsed_total = 0.0
                 if experiment == "C":
                     box = manual.get(photo.name)
@@ -312,17 +330,31 @@ def main():
                     box = parse_box(locate_text)
                     row["locate_raw"] = locate_text
                 row["box"] = box
+                read_prompt = legacy_prompt if experiment == "E" else readings_prompt
                 if box is None:
-                    text, elapsed = gemma.generate(full, readings_prompt)
+                    text, elapsed = gemma.generate(full, read_prompt)
                     row["fallback"] = "full_image"
                 else:
-                    crop, region = crop_photo(image, box, args.padding)
+                    # Android crops the JPEG bytes prepared for the first model call, not
+                    # the uncompressed original. Preserve that extra decode/encode here.
+                    crop_source = Image.open(io.BytesIO(full)).convert("RGB") if experiment == "E" else image
+                    crop, region = crop_photo(crop_source, box, args.padding, production=experiment == "E")
                     row["crop"] = f"{crop.width}x{crop.height} from {region}"
                     if args.save_crops:
                         crop.save(args.save_crops / f"{experiment}-{photo.stem}.jpg", quality=95)
-                    text, elapsed = gemma.generate(jpeg(crop), readings_prompt)
+                    text, elapsed = gemma.generate(jpeg(crop), read_prompt)
                 elapsed_total += elapsed
-                row.update(raw=text, result=select_reading(parse_readings(text)), seconds=round(elapsed_total, 1))
+                result = parse_legacy(text) if experiment == "E" else select_reading(parse_readings(text))
+                if experiment == "E" and box is not None and result in (
+                    "unreadable", "error_format", "error_non_whole_grams",
+                ):
+                    row["crop_raw"] = text
+                    row["crop_result"] = result
+                    row["fallback"] = "full_image_after_crop"
+                    text, elapsed = gemma.generate(full, legacy_prompt)
+                    elapsed_total += elapsed
+                    result = parse_legacy(text)
+                row.update(raw=text, result=result, seconds=round(elapsed_total, 1))
             row["ok"] = row["result"] == expected
             rows.append(row)
             print(json.dumps(row, ensure_ascii=False), flush=True)
