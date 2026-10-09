@@ -50,9 +50,12 @@ class MainActivity : FoodYouAbstractActivity() {
 internal fun Intent?.toLaunchRequest(): FoodYouLaunchRequest? {
     val launchAction =
         when (this?.action) {
+            ACTION_OPEN_HOME -> FoodYouLaunchAction.Home
             ACTION_SCAN_BARCODE -> FoodYouLaunchAction.ScanBarcode
             ACTION_QUICK_CAPTURE_PHOTOS -> FoodYouLaunchAction.QuickCapturePhotos
             else -> return null
         }
     return FoodYouLaunchRequest(action = launchAction, nonce = System.nanoTime())
 }
+
+internal const val ACTION_OPEN_HOME = "com.maksimowiczm.foodyou.action.OPEN_HOME"

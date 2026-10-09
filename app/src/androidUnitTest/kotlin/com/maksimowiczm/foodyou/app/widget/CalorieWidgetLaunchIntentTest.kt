@@ -6,12 +6,16 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.maksimowiczm.foodyou.app.infrastructure.android.ACTION_OPEN_HOME
 import com.maksimowiczm.foodyou.app.infrastructure.android.ACTION_QUICK_CAPTURE_CAMERA
 import com.maksimowiczm.foodyou.app.infrastructure.android.ACTION_SCAN_BARCODE
 import com.maksimowiczm.foodyou.app.infrastructure.android.MainActivity
 import com.maksimowiczm.foodyou.app.infrastructure.android.QuickCaptureCameraActivity
+import com.maksimowiczm.foodyou.app.infrastructure.android.toLaunchRequest
+import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.junit.After
@@ -27,7 +31,7 @@ class CalorieWidgetLaunchIntentTest {
     }
 
     @Test
-    fun widgetPendingIntentOpensMainActivity() {
+    fun widgetPendingIntentOpensHomeInMainActivity() {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         calorieWidgetLaunchPendingIntent(context).send()
@@ -37,10 +41,23 @@ class CalorieWidgetLaunchIntentTest {
                 shadowOf(context.applicationContext as Application).nextStartedActivity
             )
         assertEquals(ComponentName(context, MainActivity::class.java), startedIntent.component)
-        assertEquals(Intent.ACTION_MAIN, startedIntent.action)
-        assertTrue(Intent.CATEGORY_LAUNCHER in startedIntent.categories.orEmpty())
+        assertEquals(ACTION_OPEN_HOME, startedIntent.action)
+        assertEquals(FoodYouLaunchAction.Home, startedIntent.toLaunchRequest()?.action)
         assertTrue(startedIntent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(startedIntent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+    }
+
+    @Test
+    fun eachWidgetLaunchRequestsHomeAgain() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = calorieWidgetLaunchIntent(context)
+
+        val first = assertNotNull(intent.toLaunchRequest())
+        val second = assertNotNull(intent.toLaunchRequest())
+
+        assertEquals(FoodYouLaunchAction.Home, first.action)
+        assertEquals(first.action, second.action)
+        assertNotEquals(first.nonce, second.nonce)
     }
 
     @Test

@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.app.infrastructure.android.ACTION_OPEN_HOME
 import com.maksimowiczm.foodyou.app.infrastructure.android.MainActivity
 import com.maksimowiczm.foodyou.app.infrastructure.android.barcodeScanIntent
 import com.maksimowiczm.foodyou.app.infrastructure.android.quickCaptureCameraIntent
@@ -274,8 +275,7 @@ private fun widgetPendingIntent(context: Context, requestCode: Int, intent: Inte
 
 internal fun calorieWidgetLaunchIntent(context: Context): Intent =
     Intent(context, MainActivity::class.java).apply {
-        action = Intent.ACTION_MAIN
-        addCategory(Intent.CATEGORY_LAUNCHER)
+        action = ACTION_OPEN_HOME
         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
 

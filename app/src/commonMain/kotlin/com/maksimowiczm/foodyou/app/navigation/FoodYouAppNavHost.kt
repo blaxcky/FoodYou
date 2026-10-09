@@ -82,6 +82,8 @@ fun FoodYouAppNavHost(
 
     LaunchedEffect(launchRequest?.nonce) {
         when (launchRequest?.action) {
+            FoodYouLaunchAction.Home -> navController.openHome()
+
             FoodYouLaunchAction.ScanBarcode -> {
                 val now = dateProvider.now()
                 val meal =
@@ -620,6 +622,13 @@ fun FoodYouAppNavHost(
                 onBack = { navController.popBackStackInclusive<GoalsPersonalization>() },
             )
         }
+    }
+}
+
+internal fun NavController.openHome() {
+    navigate(Home) {
+        popUpTo<Home>()
+        launchSingleTop = true
     }
 }
 
