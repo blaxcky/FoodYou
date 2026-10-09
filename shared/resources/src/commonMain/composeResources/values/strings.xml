@@ -154,6 +154,7 @@
     <string name="error_end_date_before_start_date">End date must be on or after the start date.</string>
     <string name="weekly_so_far">So far</string>
     <string name="weekly_difference">Difference</string>
+    <string name="weekly_sum">Sum</string>
     <string name="weekly_percent">Percent</string>
     <string name="weekly_diet_goal_reached">Diet deficit reached</string>
     <string name="headline_weekly_details_style">Weekly details</string>

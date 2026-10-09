@@ -327,6 +327,7 @@
     <string name="error_end_date_before_start_date">Das Enddatum muss am oder nach dem Startdatum liegen.</string>
     <string name="weekly_so_far">Bisher</string>
     <string name="weekly_difference">Differenz</string>
+    <string name="weekly_sum">Summe</string>
     <string name="weekly_percent">Prozent</string>
     <string name="weekly_diet_goal_reached">Diät-Defizit erreicht</string>
     <string name="headline_weekly_details_style">Wochendetails</string>

@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
@@ -106,6 +107,7 @@ import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.weekly_diet_goal_reached
 import foodyou.app.generated.resources.weekly_difference
+import foodyou.app.generated.resources.weekly_sum
 import foodyou.app.generated.resources.weekly_per_day
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.weekly_reached
@@ -839,14 +841,20 @@ private fun WeeklyDetailsRow(
 
 /**
  * One row per day: the difference to the goal as a bar that grows left of the center line below
- * the goal and right of it above the goal, scaled to the largest difference of the week. Goal and
- * consumed energy are already visible in the weekly chart, so only the signed difference is shown.
- * Fine lines between the rows tie each bar to its day and its number.
+ * the goal and right of it above the goal. Goal and consumed energy are already visible in the
+ * weekly chart, so only the signed difference is shown. Fine lines between the rows tie each bar
+ * to its day and its number.
+ *
+ * A final row sums the differences of the shown days, which only run up to today, so it matches
+ * the remaining or exceeded energy of the weekly footer. All rows share one scale, so the sum can
+ * be compared with the single days.
  */
 @Composable
 internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
     val dateFormatter = LocalDateFormatter.current
-    val maxDifference = days.maxOfOrNull { abs(it.difference) }?.coerceAtLeast(1) ?: 1
+    val sum = days.sumOf { it.difference }
+    val maxDifference =
+        maxOf(days.maxOfOrNull { abs(it.difference) } ?: 0, abs(sum)).coerceAtLeast(1)
     Column(modifier = modifier.fillMaxWidth()) {
         days.forEachIndexed { index, day ->
             if (index > 0) {
@@ -860,6 +868,18 @@ internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Mod
                 dietGoalReached = day.dietGoalReached,
             )
         }
+        if (days.isNotEmpty()) {
+            HorizontalDivider(color = GoalsTrackColor)
+            WeeklyDifferenceBarRow(
+                day = "\u03A3",
+                dayDescription = stringResource(Res.string.weekly_sum),
+                difference = sum,
+                fraction = abs(sum).toFloat() / maxDifference,
+                locked = false,
+                dietGoalReached = false,
+                differenceFontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
@@ -871,6 +891,8 @@ private fun WeeklyDifferenceBarRow(
     locked: Boolean,
     dietGoalReached: Boolean,
     modifier: Modifier = Modifier,
+    dayDescription: String? = null,
+    differenceFontWeight: FontWeight = FontWeight.Medium,
 ) {
     val dietGoalReachedDescription = stringResource(Res.string.weekly_diet_goal_reached)
     val under = difference < 0
@@ -922,6 +944,12 @@ private fun WeeklyDifferenceBarRow(
         Row(modifier = Modifier.width(48.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = day,
+                modifier =
+                    if (dayDescription != null) {
+                        Modifier.semantics { contentDescription = dayDescription }
+                    } else {
+                        Modifier
+                    },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = if (dietGoalReached) DietGoalReachedTextColor else GoalsTextColor,
@@ -979,7 +1007,7 @@ private fun WeeklyDifferenceBarRow(
                     fontFeatureSettings = "tnum",
                     textAlign = TextAlign.End,
                 ),
-            fontWeight = FontWeight.Medium,
+            fontWeight = differenceFontWeight,
             color = differenceColor,
             maxLines = 1,
             softWrap = false,
