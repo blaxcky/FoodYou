@@ -142,6 +142,14 @@ internal class RoomProductRepository(
         productDao.setProductQuickCapture(id.id, isQuickCapture)
     }
 
+    override suspend fun hideProductStandardPortions(
+        productId: FoodId.Product,
+        hidePackage: Boolean,
+        hideServing: Boolean,
+    ) {
+        productDao.hideStandardPortions(productId.id, hidePackage, hideServing)
+    }
+
     override suspend fun replaceProductPortions(
         productId: FoodId.Product,
         sourceType: FoodSource.Type,
@@ -196,6 +204,8 @@ private fun ProductEntity.toModel(
         source = FoodSource(type = this.sourceType.toDomain(), url = this.sourceUrl),
         isFavorite = this.isFavorite,
         isQuickCapture = this.isQuickCapture,
+        isPackagePortionHidden = this.isPackagePortionHidden,
+        isServingPortionHidden = this.isServingPortionHidden,
         nutritionFacts = this.toNutritionFacts(),
     )
 
@@ -221,6 +231,8 @@ private fun Product.toEntity(): ProductEntity {
         isLiquid = isLiquid,
         isFavorite = isFavorite,
         isQuickCapture = isQuickCapture,
+        isPackagePortionHidden = isPackagePortionHidden,
+        isServingPortionHidden = isServingPortionHidden,
     )
 }
 

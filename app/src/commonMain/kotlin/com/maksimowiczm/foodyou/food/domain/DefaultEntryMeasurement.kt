@@ -1,18 +1,26 @@
 package com.maksimowiczm.foodyou.food.domain
 
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.entity.Food
+import com.maksimowiczm.foodyou.food.domain.entity.isStandardPortionHidden
 
 internal fun defaultEntryMeasurement(isLiquid: Boolean): Measurement =
     if (isLiquid) Measurement.Milliliter(100.0) else Measurement.Gram(100.0)
 
-internal fun defaultEntryMeasurement(food: Food, latestMeasurement: Measurement?): Measurement =
-    defaultEntryMeasurement(
+internal fun defaultEntryMeasurement(food: Food, latestMeasurement: Measurement?): Measurement {
+    if (latestMeasurement != null && food.isStandardPortionHidden(latestMeasurement.type)) {
+        food.weight(latestMeasurement)?.let { weight ->
+            return if (food.isLiquid) Measurement.Milliliter(weight) else Measurement.Gram(weight)
+        }
+    }
+    return defaultEntryMeasurement(
         isLiquid = food.isLiquid,
         totalWeight = food.totalWeight,
         servingWeight = food.servingWeight,
         latestMeasurement = latestMeasurement,
     )
+}
 
 internal fun defaultEntryMeasurement(
     isLiquid: Boolean,

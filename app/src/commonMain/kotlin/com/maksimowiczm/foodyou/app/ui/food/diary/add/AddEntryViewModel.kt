@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.ui.food.diary.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.event.EventBus
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
@@ -14,7 +15,7 @@ import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.food.domain.entity.Product
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
+import com.maksimowiczm.foodyou.food.domain.entity.isStandardPortionHidden
 import com.maksimowiczm.foodyou.food.domain.entity.Recipe
 import com.maksimowiczm.foodyou.food.domain.repository.FoodHistoryRepository
 import com.maksimowiczm.foodyou.food.domain.repository.ProductRepository
@@ -45,6 +46,7 @@ internal class AddEntryViewModel(
     foodHistoryRepository: FoodHistoryRepository,
     private val deleteFoodUseCase: DeleteFoodUseCase,
     private val productRepository: ProductRepository,
+    private val transactionProvider: TransactionProvider,
     observeMeasurementSuggestionsUseCase: ObserveMeasurementSuggestionsUseCase,
     mealRepository: MealRepository,
     private val dateProvider: DateProvider,
@@ -136,9 +138,20 @@ internal class AddEntryViewModel(
             )
 
     /** Stores the effective portions of the product as user overrides. */
-    fun savePortions(portions: List<ProductPortion>) {
+    fun savePortions(edit: PortionListEdit) {
         val productId = foodId as? FoodId.Product ?: return
-        viewModelScope.launch { productRepository.updateProductPortions(productId, portions) }
+        viewModelScope.launch {
+            transactionProvider.withTransaction {
+                productRepository.updateProductPortions(productId, edit.portions)
+                if (edit.hiddenStandardTypes.isNotEmpty()) {
+                    productRepository.hideProductStandardPortions(
+                        productId = productId,
+                        hidePackage = MeasurementType.Package in edit.hiddenStandardTypes,
+                        hideServing = MeasurementType.Serving in edit.hiddenStandardTypes,
+                    )
+                }
+            }
+        }
     }
 
     fun deleteFood() {
@@ -223,7 +236,7 @@ private val Food.possibleMeasurementTypes: Flow<List<MeasurementType>>
     get() =
         flowOf(
             MeasurementType.entries.filter { type ->
-                type.isUserSelectable &&
+                type.isUserSelectable && !isStandardPortionHidden(type) &&
                     when (type) {
                         MeasurementType.Gram -> !isLiquid
                         MeasurementType.Ounce -> !isLiquid

@@ -41,6 +41,23 @@ class ObserveMeasurementSuggestionsUseCaseTest {
         assertEquals(Measurement.Gram(100.0), useCase.observeLatestOrDefault(foodId).first())
     }
 
+    @Test
+    fun deletedReferencePortionsAreAbsentFromSuggestions() = runTest {
+        val foodId = FoodId.Product(1)
+        val useCase =
+            useCase(
+                product = product(foodId, packageWeight = 20.0).copy(
+                    servingWeight = 25.0,
+                    isPackagePortionHidden = true,
+                    isServingPortionHidden = true,
+                ),
+                suggestions = listOf(Measurement.Package(2.0), Measurement.Serving(1.0)),
+            )
+
+        assertEquals(listOf(Measurement.Gram(100.0)), useCase.observe(foodId, limit = 5).first())
+        assertEquals(Measurement.Gram(40.0), useCase.observeLatestOrDefault(foodId).first())
+    }
+
     private fun useCase(
         product: Product,
         suggestions: List<Measurement>,

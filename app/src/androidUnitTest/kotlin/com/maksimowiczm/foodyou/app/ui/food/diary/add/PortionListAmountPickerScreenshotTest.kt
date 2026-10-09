@@ -42,32 +42,34 @@ class PortionListAmountPickerScreenshotTest {
     private lateinit var activity: ActivityController<ComponentActivity>
     private lateinit var pickerState: MeasurementPickerState
     private val portions = mutableStateOf(defaultPortions)
+    private val hiddenStandardTypes = mutableStateOf(emptySet<MeasurementType>())
 
     @After
     fun tearDown() {
         if (::activity.isInitialized) activity.close()
     }
 
-    private fun show(selected: Measurement = Measurement.Gram(150.0)) {
+    private fun show(selected: Measurement = Measurement.Gram(150.0), isLiquid: Boolean = false) {
         activity = Robolectric.buildActivity(ComponentActivity::class.java).setup()
         activity.get().setContent {
             val currentPortions by portions
+            val hiddenTypes by hiddenStandardTypes
             MaterialTheme {
                 Surface(Modifier.testTag(ROOT)) {
                     val state =
                         rememberMeasurementPickerState(
                             suggestions = emptyList(),
                             portionOptions =
-                                currentPortions.toMeasurementPickerOptions(isLiquid = false),
+                                currentPortions.toMeasurementPickerOptions(isLiquid = isLiquid),
                             totalWeight = 500.0,
                             servingWeight = 190.0,
-                            isLiquid = false,
+                            isLiquid = isLiquid,
                             possibleTypes =
                                 listOf(
-                                    MeasurementType.Gram,
+                                    if (isLiquid) MeasurementType.Milliliter else MeasurementType.Gram,
                                     MeasurementType.Package,
                                     MeasurementType.Serving,
-                                ),
+                                ).filterNot { it in hiddenTypes },
                             selectedMeasurement = selected,
                         )
                     pickerState = state
@@ -77,7 +79,10 @@ class PortionListAmountPickerScreenshotTest {
                             state = state,
                             servingUnit = ServingUnit.Piece,
                             portions = currentPortions,
-                            onSavePortions = { portions.value = it },
+                            onSavePortions = {
+                                portions.value = it.portions
+                                hiddenStandardTypes.value += it.hiddenStandardTypes
+                            },
                         )
                     }
                 }
@@ -168,6 +173,81 @@ class PortionListAmountPickerScreenshotTest {
         )
         input().assertTextContains("150")
         assertEquals(Measurement.Gram(150.0), pickerState.measurement)
+    }
+
+    @Test
+    fun deletingSelectedPackageKeepsItsWeightInGrams() {
+        show(selected = Measurement.Package(2.0))
+        compose.onNodeWithText("Packung").performTouchInput { longClick() }
+        compose.onNodeWithText("Löschen").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Packung").assertDoesNotExist()
+        input().assertTextContains("1000")
+        assertEquals(Measurement.Gram(1000.0), pickerState.measurement)
+        assertEquals(setOf(MeasurementType.Package), hiddenStandardTypes.value)
+        assertEquals(defaultPortions, portions.value)
+    }
+
+    @Test
+    fun deletingLiquidServingKeepsItsVolumeInMilliliters() {
+        portions.value = emptyList()
+        show(selected = Measurement.Serving(1.5), isLiquid = true)
+        compose.onNodeWithText("Lang drücken zum Bearbeiten").assertExists()
+        compose.onNodeWithText("Stück").performTouchInput { longClick() }
+        compose.onNodeWithText("Löschen").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Stück").assertDoesNotExist()
+        input().assertTextContains("285")
+        assertEquals(Measurement.Milliliter(285.0), pickerState.measurement)
+    }
+
+    @Test
+    fun deletingImportedPackageDoesNotRevealReferencePackageAgain() {
+        portions.value = listOf(ProductPortion("Packung", 500.0, ProductPortion.Unit.Gram))
+        show(selected = Measurement.Gram(500.0))
+        compose.onAllNodesWithText("Packung").assertCountEquals(1)
+        compose.onNodeWithText("Packung").performTouchInput { longClick() }
+        compose.onNodeWithText("Löschen").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Packung").assertDoesNotExist()
+        assertTrue(portions.value.isEmpty())
+        assertEquals(setOf(MeasurementType.Package), hiddenStandardTypes.value)
+        assertEquals(Measurement.Gram(500.0), pickerState.measurement)
+    }
+
+    @Test
+    fun deletingReferencePackagePreservesDifferentImportedPackage() {
+        val imported = ProductPortion("Packung", 250.0, ProductPortion.Unit.Gram)
+        portions.value = listOf(imported)
+        show(selected = Measurement.Package(1.0))
+        compose.onAllNodesWithText("Packung")[1].performTouchInput { longClick() }
+        compose.onNodeWithText("Löschen").performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf(imported), portions.value)
+        compose.onAllNodesWithText("Packung").assertCountEquals(1)
+        assertEquals(Measurement.Gram(500.0), pickerState.measurement)
+    }
+
+    @Test
+    fun editingSelectedPackageCreatesEditablePortionAndKeepsSelection() {
+        show(selected = Measurement.Package(2.0))
+        compose.onNodeWithText("Packung").performTouchInput { longClick() }
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(isDialog()))[1]
+            .performTextReplacement("600")
+        compose.onNodeWithText("Speichern").performClick()
+        compose.waitForIdle()
+
+        assertEquals(
+            defaultPortions + ProductPortion("Packung", 600.0, ProductPortion.Unit.Gram),
+            portions.value,
+        )
+        compose.onAllNodesWithText("Packung").assertCountEquals(1)
+        compose.onNodeWithText("× Packung = 1200 g").assertExists()
+        assertEquals(Measurement.Gram(1200.0), pickerState.measurement)
     }
 
     @Test

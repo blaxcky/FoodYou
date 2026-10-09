@@ -46,6 +46,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
+import com.maksimowiczm.foodyou.food.domain.entity.normalizedLabel
 import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import foodyou.app.generated.resources.*
@@ -56,6 +57,12 @@ import org.koin.compose.koinInject
 import org.koin.core.qualifier.named
 
 private const val COLLAPSED_ROW_LIMIT = 5
+
+@Immutable
+internal data class PortionListEdit(
+    val portions: List<ProductPortion>,
+    val hiddenStandardTypes: Set<MeasurementType> = emptySet(),
+)
 
 /** Amount picker layout chosen in personalization settings; the new view while loading. */
 @Composable
@@ -105,12 +112,14 @@ internal fun PortionListOptions(
     state: MeasurementPickerState,
     servingUnit: ServingUnit,
     portions: List<ProductPortion>,
-    onSavePortions: ((List<ProductPortion>) -> Unit)?,
+    onSavePortions: ((PortionListEdit) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     PreselectMatchingPortion(state)
 
-    var pendingRename by remember { mutableStateOf<Pair<ProductPortion, ProductPortion>?>(null) }
+    var pendingRename by remember {
+        mutableStateOf<Pair<MeasurementPickerOption, ProductPortion>?>(null)
+    }
     KeepPortionSelection(state = state, pendingRename = pendingRename)
 
     var editing by remember { mutableStateOf<PortionDialogTarget?>(null) }
@@ -120,25 +129,27 @@ internal fun PortionListOptions(
             portions = portions,
             unit = if (state.isLiquid) ProductPortion.Unit.Milliliter else ProductPortion.Unit.Gram,
             onDismiss = { editing = null },
-            onSave = { original, edited, updated ->
-                if (original != null && edited != null) pendingRename = original to edited
-                onSavePortions?.invoke(updated)
+            onSave = { _, edited, updated ->
+                if (target.option != null && edited != null) pendingRename = target.option to edited
+                onSavePortions?.invoke(PortionListEdit(updated, target.standardTypes))
                 editing = null
             },
         )
     }
 
     val sortedOptions = remember(state.options) { state.options.sortedBy { it.listOrder() } }
-    val rows =
+    val allRows =
         sortedOptions
             .map { option ->
+                val label = option.rowLabel(servingUnit)
                 PortionRow(
                     option = option,
-                    label = option.rowLabel(servingUnit),
+                    label = label,
                     weight = option.rowWeight(state),
+                    portion = option.editablePortion(label, state),
                 )
             }
-            .withoutRepeatedStandardRows(selected = state.selectedOption)
+    val rows = allRows.withoutRepeatedStandardRows(selected = state.selectedOption)
     var expanded by rememberSaveable { mutableStateOf(false) }
     val collapsible = rows.size > COLLAPSED_ROW_LIMIT + 1
     // Grams or milliliters come first, so they always stay visible when collapsed.
@@ -163,7 +174,7 @@ internal fun PortionListOptions(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
-            if (canEdit && state.portionOptions.isNotEmpty()) {
+            if (canEdit && rows.any { it.portion != null }) {
                 Text(
                     text = stringResource(Res.string.description_long_press_to_edit),
                     style = MaterialTheme.typography.labelSmall,
@@ -177,7 +188,7 @@ internal fun PortionListOptions(
             visibleRows.forEachIndexed { index, row ->
                 if (index > 0) PortionRowDivider()
                 val option = row.option
-                val portion = (option as? MeasurementPickerOption.Portion)?.portion
+                val portion = row.portion
                 PortionOptionRow(
                     label = row.label,
                     weight = row.weight,
@@ -185,7 +196,19 @@ internal fun PortionListOptions(
                     onClick = { state.selectFromList(option) },
                     onLongClick =
                         if (canEdit && portion != null) {
-                            { editing = PortionDialogTarget(original = portion, amount = null) }
+                            {
+                                editing =
+                                    PortionDialogTarget(
+                                        original = portion,
+                                        amount = null,
+                                        option = option,
+                                        standardTypes =
+                                            allRows.filter {
+                                                it.option is MeasurementPickerOption.Standard &&
+                                                    it.portion?.sameDefinitionAs(portion) == true
+                                            }.map { it.option.type }.toSet(),
+                                    )
+                            }
                         } else {
                             null
                         },
@@ -286,7 +309,12 @@ private fun ActionRow(icon: @Composable () -> Unit, text: String, onClick: () ->
 }
 
 @Immutable
-private data class PortionDialogTarget(val original: ProductPortion?, val amount: Double?)
+private data class PortionDialogTarget(
+    val original: ProductPortion?,
+    val amount: Double?,
+    val option: MeasurementPickerOption? = null,
+    val standardTypes: Set<MeasurementType> = emptySet(),
+)
 
 @Composable
 private fun PortionEditDialog(
@@ -301,6 +329,8 @@ private fun PortionEditDialog(
     ) -> Unit,
 ) {
     val original = target.original
+    // Reference rows need not be present in the user-managed portion list.
+    val listOriginal = original?.let { value -> portions.firstOrNull { it.sameDefinitionAs(value) } }
     val name = rememberTextFieldState(original?.label.orEmpty())
     val amount =
         rememberTextFieldState((original?.amount ?: target.amount)?.formatClipZeros().orEmpty())
@@ -367,7 +397,7 @@ private fun PortionEditDialog(
                                     ?: Double.NaN,
                             unit = portionUnit,
                         )
-                    when (val result = portions.withPortionEdit(original, edited)) {
+                    when (val result = portions.withPortionEdit(listOriginal, edited)) {
                         is PortionEditResult.Success ->
                             onSave(original, edited.copy(label = edited.label.trim()), result.portions)
                         else -> error = result
@@ -382,7 +412,7 @@ private fun PortionEditDialog(
                 if (original != null) {
                     TextButton(
                         onClick = {
-                            val result = portions.withPortionEdit(original, null)
+                            val result = portions.withPortionEdit(listOriginal, null)
                             if (result is PortionEditResult.Success) {
                                 onSave(original, null, result.portions)
                             }
@@ -422,20 +452,20 @@ private fun PreselectMatchingPortion(state: MeasurementPickerState) {
 @Composable
 private fun KeepPortionSelection(
     state: MeasurementPickerState,
-    pendingRename: Pair<ProductPortion, ProductPortion>?,
+    pendingRename: Pair<MeasurementPickerOption, ProductPortion>?,
 ) {
     val latestRename by rememberUpdatedState(pendingRename)
-    LaunchedEffect(state.portionOptions) {
-        val selected = state.selectedOption as? MeasurementPickerOption.Portion ?: return@LaunchedEffect
+    LaunchedEffect(state.options) {
+        val selected = state.selectedOption
         if (selected in state.options) return@LaunchedEffect
-        val selectedPortion = selected.portion
+        val selectedPortion = (selected as? MeasurementPickerOption.Portion)?.portion
 
         val rename = latestRename
         val target =
             when {
-                selectedPortion == null -> null
-                rename != null && rename.first == selectedPortion ->
+                rename != null && rename.first == selected ->
                     state.portionOptions.findByPortionLabel(rename.second)
+                selectedPortion == null -> null
                 else -> state.portionOptions.findByPortionLabel(selectedPortion)
             }
 
@@ -468,7 +498,34 @@ private data class PortionRow(
     val option: MeasurementPickerOption,
     val label: String,
     val weight: String?,
+    val portion: ProductPortion?,
 )
+
+private fun ProductPortion.sameDefinitionAs(other: ProductPortion): Boolean =
+    normalizedLabel() == other.normalizedLabel() && amount == other.amount && unit == other.unit
+
+private fun MeasurementPickerOption.editablePortion(
+    label: String,
+    state: MeasurementPickerState,
+): ProductPortion? =
+    when (this) {
+        is MeasurementPickerOption.Portion -> portion
+        is MeasurementPickerOption.Standard -> {
+            val amount =
+                when (type) {
+                    MeasurementType.Package -> state.totalWeight
+                    MeasurementType.Serving -> state.servingWeight
+                    else -> null
+                }
+            amount?.takeIf { it.isFinite() && it > 0.0 }?.let {
+                ProductPortion(
+                    label = label,
+                    amount = it,
+                    unit = if (state.isLiquid) ProductPortion.Unit.Milliliter else ProductPortion.Unit.Gram,
+                )
+            }
+        }
+    }
 
 /**
  * Hides a package or serving row when a product portion repeats it with the same label and weight,

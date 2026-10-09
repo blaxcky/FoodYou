@@ -103,6 +103,16 @@ abstract class ProductDao {
     )
     abstract suspend fun setProductQuickCapture(id: Long, isQuickCapture: Boolean)
 
+    @Query(
+        """
+        UPDATE Product
+        SET isPackagePortionHidden = isPackagePortionHidden OR :hidePackage,
+            isServingPortionHidden = isServingPortionHidden OR :hideServing
+        WHERE id = :id
+        """
+    )
+    abstract suspend fun hideStandardPortions(id: Long, hidePackage: Boolean, hideServing: Boolean)
+
     @Delete abstract suspend fun deleteProduct(product: ProductEntity)
 
     @Query(

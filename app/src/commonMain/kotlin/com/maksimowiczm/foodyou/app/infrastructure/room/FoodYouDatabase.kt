@@ -175,7 +175,7 @@ abstract class FoodYouDatabase :
     abstract val trainingImportDao: TrainingImportDao
 
     companion object {
-        const val VERSION = 53
+        const val VERSION = 54
 
         private val migrations: List<Migration> =
             listOf(
@@ -214,6 +214,7 @@ abstract class FoodYouDatabase :
                 QuickCaptureAiMigration,
                 TrainingImportMigration,
                 QuickCaptureSuggestionFeedbackMigration,
+                ProductStandardPortionVisibilityMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -223,6 +224,13 @@ abstract class FoodYouDatabase :
             addCallback(mealsCallback)
             return build()
         }
+    }
+}
+
+internal object ProductStandardPortionVisibilityMigration : Migration(53, 54) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `Product` ADD COLUMN `isPackagePortionHidden` INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE `Product` ADD COLUMN `isServingPortionHidden` INTEGER NOT NULL DEFAULT 0")
     }
 }
 

@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import com.maksimowiczm.foodyou.food.domain.entity.Food
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.food.domain.entity.isStandardPortionHidden
 import com.maksimowiczm.foodyou.food.domain.repository.FoodMeasurementSuggestionRepository
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.Flow
@@ -64,7 +65,7 @@ private fun List<Measurement>.fillMissingMeasurements(food: Food): List<Measurem
 private val Food.possibleMeasurementTypes: List<MeasurementType>
     get() =
         MeasurementType.entries.filter { type ->
-            type.isUserSelectable &&
+            type.isUserSelectable && !isStandardPortionHidden(type) &&
                 when (type) {
                     MeasurementType.Gram -> !isLiquid
                     MeasurementType.Ounce -> !isLiquid

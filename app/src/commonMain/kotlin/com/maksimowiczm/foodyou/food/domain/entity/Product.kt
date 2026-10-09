@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.food.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 
 /**
  * Represents a product in the food domain.
@@ -34,6 +35,8 @@ data class Product(
     val isFavorite: Boolean = false,
     val isQuickCapture: Boolean = false,
     override val nutritionFacts: NutritionFacts,
+    val isPackagePortionHidden: Boolean = false,
+    val isServingPortionHidden: Boolean = false,
 ) : Food {
     override val totalWeight: Double? = packageWeight
 
@@ -48,3 +51,12 @@ data class Product(
         "${name}$brandSuffix"
     }
 }
+
+/** Hides a deleted reference portion while retaining its weight for existing measurements. */
+fun Food.isStandardPortionHidden(type: MeasurementType): Boolean =
+    this is Product &&
+        when (type) {
+            MeasurementType.Package -> isPackagePortionHidden
+            MeasurementType.Serving -> isServingPortionHidden
+            else -> false
+        }

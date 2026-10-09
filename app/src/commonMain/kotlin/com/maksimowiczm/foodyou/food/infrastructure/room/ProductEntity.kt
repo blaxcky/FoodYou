@@ -28,4 +28,8 @@ data class ProductEntity(
     val isFavorite: Boolean = false,
     @ColumnInfo(defaultValue = "0")
     val isQuickCapture: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isPackagePortionHidden: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isServingPortionHidden: Boolean = false,
 )

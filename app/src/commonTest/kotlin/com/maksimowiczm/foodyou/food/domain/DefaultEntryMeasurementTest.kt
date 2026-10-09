@@ -53,6 +53,29 @@ class DefaultEntryMeasurementTest {
         )
     }
 
+    @Test
+    fun deletedPackageConvertsLatestQuantityToGramsOnReopening() {
+        val food = product(packageWeight = 20.0).copy(isPackagePortionHidden = true)
+
+        assertEquals(
+            Measurement.Gram(40.0),
+            defaultEntryMeasurement(food, Measurement.Package(2.0)),
+        )
+        assertEquals(40.0, food.weight(Measurement.Package(2.0)))
+    }
+
+    @Test
+    fun deletedLiquidServingConvertsLatestQuantityToMillilitersOnReopening() {
+        val food =
+            product(isLiquid = true, servingWeight = 200.0).copy(isServingPortionHidden = true)
+
+        assertEquals(
+            Measurement.Milliliter(300.0),
+            defaultEntryMeasurement(food, Measurement.Serving(1.5)),
+        )
+        assertEquals(300.0, food.weight(Measurement.Serving(1.5)))
+    }
+
     private fun product(
         isLiquid: Boolean = false,
         packageWeight: Double? = null,

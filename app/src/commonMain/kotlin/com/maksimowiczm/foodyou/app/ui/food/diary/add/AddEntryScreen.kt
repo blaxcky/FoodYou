@@ -93,7 +93,6 @@ import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
-import com.maksimowiczm.foodyou.food.domain.entity.ProductPortion
 import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
 import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import foodyou.app.generated.resources.*
@@ -161,6 +160,8 @@ fun AddEntryScreen(
     ) {
         // TODO loading state
     } else {
+        // Loading a new default after a portion edit must not replace the user's current amount.
+        val initialMeasurement = remember(food.foodId) { selectedMeasurement }
         val state =
             rememberFoodMeasurementFormState(
                 today = today,
@@ -187,7 +188,7 @@ fun AddEntryScreen(
                 servingWeight = food.servingWeight,
                 isLiquid = food.isLiquid,
                 possibleTypes = possibleTypes,
-                selectedMeasurement = selectedMeasurement,
+                selectedMeasurement = initialMeasurement,
             )
 
         FoodEntryForm(
@@ -247,7 +248,7 @@ internal fun FoodEntryForm(
     state: FoodMeasurementFormState,
     animatedVisibilityScope: AnimatedVisibilityScope,
     amountPickerStyle: FoodEntryAmountPickerStyle,
-    onSavePortions: ((List<ProductPortion>) -> Unit)?,
+    onSavePortions: ((PortionListEdit) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()

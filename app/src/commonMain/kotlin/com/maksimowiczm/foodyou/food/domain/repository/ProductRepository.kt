@@ -85,6 +85,15 @@ interface ProductRepository {
     /** Stores the user-managed effective portions without changing imported source portions. */
     suspend fun updateProductPortions(productId: FoodId.Product, portions: List<ProductPortion>) = Unit
 
+    /** Retains reference weights while removing their rows from the amount picker. */
+    suspend fun hideProductStandardPortions(
+        productId: FoodId.Product,
+        hidePackage: Boolean,
+        hideServing: Boolean,
+    ) {
+        error("Not implemented")
+    }
+
     suspend fun deleteProduct(product: Product)
 
     suspend fun deleteProductsBySource(type: FoodSource.Type): Int
