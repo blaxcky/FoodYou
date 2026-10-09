@@ -850,7 +850,7 @@
     <string name="action_quick_capture_add">Add to log</string>
     <string name="action_quick_capture_open_entry_form">Add log entry</string>
     <string name="action_quick_capture_share_prompt">Share to ChatGPT</string>
-    <string name="action_quick_capture_import_csv">Import CSV as quick add</string>
+    <string name="action_quick_capture_import_csv">Import CSV as quick adds</string>
     <string name="action_quick_capture_import_csv_confirm">Add</string>
     <string name="action_quick_capture_to_diary">Add to FoodYou</string>
     <string name="action_quick_capture_take_photo">Take photos</string>
@@ -870,11 +870,11 @@
     <string name="neutral_quick_capture_empty_photos">No photos waiting to be processed</string>
     <string name="neutral_quick_capture_empty_library">Names you use will appear here</string>
     <string name="neutral_quick_capture_chatgpt_copy_fallback">Could not open ChatGPT. Prompt copied.</string>
-    <string name="headline_quick_capture_csv_import">Import quick add</string>
-    <string name="description_quick_capture_csv_import">Paste the CSV returned by ChatGPT. It will be added to today’s matching meal, and the entries included in the prompt will be completed.</string>
-    <string name="neutral_quick_capture_csv_imported">Quick add created</string>
-    <string name="error_quick_capture_csv_no_meal">No meal is available for this quick add.</string>
-    <string name="error_quick_capture_csv_save">The quick add could not be saved. Nothing was changed.</string>
+    <string name="headline_quick_capture_csv_import">Import quick adds</string>
+    <string name="description_quick_capture_csv_import">Paste the CSV returned by ChatGPT, with one data row per item in the prompt. Each row will be added separately to today’s matching meal, and the entries included in the prompt will be completed.</string>
+    <string name="neutral_quick_capture_csv_imported">Quick adds created</string>
+    <string name="error_quick_capture_csv_no_meal">No meal is available for these quick adds.</string>
+    <string name="error_quick_capture_csv_save">The quick adds could not be saved. Nothing was changed.</string>
     <string name="error_quick_capture_name">Enter a food name</string>
     <string name="error_quick_capture_weight">Enter a valid positive weight</string>
     <string name="error_quick_capture_after">After must be zero or greater and smaller than before</string>
@@ -901,4 +901,7 @@
     <string name="description_sync_log_clear">Completed runs will be deleted. Active syncs will remain in the log.</string>
     <string name="action_sync_log_expand">Show sync details</string>
     <string name="action_sync_log_collapse">Hide sync details</string>
+    <string name="error_quick_capture_csv_columns">Each CSV data row must contain exactly five columns: name,energy,proteins,carbohydrates,fats</string>
+    <string name="error_quick_capture_csv_row_count">Items in the prompt: %1$d. CSV data rows: %2$d. Provide one row per item, without a total row.</string>
+    <string name="error_quick_capture_csv_share_again">Please share the items with ChatGPT again to use the new CSV table format.</string>
 </resources>

@@ -390,7 +390,7 @@ class QuickCaptureScreenshotTest {
                 QuickCaptureCsvImportDialogCard(
                     csv =
                         "name,energy,proteins,carbohydrates,fats\n" +
-                            "Mittagessen,640,42,71,19",
+                            "Skyr Natur,126,22,8,0.4\nApfel,80,0.4,18,0.2",
                     state = QuickCaptureCsvImportState.Idle,
                     onCsvChange = {},
                     onDismiss = {},
@@ -400,6 +400,28 @@ class QuickCaptureScreenshotTest {
             }
         }
         capture("csv-import")
+    }
+
+    @Test
+    fun csvImportRowCountError() {
+        show {
+            Box(
+                Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                QuickCaptureCsvImportDialogCard(
+                    csv = "name,energy,proteins,carbohydrates,fats\nMittagessen,640,42,71,19",
+                    state = QuickCaptureCsvImportState.RowCountMismatch(2, 1),
+                    onCsvChange = {},
+                    onDismiss = {},
+                    onImport = {},
+                    autoFocus = false,
+                )
+            }
+        }
+        compose.onNodeWithText("Posten im Prompt: 2. Datenzeilen in der CSV: 1.", substring = true)
+            .assertIsDisplayed()
+        capture("csv-import-row-count-error")
     }
 
     @Test

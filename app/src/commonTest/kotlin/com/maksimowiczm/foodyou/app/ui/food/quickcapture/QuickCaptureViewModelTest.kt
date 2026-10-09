@@ -2,13 +2,16 @@ package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvTableParserImpl
+import com.maksimowiczm.foodyou.common.infrastructure.csv.CsvParserImpl
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvData
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvError
-import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvParseResult
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvTableParseResult
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureFoodName
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
+import com.maksimowiczm.foodyou.food.domain.entity.quickCaptureGroups
 import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureWeightMode
 import com.maksimowiczm.foodyou.food.domain.repository.FoodSnapPhotoStorage
 import com.maksimowiczm.foodyou.food.domain.repository.QuickCaptureRepository
@@ -28,6 +31,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertNull
 import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
@@ -64,13 +68,16 @@ class QuickCaptureViewModelTest {
     @Test
     fun copiedBatchKeepsExactDistinctIdsAndIsReplacedByNextCopy() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        val viewModel = viewModel()
+        val saved = SavedStateHandle()
+        val viewModel = viewModel(savedStateHandle = saved)
         try {
-            viewModel.rememberCopiedBatch(listOf(7, 2, 7))
+            viewModel.rememberCopiedBatch(listOf(7, 2, 7), expectedRowCount = 2)
+            assertEquals(2, saved.get<Int>("quickCaptureCopiedGroupCount"))
             assertEquals(listOf(7L, 2L), viewModel.copiedEntryIds.value)
 
-            viewModel.rememberCopiedBatch(listOf(11))
+            viewModel.rememberCopiedBatch(listOf(11), expectedRowCount = 1)
             assertEquals(listOf(11L), viewModel.copiedEntryIds.value)
+            assertEquals(1, saved.get<Int>("quickCaptureCopiedGroupCount"))
         } finally {
             viewModel.viewModelScope.cancel()
             Dispatchers.resetMain()
@@ -91,8 +98,10 @@ class QuickCaptureViewModelTest {
                 }
             )
         try {
-            viewModel.rememberCopiedBatch(listOf(4, 9))
+            viewModel.rememberCopiedBatch(listOf(4, 9), expectedRowCount = 1)
             viewModel.importCsv(ValidCsv)
+            viewModel.rememberCopiedBatch(listOf(100), expectedRowCount = 5)
+            assertEquals(listOf(4L, 9L), viewModel.copiedEntryIds.value)
             viewModel.importCsv(ValidCsv)
 
             assertEquals(QuickCaptureCsvImportState.Submitting, viewModel.csvImportState.value)
@@ -115,14 +124,14 @@ class QuickCaptureViewModelTest {
         var importCount = 0
         val viewModel =
             viewModel(
-                parser = { QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidHeader) },
+                parser = { QuickAddCsvTableParseResult.Failure(QuickAddCsvError.InvalidHeader) },
                 importer = { _, _ ->
                     importCount += 1
                     QuickCaptureCsvImportResult.Success
                 },
             )
         try {
-            viewModel.rememberCopiedBatch(listOf(5, 6))
+            viewModel.rememberCopiedBatch(listOf(5, 6), expectedRowCount = 1)
             viewModel.importCsv("invalid")
             advanceUntilIdle()
 
@@ -145,9 +154,9 @@ class QuickCaptureViewModelTest {
             viewModel(importer = { _, _ -> QuickCaptureCsvImportResult.NoMeal })
         val failedViewModel = viewModel(importer = { _, _ -> error("storage failed") })
         try {
-            noMealViewModel.rememberCopiedBatch(listOf(1))
+            noMealViewModel.rememberCopiedBatch(listOf(1), expectedRowCount = 1)
             noMealViewModel.importCsv(ValidCsv)
-            failedViewModel.rememberCopiedBatch(listOf(2))
+            failedViewModel.rememberCopiedBatch(listOf(2), expectedRowCount = 1)
             failedViewModel.importCsv(ValidCsv)
             advanceUntilIdle()
 
@@ -165,12 +174,117 @@ class QuickCaptureViewModelTest {
         }
     }
 
+    @Test
+    fun rowCountMismatchKeepsBatchAndNeverImports() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var importCount = 0
+        val viewModel = viewModel(importer = { _, _ ->
+            importCount += 1
+            QuickCaptureCsvImportResult.Success
+        })
+        try {
+            viewModel.rememberCopiedBatch(listOf(1, 2, 3), expectedRowCount = 2)
+            for ((csv, actual) in listOf(
+                "name,energy,proteins,carbohydrates,fats" to 0,
+                ValidCsv to 1,
+                "$TwoRowCsv\nExtra,10,1,1,1" to 3,
+            )) {
+                viewModel.importCsv(csv)
+                advanceUntilIdle()
+                assertEquals(QuickCaptureCsvImportState.RowCountMismatch(2, actual), viewModel.csvImportState.value)
+                assertEquals(listOf(1L, 2L, 3L), viewModel.copiedEntryIds.value)
+            }
+            assertEquals(0, importCount)
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun groupedCountSurvivesRecreationAndGroupingChanges() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val saved = SavedStateHandle()
+        val settings = CsvImportViewModelSettingsRepository()
+        val repository = CsvImportViewModelQuickCaptureRepository()
+        fun readyEntry(id: Long, foodId: Long, name: String) = QuickCaptureLogEntry(
+            id = id, foodNameId = foodId, foodName = name,
+            weightMode = QuickCaptureWeightMode.Direct, directWeightInGrams = 100.0,
+            beforeWeightInGrams = null, afterWeightInGrams = null, photoPath = null,
+            createdAt = CsvImportViewModelDateProvider.nowInstant(), completedAt = null,
+        )
+        repository.logEntries.value = listOf(
+            readyEntry(1, 1, "Meal"), readyEntry(2, 1, "Meal"), readyEntry(3, 2, "Apple"),
+        )
+        val original = viewModel(savedStateHandle = saved, settingsRepository = settings, repository = repository)
+        original.setAggregateSameFoods(true)
+        var importedRows = emptyList<QuickAddCsvData>()
+        var importedIds = emptyList<Long>()
+        val groups = repository.logEntries.value.quickCaptureGroups(aggregateSameFoods = true)
+        original.rememberCopiedBatch(groups.flatMap { it.entries.map { entry -> entry.id } }, groups.size)
+        repository.logEntries.value += readyEntry(4, 3, "Added later")
+        val restoredState = SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) })
+        val restored = viewModel(
+            savedStateHandle = restoredState,
+            repository = repository,
+            settingsRepository = settings,
+            importer = { rows, ids ->
+                importedRows = rows
+                importedIds = ids
+                QuickCaptureCsvImportResult.Success
+            },
+        )
+        try {
+            original.viewModelScope.cancel()
+            restored.setAggregateSameFoods(false)
+            restored.importCsv(TwoRowCsv)
+            advanceUntilIdle()
+            assertEquals(listOf("Meal", "Apple"), importedRows.map { it.name })
+            assertEquals(listOf(1L, 2L, 3L), importedIds)
+            assertTrue(restored.copiedEntryIds.value.isEmpty())
+            assertNull(restoredState.get<Int>("quickCaptureCopiedGroupCount"))
+        } finally {
+            original.viewModelScope.cancel()
+            restored.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun legacyBatchRequiresSharingAgain() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var imports = 0
+        val viewModel = viewModel(
+            savedStateHandle = SavedStateHandle(mapOf("quickCaptureCopiedEntryIds" to listOf(1L, 2L))),
+            importer = { _, _ ->
+                imports += 1
+                QuickCaptureCsvImportResult.Success
+            },
+        )
+        try {
+            viewModel.importCsv(ValidCsv)
+            advanceUntilIdle()
+            assertEquals(QuickCaptureCsvImportState.ShareAgain, viewModel.csvImportState.value)
+            assertEquals(0, imports)
+            assertEquals(listOf(1L, 2L), viewModel.copiedEntryIds.value)
+            viewModel.rememberCopiedBatch(listOf(1, 2), expectedRowCount = 2)
+            viewModel.importCsv(TwoRowCsv)
+            advanceUntilIdle()
+            assertEquals(1, imports)
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
     private fun TestScope.viewModel(
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
         repository: CsvImportViewModelQuickCaptureRepository = CsvImportViewModelQuickCaptureRepository(),
-        parser: suspend (String) -> QuickAddCsvParseResult = {
-            QuickAddCsvParseResult.Success(CsvData)
+        settingsRepository: CsvImportViewModelSettingsRepository = CsvImportViewModelSettingsRepository(),
+        parser: suspend (String) -> QuickAddCsvTableParseResult = {
+            QuickAddCsvTableParserImpl(CsvParserImpl()).parse(it)
         },
-        importer: suspend (QuickAddCsvData, List<Long>) -> QuickCaptureCsvImportResult = { _, _ ->
+        importer: suspend (List<QuickAddCsvData>, List<Long>) -> QuickCaptureCsvImportResult = { _, _ ->
             QuickCaptureCsvImportResult.Success
         },
     ): QuickCaptureViewModel {
@@ -189,25 +303,26 @@ class QuickCaptureViewModelTest {
                 ),
             updateLibrary =
                 UpdateQuickCaptureLibraryUseCase(repository, CsvImportViewModelDateProvider),
-            settingsRepository = CsvImportViewModelSettingsRepository(),
+            settingsRepository = settingsRepository,
             csvParser = { parser(it) },
             csvImporter = { data, ids -> importer(data, ids) },
-            savedStateHandle = SavedStateHandle(),
+            savedStateHandle = savedStateHandle,
             photoRegistrationScope = this,
         )
     }
 
     private companion object {
         const val ValidCsv = "name,energy,proteins,carbohydrates,fats\nMeal,640,42,71,19"
-        val CsvData = QuickAddCsvData("Meal", 640.0, 42.0, 71.0, 19.0)
+        const val TwoRowCsv = "$ValidCsv\nApple,80,0.4,18,0.2"
     }
 }
 
 private class CsvImportViewModelQuickCaptureRepository : QuickCaptureRepository {
     val capturedPaths = mutableListOf<String>()
+    val logEntries = MutableStateFlow<List<QuickCaptureLogEntry>>(emptyList())
     override fun observeFoodNames(): Flow<List<QuickCaptureFoodName>> = flowOf(emptyList())
 
-    override fun observeEntries(): Flow<List<QuickCaptureLogEntry>> = flowOf(emptyList())
+    override fun observeEntries(): Flow<List<QuickCaptureLogEntry>> = logEntries
 
     override fun observeEntry(id: Long): Flow<QuickCaptureLogEntry?> = flowOf(null)
 

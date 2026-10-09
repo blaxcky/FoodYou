@@ -724,7 +724,7 @@
     <string name="action_quick_capture_add">Zum Log hinzufügen</string>
     <string name="action_quick_capture_open_entry_form">Log-Eintrag hinzufügen</string>
     <string name="action_quick_capture_share_prompt">An ChatGPT teilen</string>
-    <string name="action_quick_capture_import_csv">CSV als Schnelleintrag eintragen</string>
+    <string name="action_quick_capture_import_csv">CSV als Schnelleinträge eintragen</string>
     <string name="action_quick_capture_import_csv_confirm">Eintragen</string>
     <string name="action_quick_capture_to_diary">In FoodYou eintragen</string>
     <string name="action_quick_capture_take_photo">Fotos aufnehmen</string>
@@ -744,11 +744,11 @@
     <string name="neutral_quick_capture_empty_photos">Keine Fotos zur Nachbearbeitung</string>
     <string name="neutral_quick_capture_empty_library">Verwendete Namen erscheinen hier</string>
     <string name="neutral_quick_capture_chatgpt_copy_fallback">ChatGPT konnte nicht geöffnet werden. Prompt wurde kopiert.</string>
-    <string name="headline_quick_capture_csv_import">Schnelleintrag importieren</string>
-    <string name="description_quick_capture_csv_import">Füge die von ChatGPT zurückgegebene CSV ein. Sie wird heute in die passende Mahlzeit eingetragen und die im Prompt enthaltenen Einträge werden erledigt.</string>
-    <string name="neutral_quick_capture_csv_imported">Schnelleintrag erstellt</string>
-    <string name="error_quick_capture_csv_no_meal">Für den Schnelleintrag ist keine Mahlzeit verfügbar.</string>
-    <string name="error_quick_capture_csv_save">Der Schnelleintrag konnte nicht gespeichert werden. Es wurde nichts geändert.</string>
+    <string name="headline_quick_capture_csv_import">Schnelleinträge importieren</string>
+    <string name="description_quick_capture_csv_import">Füge die von ChatGPT zurückgegebene CSV mit einer Datenzeile pro Posten im Prompt ein. Jede Zeile wird heute einzeln in die passende Mahlzeit eingetragen und die im Prompt enthaltenen Einträge werden erledigt.</string>
+    <string name="neutral_quick_capture_csv_imported">Schnelleinträge erstellt</string>
+    <string name="error_quick_capture_csv_no_meal">Für die Schnelleinträge ist keine Mahlzeit verfügbar.</string>
+    <string name="error_quick_capture_csv_save">Die Schnelleinträge konnten nicht gespeichert werden. Es wurde nichts geändert.</string>
     <string name="error_quick_capture_name">Lebensmittelname eingeben</string>
     <string name="error_quick_capture_weight">Ein gültiges positives Gewicht eingeben</string>
     <string name="error_quick_capture_after">After muss mindestens null und kleiner als Before sein</string>
@@ -775,4 +775,7 @@
     <string name="description_sync_log_clear">Abgeschlossene Läufe werden gelöscht. Laufende Syncs bleiben im Protokoll.</string>
     <string name="action_sync_log_expand">Sync-Details anzeigen</string>
     <string name="action_sync_log_collapse">Sync-Details ausblenden</string>
+    <string name="error_quick_capture_csv_columns">Jede CSV-Datenzeile muss genau fünf Spalten enthalten: name,energy,proteins,carbohydrates,fats</string>
+    <string name="error_quick_capture_csv_row_count">Posten im Prompt: %1$d. Datenzeilen in der CSV: %2$d. Füge eine Zeile pro Posten ohne Summenzeile ein.</string>
+    <string name="error_quick_capture_csv_share_again">Teile die Posten bitte erneut mit ChatGPT, um das neue CSV-Tabellenformat zu verwenden.</string>
 </resources>

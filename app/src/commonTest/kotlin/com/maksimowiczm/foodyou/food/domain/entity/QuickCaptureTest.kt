@@ -60,6 +60,25 @@ class QuickCaptureTest {
         )
     }
 
+    @Test
+    fun promptRequiresOneRowPerGroupedFoodWithoutTotals() {
+        val groups = listOf(
+            entry(id = 1, foodNameId = 7, foodName = "Apfel", direct = 100.0),
+            entry(id = 2, foodNameId = 7, foodName = "Apfel", direct = 52.5),
+            entry(id = 3, foodNameId = 8, foodName = "Skyr", direct = 200.0),
+            entry(id = 4, foodNameId = 7, before = 200.0),
+            entry(id = 5, foodNameId = 7, direct = 10.0, completed = true),
+        ).quickCaptureGroups(aggregateSameFoods = true)
+
+        val prompt = groups.quickCapturePrompt()
+        assertTrue(prompt.endsWith("152.5g Apfel\n200g Skyr"))
+        assertTrue(prompt.contains("name,energy,proteins,carbohydrates,fats"))
+        assertTrue(prompt.contains("für jeden unten aufgeführten Posten genau eine Datenzeile"))
+        assertTrue(prompt.contains("nicht pro 100 g"))
+        assertTrue(prompt.contains("keine zusätzliche Summen- oder Gesamtzeile"))
+        assertFalse(prompt.contains("genau eine Datenzeile."))
+    }
+
     private fun entry(
         id: Long,
         foodNameId: Long? = 1,

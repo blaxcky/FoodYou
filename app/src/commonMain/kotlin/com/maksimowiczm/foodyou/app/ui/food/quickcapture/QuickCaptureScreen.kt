@@ -96,8 +96,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvError
-import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvParseResult
-import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvParser
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvTableParseResult
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvTableParser
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.stringResource
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhoto
 import com.maksimowiczm.foodyou.app.ui.food.pending.PendingProductPhotoCapture
@@ -325,14 +325,18 @@ fun QuickCaptureScreen(
                         onClearCompleted = { viewModel.delete(entries.filter { it.isCompleted }) },
                         onSharePrompt = {
                             val groups = entries.quickCaptureGroups(aggregate)
-                            if (groups.isNotEmpty()) {
+                            if (
+                                groups.isNotEmpty() &&
+                                    csvImportState != QuickCaptureCsvImportState.Submitting
+                            ) {
                                 val shared = copyAndShareQuickCapturePrompt(
                                     prompt = groups.quickCapturePrompt(),
                                     share = sharePrompt,
                                     copy = { clipboard.copy("FoodYou quick capture prompt", it) },
                                 )
                                 viewModel.rememberCopiedBatch(
-                                    groups.flatMap { group -> group.entries.map { it.id } }
+                                    groups.flatMap { group -> group.entries.map { it.id } },
+                                    expectedRowCount = groups.size,
                                 )
                                 if (!shared) {
                                     coroutineScope.launch { snackbar.showSnackbar(fallbackMessage) }
@@ -693,7 +697,16 @@ internal fun QuickCaptureCsvImportDialogCard(
     val isSubmitting = state == QuickCaptureCsvImportState.Submitting
     val error =
         when (state) {
-            is QuickCaptureCsvImportState.InvalidCsv -> state.error.stringResource()
+            is QuickCaptureCsvImportState.InvalidCsv ->
+                if (state.error == QuickAddCsvError.InvalidDataRowCount) {
+                    stringResource(Res.string.error_quick_capture_csv_columns)
+                } else state.error.stringResource()
+            is QuickCaptureCsvImportState.RowCountMismatch ->
+                stringResource(
+                    Res.string.error_quick_capture_csv_row_count, state.expected, state.actual,
+                )
+            QuickCaptureCsvImportState.ShareAgain ->
+                stringResource(Res.string.error_quick_capture_csv_share_again)
             QuickCaptureCsvImportState.NoMeal ->
                 stringResource(Res.string.error_quick_capture_csv_no_meal)
             QuickCaptureCsvImportState.SavingFailed ->
@@ -1421,7 +1434,7 @@ internal class QuickCaptureViewModel(
     private val updateLibrary: UpdateQuickCaptureLibraryUseCase,
     private val setAiSuggestionRejected: SetQuickCaptureAiSuggestionRejectedUseCase,
     private val settingsRepository: UserPreferencesRepository<Settings>,
-    private val csvParser: QuickAddCsvParser,
+    private val csvParser: QuickAddCsvTableParser,
     private val csvImporter: QuickCaptureCsvImporter,
     private val savedStateHandle: SavedStateHandle,
     private val photoRegistrationScope: CoroutineScope,
@@ -1482,8 +1495,12 @@ internal class QuickCaptureViewModel(
         formError.value = null
     }
 
-    fun rememberCopiedBatch(entryIds: List<Long>) {
+    fun rememberCopiedBatch(entryIds: List<Long>, expectedRowCount: Int) {
+        if (csvImportState.value == QuickCaptureCsvImportState.Submitting) return
+        require(expectedRowCount > 0)
         savedStateHandle[CopiedEntryIdsKey] = entryIds.distinct()
+        savedStateHandle[CopiedGroupCountKey] = expectedRowCount
+        csvImportState.value = QuickCaptureCsvImportState.Idle
     }
 
     fun resetCsvImportError() {
@@ -1496,20 +1513,33 @@ internal class QuickCaptureViewModel(
         if (csvImportState.value == QuickCaptureCsvImportState.Submitting) return
         val entryIds = copiedEntryIds.value
         if (entryIds.isEmpty()) return
+        val expectedRowCount = savedStateHandle.get<Int>(CopiedGroupCountKey)
+        if (expectedRowCount == null || expectedRowCount <= 0) {
+            csvImportState.value = QuickCaptureCsvImportState.ShareAgain
+            return
+        }
 
         csvImportState.value = QuickCaptureCsvImportState.Submitting
         viewModelScope.launch {
             try {
                 when (val parsed = csvParser.parse(csv)) {
-                    is QuickAddCsvParseResult.Failure -> {
+                    is QuickAddCsvTableParseResult.Failure -> {
                         csvImportState.value = QuickCaptureCsvImportState.InvalidCsv(parsed.error)
                     }
-                    is QuickAddCsvParseResult.Success -> {
+                    is QuickAddCsvTableParseResult.Success -> {
+                        if (parsed.data.size != expectedRowCount) {
+                            csvImportState.value =
+                                QuickCaptureCsvImportState.RowCountMismatch(
+                                    expectedRowCount, parsed.data.size,
+                                )
+                            return@launch
+                        }
                         when (csvImporter.import(parsed.data, entryIds)) {
                             QuickCaptureCsvImportResult.NoMeal ->
                                 csvImportState.value = QuickCaptureCsvImportState.NoMeal
                             QuickCaptureCsvImportResult.Success -> {
                                 savedStateHandle[CopiedEntryIdsKey] = emptyList<Long>()
+                                savedStateHandle.remove<Int>(CopiedGroupCountKey)
                                 csvImportState.value = QuickCaptureCsvImportState.Idle
                                 eventChannel.send(QuickCaptureUiEvent.CsvImported)
                             }
@@ -1565,11 +1595,16 @@ internal sealed interface QuickCaptureCsvImportState {
 
     data class InvalidCsv(val error: QuickAddCsvError) : QuickCaptureCsvImportState
 
+    data class RowCountMismatch(val expected: Int, val actual: Int) : QuickCaptureCsvImportState
+
+    data object ShareAgain : QuickCaptureCsvImportState
+
     data object NoMeal : QuickCaptureCsvImportState
 
     data object SavingFailed : QuickCaptureCsvImportState
 }
 
+private const val CopiedGroupCountKey = "quickCaptureCopiedGroupCount"
 private const val CopiedEntryIdsKey = "quickCaptureCopiedEntryIds"
 
 internal const val QUICK_CAPTURE_PHOTO_DIRECTORY = "food-snap-photos"

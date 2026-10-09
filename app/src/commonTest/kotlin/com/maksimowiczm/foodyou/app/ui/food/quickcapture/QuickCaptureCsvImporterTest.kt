@@ -35,7 +35,7 @@ class QuickCaptureCsvImporterTest {
         val quickCapture = CsvImportRecordingQuickCaptureRepository()
         val importer = importer(manualEntries, quickCapture, listOf(Lunch, Breakfast))
 
-        val result = importer.import(CsvData, listOf(8, 3, 8))
+        val result = importer.import(listOf(CsvData), listOf(8, 3, 8))
 
         assertEquals(QuickCaptureCsvImportResult.Success, result)
         assertEquals(1, manualEntries.inserted.size)
@@ -51,7 +51,7 @@ class QuickCaptureCsvImporterTest {
         val quickCapture = CsvImportRecordingQuickCaptureRepository()
         val importer = importer(manualEntries, quickCapture, emptyList())
 
-        val result = importer.import(CsvData, listOf(8, 3))
+        val result = importer.import(listOf(CsvData), listOf(8, 3))
 
         assertEquals(QuickCaptureCsvImportResult.NoMeal, result)
         assertTrue(manualEntries.inserted.isEmpty())
@@ -64,7 +64,39 @@ class QuickCaptureCsvImporterTest {
         val quickCapture = CsvImportRecordingQuickCaptureRepository()
         val importer = importer(manualEntries, quickCapture, listOf(Lunch))
 
-        assertFailsWith<IllegalStateException> { importer.import(CsvData, listOf(8, 3)) }
+        assertFailsWith<IllegalStateException> { importer.import(listOf(CsvData), listOf(8, 3)) }
+        assertTrue(quickCapture.completedIds.isEmpty())
+    }
+
+    @Test
+    fun createsSeparateEntriesWithTheirOwnNutrition() = runTest {
+        val manualEntries = RecordingManualDiaryEntryRepository()
+        val quickCapture = CsvImportRecordingQuickCaptureRepository()
+        val rows = listOf(CsvData, QuickAddCsvData("Apfel", 80.0, 0.4, 18.0, 0.2))
+        val result = importer(manualEntries, quickCapture, listOf(Lunch)).import(rows, listOf(8, 3, 8))
+
+        assertEquals(QuickCaptureCsvImportResult.Success, result)
+        assertEquals(rows.map { it.name }, manualEntries.inserted.map { it.name })
+        for ((row, entry) in rows.zip(manualEntries.inserted)) {
+            assertEquals(Lunch.id, entry.mealId)
+            assertEquals(LocalDate(2026, 9, 19), entry.date)
+            assertEquals(row.energyKcal, entry.nutritionFacts.energy.value)
+            assertEquals(row.proteins, entry.nutritionFacts.proteins.value)
+            assertEquals(row.carbohydrates, entry.nutritionFacts.carbohydrates.value)
+            assertEquals(row.fats, entry.nutritionFacts.fats.value)
+        }
+        assertEquals(listOf(8L, 3L), quickCapture.completedIds)
+    }
+
+    @Test
+    fun emptyRowsOrBatchChangeNothing() = runTest {
+        val manualEntries = RecordingManualDiaryEntryRepository()
+        val quickCapture = CsvImportRecordingQuickCaptureRepository()
+        val importer = importer(manualEntries, quickCapture, listOf(Lunch))
+
+        assertEquals(QuickCaptureCsvImportResult.NoMeal, importer.import(emptyList(), listOf(8)))
+        assertEquals(QuickCaptureCsvImportResult.NoMeal, importer.import(listOf(CsvData), emptyList()))
+        assertTrue(manualEntries.inserted.isEmpty())
         assertTrue(quickCapture.completedIds.isEmpty())
     }
 

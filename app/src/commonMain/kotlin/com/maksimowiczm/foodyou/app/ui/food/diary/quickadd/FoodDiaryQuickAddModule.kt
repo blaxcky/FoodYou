@@ -8,6 +8,7 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
 
 fun Module.foodDiaryQuickAdd() {
+    factory<QuickAddCsvTableParser> { QuickAddCsvTableParserImpl(get()) }
     factoryOf(::QuickAddCsvParserImpl).bind<QuickAddCsvParser>()
 
     viewModel { (date: LocalDate, mealId: Long) ->

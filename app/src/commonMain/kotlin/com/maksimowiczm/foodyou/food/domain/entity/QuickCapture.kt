@@ -118,16 +118,20 @@ Gleiche mit Food-Datenbanken ab, um genauere Angaben zu erhalten.
 
 Gib ausschließlich CSV zurück.
 Format exakt: name,energy,proteins,carbohydrates,fats
-"Kurzer Mahlzeitenname",kcal,protein_g,kohlenhydrate_g,fett_g
+"Lebensmittelname",kcal,protein_g,kohlenhydrate_g,fett_g
 
 Regeln:
 - energy ist kcal.
 - proteins, carbohydrates und fats sind Gramm.
 - Verwende Punkt als Dezimaltrennzeichen, keine Einheiten.
-- Der Name soll kurz zusammenfassen, was enthalten war.
+- Gib für jeden unten aufgeführten Posten genau eine Datenzeile in derselben Reihenfolge aus.
+- Übernimm den Lebensmittelnamen des jeweiligen Postens.
+- Berechne die Nährwerte für die gesamte angegebene Menge des Postens, nicht pro 100 g.
+- Bereits zusammengefasste Posten bleiben jeweils eine Datenzeile. Fasse keine weiteren Posten zusammen.
+- Gib keine zusätzliche Summen- oder Gesamtzeile aus.
 - Wenn der Name Kommas oder Anführungszeichen enthält, nutze korrektes CSV-Quoting.
 - Gib keinen Markdown-Codeblock und keinen erklärenden Text aus.
-- Genau eine Header-Zeile und genau eine Datenzeile."""
+- Genau eine Header-Zeile und eine Datenzeile pro Posten."""
 
 fun Iterable<QuickCaptureLogGroup>.quickCapturePrompt(): String {
     val foods = joinToString(separator = "\n") { group ->

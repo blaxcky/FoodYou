@@ -32,11 +32,34 @@ internal fun interface QuickAddCsvParser {
     suspend fun parse(csv: String): QuickAddCsvParseResult
 }
 
-internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAddCsvParser {
+internal class QuickAddCsvParserImpl(csvParser: CsvParser) : QuickAddCsvParser {
+    private val tableParser = QuickAddCsvTableParserImpl(csvParser)
 
-    override suspend fun parse(csv: String): QuickAddCsvParseResult {
+    override suspend fun parse(csv: String): QuickAddCsvParseResult =
+        when (val result = tableParser.parse(csv, singleRowOnly = true)) {
+            is QuickAddCsvTableParseResult.Success ->
+                QuickAddCsvParseResult.Success(result.data.single())
+            is QuickAddCsvTableParseResult.Failure -> QuickAddCsvParseResult.Failure(result.error)
+        }
+}
+
+internal sealed interface QuickAddCsvTableParseResult {
+    data class Success(val data: List<QuickAddCsvData>) : QuickAddCsvTableParseResult
+    data class Failure(val error: QuickAddCsvError) : QuickAddCsvTableParseResult
+}
+
+internal fun interface QuickAddCsvTableParser {
+    suspend fun parse(csv: String): QuickAddCsvTableParseResult
+}
+
+internal class QuickAddCsvTableParserImpl(private val csvParser: CsvParser) : QuickAddCsvTableParser {
+
+    override suspend fun parse(csv: String): QuickAddCsvTableParseResult =
+        parse(csv, singleRowOnly = false)
+
+    internal suspend fun parse(csv: String, singleRowOnly: Boolean): QuickAddCsvTableParseResult {
         if (csv.isBlank()) {
-            return QuickAddCsvParseResult.Failure(QuickAddCsvError.Empty)
+            return QuickAddCsvTableParseResult.Failure(QuickAddCsvError.Empty)
         }
 
         val normalizedCsv = csv.withoutLeadingText().normalizeMissingHeaderLineBreak()
@@ -46,18 +69,29 @@ internal class QuickAddCsvParserImpl(private val csvParser: CsvParser) : QuickAd
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidDataRowCount)
+                return QuickAddCsvTableParseResult.Failure(QuickAddCsvError.InvalidDataRowCount)
             }
 
         if (records.firstOrNull()?.normalizedHeader() != Header) {
-            return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidHeader)
+            return QuickAddCsvTableParseResult.Failure(QuickAddCsvError.InvalidHeader)
         }
 
-        if (records.size != 2) {
-            return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidDataRowCount)
+        if (singleRowOnly && records.size != 2) {
+            return QuickAddCsvTableParseResult.Failure(QuickAddCsvError.InvalidDataRowCount)
         }
 
-        val row = records[1]
+        val data = mutableListOf<QuickAddCsvData>()
+        for (row in records.drop(1)) {
+            when (val result = parseRow(row)) {
+                is QuickAddCsvParseResult.Success -> data += result.data
+                is QuickAddCsvParseResult.Failure ->
+                    return QuickAddCsvTableParseResult.Failure(result.error)
+            }
+        }
+        return QuickAddCsvTableParseResult.Success(data)
+    }
+
+    private fun parseRow(row: List<String?>): QuickAddCsvParseResult {
         if (row.size != Header.size) {
             return QuickAddCsvParseResult.Failure(QuickAddCsvError.InvalidDataRowCount)
         }

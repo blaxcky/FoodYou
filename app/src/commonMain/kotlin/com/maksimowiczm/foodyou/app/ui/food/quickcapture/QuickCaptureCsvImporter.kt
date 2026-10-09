@@ -22,7 +22,7 @@ internal sealed interface QuickCaptureCsvImportResult {
 
 internal fun interface QuickCaptureCsvImporter {
     suspend fun import(
-        data: QuickAddCsvData,
+        data: List<QuickAddCsvData>,
         entryIds: List<Long>,
     ): QuickCaptureCsvImportResult
 }
@@ -35,10 +35,10 @@ internal class QuickCaptureCsvImporterImpl(
     private val transactionProvider: TransactionProvider,
 ) : QuickCaptureCsvImporter {
     override suspend fun import(
-        data: QuickAddCsvData,
+        data: List<QuickAddCsvData>,
         entryIds: List<Long>,
     ): QuickCaptureCsvImportResult {
-        if (entryIds.isEmpty()) return QuickCaptureCsvImportResult.NoMeal
+        if (entryIds.isEmpty() || data.isEmpty()) return QuickCaptureCsvImportResult.NoMeal
 
         val nowInstant = dateProvider.nowInstant()
         val now = nowInstant.toLocalDateTime(TimeZone.currentSystemDefault())
@@ -49,19 +49,21 @@ internal class QuickCaptureCsvImporterImpl(
                 ?: return QuickCaptureCsvImportResult.NoMeal
 
         transactionProvider.withTransaction {
-            manualDiaryEntryRepository.insert(
-                name = data.name,
-                mealId = meal.id,
-                date = now.date,
-                nutritionFacts =
-                    NutritionFacts(
-                        energy = data.energyKcal.toNutrientValue(),
-                        proteins = data.proteins.toNutrientValue(),
-                        carbohydrates = data.carbohydrates.toNutrientValue(),
-                        fats = data.fats.toNutrientValue(),
-                    ),
-                createdAt = now,
-            )
+            for (row in data) {
+                manualDiaryEntryRepository.insert(
+                    name = row.name,
+                    mealId = meal.id,
+                    date = now.date,
+                    nutritionFacts =
+                        NutritionFacts(
+                            energy = row.energyKcal.toNutrientValue(),
+                            proteins = row.proteins.toNutrientValue(),
+                            carbohydrates = row.carbohydrates.toNutrientValue(),
+                            fats = row.fats.toNutrientValue(),
+                        ),
+                    createdAt = now,
+                )
+            }
             quickCaptureRepository.markCompleted(entryIds.distinct(), nowInstant)
         }
 
