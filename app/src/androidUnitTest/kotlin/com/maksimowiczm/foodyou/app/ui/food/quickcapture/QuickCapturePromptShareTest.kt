@@ -6,7 +6,6 @@ import android.content.ContextWrapper
 import android.content.Intent
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,15 +18,22 @@ class QuickCapturePromptShareTest {
     private val prompt = "Lebensmittel:\nSkyr Natur: 200 g\nApfel: 125,5 g\nBitte als CSV zurückgeben."
 
     @Test
-    fun sharesFullPromptDirectlyToChatGptWithoutCopying() {
-        val context = ShareContext()
+    fun copiesFullPromptBeforeSharingDirectlyToChatGpt() {
         var copied: String? = null
+        val calls = mutableListOf<String>()
+        val context = ShareContext {
+            calls += "start"
+            assertEquals(prompt, copied)
+        }
 
         assertTrue(
-            shareOrCopyQuickCapturePrompt(
+            copyAndShareQuickCapturePrompt(
                 prompt,
                 share = { shareQuickCapturePromptToChatGpt(context, it) },
-                copy = { copied = it },
+                copy = {
+                    calls += "copy"
+                    copied = it
+                },
             )
         )
 
@@ -36,7 +42,39 @@ class QuickCapturePromptShareTest {
         assertEquals("text/plain", intent.type)
         assertEquals("com.openai.chatgpt", intent.`package`)
         assertEquals(prompt, intent.getStringExtra(Intent.EXTRA_TEXT))
-        assertNull(copied)
+        assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, intent.flags)
+        assertEquals(prompt, copied)
+        assertEquals(listOf("copy", "start"), calls)
+    }
+
+    @Test
+    fun repeatedSharingCopiesAndSendsTheLatestPrompt() {
+        val updatedPrompt = "$prompt\nBanane: 100 g"
+        var copied: String? = null
+        val copies = mutableListOf<String>()
+        val receivedPrompts = mutableListOf<String>()
+        val context = ShareContext { intent ->
+            val received = requireNotNull(intent.getStringExtra(Intent.EXTRA_TEXT))
+            assertEquals(copied, received)
+            receivedPrompts += received
+        }
+
+        listOf(prompt, updatedPrompt).forEach { currentPrompt ->
+            assertTrue(
+                copyAndShareQuickCapturePrompt(
+                    currentPrompt,
+                    share = { shareQuickCapturePromptToChatGpt(context, it) },
+                    copy = {
+                        copies += it
+                        copied = it
+                    },
+                )
+            )
+        }
+
+        assertEquals(listOf(prompt, updatedPrompt), copies)
+        assertEquals(copies, receivedPrompts)
+        assertEquals(updatedPrompt, copied)
     }
 
     @Test
@@ -50,24 +88,36 @@ class QuickCapturePromptShareTest {
     }
 
     private fun assertCopyFallback(failure: RuntimeException) {
-        val context = ShareContext(failure)
         var copied: String? = null
+        val calls = mutableListOf<String>()
+        val context = ShareContext(failure) {
+            calls += "start"
+            assertEquals(prompt, copied)
+        }
 
         assertFalse(
-            shareOrCopyQuickCapturePrompt(
+            copyAndShareQuickCapturePrompt(
                 prompt,
                 share = { shareQuickCapturePromptToChatGpt(context, it) },
-                copy = { copied = it },
+                copy = {
+                    calls += "copy"
+                    copied = it
+                },
             )
         )
 
         assertEquals(prompt, copied)
+        assertEquals(listOf("copy", "start"), calls)
     }
 
-    private class ShareContext(private val failure: RuntimeException? = null) : ContextWrapper(null) {
+    private class ShareContext(
+        private val failure: RuntimeException? = null,
+        private val onStart: (Intent) -> Unit = {},
+    ) : ContextWrapper(null) {
         var startedIntent: Intent? = null
 
         override fun startActivity(intent: Intent) {
+            onStart(intent)
             failure?.let { throw it }
             startedIntent = intent
         }

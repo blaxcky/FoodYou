@@ -325,7 +325,7 @@ fun QuickCaptureScreen(
                         onSharePrompt = {
                             val groups = entries.quickCaptureGroups(aggregate)
                             if (groups.isNotEmpty()) {
-                                val shared = shareOrCopyQuickCapturePrompt(
+                                val shared = copyAndShareQuickCapturePrompt(
                                     prompt = groups.quickCapturePrompt(),
                                     share = sharePrompt,
                                     copy = { clipboard.copy("FoodYou quick capture prompt", it) },

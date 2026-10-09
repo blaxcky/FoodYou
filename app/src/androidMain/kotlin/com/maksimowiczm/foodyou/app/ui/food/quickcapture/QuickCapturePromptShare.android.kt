@@ -18,6 +18,7 @@ internal fun shareQuickCapturePromptToChatGpt(context: Context, prompt: String):
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, prompt)
         setPackage("com.openai.chatgpt")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     return try {
         context.startActivity(intent)

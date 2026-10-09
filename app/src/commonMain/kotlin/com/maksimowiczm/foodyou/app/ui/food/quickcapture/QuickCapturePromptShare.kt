@@ -5,12 +5,11 @@ import androidx.compose.runtime.Composable
 @Composable
 internal expect fun rememberShareQuickCapturePromptAction(): (String) -> Boolean
 
-internal fun shareOrCopyQuickCapturePrompt(
+internal fun copyAndShareQuickCapturePrompt(
     prompt: String,
     share: (String) -> Boolean,
     copy: (String) -> Unit,
 ): Boolean {
-    val shared = share(prompt)
-    if (!shared) copy(prompt)
-    return shared
+    copy(prompt)
+    return share(prompt)
 }
