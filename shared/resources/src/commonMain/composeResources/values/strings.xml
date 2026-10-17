@@ -166,9 +166,9 @@
     <string name="weekly_chart_description">Show the bar chart of the single days above the weekly details.</string>
     <string name="weekly_weight_lost">lost</string>
     <string name="weekly_weight_gained">gained</string>
-    <string name="weekly_surplus_steps_value">≈ %1$s steps</string>
+    <string name="weekly_surplus_steps_value">%1$s steps</string>
     <string name="weekly_surplus_steps_label">to offset</string>
-    <string name="weekly_surplus_steps_per_day">≈ %1$s per day until Sunday</string>
+    <string name="weekly_surplus_steps_per_day">per day</string>
     <string name="weekly_weight_measured_today">today</string>
     <string name="weekly_weight_measured_yesterday">yesterday</string>
     <plurals name="weekly_weight_measured_days_ago">
@@ -306,7 +306,7 @@
     <string name="neutral_x_steps">%1$s steps</string>
     <string name="neutral_x_excluded_steps">%1$s excluded steps</string>
     <string name="neutral_x_excluded_steps_short">%1$s excluded</string>
-    <string name="neutral_step_goal_remaining_energy">%1$s steps to go → +%2$s</string>
+    <string name="neutral_step_goal_remaining_energy">%1$s steps to go → %2$s</string>
     <string name="neutral_step_goal_remaining">%1$s steps to your goal</string>
     <string name="neutral_step_goal_reached">Step goal reached</string>
     <string name="neutral_step_goal_x_of_y">%1$s of %2$s steps</string>

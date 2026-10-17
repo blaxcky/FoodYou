@@ -339,9 +339,9 @@
     <string name="weekly_chart_description">Zeigt das Balkendiagramm der einzelnen Tage über den Wochendetails.</string>
     <string name="weekly_weight_lost">abgenommen</string>
     <string name="weekly_weight_gained">zugenommen</string>
-    <string name="weekly_surplus_steps_value">≈ %1$s Schritte</string>
+    <string name="weekly_surplus_steps_value">%1$s Schritte</string>
     <string name="weekly_surplus_steps_label">zum Ausgleich</string>
-    <string name="weekly_surplus_steps_per_day">≈ %1$s pro Tag bis Sonntag</string>
+    <string name="weekly_surplus_steps_per_day">pro Tag</string>
     <string name="weekly_weight_measured_today">heute</string>
     <string name="weekly_weight_measured_yesterday">gestern</string>
     <plurals name="weekly_weight_measured_days_ago">
@@ -475,7 +475,7 @@
     <string name="neutral_x_steps">%1$s Schritte</string>
     <string name="neutral_x_excluded_steps">%1$s nicht gezählte Schritte</string>
     <string name="neutral_x_excluded_steps_short">%1$s nicht gezählt</string>
-    <string name="neutral_step_goal_remaining_energy">Noch %1$s Schritte → +%2$s</string>
+    <string name="neutral_step_goal_remaining_energy">Noch %1$s Schritte → %2$s</string>
     <string name="neutral_step_goal_remaining">Noch %1$s Schritte bis zum Ziel</string>
     <string name="neutral_step_goal_reached">Schrittziel erreicht</string>
     <string name="neutral_step_goal_x_of_y">%1$s von %2$s Schritten</string>

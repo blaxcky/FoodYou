@@ -529,13 +529,15 @@ private fun WeeklyGoalsContent(
                             WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
                         }
                         HorizontalDivider(color = GoalsTrackColor)
-                        WeeklySummaryFooter(
-                            model = model,
-                            weightStatus = weeklyWeightStatus(latestWeight, model.today),
-                            onWeightClick = onWeightClick,
-                            onWeightEntryClick = onWeightEntryClick,
-                        )
-                        model.surplusSteps?.let { WeeklySurplusStepsRow(it) }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            WeeklySummaryFooter(
+                                model = model,
+                                weightStatus = weeklyWeightStatus(latestWeight, model.today),
+                                onWeightClick = onWeightClick,
+                                onWeightEntryClick = onWeightEntryClick,
+                            )
+                            model.surplusSteps?.let { WeeklySurplusStepsRow(it) }
+                        }
                     }
                 }
             }
@@ -1080,23 +1082,12 @@ internal fun WeeklySummaryFooter(
     )
 }
 
-/** Steps that would burn the week's surplus, optionally spread over the days left. */
+/**
+ * Steps that would burn the week's surplus. Laid out like the weight row above it, with the
+ * share per remaining day where the weight row shows the latest measurement.
+ */
 @Composable
 internal fun WeeklySurplusStepsRow(steps: SurplusOffsetSteps, modifier: Modifier = Modifier) {
-    val text =
-        buildAnnotatedString {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                append(
-                    stringResource(
-                        Res.string.weekly_surplus_steps_value,
-                        steps.totalSteps.toString().groupDigits(),
-                    )
-                )
-            }
-            append(" ")
-            append(stringResource(Res.string.weekly_surplus_steps_label))
-        }
-
     Row(
         modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 40.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1110,25 +1101,46 @@ internal fun WeeklySurplusStepsRow(steps: SurplusOffsetSteps, modifier: Modifier
         Spacer(Modifier.width(6.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = text,
+                text =
+                    stringResource(
+                        Res.string.weekly_surplus_steps_value,
+                        steps.totalSteps.toString().groupDigits(),
+                    ),
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
                 color = GoalsTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            steps.stepsPerDay?.let { perDay ->
+            Text(
+                text = stringResource(Res.string.weekly_surplus_steps_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = GoalsMutedTextColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        steps.stepsPerDay?.let { perDay ->
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text =
-                        stringResource(
-                            Res.string.weekly_surplus_steps_per_day,
-                            perDay.toString().groupDigits(),
-                        ),
+                    text = perDay.toString().groupDigits(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = GoalsTextColor,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Text(
+                    text = stringResource(Res.string.weekly_surplus_steps_per_day),
                     style = MaterialTheme.typography.labelMedium,
                     color = GoalsMutedTextColor,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
                 )
             }
+            // Keeps the values in line with the weight row, which ends in a chevron.
+            Spacer(Modifier.width(20.dp))
         }
     }
 }
