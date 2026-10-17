@@ -21,6 +21,7 @@ import com.github.takahirom.roborazzi.RoborazziComposeOptions
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
+import com.maksimowiczm.foodyou.activity.domain.usecase.surplusOffsetSteps
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatterProvider
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
@@ -419,6 +420,31 @@ class GoalsCardScreenshotTest {
                                 onWeightEntryClick = {},
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun weeklySurplusStepsNarrowPhone() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-surplus-steps-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 150),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Column(
+                        modifier =
+                            Modifier.requiredSize(320.dp, 150.dp).background(Color.White).padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                    ) {
+                        WeeklySurplusStepsRow(
+                            surplusOffsetSteps(surplusKcal = 7_054, kcalPerStep = 0.04, remainingDays = 2)!!
+                        )
+                        WeeklySurplusStepsRow(
+                            surplusOffsetSteps(surplusKcal = 1_250, kcalPerStep = 0.04, remainingDays = 1)!!
+                        )
                     }
                 }
             }

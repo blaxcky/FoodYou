@@ -166,6 +166,9 @@
     <string name="weekly_chart_description">Show the bar chart of the single days above the weekly details.</string>
     <string name="weekly_weight_lost">lost</string>
     <string name="weekly_weight_gained">gained</string>
+    <string name="weekly_surplus_steps_value">≈ %1$s steps</string>
+    <string name="weekly_surplus_steps_label">to offset</string>
+    <string name="weekly_surplus_steps_per_day">≈ %1$s per day until Sunday</string>
     <string name="weekly_weight_measured_today">today</string>
     <string name="weekly_weight_measured_yesterday">yesterday</string>
     <plurals name="weekly_weight_measured_days_ago">

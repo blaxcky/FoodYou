@@ -339,6 +339,9 @@
     <string name="weekly_chart_description">Zeigt das Balkendiagramm der einzelnen Tage über den Wochendetails.</string>
     <string name="weekly_weight_lost">abgenommen</string>
     <string name="weekly_weight_gained">zugenommen</string>
+    <string name="weekly_surplus_steps_value">≈ %1$s Schritte</string>
+    <string name="weekly_surplus_steps_label">zum Ausgleich</string>
+    <string name="weekly_surplus_steps_per_day">≈ %1$s pro Tag bis Sonntag</string>
     <string name="weekly_weight_measured_today">heute</string>
     <string name="weekly_weight_measured_yesterday">gestern</string>
     <plurals name="weekly_weight_measured_days_ago">

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -75,6 +76,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
+import com.maksimowiczm.foodyou.activity.domain.usecase.SurplusOffsetSteps
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.ShimmerBounds
@@ -105,6 +107,9 @@ import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.weekly_diet_goal_reached
 import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_sum
+import foodyou.app.generated.resources.weekly_surplus_steps_label
+import foodyou.app.generated.resources.weekly_surplus_steps_per_day
+import foodyou.app.generated.resources.weekly_surplus_steps_value
 import foodyou.app.generated.resources.weekly_goal_of
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.action_weigh_in
@@ -530,6 +535,7 @@ private fun WeeklyGoalsContent(
                             onWeightClick = onWeightClick,
                             onWeightEntryClick = onWeightEntryClick,
                         )
+                        model.surplusSteps?.let { WeeklySurplusStepsRow(it) }
                     }
                 }
             }
@@ -1072,6 +1078,59 @@ internal fun WeeklySummaryFooter(
         onWeightEntryClick = onWeightEntryClick,
         modifier = modifier.fillMaxWidth(),
     )
+}
+
+/** Steps that would burn the week's surplus, optionally spread over the days left. */
+@Composable
+internal fun WeeklySurplusStepsRow(steps: SurplusOffsetSteps, modifier: Modifier = Modifier) {
+    val text =
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(
+                    stringResource(
+                        Res.string.weekly_surplus_steps_value,
+                        steps.totalSteps.toString().groupDigits(),
+                    )
+                )
+            }
+            append(" ")
+            append(stringResource(Res.string.weekly_surplus_steps_label))
+        }
+
+    Row(
+        modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 40.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.DirectionsWalk,
+            contentDescription = null,
+            tint = GoalsTextColor,
+            modifier = Modifier.size(22.dp).alpha(0.95f),
+        )
+        Spacer(Modifier.width(6.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = GoalsTextColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            steps.stepsPerDay?.let { perDay ->
+                Text(
+                    text =
+                        stringResource(
+                            Res.string.weekly_surplus_steps_per_day,
+                            perDay.toString().groupDigits(),
+                        ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GoalsMutedTextColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }
 
 @Composable

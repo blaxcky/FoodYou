@@ -38,4 +38,25 @@ class StepGoalProgressTest {
         assertNull(stepGoalProgress(1_000, 8_000, kcalPerStep = null)!!.remainingEnergyKcal)
         assertNull(stepGoalProgress(1_000, 8_000, kcalPerStep = 0.0)!!.remainingEnergyKcal)
     }
+
+    @Test
+    fun weeklySurplusConvertsToStepsRoundedUp() {
+        val steps = surplusOffsetSteps(surplusKcal = 7_054, kcalPerStep = 0.04, remainingDays = 2)!!
+
+        assertEquals(176_400, steps.totalSteps)
+        assertEquals(88_200, steps.stepsPerDay)
+    }
+
+    @Test
+    fun weeklySurplusOnLastDayHasNoDailySplit() {
+        assertNull(surplusOffsetSteps(7_054, 0.04, remainingDays = 1)!!.stepsPerDay)
+        assertNull(surplusOffsetSteps(7_054, 0.04, remainingDays = 0)!!.stepsPerDay)
+    }
+
+    @Test
+    fun noSurplusOrKcalPerStepMeansNoSteps() {
+        assertNull(surplusOffsetSteps(surplusKcal = 0, kcalPerStep = 0.04, remainingDays = 3))
+        assertNull(surplusOffsetSteps(surplusKcal = -500, kcalPerStep = 0.04, remainingDays = 3))
+        assertNull(surplusOffsetSteps(surplusKcal = 500, kcalPerStep = null, remainingDays = 3))
+    }
 }
