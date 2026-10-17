@@ -472,6 +472,12 @@
     <string name="neutral_x_steps">%1$s Schritte</string>
     <string name="neutral_x_excluded_steps">%1$s nicht gezählte Schritte</string>
     <string name="neutral_x_excluded_steps_short">%1$s nicht gezählt</string>
+    <string name="neutral_step_goal_remaining_energy">Noch %1$s Schritte → +%2$s</string>
+    <string name="neutral_step_goal_remaining">Noch %1$s Schritte bis zum Ziel</string>
+    <string name="neutral_step_goal_reached">Schrittziel erreicht</string>
+    <string name="neutral_step_goal_x_of_y">%1$s von %2$s Schritten</string>
+    <string name="label_daily_step_goal">Tägliches Schrittziel</string>
+    <string name="description_daily_step_goal">Leer lassen, um das Schrittziel auszublenden</string>
     <string name="headline_activity_section_steps">Schritte</string>
     <string name="headline_activity_section_training_app">Aus Trainings-App</string>
     <string name="headline_activity_section_manual">Eigene Einträge</string>

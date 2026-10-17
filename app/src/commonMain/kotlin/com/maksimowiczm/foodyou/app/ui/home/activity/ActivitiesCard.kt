@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,11 +28,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maksimowiczm.foodyou.activity.domain.usecase.StepGoalProgress
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
@@ -139,6 +143,11 @@ internal fun ActivitiesCardContent(
                     onClick = if (cardModel.healthConnectStepsEnabled) onStepExclusions else null,
                 )
 
+                val stepGoal = cardModel.stepGoal
+                if (stepGoal != null && cardModel.stepGoalDay != StepGoalDay.Future) {
+                    StepGoalProgressRow(progress = stepGoal, day = cardModel.stepGoalDay)
+                }
+
                 if (cardModel.importedEntries.isNotEmpty()) {
                     SectionDivider()
                     ActivitySectionHeader(
@@ -216,6 +225,57 @@ private fun ActivitySectionHeader(text: String, icon: ImageVector? = null) {
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.8.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun StepGoalProgressRow(progress: StepGoalProgress, day: StepGoalDay) {
+    val energyFormatter = LocalEnergyFormatter.current
+    val remainingSteps = progress.remainingSteps.toString().groupDigits()
+    val remainingEnergyKcal = progress.remainingEnergyKcal
+    val text =
+        when {
+            progress.reached -> stringResource(Res.string.neutral_step_goal_reached)
+            day == StepGoalDay.Past ->
+                stringResource(
+                    Res.string.neutral_step_goal_x_of_y,
+                    progress.steps.toString().groupDigits(),
+                    progress.goalSteps.toString().groupDigits(),
+                )
+            remainingEnergyKcal != null ->
+                stringResource(
+                    Res.string.neutral_step_goal_remaining_energy,
+                    remainingSteps,
+                    energyFormatter.formatEnergy(roundedActivityEnergyKcal(remainingEnergyKcal)),
+                )
+            else -> stringResource(Res.string.neutral_step_goal_remaining, remainingSteps)
+        }
+
+    // Starts below the step label: 16 dp padding + 24 dp icon + 16 dp spacing.
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(start = 56.dp, end = 16.dp, bottom = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        LinearProgressIndicator(
+            progress = { progress.fraction },
+            modifier = Modifier.fillMaxWidth().height(6.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color =
+                if (progress.reached) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            fontWeight = if (progress.reached) FontWeight.SemiBold else null,
         )
     }
 }

@@ -436,6 +436,19 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun dailyStepGoalRoundTripsThroughDataStore() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        assertNull(repository.observe().first().dailyStepGoal)
+
+        repository.update { copy(dailyStepGoal = 8_000) }
+        assertEquals(8_000, repository.observe().first().dailyStepGoal)
+
+        repository.update { copy(dailyStepGoal = null) }
+        assertNull(repository.observe().first().dailyStepGoal)
+    }
+
+    @Test
     fun dietEnergyDeficitOverrideDefaultsToNull() = runTest {
         val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
 

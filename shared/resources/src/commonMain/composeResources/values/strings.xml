@@ -303,6 +303,12 @@
     <string name="neutral_x_steps">%1$s steps</string>
     <string name="neutral_x_excluded_steps">%1$s excluded steps</string>
     <string name="neutral_x_excluded_steps_short">%1$s excluded</string>
+    <string name="neutral_step_goal_remaining_energy">%1$s steps to go → +%2$s</string>
+    <string name="neutral_step_goal_remaining">%1$s steps to your goal</string>
+    <string name="neutral_step_goal_reached">Step goal reached</string>
+    <string name="neutral_step_goal_x_of_y">%1$s of %2$s steps</string>
+    <string name="label_daily_step_goal">Daily step goal</string>
+    <string name="description_daily_step_goal">Leave empty to hide the step goal</string>
     <string name="headline_activity_section_steps">Steps</string>
     <string name="headline_activity_section_training_app">From training app</string>
     <string name="headline_activity_section_manual">Your entries</string>

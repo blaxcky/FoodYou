@@ -30,4 +30,18 @@ class ActivitySettingsViewModelTest {
         assertNull("0,".toCompleteKcalPerStepOrNull())
         assertNull("0.".toCompleteKcalPerStepOrNull())
     }
+
+    @Test
+    fun dailyStepGoalTextPrefersInputOverPersistedValue() {
+        assertEquals("", dailyStepGoalText(input = "", persisted = 8_000))
+        assertEquals("8000", dailyStepGoalText(input = null, persisted = 8_000))
+        assertEquals("", dailyStepGoalText(input = null, persisted = null))
+    }
+
+    @Test
+    fun dailyStepGoalAcceptsOnlyPositiveWholeNumbers() {
+        assertEquals(8_000, "8000".toDailyStepGoalOrNull())
+        assertNull("0".toDailyStepGoalOrNull())
+        assertNull("".toDailyStepGoalOrNull())
+    }
 }

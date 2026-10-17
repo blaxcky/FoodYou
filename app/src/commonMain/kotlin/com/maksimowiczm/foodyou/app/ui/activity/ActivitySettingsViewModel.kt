@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 
 internal data class ActivitySettingsModel(
     val kcalPerStep: String,
+    val dailyStepGoal: String = "",
     val healthConnectEnabled: Boolean,
     val lastSyncedEpochSeconds: Long?,
     val healthConnectStatus: ActivityHealthConnectStatus,
@@ -38,18 +39,25 @@ internal class ActivitySettingsViewModel(
 ) : ViewModel() {
     private val healthConnectStatus = MutableStateFlow(ActivityHealthConnectStatus.Checking)
     private val kcalPerStepInput = MutableStateFlow<String?>(null)
+    private val dailyStepGoalInput = MutableStateFlow<String?>(null)
 
     val model: StateFlow<ActivitySettingsModel?> =
         combine(
                 settingsRepository.observe(),
                 healthConnectStatus,
                 kcalPerStepInput,
-            ) { settings, status, kcalPerStepInput ->
+                dailyStepGoalInput,
+            ) { settings, status, kcalPerStepInput, dailyStepGoalInput ->
                 ActivitySettingsModel(
                     kcalPerStep =
                         kcalPerStepText(
                             input = kcalPerStepInput,
                             persisted = settings.stepsCaloriesPerStepKcal,
+                        ),
+                    dailyStepGoal =
+                        dailyStepGoalText(
+                            input = dailyStepGoalInput,
+                            persisted = settings.dailyStepGoal,
                         ),
                     healthConnectEnabled =
                         settings.healthConnectStepsEnabled &&
@@ -74,6 +82,15 @@ internal class ActivitySettingsViewModel(
         viewModelScope.launch {
             settingsRepository.update { copy(stepsCaloriesPerStepKcal = parsed) }
         }
+    }
+
+    fun setDailyStepGoal(value: String) {
+        val digits = value.filter(Char::isDigit)
+        dailyStepGoalInput.value = digits
+        val parsed = digits.toDailyStepGoalOrNull()
+        if (digits.isNotEmpty() && parsed == null) return
+
+        viewModelScope.launch { settingsRepository.update { copy(dailyStepGoal = parsed) } }
     }
 
     fun refreshHealthConnectStatus() {
@@ -174,6 +191,12 @@ internal fun String.toCompleteKcalPerStepOrNull(): Double? {
     if (normalized.endsWith(".")) return null
     return normalized.toDoubleOrNull()?.takeIf { it >= 0.0 }
 }
+
+internal fun dailyStepGoalText(input: String?, persisted: Int?): String =
+    input ?: persisted?.toString() ?: ""
+
+/** Empty input turns the goal off; only positive whole step counts are valid. */
+internal fun String.toDailyStepGoalOrNull(): Int? = trim().toIntOrNull()?.takeIf { it > 0 }
 
 /** Re-enabling must refresh history even if a full sync already ran today. */
 internal fun Settings.enableStepSync(): Settings = copy(

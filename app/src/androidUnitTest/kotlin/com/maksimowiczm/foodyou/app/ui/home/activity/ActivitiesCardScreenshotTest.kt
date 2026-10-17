@@ -15,6 +15,7 @@ import com.github.takahirom.roborazzi.RoborazziComposeOptions
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
+import com.maksimowiczm.foodyou.activity.domain.usecase.stepGoalProgress
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatterProvider
 import org.junit.After
@@ -50,8 +51,16 @@ class ActivitiesCardScreenshotTest {
         ) { ActivitiesCardGolden(imported = true) }
     }
 
+    @Test
+    fun stepGoal() {
+        captureRoboImage(
+            filePath = "ActivitiesCardScreenshotTest.step-goal.png",
+            roborazziComposeOptions = RoborazziComposeOptions.Builder().size(390, 420).locale("de-rDE").build(),
+        ) { ActivitiesCardGolden(stepGoal = true) }
+    }
+
     @Composable
-    private fun ActivitiesCardGolden(imported: Boolean = false) {
+    private fun ActivitiesCardGolden(imported: Boolean = false, stepGoal: Boolean = false) {
         MaterialTheme {
             EnergyFormatterProvider(EnergyFormatter.kilocalories) {
                 Box(
@@ -62,12 +71,12 @@ class ActivitiesCardScreenshotTest {
                     ActivitiesCardContent(
                         model =
                             ActivitiesCardModel(
-                                countedSteps = 8_436,
-                                excludedSteps = 1_284,
+                                countedSteps = if (stepGoal) 1_528 else 8_436,
+                                excludedSteps = if (stepGoal) 0 else 1_284,
                                 healthConnectStepsEnabled = true,
-                                stepEnergyKcal = 34,
+                                stepEnergyKcal = if (stepGoal) 61 else 34,
                                 manualEnergyKcal = 0,
-                                totalEnergyKcal = if (imported) 364 else 34,
+                                totalEnergyKcal = if (imported) 364 else if (stepGoal) 61 else 34,
                                 importedEntries = if (imported) listOf(
                                     com.maksimowiczm.foodyou.training.ImportedActivity(
                                         com.maksimowiczm.foodyou.training.ImportedActivityId(1),
@@ -77,6 +86,16 @@ class ActivitiesCardScreenshotTest {
                                         "cardio", kotlinx.datetime.LocalDate(2026, 9, 27), "Cardio", 120),
                                 ) else emptyList(),
                                 manualEntries = emptyList(),
+                                stepGoal =
+                                    if (stepGoal) {
+                                        stepGoalProgress(
+                                            countedSteps = 1_528,
+                                            dailyStepGoal = 8_000,
+                                            kcalPerStep = 0.04,
+                                        )
+                                    } else {
+                                        null
+                                    },
                             ),
                         onAdd = {},
                         onEdit = {},

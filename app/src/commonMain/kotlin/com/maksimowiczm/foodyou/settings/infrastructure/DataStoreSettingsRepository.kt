@@ -47,6 +47,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             energyFormat = this.getEnergyFormat(SettingsPreferencesKeys.energyFormat),
             appLaunchInfo = this.getAppLaunchInfo(),
             stepsCaloriesPerStepKcal = this[SettingsPreferencesKeys.stepsCaloriesPerStepKcal],
+            dailyStepGoal = this[SettingsPreferencesKeys.dailyStepGoal]?.takeIf { it > 0 },
             healthConnectStepsEnabled =
                 this[SettingsPreferencesKeys.healthConnectStepsEnabled] ?: false,
             healthConnectWeightEnabled =
@@ -118,6 +119,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setEnergyFormat(SettingsPreferencesKeys.energyFormat, updated.energyFormat)
         setAppLaunchInfo(updated.appLaunchInfo)
         this[SettingsPreferencesKeys.stepsCaloriesPerStepKcal] = updated.stepsCaloriesPerStepKcal
+        setWithNull(SettingsPreferencesKeys.dailyStepGoal, updated.dailyStepGoal?.takeIf { it > 0 })
         this[SettingsPreferencesKeys.healthConnectStepsEnabled] = updated.healthConnectStepsEnabled
         this[SettingsPreferencesKeys.healthConnectWeightEnabled] = updated.healthConnectWeightEnabled
         this[SettingsPreferencesKeys.healthConnectStepsLastSyncedEpochSeconds] =
@@ -435,6 +437,7 @@ private object SettingsPreferencesKeys {
     val onboardingFinished = booleanPreferencesKey("settings:onboardingFinished")
     val energyFormat = intPreferencesKey("settings:energyFormat")
     val stepsCaloriesPerStepKcal = doublePreferencesKey("settings:stepsCaloriesPerStepKcal")
+    val dailyStepGoal = intPreferencesKey("settings:dailyStepGoal")
     val healthConnectStepsEnabled = booleanPreferencesKey("settings:healthConnectStepsEnabled")
     val healthConnectWeightEnabled = booleanPreferencesKey("settings:healthConnectWeightEnabled")
     val healthConnectStepsLastFullSyncEpochDay =

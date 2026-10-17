@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.domain.entity.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
+import com.maksimowiczm.foodyou.activity.domain.usecase.StepGoalProgress
+import com.maksimowiczm.foodyou.activity.domain.usecase.stepGoalProgress
+import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,11 +30,27 @@ internal data class ActivitiesCardModel(
     val totalEnergyKcal: Int,
     val manualEntries: List<ManualActivityEntry>,
     val importedEntries: List<com.maksimowiczm.foodyou.training.ImportedActivity> = emptyList(),
+    val stepGoal: StepGoalProgress? = null,
+    val stepGoalDay: StepGoalDay = StepGoalDay.Today,
 )
+
+internal enum class StepGoalDay {
+    Past,
+    Today,
+    Future,
+}
+
+internal fun stepGoalDay(selectedDate: LocalDate, today: LocalDate): StepGoalDay =
+    when {
+        selectedDate < today -> StepGoalDay.Past
+        selectedDate > today -> StepGoalDay.Future
+        else -> StepGoalDay.Today
+    }
 
 internal class ActivitiesCardViewModel(
     private val activityRepository: ActivityRepository,
     private val settingsRepository: UserPreferencesRepository<Settings>,
+    private val dateProvider: DateProvider,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
 
@@ -47,7 +66,8 @@ internal class ActivitiesCardViewModel(
                         ),
                         activityRepository.observeManualEntries(date),
                         activityRepository.observeImportedEntries(date),
-                    ) { summary, entries, importedEntries ->
+                        dateProvider.observeDate(),
+                    ) { summary, entries, importedEntries, today ->
                         ActivitiesCardModel(
                             countedSteps = summary.countedSteps,
                             excludedSteps = summary.excludedSteps,
@@ -57,6 +77,13 @@ internal class ActivitiesCardViewModel(
                             totalEnergyKcal = roundedActivityEnergyKcal(summary.totalEnergyKcal),
                             manualEntries = entries,
                             importedEntries = importedEntries,
+                            stepGoal =
+                                stepGoalProgress(
+                                    countedSteps = summary.countedSteps,
+                                    dailyStepGoal = settings.dailyStepGoal,
+                                    kcalPerStep = settings.stepsCaloriesPerStepKcal,
+                                ),
+                            stepGoalDay = stepGoalDay(date, today),
                         )
                     }
                 }

@@ -58,6 +58,7 @@ fun Module.home() {
         ActivitiesCardViewModel(
             activityRepository = get(),
             settingsRepository = userPreferencesRepository(),
+            dateProvider = get(),
         )
     }
 

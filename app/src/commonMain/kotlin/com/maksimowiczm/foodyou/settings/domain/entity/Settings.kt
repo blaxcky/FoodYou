@@ -19,6 +19,7 @@ data class Settings(
     val energyFormat: EnergyFormat,
     val appLaunchInfo: AppLaunchInfo,
     val stepsCaloriesPerStepKcal: Double?,
+    val dailyStepGoal: Int? = null,
     val healthConnectStepsEnabled: Boolean,
     val healthConnectWeightEnabled: Boolean = false,
     val healthConnectStepsLastSyncedEpochSeconds: Long?,

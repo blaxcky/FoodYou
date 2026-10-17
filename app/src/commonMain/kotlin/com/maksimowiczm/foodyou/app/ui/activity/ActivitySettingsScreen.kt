@@ -19,6 +19,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.component.SettingsListItem
+import foodyou.app.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -81,6 +83,15 @@ fun ActivitySettingsScreen(
                 label = { Text("kcal per step") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.padding(16.dp),
+            )
+            OutlinedTextField(
+                value = model?.dailyStepGoal ?: "",
+                onValueChange = viewModel::setDailyStepGoal,
+                label = { Text(stringResource(Res.string.label_daily_step_goal)) },
+                supportingText = { Text(stringResource(Res.string.description_daily_step_goal)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             )
             Text(
                 text = model?.lastSyncedEpochSeconds?.let { "Last sync: $it" } ?: "Not synced yet",
