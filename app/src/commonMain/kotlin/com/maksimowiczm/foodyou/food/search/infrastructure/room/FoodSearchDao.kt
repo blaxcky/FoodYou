@@ -5,12 +5,44 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.room.RoomRawQuery
 import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceType
 import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceTypeSQLConstants
+import com.maksimowiczm.foodyou.food.infrastructure.room.MeasurementSuggestionEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.ProductEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.ProductFts
+import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeEntity
+import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeFts
+import com.maksimowiczm.foodyou.food.infrastructure.room.RecipeIngredientEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FoodSearchDao {
+
+    @RawQuery(
+        observedEntities = [
+            ProductEntity::class,
+            ProductFts::class,
+            RecipeEntity::class,
+            RecipeFts::class,
+            RecipeIngredientEntity::class,
+            MeasurementSuggestionEntity::class,
+        ]
+    )
+    fun observeTextSearch(query: RoomRawQuery): PagingSource<Int, FoodSearch>
+
+    @RawQuery(
+        observedEntities = [
+            ProductEntity::class,
+            ProductFts::class,
+            RecipeEntity::class,
+            RecipeFts::class,
+            RecipeIngredientEntity::class,
+            MeasurementSuggestionEntity::class,
+        ]
+    )
+    fun observeTextSearchCount(query: RoomRawQuery): Flow<Int>
 
     @Query(
         """
@@ -145,143 +177,63 @@ interface FoodSearchDao {
         excludedRecipeId: Long?,
     ): Flow<Int>
 
-    @Query(
-        """
-        WITH ProductsSearch AS (
-            SELECT $PRODUCT_FOOD_SEARCH_SQL_SELECT
-            FROM Product p JOIN ProductFts fts ON p.id = fts.rowid
-            WHERE
-                (ProductFts MATCH :query || '*') AND (:source IS NULL OR p.sourceType = :source)
-        ),
-        RecipesSearch AS (
-            SELECT $RECIPE_FOOD_SEARCH_SQL_SELECT
-            FROM Recipe r JOIN RecipeFts fts ON r.id = fts.rowid
-            WHERE
-                -- All recipes are from the user
-                :source = ${FoodSourceTypeSQLConstants.USER} AND
-                (RecipeFts MATCH :query || '*') AND
-                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
-                (:excludedRecipeId IS NULL OR NOT EXISTS (
-                    SELECT 1
-                    FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id
-                    AND rai.ingredientId = :excludedRecipeId
-                ))
-        )
-        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
-        FROM ProductsSearch p
-        UNION ALL
-        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
-        FROM RecipesSearch p
-        ORDER BY isFavorite DESC, headline COLLATE NOCASE ASC
-        """
-    )
     fun observeFoodByQuery(
         query: String,
         source: FoodSourceType?,
         excludedRecipeId: Long?,
-    ): PagingSource<Int, FoodSearch>
-
-    @Query(
-        """
-        WITH ProductsSearch AS (
-            SELECT $PRODUCT_FOOD_SEARCH_SQL_SELECT
-            FROM Product p JOIN ProductFts fts ON p.id = fts.rowid
-            WHERE
-                (ProductFts MATCH :query || '*') AND p.sourceType IN (:sources)
-        ),
-        RecipesSearch AS (
-            SELECT $RECIPE_FOOD_SEARCH_SQL_SELECT
-            FROM Recipe r JOIN RecipeFts fts ON r.id = fts.rowid
-            WHERE
-                :includeRecipes AND
-                (RecipeFts MATCH :query || '*') AND
-                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
-                (:excludedRecipeId IS NULL OR NOT EXISTS (
-                    SELECT 1
-                    FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id
-                    AND rai.ingredientId = :excludedRecipeId
-                ))
+    ): PagingSource<Int, FoodSearch> =
+        observeTextSearch(
+            FoodSearchTextQuery(
+                query = query,
+                sources = source?.let { listOf(it) },
+                includeRecipes = source == FoodSourceType.User,
+                excludedRecipeId = excludedRecipeId,
+            ).build(countOnly = false)
         )
-        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
-        FROM ProductsSearch p
-        UNION ALL
-        SELECT *, $LATEST_MEASUREMENT_SQL_SELECT
-        FROM RecipesSearch p
-        ORDER BY isFavorite DESC, headline COLLATE NOCASE ASC
-        """
-    )
+
     fun observeFoodByQueryFromSources(
         query: String,
         sources: List<FoodSourceType>,
         includeRecipes: Boolean,
         excludedRecipeId: Long?,
-    ): PagingSource<Int, FoodSearch>
-
-    @Query(
-        """
-        WITH ProductsSearch AS (
-            SELECT 1
-            FROM Product p JOIN ProductFts fts ON p.id = fts.rowid
-            WHERE
-                (ProductFts MATCH :query || '*') AND (:source IS NULL OR p.sourceType = :source)
-        ),
-        RecipesSearch AS (
-            SELECT 1
-            FROM Recipe r JOIN RecipeFts fts ON r.id = fts.rowid
-            WHERE
-                -- All recipes are from the user
-                :source = ${FoodSourceTypeSQLConstants.USER} AND
-                (RecipeFts MATCH :query || '*') AND
-                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
-                (:excludedRecipeId IS NULL OR NOT EXISTS (
-                    SELECT 1
-                    FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id
-                    AND rai.ingredientId = :excludedRecipeId
-                ))
+    ): PagingSource<Int, FoodSearch> =
+        observeTextSearch(
+            FoodSearchTextQuery(
+                query = query,
+                sources = sources,
+                includeRecipes = includeRecipes,
+                excludedRecipeId = excludedRecipeId,
+            ).build(countOnly = false)
         )
-        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch)
-        """
-    )
+
     fun observeFoodCountByQuery(
         query: String,
         source: FoodSourceType?,
         excludedRecipeId: Long?,
-    ): Flow<Int>
-
-    @Query(
-        """
-        WITH ProductsSearch AS (
-            SELECT 1
-            FROM Product p JOIN ProductFts fts ON p.id = fts.rowid
-            WHERE
-                (ProductFts MATCH :query || '*') AND p.sourceType IN (:sources)
-        ),
-        RecipesSearch AS (
-            SELECT 1
-            FROM Recipe r JOIN RecipeFts fts ON r.id = fts.rowid
-            WHERE
-                :includeRecipes AND
-                (RecipeFts MATCH :query || '*') AND
-                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
-                (:excludedRecipeId IS NULL OR NOT EXISTS (
-                    SELECT 1
-                    FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id
-                    AND rai.ingredientId = :excludedRecipeId
-                ))
+    ): Flow<Int> =
+        observeTextSearchCount(
+            FoodSearchTextQuery(
+                query = query,
+                sources = source?.let { listOf(it) },
+                includeRecipes = source == FoodSourceType.User,
+                excludedRecipeId = excludedRecipeId,
+            ).build(countOnly = true)
         )
-        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch)
-        """
-    )
+
     fun observeFoodCountByQueryFromSources(
         query: String,
         sources: List<FoodSourceType>,
         includeRecipes: Boolean,
         excludedRecipeId: Long?,
-    ): Flow<Int>
+    ): Flow<Int> =
+        observeTextSearchCount(
+            FoodSearchTextQuery(
+                query = query,
+                sources = sources,
+                includeRecipes = includeRecipes,
+                excludedRecipeId = excludedRecipeId,
+            ).build(countOnly = true)
+        )
 
     @Query(
         """
@@ -338,90 +290,35 @@ interface FoodSearchDao {
         sources: List<FoodSourceType>,
     ): Flow<Int>
 
-    @Query(
-        """
-        WITH ProductsSearch AS (
-            SELECT $PRODUCT_FOOD_SEARCH_SQL_SELECT, s.type AS measurementType, s.value AS measurementValue, s.epochSeconds AS epochSeconds
-            FROM LatestMeasurementSuggestion s 
-                LEFT JOIN Product p ON s.productId = p.id
-                JOIN ProductFts fts ON p.id = fts.rowid
-            WHERE
-                s.productId IS NOT NULL AND
-                s.epochSeconds >= :nowEpochSeconds - 2592000 AND
-                (ProductFts MATCH :query || '*')
-        ),
-        RecipesSearch AS (
-            SELECT $RECIPE_FOOD_SEARCH_SQL_SELECT, s.type AS measurementType, s.value AS measurementValue, s.epochSeconds AS epochSeconds
-            FROM LatestMeasurementSuggestion s 
-                LEFT JOIN Recipe r ON s.recipeId = r.id
-                JOIN RecipeFts fts ON r.id = fts.rowid
-            WHERE
-                s.recipeId IS NOT NULL AND
-                s.epochSeconds >= :nowEpochSeconds - 2592000 AND
-                (RecipeFts MATCH :query || '*') AND
-                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
-                (:excludedRecipeId IS NULL OR NOT EXISTS (
-                    SELECT 1
-                    FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id 
-                    AND rai.ingredientId = :excludedRecipeId
-                ))
-        ),
-        Merged AS (
-            SELECT *
-            FROM ProductsSearch
-            UNION ALL
-            SELECT *
-            FROM RecipesSearch
-        )
-        SELECT $FOOD_SEARCH_SQL_SELECT
-        FROM Merged
-        ORDER BY epochSeconds DESC
-        """
-    )
     fun observeRecentFoodByQuery(
         query: String,
         nowEpochSeconds: Long,
         excludedRecipeId: Long? = null,
-    ): PagingSource<Int, FoodSearch>
-
-    @Query(
-        """
-        WITH ProductsSearch AS (
-            SELECT 1
-            FROM LatestMeasurementSuggestion s 
-                LEFT JOIN Product p ON s.productId = p.id
-                JOIN ProductFts fts ON p.id = fts.rowid
-            WHERE
-                s.productId IS NOT NULL AND
-                s.epochSeconds >= :nowEpochSeconds - 2592000 AND
-                (ProductFts MATCH :query || '*')
-        ),
-        RecipesSearch AS (
-            SELECT 1
-            FROM LatestMeasurementSuggestion s 
-                LEFT JOIN Recipe r ON s.recipeId = r.id
-                JOIN RecipeFts fts ON r.id = fts.rowid
-            WHERE
-                s.recipeId IS NOT NULL AND
-                s.epochSeconds >= :nowEpochSeconds - 2592000 AND
-                (RecipeFts MATCH :query || '*') AND
-                (:excludedRecipeId IS NULL OR r.id != :excludedRecipeId) AND
-                (:excludedRecipeId IS NULL OR NOT EXISTS (
-                    SELECT 1
-                    FROM RecipeAllIngredientsView rai
-                    WHERE rai.targetRecipeId = r.id 
-                    AND rai.ingredientId = :excludedRecipeId
-                ))
+    ): PagingSource<Int, FoodSearch> =
+        observeTextSearch(
+            FoodSearchTextQuery(
+                query = query,
+                sources = null,
+                includeRecipes = true,
+                excludedRecipeId = excludedRecipeId,
+                nowEpochSeconds = nowEpochSeconds,
+            ).build(countOnly = false)
         )
-        SELECT (SELECT COUNT(*) FROM ProductsSearch) + (SELECT COUNT(*) FROM RecipesSearch) 
-        """
-    )
+
     fun observeRecentFoodCountByQuery(
         query: String,
         nowEpochSeconds: Long,
         excludedRecipeId: Long? = null,
-    ): Flow<Int>
+    ): Flow<Int> =
+        observeTextSearchCount(
+            FoodSearchTextQuery(
+                query = query,
+                sources = null,
+                includeRecipes = true,
+                excludedRecipeId = excludedRecipeId,
+                nowEpochSeconds = nowEpochSeconds,
+            ).build(countOnly = true)
+        )
 
     @Query(
         """
@@ -521,7 +418,7 @@ interface FoodSearchDao {
 }
 
 // Don't do it twice
-private const val PRODUCT_FOOD_SEARCH_SQL_SELECT =
+internal const val PRODUCT_FOOD_SEARCH_SQL_SELECT =
     """
 p.id AS productId, 
 NULL AS recipeId,
@@ -580,7 +477,7 @@ p.servingWeight as servingWeight,
 p.isFavorite
 """
 
-private const val RECIPE_FOOD_SEARCH_SQL_SELECT =
+internal const val RECIPE_FOOD_SEARCH_SQL_SELECT =
     """
 NULL AS productId,
 r.id AS recipeId,
@@ -636,13 +533,13 @@ NULL AS servingWeight,
 0 AS isFavorite
 """
 
-private const val LATEST_MEASUREMENT_SQL_SELECT =
+internal const val LATEST_MEASUREMENT_SQL_SELECT =
     """
 (SELECT s.type FROM LatestMeasurementSuggestion s WHERE s.productId = p.productId OR s.recipeId = p.recipeId) AS measurementType,
 (SELECT s.value FROM LatestMeasurementSuggestion s WHERE s.productId = p.productId OR s.recipeId = p.recipeId) AS measurementValue
 """
 
-private const val FOOD_SEARCH_SQL_SELECT =
+internal const val FOOD_SEARCH_SQL_SELECT =
     """
 productId,
 recipeId,
