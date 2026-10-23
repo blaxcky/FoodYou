@@ -115,13 +115,4 @@ class WeekDatesTest {
 
         assertEquals(emptyList(), dates)
     }
-
-    @Test
-    fun remainingDaysInWeekCountsTodayThroughSundayOnlyForCurrentWeek() {
-        val saturday = LocalDate(2026, 10, 17)
-
-        assertEquals(2, remainingDaysInWeek(selectedDate = LocalDate(2026, 10, 12), today = saturday))
-        assertEquals(1, remainingDaysInWeek(selectedDate = saturday, today = LocalDate(2026, 10, 18)))
-        assertEquals(0, remainingDaysInWeek(selectedDate = LocalDate(2026, 10, 9), today = saturday))
-    }
 }

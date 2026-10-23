@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +21,6 @@ import com.github.takahirom.roborazzi.RoborazziComposeOptions
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.locale
 import com.github.takahirom.roborazzi.size
-import com.maksimowiczm.foodyou.activity.domain.usecase.surplusOffsetSteps
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.EnergyFormatterProvider
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
@@ -422,49 +419,6 @@ class GoalsCardScreenshotTest {
                                 onWeightEntryClick = {},
                             )
                         }
-                    }
-                }
-            }
-        }
-    }
-
-    @Test
-    fun weeklySurplusStepsNarrowPhone() {
-        val model =
-            WeekSummaryModel(
-                days =
-                    listOf(
-                        WeekDaySummaryModel(date = LocalDate(2026, 10, 12), energy = 9_000, goal = 2_000),
-                        WeekDaySummaryModel(date = LocalDate(2026, 10, 13), energy = 2_054, goal = 2_000),
-                    ),
-                totalEnergy = 11_054,
-                totalGoal = 4_000,
-                today = LocalDate(2026, 10, 17),
-            )
-        captureRoboImage(
-            filePath = "GoalsCardScreenshotTest.weekly-surplus-steps-narrow-phone.png",
-            roborazziComposeOptions = goalsCardOptions(width = 320, height = 200),
-        ) {
-            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
-                MaterialTheme {
-                    Column(
-                        modifier =
-                            Modifier.requiredSize(320.dp, 200.dp).background(Color.White).padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        WeeklySummaryFooter(
-                            model = model,
-                            weightStatus = WeeklyWeightStatus.Recent(weightKg = 105.1, daysAgo = 5),
-                            onWeightClick = {},
-                            onWeightEntryClick = {},
-                        )
-                        WeeklySurplusStepsRow(
-                            surplusOffsetSteps(surplusKcal = 7_054, kcalPerStep = 0.04, remainingDays = 2)!!
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        WeeklySurplusStepsRow(
-                            surplusOffsetSteps(surplusKcal = 1_250, kcalPerStep = 0.04, remainingDays = 1)!!
-                        )
                     }
                 }
             }

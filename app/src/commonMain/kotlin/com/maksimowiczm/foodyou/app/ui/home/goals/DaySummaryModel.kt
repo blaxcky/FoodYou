@@ -47,7 +47,6 @@ internal data class WeekSummaryModel(
     val totalEnergy: Int,
     val totalGoal: Int,
     val today: kotlinx.datetime.LocalDate,
-    val surplusSteps: com.maksimowiczm.foodyou.activity.domain.usecase.SurplusOffsetSteps? = null,
 )
 
 @Immutable

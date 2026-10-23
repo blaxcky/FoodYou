@@ -3,7 +3,6 @@ package com.maksimowiczm.foodyou.app.ui.home.goals
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
-import com.maksimowiczm.foodyou.activity.domain.usecase.surplusOffsetSteps
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
@@ -373,19 +372,11 @@ internal class GoalsViewModel(
 
                 combine(dayFlows) { days ->
                     val summaries = days.toList()
-                    val totalEnergy = summaries.sumOf { it.energy }
-                    val totalGoal = summaries.sumOf { it.goal }
                     WeekSummaryModel(
                         days = summaries,
-                        totalEnergy = totalEnergy,
-                        totalGoal = totalGoal,
+                        totalEnergy = summaries.sumOf { it.energy },
+                        totalGoal = summaries.sumOf { it.goal },
                         today = today,
-                        surplusSteps =
-                            surplusOffsetSteps(
-                                surplusKcal = totalEnergy - totalGoal,
-                                kcalPerStep = settings.stepsCaloriesPerStepKcal,
-                                remainingDays = remainingDaysInWeek(selectedDate, today),
-                            ),
                     )
                 }
             }
@@ -438,10 +429,6 @@ internal fun weekDayDietGoalReached(energy: Int, goal: Int, dietEnergyDeficitKca
     val deficit = dietEnergyDeficitKcal?.let(::roundedEnergyKcal) ?: return false
     return deficit > 0 && energy > 0 && goal > 0 && energy - goal <= -deficit
 }
-
-/** Days from today through Sunday when [selectedDate] is in the current week, otherwise 0. */
-internal fun remainingDaysInWeek(selectedDate: LocalDate, today: LocalDate): Int =
-    if (selectedDate.startOfWeek() == today.startOfWeek()) 8 - today.dayOfWeek.isoDayNumber else 0
 
 internal fun LocalDate.weekDatesUntil(today: LocalDate): List<LocalDate> {
     val weekStart = startOfWeek()

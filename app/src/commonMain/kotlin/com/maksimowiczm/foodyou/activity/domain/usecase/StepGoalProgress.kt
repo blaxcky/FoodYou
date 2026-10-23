@@ -31,30 +31,3 @@ fun stepGoalProgress(
                 ?.let { calculateStepEnergyKcal(remaining, it) },
     )
 }
-
-data class SurplusOffsetSteps(
-    val totalSteps: Long,
-    /** The total spread over the rest of the week, or null when only one day is left. */
-    val stepsPerDay: Long?,
-)
-
-/** Steps that would burn [surplusKcal], rounded up to the next hundred. */
-fun surplusOffsetSteps(
-    surplusKcal: Int,
-    kcalPerStep: Double?,
-    remainingDays: Int,
-): SurplusOffsetSteps? {
-    if (surplusKcal <= 0) return null
-    val perStep = kcalPerStep?.takeIf { it > 0.0 } ?: return null
-    val totalSteps = (surplusKcal / perStep).roundUpToHundred()
-
-    return SurplusOffsetSteps(
-        totalSteps = totalSteps,
-        stepsPerDay =
-            remainingDays
-                .takeIf { it > 1 }
-                ?.let { (surplusKcal / perStep / it).roundUpToHundred() },
-    )
-}
-
-private fun Double.roundUpToHundred(): Long = (kotlin.math.ceil(this / 100.0) * 100).toLong()

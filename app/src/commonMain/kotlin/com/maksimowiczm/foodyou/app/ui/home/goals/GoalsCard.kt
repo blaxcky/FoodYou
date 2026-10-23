@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -76,7 +75,6 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
-import com.maksimowiczm.foodyou.activity.domain.usecase.SurplusOffsetSteps
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.ShimmerBounds
@@ -107,9 +105,6 @@ import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.weekly_diet_goal_reached
 import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_sum
-import foodyou.app.generated.resources.weekly_surplus_steps_label
-import foodyou.app.generated.resources.weekly_surplus_steps_per_day
-import foodyou.app.generated.resources.weekly_surplus_steps_value
 import foodyou.app.generated.resources.weekly_goal_of
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.action_weigh_in
@@ -529,15 +524,12 @@ private fun WeeklyGoalsContent(
                             WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
                         }
                         HorizontalDivider(color = GoalsTrackColor)
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            WeeklySummaryFooter(
-                                model = model,
-                                weightStatus = weeklyWeightStatus(latestWeight, model.today),
-                                onWeightClick = onWeightClick,
-                                onWeightEntryClick = onWeightEntryClick,
-                            )
-                            model.surplusSteps?.let { WeeklySurplusStepsRow(it) }
-                        }
+                        WeeklySummaryFooter(
+                            model = model,
+                            weightStatus = weeklyWeightStatus(latestWeight, model.today),
+                            onWeightClick = onWeightClick,
+                            onWeightEntryClick = onWeightEntryClick,
+                        )
                     }
                 }
             }
@@ -1080,69 +1072,6 @@ internal fun WeeklySummaryFooter(
         onWeightEntryClick = onWeightEntryClick,
         modifier = modifier.fillMaxWidth(),
     )
-}
-
-/**
- * Steps that would burn the week's surplus. Laid out like the weight row above it, with the
- * share per remaining day where the weight row shows the latest measurement.
- */
-@Composable
-internal fun WeeklySurplusStepsRow(steps: SurplusOffsetSteps, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 40.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.DirectionsWalk,
-            contentDescription = null,
-            tint = GoalsTextColor,
-            modifier = Modifier.size(22.dp).alpha(0.95f),
-        )
-        Spacer(Modifier.width(6.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text =
-                    stringResource(
-                        Res.string.weekly_surplus_steps_value,
-                        steps.totalSteps.toString().groupDigits(),
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = GoalsTextColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = stringResource(Res.string.weekly_surplus_steps_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = GoalsMutedTextColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        steps.stepsPerDay?.let { perDay ->
-            Spacer(Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = perDay.toString().groupDigits(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = GoalsTextColor,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-                Text(
-                    text = stringResource(Res.string.weekly_surplus_steps_per_day),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = GoalsMutedTextColor,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-            }
-            // Keeps the values in line with the weight row, which ends in a chevron.
-            Spacer(Modifier.width(20.dp))
-        }
-    }
 }
 
 @Composable
