@@ -756,10 +756,12 @@ private fun QuickCaptureReadyRow(
                     actions()
                 }
             }
+            // A thick band, unlike the hairlines between entries, closes the summary; while running the
+            // progress indicator takes its place.
             if (running) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(3.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(6.dp))
             } else {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(thickness = 6.dp, color = MaterialTheme.colorScheme.surfaceContainerHighest)
             }
         }
     }
