@@ -51,7 +51,7 @@ abgelehnten oder fehlenden Vorschlag folgt danach die manuelle Gewichtseingabe.
 
 ## Automatisierte Prüfung
 
-Mit `JAVA_HOME=/usr/lib/jvm/java-21-openjdk` und
+Mit `JAVA_HOME=/usr/lib/jvm/temurin-21-jdk` und
 `GRADLE_USER_HOME=/home/markus/GitHub/FoodYou/.gradle`:
 
 ```bash

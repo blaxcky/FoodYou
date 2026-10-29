@@ -7,11 +7,14 @@ synchronize it with GitHub using the GitHub CLI (`gh`) before moving on to the n
 
 ## Local JDK 21
 
-This project requires JDK 21 for Gradle. Use the system OpenJDK 21:
+This project uses JDK 21 for Gradle. Use Eclipse Temurin 21 installed through DNF:
 
 ```bash
-/usr/lib/jvm/java-21-openjdk
+/usr/lib/jvm/temurin-21-jdk
 ```
+
+Fedora 44 removed its `java-21-openjdk` packages. The `temurin-21-jdk` package provides the full
+JDK; the old `/usr/lib/jvm/java-21-openjdk` directory may still exist with only manpages.
 
 Do not use the Android Studio Flatpak JBR
 (`/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr`): it has been
@@ -19,7 +22,7 @@ updated to JDK 25 and makes Gradle fail immediately with a bare version message 
 The system `java` may also point to JDK 25, so always set `JAVA_HOME` explicitly.
 
 ```bash
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew :app:compileDevReleaseKotlinAndroid
+JAVA_HOME=/usr/lib/jvm/temurin-21-jdk ./gradlew :app:compileDevReleaseKotlinAndroid
 ```
 
 Set `GRADLE_USER_HOME` to the workspace cache for Gradle commands. This keeps Gradle wrapper locks
@@ -28,9 +31,12 @@ approval prompts for the host Gradle cache path.
 
 ```bash
 GRADLE_USER_HOME=/home/markus/GitHub/FoodYou/.gradle \
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk \
+JAVA_HOME=/usr/lib/jvm/temurin-21-jdk \
 ./gradlew :app:compileDevReleaseKotlinAndroid
 ```
+
+For Android Studio, use `GRADLE_LOCAL_JAVA_HOME` as the Gradle JDK and set
+`java.home=/usr/lib/jvm/temurin-21-jdk` in the ignored `.gradle/config.properties` file.
 
 ## Verification Scope
 
@@ -99,7 +105,7 @@ The emulator runs headlessly on demand and preserves its app data and Quick Boot
 `cold-start` if a saved emulator snapshot is unhealthy. When Codex invokes the helper, all commands
 need host access because the filesystem sandbox exposes neither `/dev/kvm` nor the ADB server socket.
 The helper waits for Android to finish booting, pins Gradle deployment to the matching emulator
-serial, and uses the required system JDK 21 and workspace Gradle cache. Its headless start uses the
+serial, and uses Temurin JDK 21 and the workspace Gradle cache. Its headless start uses the
 AMD host GPU with Vulkan disabled; the software renderer crashes on this Fedora/Btrfs host. The AVD
 runs in the transient `foodyou-emulator.service` user unit so it remains available between separate
 Codex commands without starting automatically at login.
