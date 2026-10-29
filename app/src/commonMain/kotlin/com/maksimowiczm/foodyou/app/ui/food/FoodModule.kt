@@ -35,6 +35,7 @@ fun Module.food() {
             settingsRepository = userPreferencesRepository(),
             csvParser = get(),
             csvImporter = get(),
+            nutritionEstimator = { prompt -> get<com.maksimowiczm.foodyou.ai.AiController>().estimateNutrition(prompt) },
             savedStateHandle = get(),
             photoRegistrationScope = applicationCoroutineScope(),
         )

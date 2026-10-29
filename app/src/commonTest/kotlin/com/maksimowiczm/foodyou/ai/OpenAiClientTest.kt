@@ -23,7 +23,10 @@ class OpenAiClientTest {
             assertEquals("Bearer test", request.headers["Authorization"])
             respond(complete("{\\\"value\\\":42}"), HttpStatusCode.OK)
         })
-        try { OpenAiClient(client, "test").request(OpenAiTask("gpt-6-luna", "low"), "weight", "abc") }
+        try {
+            val result = OpenAiClient(client, "test").request(OpenAiTask("gpt-6-luna", "low"), "weight", "abc")
+            assertEquals(ScaleRecognitionResult.Recognized(42.0), parseScaleReading(result.csv))
+        }
         finally { client.close() }
     }
     @Test fun requiresWebAndOmitsDefaultEffort() = runTest {

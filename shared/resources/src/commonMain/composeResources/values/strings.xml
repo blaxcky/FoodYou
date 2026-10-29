@@ -934,4 +934,5 @@
     <string name="openai_luna">Fast and economical</string>
     <string name="openai_sol">For complex tasks</string>
     <string name="openai_astra">For demanding tasks</string>
+    <string name="openai_review">Review the calculated CSV and sources. Confirm to add the values to today’s matching meal and complete the requested entries.</string>
 </resources>

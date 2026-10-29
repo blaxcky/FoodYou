@@ -6,6 +6,7 @@ import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue.Companion.toNutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
+import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
 import com.maksimowiczm.foodyou.food.domain.repository.QuickCaptureRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
@@ -17,6 +18,8 @@ import kotlinx.datetime.toLocalDateTime
 internal sealed interface QuickCaptureCsvImportResult {
     data object Success : QuickCaptureCsvImportResult
 
+    data object StaleBatch : QuickCaptureCsvImportResult
+
     data object NoMeal : QuickCaptureCsvImportResult
 }
 
@@ -25,6 +28,9 @@ internal fun interface QuickCaptureCsvImporter {
         data: List<QuickAddCsvData>,
         entryIds: List<Long>,
     ): QuickCaptureCsvImportResult
+
+    suspend fun importSnapshot(data: List<QuickAddCsvData>, entries: List<QuickCaptureLogEntry>): QuickCaptureCsvImportResult =
+        error("Snapshot import not supported")
 }
 
 internal class QuickCaptureCsvImporterImpl(
@@ -37,7 +43,12 @@ internal class QuickCaptureCsvImporterImpl(
     override suspend fun import(
         data: List<QuickAddCsvData>,
         entryIds: List<Long>,
-    ): QuickCaptureCsvImportResult {
+    ): QuickCaptureCsvImportResult = importValidated(data, entryIds, null)
+
+    override suspend fun importSnapshot(data: List<QuickAddCsvData>, entries: List<QuickCaptureLogEntry>): QuickCaptureCsvImportResult =
+        importValidated(data, entries.map { it.id }, entries)
+
+    private suspend fun importValidated(data: List<QuickAddCsvData>, entryIds: List<Long>, snapshot: List<QuickCaptureLogEntry>?): QuickCaptureCsvImportResult {
         if (entryIds.isEmpty() || data.isEmpty()) return QuickCaptureCsvImportResult.NoMeal
 
         val nowInstant = dateProvider.nowInstant()
@@ -48,7 +59,15 @@ internal class QuickCaptureCsvImporterImpl(
                 ?: meals.firstOrNull()
                 ?: return QuickCaptureCsvImportResult.NoMeal
 
-        transactionProvider.withTransaction {
+        val result = transactionProvider.withTransaction {
+            if (snapshot != null) {
+                val current = quickCaptureRepository.observeEntries().first().associateBy { it.id }
+                if (snapshot.any { original ->
+                    val entry = current[original.id]
+                    entry == null || entry.isCompleted || entry.foodName != original.foodName ||
+                        entry.effectiveWeightInGrams != original.effectiveWeightInGrams
+                }) return@withTransaction QuickCaptureCsvImportResult.StaleBatch
+            }
             for (row in data) {
                 manualDiaryEntryRepository.insert(
                     name = row.name,
@@ -65,7 +84,9 @@ internal class QuickCaptureCsvImporterImpl(
                 )
             }
             quickCaptureRepository.markCompleted(entryIds.distinct(), nowInstant)
+            QuickCaptureCsvImportResult.Success
         }
+        if (result != QuickCaptureCsvImportResult.Success) return result
 
         val _ = runCatching { updateCalorieWidgetValues() }
         return QuickCaptureCsvImportResult.Success

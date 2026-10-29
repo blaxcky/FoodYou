@@ -76,6 +76,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = true,
                 onQuickAdd = {},
                 onTransfer = {},
+                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
                 timeZone = TimeZone.UTC,
             )
         }
@@ -95,6 +96,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
                 timeZone = TimeZone.UTC,
             )
         }
@@ -114,6 +116,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
                 timeZone = TimeZone.UTC,
             )
         }
@@ -186,6 +189,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
                 timeZone = TimeZone.UTC,
             )
         }
@@ -220,6 +224,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
+                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
                 timeZone = TimeZone.UTC,
             )
         }
@@ -439,6 +444,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = hasCopiedBatch,
                 onQuickAdd = { opened = true },
                 onTransfer = {},
+                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
                 timeZone = TimeZone.UTC,
             )
         }
@@ -733,6 +739,32 @@ class QuickCaptureScreenshotTest {
 
         compose.onNodeWithText("Gewicht").assertDoesNotExist()
         capture("photo-name-form")
+    }
+
+    @Test
+    @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
+    fun openAiNarrowLargeFont() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        show {
+            QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
+                { _, _ -> }, {}, {}, {}, false, {}, {},
+                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) })
+        }
+        compose.onNodeWithText("Mit OpenAI berechnen").assertIsDisplayed()
+        capture("openai-narrow")
+    }
+
+    @Test fun openAiCsvWithSources() {
+        show {
+            Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                QuickCaptureCsvImportDialogCard(
+                    "name,energy,proteins,carbohydrates,fats\nSkyr Natur,126,22,8,0.4",
+                    QuickCaptureCsvImportState.Idle, {}, {}, {}, autoFocus = false,
+                    sources = listOf(com.maksimowiczm.foodyou.ai.AiSource("Nährwertangaben", "https://example.org")))
+            }
+        }
+        compose.onNodeWithText("Nährwertangaben").assertIsDisplayed()
+        capture("openai-csv-sources")
     }
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {

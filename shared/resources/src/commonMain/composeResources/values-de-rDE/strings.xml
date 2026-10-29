@@ -808,4 +808,5 @@
     <string name="openai_luna">Schnell und günstig</string>
     <string name="openai_sol">Für komplexe Aufgaben</string>
     <string name="openai_astra">Für anspruchsvolle Aufgaben</string>
+    <string name="openai_review">Prüfe die berechnete CSV und die Quellen. Nach deiner Bestätigung werden die Werte zur heutigen passenden Mahlzeit hinzugefügt und die angefragten Einträge erledigt.</string>
 </resources>

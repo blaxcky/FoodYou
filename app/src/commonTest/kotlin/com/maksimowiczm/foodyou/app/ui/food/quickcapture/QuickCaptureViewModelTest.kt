@@ -310,7 +310,54 @@ class QuickCaptureViewModelTest {
         }
     }
 
+    @Test fun apiDraftRequiresConfirmationAndIgnoresDuplicateRequests() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val response = CompletableDeferred<com.maksimowiczm.foodyou.ai.NutritionEstimate>()
+        var requests = 0
+        var imports = 0
+        val vm = viewModel(estimator = { requests++; response.await() }, importer = { _, ids ->
+            assertEquals(listOf(42L), ids)
+            imports++
+            QuickCaptureCsvImportResult.Success
+        })
+        val entry = QuickCaptureLogEntry(42, 1, "Meal", QuickCaptureWeightMode.Direct, 100.0,
+            null, null, null, CsvImportViewModelDateProvider.nowInstant(), null)
+        try {
+            val groups = listOf(entry).quickCaptureGroups(false)
+            vm.calculateNutrition(groups)
+            vm.calculateNutrition(groups)
+            assertEquals(1, requests)
+            vm.rememberCopiedBatch(listOf(999), 1)
+            assertTrue(vm.copiedEntryIds.value.isEmpty())
+            response.complete(com.maksimowiczm.foodyou.ai.NutritionEstimate(ValidCsv, emptyList()))
+            advanceUntilIdle()
+            assertEquals(0, imports)
+            assertEquals(ValidCsv, vm.nutritionDraft.value?.result?.csv)
+            vm.importCsv(ValidCsv)
+            vm.importCsv(ValidCsv)
+            advanceUntilIdle()
+            assertEquals(1, imports)
+            assertNull(vm.nutritionDraft.value)
+        } finally { vm.viewModelScope.cancel(); Dispatchers.resetMain() }
+    }
+
+    @Test fun cancellingApiRequestDoesNotProduceDraftOrImport() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val response = CompletableDeferred<com.maksimowiczm.foodyou.ai.NutritionEstimate>()
+        val vm = viewModel(estimator = { response.await() })
+        val entry = QuickCaptureLogEntry(42, 1, "Meal", QuickCaptureWeightMode.Direct, 100.0,
+            null, null, null, CsvImportViewModelDateProvider.nowInstant(), null)
+        try {
+            vm.calculateNutrition(listOf(entry).quickCaptureGroups(false))
+            vm.cancelNutrition()
+            advanceUntilIdle()
+            assertEquals(false, vm.nutritionRunning.value)
+            assertNull(vm.nutritionDraft.value)
+        } finally { vm.viewModelScope.cancel(); Dispatchers.resetMain() }
+    }
+
     private fun TestScope.viewModel(
+        estimator: suspend (String) -> com.maksimowiczm.foodyou.ai.NutritionEstimate = { error("unused") },
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
         repository: CsvImportViewModelQuickCaptureRepository = CsvImportViewModelQuickCaptureRepository(),
         settingsRepository: CsvImportViewModelSettingsRepository = CsvImportViewModelSettingsRepository(),
@@ -338,7 +385,11 @@ class QuickCaptureViewModelTest {
                 UpdateQuickCaptureLibraryUseCase(repository, CsvImportViewModelDateProvider),
             settingsRepository = settingsRepository,
             csvParser = { parser(it) },
-            csvImporter = { data, ids -> importer(data, ids) },
+            csvImporter = object : QuickCaptureCsvImporter {
+                override suspend fun import(data: List<QuickAddCsvData>, entryIds: List<Long>) = importer(data, entryIds)
+                override suspend fun importSnapshot(data: List<QuickAddCsvData>, entries: List<QuickCaptureLogEntry>) = importer(data, entries.map { it.id })
+            },
+            nutritionEstimator = estimator,
             savedStateHandle = savedStateHandle,
             photoRegistrationScope = this,
         )

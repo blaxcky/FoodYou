@@ -2,6 +2,12 @@ package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalUriHandler
+import com.maksimowiczm.foodyou.ai.NutritionEstimate
+import com.maksimowiczm.foodyou.ai.AiSource
+import kotlinx.coroutines.Job
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -13,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -189,12 +196,16 @@ fun QuickCaptureScreen(
     val cameraOpen by viewModel.cameraOpen.collectAsStateWithLifecycle()
     val copiedEntryIds by viewModel.copiedEntryIds.collectAsStateWithLifecycle()
     val csvImportState by viewModel.csvImportState.collectAsStateWithLifecycle()
+    val nutritionRunning by viewModel.nutritionRunning.collectAsStateWithLifecycle()
+    val nutritionDraft by viewModel.nutritionDraft.collectAsStateWithLifecycle()
+    val nutritionError by viewModel.nutritionError.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable {
         mutableStateOf(if (showPhotos) QuickCaptureTab.Photos else QuickCaptureTab.Log)
     }
     var showEntryForm by rememberSaveable { mutableStateOf(false) }
     var showCsvImport by rememberSaveable { mutableStateOf(false) }
     var csvText by rememberSaveable { mutableStateOf("") }
+    var csvFromApi by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val clipboard = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -213,6 +224,20 @@ fun QuickCaptureScreen(
         }
     }
 
+    DisposableEffect(viewModel) { onDispose { viewModel.cancelNutrition() } }
+    LaunchedEffect(nutritionDraft) {
+        if (nutritionDraft != null && !csvFromApi) {
+            csvText = requireNotNull(nutritionDraft).result.csv
+            csvFromApi = true
+            showCsvImport = true
+        } else if (nutritionDraft == null && csvFromApi) {
+            // A restored UI must never attach an API response to an older manually shared batch.
+            csvText = ""
+            showCsvImport = false
+            csvFromApi = false
+        }
+    }
+
     if (showEntryForm) {
         QuickCaptureEntrySheet(
             names = names,
@@ -227,6 +252,8 @@ fun QuickCaptureScreen(
     if (showCsvImport) {
         QuickCaptureCsvImportDialog(
             csv = csvText,
+            sources = nutritionDraft?.result?.sources.orEmpty(),
+            autoFocus = nutritionDraft == null,
             state = csvImportState,
             onCsvChange = {
                 csvText = it
@@ -236,8 +263,9 @@ fun QuickCaptureScreen(
                 viewModel.resetCsvImportError()
                 showCsvImport = false
                 csvText = ""
+                viewModel.dismissNutritionDraft()
             },
-            onImport = { viewModel.importCsv(csvText) },
+            onImport = { if (!csvFromApi || nutritionDraft != null) viewModel.importCsv(csvText) },
         )
     }
 
@@ -327,7 +355,7 @@ fun QuickCaptureScreen(
                             val groups = entries.quickCaptureGroups(aggregate)
                             if (
                                 groups.isNotEmpty() &&
-                                    csvImportState != QuickCaptureCsvImportState.Submitting
+                                    csvImportState != QuickCaptureCsvImportState.Submitting && !nutritionRunning && nutritionDraft == null
                             ) {
                                 val shared = copyAndShareQuickCapturePrompt(
                                     prompt = groups.quickCapturePrompt(),
@@ -345,8 +373,16 @@ fun QuickCaptureScreen(
                         },
                         hasCopiedBatch = copiedEntryIds.isNotEmpty(),
                         onQuickAdd = {
+                            if (nutritionRunning || nutritionDraft != null) return@QuickCaptureLog
                             viewModel.resetCsvImportError()
                             showCsvImport = true
+                        },
+                        apiAction = {
+                            QuickCaptureOpenAiAction(nutritionRunning, nutritionError,
+                                onCalculate = {
+                                    if (!aiSettings.openAi.hasApiKey) onAiSettings()
+                                    else viewModel.calculateNutrition(entries.quickCaptureGroups(aggregate))
+                                }, onCancel = viewModel::cancelNutrition)
                         },
                         onTransfer = { group ->
                             onTransfer(
@@ -449,6 +485,7 @@ internal fun QuickCaptureLog(
     onQuickAdd: () -> Unit,
     onTransfer: (QuickCaptureLogGroup) -> Unit,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    apiAction: (@Composable () -> Unit)? = null,
 ) {
     var completed by rememberSaveable { mutableStateOf(false) }
     var afterEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
@@ -526,6 +563,7 @@ internal fun QuickCaptureLog(
                         hasCopiedBatch = hasCopiedBatch,
                         onSharePrompt = onSharePrompt,
                         onQuickAdd = onQuickAdd,
+                        apiAction = apiAction,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
@@ -588,18 +626,18 @@ private fun QuickCaptureBatchCard(
     onSharePrompt: () -> Unit,
     onQuickAdd: () -> Unit,
     modifier: Modifier = Modifier,
+    apiAction: (@Composable () -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(Modifier.weight(1f)) {
+            Column {
                 Text(
                     text =
                         stringResource(
@@ -619,32 +657,35 @@ private fun QuickCaptureBatchCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (hasCopiedBatch) {
-                IconButton(onClick = onSharePrompt, enabled = groups.isNotEmpty()) {
-                    Icon(
-                        Icons.Outlined.Share,
-                        contentDescription = stringResource(Res.string.action_quick_capture_share_prompt),
-                    )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (hasCopiedBatch) {
+                    IconButton(onClick = onSharePrompt, enabled = groups.isNotEmpty()) {
+                        Icon(
+                            Icons.Outlined.Share,
+                            contentDescription = stringResource(Res.string.action_quick_capture_share_prompt),
+                        )
+                    }
+                    Button(onClick = onQuickAdd) {
+                        Icon(
+                            Icons.Outlined.Bolt,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text(stringResource(Res.string.action_quick_capture_paste_csv))
+                    }
+                } else {
+                    Button(onClick = onSharePrompt) {
+                        Icon(
+                            Icons.Outlined.Share,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text(stringResource(Res.string.action_quick_capture_share_prompt))
+                    }
                 }
-                Button(onClick = onQuickAdd) {
-                    Icon(
-                        Icons.Outlined.Bolt,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.IconSize),
-                    )
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(stringResource(Res.string.action_quick_capture_paste_csv))
-                }
-            } else {
-                Button(onClick = onSharePrompt) {
-                    Icon(
-                        Icons.Outlined.Share,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.IconSize),
-                    )
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(stringResource(Res.string.action_quick_capture_share_prompt))
-                }
+                apiAction?.invoke()
             }
         }
     }
@@ -658,6 +699,7 @@ internal fun QuickCaptureCsvImportDialog(
     onDismiss: () -> Unit,
     onImport: () -> Unit,
     autoFocus: Boolean = true,
+    sources: List<AiSource> = emptyList(),
 ) {
     val focusRequester = remember { FocusRequester() }
     val isSubmitting = state == QuickCaptureCsvImportState.Submitting
@@ -676,6 +718,7 @@ internal fun QuickCaptureCsvImportDialog(
             csv = csv,
             state = state,
             onCsvChange = onCsvChange,
+            sources = sources,
             onDismiss = onDismiss,
             onImport = onImport,
             focusRequester = focusRequester,
@@ -693,6 +736,7 @@ internal fun QuickCaptureCsvImportDialogCard(
     onImport: () -> Unit,
     focusRequester: FocusRequester = remember { FocusRequester() },
     autoFocus: Boolean = true,
+    sources: List<AiSource> = emptyList(),
 ) {
     val isSubmitting = state == QuickCaptureCsvImportState.Submitting
     val error =
@@ -705,6 +749,7 @@ internal fun QuickCaptureCsvImportDialogCard(
                 stringResource(
                     Res.string.error_quick_capture_csv_row_count, state.expected, state.actual,
                 )
+            QuickCaptureCsvImportState.StaleBatch -> stringResource(Res.string.openai_stale)
             QuickCaptureCsvImportState.ShareAgain ->
                 stringResource(Res.string.error_quick_capture_csv_share_again)
             QuickCaptureCsvImportState.NoMeal ->
@@ -721,20 +766,19 @@ internal fun QuickCaptureCsvImportDialogCard(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 6.dp,
     ) {
-        Column(Modifier.padding(24.dp)) {
+        Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
             Text(
                 stringResource(Res.string.headline_quick_capture_csv_import),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Spacer(Modifier.height(16.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(Res.string.description_quick_capture_csv_import))
+                Text(stringResource(if (sources.isEmpty()) Res.string.description_quick_capture_csv_import else Res.string.openai_review))
                 OutlinedTextField(
                     value = csv,
                     onValueChange = onCsvChange,
                     modifier =
                         Modifier.fillMaxWidth()
-                            .focusProperties { canFocus = autoFocus }
                             .focusRequester(focusRequester),
                     label = { Text(stringResource(Res.string.headline_quick_add_csv)) },
                     supportingText = error?.let { { Text(it) } },
@@ -744,6 +788,15 @@ internal fun QuickCaptureCsvImportDialogCard(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { if (!isSubmitting) onImport() }),
                 )
+            }
+            val uriHandler = LocalUriHandler.current
+            if (sources.isNotEmpty()) {
+                Text(stringResource(Res.string.openai_sources), style = MaterialTheme.typography.labelLarge)
+                Column(Modifier.heightIn(max = 120.dp).verticalScroll(rememberScrollState())) {
+                    sources.forEach { source ->
+                        TextButton(onClick = { uriHandler.openUri(source.url) }) { Text(source.title) }
+                    }
+                }
             }
             Spacer(Modifier.height(16.dp))
             Row(
@@ -1437,6 +1490,7 @@ internal class QuickCaptureViewModel(
     private val csvImporter: QuickCaptureCsvImporter,
     private val savedStateHandle: SavedStateHandle,
     private val photoRegistrationScope: CoroutineScope,
+    private val nutritionEstimator: suspend (String) -> NutritionEstimate = { error("OpenAI unavailable") },
 ) : ViewModel() {
     val entries =
         observe.entries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -1450,6 +1504,37 @@ internal class QuickCaptureViewModel(
     val formError = MutableStateFlow<QuickCaptureFormError?>(null)
     val copiedEntryIds = savedStateHandle.getStateFlow(CopiedEntryIdsKey, emptyList<Long>())
     val csvImportState = MutableStateFlow<QuickCaptureCsvImportState>(QuickCaptureCsvImportState.Idle)
+    val nutritionRunning = MutableStateFlow(false)
+    val nutritionDraft = MutableStateFlow<QuickCaptureNutritionDraft?>(null)
+    val nutritionError = MutableStateFlow<String?>(null)
+    private var nutritionJob: Job? = null
+
+    fun calculateNutrition(groups: List<QuickCaptureLogGroup>) {
+        if (groups.isEmpty() || nutritionJob?.isActive == true || nutritionRunning.value || nutritionDraft.value != null ||
+            csvImportState.value == QuickCaptureCsvImportState.Submitting) return
+        val snapshot = groups.flatMap { it.entries }.toList()
+        val prompt = groups.quickCapturePrompt()
+        nutritionRunning.value = true
+        nutritionError.value = null
+        nutritionJob = viewModelScope.launch {
+            try {
+                val result = nutritionEstimator(prompt)
+                nutritionDraft.value = QuickCaptureNutritionDraft(result, snapshot, groups.size)
+                csvImportState.value = when (val parsed = csvParser.parse(result.csv)) {
+                    is QuickAddCsvTableParseResult.Failure -> QuickCaptureCsvImportState.InvalidCsv(parsed.error)
+                    is QuickAddCsvTableParseResult.Success -> if (parsed.data.size == groups.size) QuickCaptureCsvImportState.Idle
+                        else QuickCaptureCsvImportState.RowCountMismatch(groups.size, parsed.data.size)
+                }
+            } catch (e: CancellationException) { throw e
+            } catch (e: Exception) { nutritionError.value = e.message ?: "OpenAI: error" }
+            finally { nutritionRunning.value = false }
+        }
+    }
+    fun cancelNutrition() { nutritionJob?.cancel(); nutritionRunning.value = false }
+    fun dismissNutritionDraft() {
+        if (csvImportState.value != QuickCaptureCsvImportState.Submitting) nutritionDraft.value = null
+    }
+
     private val eventChannel = Channel<QuickCaptureUiEvent>()
     val events = eventChannel.receiveAsFlow()
 
@@ -1495,7 +1580,7 @@ internal class QuickCaptureViewModel(
     }
 
     fun rememberCopiedBatch(entryIds: List<Long>, expectedRowCount: Int) {
-        if (csvImportState.value == QuickCaptureCsvImportState.Submitting) return
+        if (csvImportState.value == QuickCaptureCsvImportState.Submitting || nutritionRunning.value || nutritionDraft.value != null) return
         require(expectedRowCount > 0)
         savedStateHandle[CopiedEntryIdsKey] = entryIds.distinct()
         savedStateHandle[CopiedGroupCountKey] = expectedRowCount
@@ -1510,9 +1595,10 @@ internal class QuickCaptureViewModel(
 
     fun importCsv(csv: String) {
         if (csvImportState.value == QuickCaptureCsvImportState.Submitting) return
-        val entryIds = copiedEntryIds.value
+        val draft = nutritionDraft.value
+        val entryIds = draft?.entries?.map { it.id } ?: copiedEntryIds.value
         if (entryIds.isEmpty()) return
-        val expectedRowCount = savedStateHandle.get<Int>(CopiedGroupCountKey)
+        val expectedRowCount = draft?.rowCount ?: savedStateHandle.get<Int>(CopiedGroupCountKey)
         if (expectedRowCount == null || expectedRowCount <= 0) {
             csvImportState.value = QuickCaptureCsvImportState.ShareAgain
             return
@@ -1533,10 +1619,12 @@ internal class QuickCaptureViewModel(
                                 )
                             return@launch
                         }
-                        when (csvImporter.import(parsed.data, entryIds)) {
+                        when (if (draft == null) csvImporter.import(parsed.data, entryIds) else csvImporter.importSnapshot(parsed.data, draft.entries)) {
+                            QuickCaptureCsvImportResult.StaleBatch -> csvImportState.value = QuickCaptureCsvImportState.StaleBatch
                             QuickCaptureCsvImportResult.NoMeal ->
                                 csvImportState.value = QuickCaptureCsvImportState.NoMeal
                             QuickCaptureCsvImportResult.Success -> {
+                                nutritionDraft.value = null
                                 savedStateHandle[CopiedEntryIdsKey] = emptyList<Long>()
                                 savedStateHandle.remove<Int>(CopiedGroupCountKey)
                                 csvImportState.value = QuickCaptureCsvImportState.Idle
@@ -1595,6 +1683,8 @@ internal sealed interface QuickCaptureCsvImportState {
     data class InvalidCsv(val error: QuickAddCsvError) : QuickCaptureCsvImportState
 
     data class RowCountMismatch(val expected: Int, val actual: Int) : QuickCaptureCsvImportState
+
+    data object StaleBatch : QuickCaptureCsvImportState
 
     data object ShareAgain : QuickCaptureCsvImportState
 
@@ -1682,5 +1772,21 @@ private fun PhotoAnalysisBadge(
                 )
             }
         }
+    }
+}
+
+internal data class QuickCaptureNutritionDraft(val result: NutritionEstimate, val entries: List<QuickCaptureLogEntry>, val rowCount: Int)
+
+@Composable
+internal fun QuickCaptureOpenAiAction(running: Boolean, error: String?, onCalculate: () -> Unit, onCancel: () -> Unit) {
+    Column {
+        if (running) {
+            Text(stringResource(Res.string.openai_running), style = MaterialTheme.typography.bodySmall)
+            androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            TextButton(onClick = onCancel) { Text(stringResource(Res.string.action_cancel)) }
+        } else {
+            Button(onClick = onCalculate) { Text(stringResource(Res.string.openai_calculate)) }
+        }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }
 }

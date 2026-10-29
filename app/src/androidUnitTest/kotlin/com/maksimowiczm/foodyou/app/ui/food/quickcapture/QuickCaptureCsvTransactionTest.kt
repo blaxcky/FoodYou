@@ -55,6 +55,28 @@ class QuickCaptureCsvTransactionTest {
     @After
     fun tearDown() = database.close()
 
+    @Test fun changedDeletedOrCompletedApiSnapshotDoesNotWriteDiary() = runTest {
+        val mealId = createMeal()
+        val id = createEntry("Skyr")
+        val snapshot = listOf(requireNotNull(quickCapture.observeEntry(id).first()))
+        quickCapture.processPhoto(id, "Skyr", 90.0, FixedDate.nowInstant())
+        assertEquals(QuickCaptureCsvImportResult.StaleBatch, importer().importSnapshot(Rows, snapshot))
+        quickCapture.markCompleted(listOf(id), FixedDate.nowInstant())
+        assertEquals(QuickCaptureCsvImportResult.StaleBatch, importer().importSnapshot(Rows, snapshot))
+        assertEquals(0, diary.observeAll(mealId, FixedDate.now().date).first().size)
+        quickCapture.deleteEntries(listOf(id))
+        assertEquals(QuickCaptureCsvImportResult.StaleBatch, importer().importSnapshot(Rows, snapshot))
+    }
+
+    @Test fun apiSnapshotImportsOnlyOriginalEntries() = runTest {
+        createMeal()
+        val id = createEntry("Skyr")
+        val snapshot = listOf(requireNotNull(quickCapture.observeEntry(id).first()))
+        val later = createEntry("Apple")
+        assertEquals(QuickCaptureCsvImportResult.Success, importer().importSnapshot(Rows, snapshot))
+        assertNull(quickCapture.observeEntry(later).first()?.completedAt)
+    }
+
     @Test
     fun multipleRowsCommitTogetherAndOnlyCopiedEntriesAreCompleted() = runTest {
         val mealId = createMeal()
