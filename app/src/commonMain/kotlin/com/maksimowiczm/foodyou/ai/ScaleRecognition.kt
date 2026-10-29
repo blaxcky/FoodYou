@@ -16,13 +16,14 @@ import kotlin.time.TimeSource
 enum class AiProvider(val label: String) {
     Local("Gemma 4 E4B lokal"),
     LocalE2B("Gemma 4 E2B lokal"),
-    Gemini("Google AI Studio");
+    Gemini("Google AI Studio"),
+    OpenAI("OpenAI / ChatGPT");
 
     val localModel: GemmaModel?
         get() = when (this) {
             Local -> GemmaModel.E4B
             LocalE2B -> GemmaModel.E2B
-            Gemini -> null
+            Gemini, OpenAI -> null
         }
 }
 
@@ -64,6 +65,7 @@ data class AiSettings(
     val hasApiKey: Boolean = false,
     /** Runs Gemma's vision encoder on the CPU instead of the GPU; slower, for device comparisons. */
     val visionOnCpu: Boolean = false,
+    val openAi: OpenAiSettings = OpenAiSettings(),
 )
 
 enum class ScaleErrorKind { Runtime, ResponseFormat, NonWholeGrams, Truncated, ProcessDied, Timeout }
@@ -221,6 +223,9 @@ interface AiController {
         newKey: String?,
         deleteKey: Boolean = false,
     )
+    suspend fun saveOpenAi(settings: OpenAiSettings, newKey: String?, deleteKey: Boolean = false)
+    suspend fun testOpenAi(nutrition: Boolean): String
+    suspend fun estimateNutrition(prompt: String): NutritionEstimate
     suspend fun diagnosticReport(): String
     suspend fun testConnection(): String
     fun startAnalysis(reanalyze: Boolean = false)

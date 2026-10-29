@@ -20,6 +20,7 @@ internal class AndroidAiController(
 ) : AiController {
     private val directory = File(context.noBackupFilesDir, "ai").apply { mkdirs() }
     private val preferences = File(directory, "settings.properties")
+    private val openAiKeyFile = File(directory, "openai.key")
     private val keyFile = File(directory, "gemini.key")
     private val photoDirectory = File(context.filesDir, "food-snap-photos")
     private val cacheDirectory = File(context.cacheDir, "gemma")
@@ -55,6 +56,11 @@ internal class AndroidAiController(
             model = props.getProperty("model", "gemini-3.8-flash"),
             hasApiKey = keyFile.isFile,
             visionOnCpu = props.getProperty("vision_backend") == "cpu",
+            openAi = OpenAiSettings(
+                OpenAiTask(props.getProperty("openai.photo.model", "gpt-6-luna"), props.getProperty("openai.photo.effort", "low").takeIf { it.isNotEmpty() }),
+                OpenAiTask(props.getProperty("openai.nutrition.model", "gpt-6.1-sol"), props.getProperty("openai.nutrition.effort", "medium").takeIf { it.isNotEmpty() }),
+                openAiKeyFile.isFile,
+            ),
         )
     }
 
@@ -74,15 +80,58 @@ internal class AndroidAiController(
                     atomicWrite(keyFile, crypto.encrypt(newKey.trim().encodeToByteArray()))
                 }
                 val props = java.util.Properties().apply {
+                    if (preferences.isFile) preferences.inputStream().use(::load)
                     setProperty("provider", provider.name)
                     setProperty("model", model.trim())
                     setProperty("vision_backend", if (visionOnCpu) "cpu" else "gpu")
                 }
                 val bytes = java.io.ByteArrayOutputStream().use { props.store(it, null); it.toByteArray() }
                 atomicWrite(preferences, bytes)
-                mutableSettings.value = AiSettings(provider, model.trim(), keyFile.isFile, visionOnCpu)
+                mutableSettings.value = readSettings()
             }
         }
+    }
+
+    override suspend fun saveOpenAi(settings: OpenAiSettings, newKey: String?, deleteKey: Boolean) {
+        listOf(settings.photo, settings.nutrition).forEach {
+            require(it.model.matches(Regex("[A-Za-z0-9._:/-]+")))
+            require(it.effort == null || it.effort.matches(Regex("[a-z]+")))
+            require(it.effort == null || supportedEfforts(it.model)?.contains(it.effort) != false)
+        }
+        withContext(Dispatchers.IO) { configMutex.withLock {
+            if (deleteKey) check(!openAiKeyFile.exists() || openAiKeyFile.delete())
+            else if (newKey != null) {
+                require(newKey.isNotBlank())
+                atomicWrite(openAiKeyFile, crypto.encrypt(newKey.trim().encodeToByteArray()))
+            }
+            val props = java.util.Properties()
+            if (preferences.isFile) preferences.inputStream().use(props::load)
+            for ((name, task) in listOf("photo" to settings.photo, "nutrition" to settings.nutrition)) {
+                props.setProperty("openai.$name.model", task.model)
+                props.setProperty("openai.$name.effort", task.effort.orEmpty())
+            }
+            atomicWrite(preferences, java.io.ByteArrayOutputStream().use { props.store(it, null); it.toByteArray() })
+            mutableSettings.value = readSettings()
+        } }
+    }
+
+    private suspend fun openAiConfiguration(): Pair<OpenAiSettings, OpenAiClient> = withContext(Dispatchers.IO) {
+        configMutex.withLock {
+            val key = if (openAiKeyFile.isFile) crypto.decrypt(openAiKeyFile.readBytes()).decodeToString() else ""
+            settings.value.openAi to OpenAiClient(client, key)
+        }
+    }
+
+    override suspend fun testOpenAi(nutrition: Boolean): String = try {
+        val (config, api) = openAiConfiguration()
+        api.request(if (nutrition) config.nutrition else config.photo, "Reply OK.", web = nutrition)
+        "OpenAI: OK"
+    } catch (e: CancellationException) { throw e
+    } catch (e: Exception) { e.message ?: "OpenAI: Fehler / error" }
+
+    override suspend fun estimateNutrition(prompt: String): NutritionEstimate {
+        val (config, api) = openAiConfiguration()
+        return api.request(config.nutrition, prompt, web = true)
     }
 
     private fun atomicWrite(file: File, bytes: ByteArray) {
@@ -103,7 +152,8 @@ internal class AndroidAiController(
     override suspend fun testConnection(): String {
         return try {
             val (settings, key) = configuration()
-            GeminiScaleWeightRecognizer(client, key, settings.model, photoDirectory).testConnection()
+            if (settings.provider == AiProvider.OpenAI) testOpenAi(false)
+            else GeminiScaleWeightRecognizer(client, key, settings.model, photoDirectory).testConnection()
         } catch (e: CancellationException) { throw e
         } catch (_: Exception) { "API-Key konnte nicht gelesen werden. Bitte erneut speichern." }
     }
@@ -127,6 +177,17 @@ internal class AndroidAiController(
                                 context, photoDirectory, diagnostics, requireNotNull(config.provider.localModel),
                                 visionOnCpu = config.visionOnCpu,
                             )
+                            AiProvider.OpenAI -> {
+                                val (openConfig, api) = openAiConfiguration()
+                                object : ScaleWeightRecognizer {
+                                    override suspend fun recognize(photoPath: String): ScaleRecognitionResult = try {
+                                        val image = android.util.Base64.encodeToString(decodeScalePhoto(photoDirectory, photoPath), android.util.Base64.NO_WRAP)
+                                        parseScaleReading(api.request(openConfig.photo, SCALE_PROMPT, image).csv)
+                                    } catch (e: CancellationException) { throw e
+                                    } catch (e: Exception) { ScaleRecognitionResult.Error(e.message ?: "OpenAI: Fehler / error", true) }
+                                    override suspend fun close() = Unit
+                                }
+                            }
                             AiProvider.Gemini -> GeminiScaleWeightRecognizer(client, key, config.model, photoDirectory)
                         }
                     },
@@ -144,7 +205,7 @@ internal class AndroidAiController(
                                     else -> "error"
                                 }
                             }, selected.provider.name,
-                            selected.provider.localModel?.artifactName ?: selected.model,
+                            selected.provider.localModel?.artifactName ?: if (selected.provider == AiProvider.OpenAI) selected.openAi.photo.model else selected.model,
                             System.currentTimeMillis())
                     })
             }

@@ -6,6 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -105,6 +108,23 @@ class AiSettingsScreenshotTest {
         compose.onNodeWithText("01:01:01").assertIsDisplayed()
         compose.onNodeWithText("Analysiere · 77 von 100 · 66 erkannt").assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-narrow-large-font.png")
+    }
+
+    @Test fun openAiSettings() {
+        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
+            OpenAiSettingsContent(OpenAiSettings(hasApiKey = true), false, { _, _, _ -> }, {})
+        } }
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai.png")
+    }
+
+    @Test
+    @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
+    fun openAiNarrowLargeFont() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
+            OpenAiSettingsContent(OpenAiSettings(), false, { _, _, _ -> }, {})
+        } }
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai-narrow.png")
     }
 
     private fun showSettings(settings: AiSettings, download: ModelDownloadState, name: String) {

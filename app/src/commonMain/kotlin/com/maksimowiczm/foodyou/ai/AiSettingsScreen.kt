@@ -63,6 +63,19 @@ fun AiSettingsScreen(onBack: () -> Unit) {
         onPause = controller::pauseDownload,
         onDelete = controller::deleteModel,
         onDiagnostics = { scope.launch { report = controller.diagnosticReport() } },
+        onSaveOpenAi = { config, key, delete ->
+            saving = true
+            scope.launch {
+                try { controller.saveOpenAi(config, key, delete); message = "OpenAI: OK" }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { message = "OpenAI: Speichern fehlgeschlagen / saving failed" }
+                finally { saving = false }
+            }
+        },
+        onTestOpenAi = { nutrition ->
+            saving = true
+            scope.launch { try { message = controller.testOpenAi(nutrition) } finally { saving = false } }
+        },
     )
 }
 
@@ -79,6 +92,8 @@ internal fun AiSettingsContent(
     onPause: () -> Unit,
     onDelete: (AiProvider) -> Unit,
     onDiagnostics: () -> Unit = {},
+    onSaveOpenAi: (OpenAiSettings, String?, Boolean) -> Unit = { _, _, _ -> },
+    onTestOpenAi: (Boolean) -> Unit = {},
 ) {
     var provider by rememberSaveable(settings.provider) { mutableStateOf(settings.provider) }
     var model by rememberSaveable(settings.model) { mutableStateOf(settings.model) }
@@ -136,7 +151,7 @@ internal fun AiSettingsContent(
                     }
                     Switch(checked = visionOnCpu, onCheckedChange = { visionOnCpu = it }, enabled = !busy)
                 }
-            } else {
+            } else if (provider == AiProvider.Gemini) {
                 Text("Bei der Analyse werden die Fotos an Google gesendet. Es gilt das Kontingent deines API-Keys; API-Nutzung kann Kosten verursachen.")
                 OutlinedTextField(value = key, onValueChange = { key = it },
                     label = { Text(if (settings.hasApiKey) "API-Key ersetzen (gespeichert)" else "Google-AI-Studio-API-Key") },
@@ -156,6 +171,7 @@ internal fun AiSettingsContent(
                 onSave(provider, model, visionOnCpu, key.takeIf { it.isNotBlank() }, false)
                 key = ""
             }, enabled = !busy && !download.running && model.isNotBlank()) { Text("Einstellungen speichern") }
+            OpenAiSettingsContent(settings.openAi, busy, onSaveOpenAi, onTestOpenAi)
             OutlinedButton(onClick = onDiagnostics) { Text("KI-Diagnosebericht") }
             message?.let { Text(it) }
         }
@@ -209,9 +225,9 @@ internal fun AiAnalysisControls(
                     if (showStopwatch && stopwatchBelowStatus) {
                         AnalysisStopwatch(progress.elapsedMillis)
                     }
-                    if (provider == AiProvider.Gemini) {
+                    if (provider.localModel == null) {
                         Text(
-                            "Analysierte Fotos werden an Google gesendet",
+                            if (provider == AiProvider.OpenAI) "Fotos werden an OpenAI gesendet / Photos sent to OpenAI" else "Analysierte Fotos werden an Google gesendet",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
