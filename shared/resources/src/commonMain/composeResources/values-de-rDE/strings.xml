@@ -761,8 +761,8 @@
     <string name="description_quick_capture_pending_excluded">Unvollständige Einträge werden beim Kopieren und Übertragen ausgelassen.</string>
     <string name="headline_quick_capture_ready_weight">%1$s g bereit</string>
     <plurals name="description_quick_capture_ready_entries">
-        <item quantity="one">%1$d Eintrag für ChatGPT</item>
-        <item quantity="other">%1$d Einträge für ChatGPT</item>
+        <item quantity="one">%1$d Eintrag</item>
+        <item quantity="other">%1$d Einträge</item>
     </plurals>
     <string name="action_quick_capture_paste_csv">CSV einfügen</string>
     <string name="headline_recently_logged">Kürzlich eingetragen</string>
@@ -803,6 +803,12 @@
     <string name="openai_saved_key">API-Key gespeichert</string>
     <string name="openai_calculate">Mit OpenAI berechnen</string>
     <string name="openai_running">Berechnung mit Websuche …</string>
+    <string name="openai_calculate_short">Berechnen</string>
+    <string name="openai_retry">Erneut</string>
+    <string name="openai_setup">OpenAI einrichten</string>
+    <string name="openai_via">%1$s · via OpenAI</string>
+    <string name="action_quick_capture_share_short">An ChatGPT</string>
+    <string name="headline_quick_capture_prompt_shared">Prompt geteilt</string>
     <string name="openai_sources">Quellen</string>
     <string name="openai_stale">Die angefragten Einträge wurden verändert. Bitte erneut berechnen.</string>
     <string name="openai_luna">Schnell und günstig</string>

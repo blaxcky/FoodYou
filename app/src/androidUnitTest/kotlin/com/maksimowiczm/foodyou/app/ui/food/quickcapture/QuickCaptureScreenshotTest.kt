@@ -76,7 +76,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = true,
                 onQuickAdd = {},
                 onTransfer = {},
-                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
+                openAi = QuickCaptureOpenAiState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -96,7 +96,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
+                openAi = QuickCaptureOpenAiState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -116,7 +116,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
+                openAi = QuickCaptureOpenAiState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -189,7 +189,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
+                openAi = QuickCaptureOpenAiState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -224,7 +224,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
+                openAi = QuickCaptureOpenAiState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -446,14 +446,16 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = hasCopiedBatch,
                 onQuickAdd = { opened = true },
                 onTransfer = {},
-                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) },
+                openAi = QuickCaptureOpenAiState(configured = false),
                 timeZone = TimeZone.UTC,
             )
         }
 
         compose.onNodeWithText("CSV einfügen").assertDoesNotExist()
+        compose.onNodeWithText("OpenAI einrichten").assertIsDisplayed()
         capture("ready-for-chatgpt")
-        compose.onNodeWithText("An ChatGPT teilen").performClick()
+        compose.onNodeWithText("An ChatGPT").performClick()
+        compose.onNodeWithText("Prompt geteilt").assertIsDisplayed()
         compose.onNodeWithContentDescription("An ChatGPT teilen").assertIsEnabled()
         compose.onNodeWithText("CSV einfügen").performClick()
         compose.runOnIdle { kotlin.test.assertTrue(opened) }
@@ -750,10 +752,37 @@ class QuickCaptureScreenshotTest {
         show {
             QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
                 { _, _ -> }, {}, {}, {}, false, {}, {},
-                apiAction = { QuickCaptureOpenAiAction(false, null, {}, {}) })
+                openAi = QuickCaptureOpenAiState(configured = true))
         }
-        compose.onNodeWithText("Mit OpenAI berechnen").assertIsDisplayed()
+        compose.onNodeWithText("Berechnen").assertIsDisplayed()
         capture("openai-narrow")
+    }
+
+    @Test
+    fun openAiRunningOffersOnlyCancel() {
+        var cancelled = false
+        show {
+            QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
+                { _, _ -> }, {}, {}, {}, false, {}, {},
+                openAi = QuickCaptureOpenAiState(configured = true, running = true, onCancel = { cancelled = true }))
+        }
+        compose.onNodeWithText("Berechnung mit Websuche …").assertIsDisplayed()
+        compose.onNodeWithText("Berechnen").assertDoesNotExist()
+        compose.onNodeWithContentDescription("An ChatGPT teilen").assertDoesNotExist()
+        compose.onNodeWithText("Abbrechen").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(cancelled) }
+    }
+
+    @Test
+    fun openAiErrorOffersRetry() {
+        show {
+            QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
+                { _, _ -> }, {}, {}, {}, false, {}, {},
+                openAi = QuickCaptureOpenAiState(configured = true, error = "OpenAI nicht erreichbar"))
+        }
+        compose.onNodeWithText("OpenAI nicht erreichbar").assertIsDisplayed()
+        compose.onNodeWithText("Erneut").assertIsDisplayed()
+        capture("openai-error")
     }
 
     @Test fun openAiCsvWithSources() {

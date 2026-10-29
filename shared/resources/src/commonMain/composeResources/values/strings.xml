@@ -887,8 +887,8 @@
     <string name="description_quick_capture_pending_excluded">Incomplete entries are excluded from copying and transfer.</string>
     <string name="headline_quick_capture_ready_weight">%1$s g ready</string>
     <plurals name="description_quick_capture_ready_entries">
-        <item quantity="one">%1$d entry for ChatGPT</item>
-        <item quantity="other">%1$d entries for ChatGPT</item>
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
     </plurals>
     <string name="action_quick_capture_paste_csv">Paste CSV</string>
     <string name="headline_recently_logged">Recently logged</string>
@@ -929,6 +929,12 @@
     <string name="openai_saved_key">API key saved</string>
     <string name="openai_calculate">Calculate with OpenAI</string>
     <string name="openai_running">Calculating with web search…</string>
+    <string name="openai_calculate_short">Calculate</string>
+    <string name="openai_retry">Retry</string>
+    <string name="openai_setup">Set up OpenAI</string>
+    <string name="openai_via">%1$s · via OpenAI</string>
+    <string name="action_quick_capture_share_short">To ChatGPT</string>
+    <string name="headline_quick_capture_prompt_shared">Prompt shared</string>
     <string name="openai_sources">Sources</string>
     <string name="openai_stale">The requested entries changed. Please calculate again.</string>
     <string name="openai_luna">Fast and economical</string>

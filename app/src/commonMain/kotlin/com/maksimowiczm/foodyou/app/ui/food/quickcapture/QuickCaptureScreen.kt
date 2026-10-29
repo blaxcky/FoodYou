@@ -4,7 +4,6 @@ import com.maksimowiczm.foodyou.ai.PhotoAnalysisSummary
 import com.maksimowiczm.foodyou.ai.photoModelLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalUriHandler
 import com.maksimowiczm.foodyou.ai.NutritionEstimate
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,7 +39,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -379,13 +386,16 @@ fun QuickCaptureScreen(
                             viewModel.resetCsvImportError()
                             showCsvImport = true
                         },
-                        apiAction = {
-                            QuickCaptureOpenAiAction(nutritionRunning, nutritionError,
-                                onCalculate = {
-                                    if (!aiSettings.openAi.hasApiKey) onAiSettings()
-                                    else viewModel.calculateNutrition(entries.quickCaptureGroups(aggregate))
-                                }, onCancel = viewModel::cancelNutrition)
-                        },
+                        openAi = QuickCaptureOpenAiState(
+                            configured = aiSettings.openAi.hasApiKey,
+                            running = nutritionRunning,
+                            error = nutritionError,
+                            onCalculate = {
+                                if (nutritionDraft == null) viewModel.calculateNutrition(entries.quickCaptureGroups(aggregate))
+                            },
+                            onCancel = viewModel::cancelNutrition,
+                            onSetup = onAiSettings,
+                        ),
                         onTransfer = { group ->
                             onTransfer(
                                 QuickCaptureTransferRequest(
@@ -489,7 +499,7 @@ internal fun QuickCaptureLog(
     onQuickAdd: () -> Unit,
     onTransfer: (QuickCaptureLogGroup) -> Unit,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
-    apiAction: (@Composable () -> Unit)? = null,
+    openAi: QuickCaptureOpenAiState? = null,
 ) {
     var completed by rememberSaveable { mutableStateOf(false) }
     var afterEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
@@ -562,13 +572,12 @@ internal fun QuickCaptureLog(
         if (!completed) {
             if (groups.isNotEmpty() || hasCopiedBatch) {
                 item {
-                    QuickCaptureBatchCard(
+                    QuickCaptureReadyRow(
                         groups = groups,
                         hasCopiedBatch = hasCopiedBatch,
                         onSharePrompt = onSharePrompt,
                         onQuickAdd = onQuickAdd,
-                        apiAction = apiAction,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        openAi = openAi,
                     )
                 }
             }
@@ -623,75 +632,150 @@ internal fun QuickCaptureLog(
     }
 }
 
+/** OpenAI nutrition path offered by [QuickCaptureReadyRow]; null hides it entirely. */
+internal class QuickCaptureOpenAiState(
+    val configured: Boolean,
+    val running: Boolean = false,
+    val error: String? = null,
+    val onCalculate: () -> Unit = {},
+    val onCancel: () -> Unit = {},
+    val onSetup: () -> Unit = {},
+)
+
+/**
+ * Slim row above the open entries. It offers exactly one tonal action for the next step; the
+ * alternative routes (sharing the prompt, calculating instead) stay icon buttons.
+ */
 @Composable
-private fun QuickCaptureBatchCard(
+private fun QuickCaptureReadyRow(
     groups: List<QuickCaptureLogGroup>,
     hasCopiedBatch: Boolean,
     onSharePrompt: () -> Unit,
     onQuickAdd: () -> Unit,
+    openAi: QuickCaptureOpenAiState?,
     modifier: Modifier = Modifier,
-    apiAction: (@Composable () -> Unit)? = null,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(
-            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Column {
-                Text(
-                    text =
-                        stringResource(
-                            Res.string.headline_quick_capture_ready_weight,
-                            groups.sumOf { it.weightInGrams }.formatQuickCaptureWeight(),
-                        ),
-                    style = MaterialTheme.typography.titleMedium,
+    val running = openAi?.running == true
+    val configured = openAi?.configured == true
+    val error = openAi?.error.takeIf { !running }
+    val shareLabel = stringResource(Res.string.action_quick_capture_share_prompt)
+    val text: @Composable () -> Unit = {
+        Text(
+            text =
+                stringResource(
+                    Res.string.headline_quick_capture_ready_weight,
+                    groups.sumOf { it.weightInGrams }.formatQuickCaptureWeight(),
+                ),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        val entryCount =
+            pluralStringResource(Res.plurals.description_quick_capture_ready_entries, groups.size, groups.size)
+        when {
+            running -> QuickCaptureReadyRowSupport(stringResource(Res.string.openai_running))
+            error != null -> Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.error,
                 )
-                Text(
-                    text =
-                        pluralStringResource(
-                            Res.plurals.description_quick_capture_ready_entries,
-                            groups.size,
-                            groups.size,
-                        ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                QuickCaptureReadyRowSupport(error, MaterialTheme.colorScheme.error)
             }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (hasCopiedBatch) {
-                    IconButton(onClick = onSharePrompt, enabled = groups.isNotEmpty()) {
-                        Icon(
-                            Icons.Outlined.Share,
-                            contentDescription = stringResource(Res.string.action_quick_capture_share_prompt),
-                        )
-                    }
-                    Button(onClick = onQuickAdd) {
-                        Icon(
-                            Icons.Outlined.Bolt,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text(stringResource(Res.string.action_quick_capture_paste_csv))
-                    }
-                } else {
-                    Button(onClick = onSharePrompt) {
-                        Icon(
-                            Icons.Outlined.Share,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text(stringResource(Res.string.action_quick_capture_share_prompt))
+            hasCopiedBatch -> QuickCaptureReadyRowSupport(stringResource(Res.string.headline_quick_capture_prompt_shared))
+            openAi != null && !configured -> TextButton(
+                onClick = openAi.onSetup,
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.heightIn(min = 32.dp),
+            ) {
+                Text(stringResource(Res.string.openai_setup), style = MaterialTheme.typography.labelLarge)
+            }
+            configured -> QuickCaptureReadyRowSupport(stringResource(Res.string.openai_via, entryCount))
+            else -> QuickCaptureReadyRowSupport(entryCount)
+        }
+    }
+    val actions: @Composable () -> Unit = {
+        when {
+            running -> TextButton(onClick = openAi.onCancel) { Text(stringResource(Res.string.action_cancel)) }
+            hasCopiedBatch -> {
+                IconButton(onClick = onSharePrompt, enabled = groups.isNotEmpty()) {
+                    Icon(Icons.Outlined.Share, contentDescription = shareLabel)
+                }
+                if (configured) {
+                    IconButton(onClick = openAi.onCalculate, enabled = groups.isNotEmpty()) {
+                        Icon(Icons.Outlined.AutoAwesome, contentDescription = stringResource(Res.string.openai_calculate))
                     }
                 }
-                apiAction?.invoke()
+                QuickCaptureReadyRowAction(
+                    Icons.Outlined.ContentPaste,
+                    stringResource(Res.string.action_quick_capture_paste_csv),
+                    onQuickAdd,
+                )
+            }
+            configured -> {
+                IconButton(onClick = onSharePrompt) { Icon(Icons.Outlined.Share, contentDescription = shareLabel) }
+                if (error != null) {
+                    QuickCaptureReadyRowAction(Icons.Outlined.Refresh, stringResource(Res.string.openai_retry), openAi.onCalculate)
+                } else {
+                    QuickCaptureReadyRowAction(
+                        Icons.Outlined.AutoAwesome,
+                        stringResource(Res.string.openai_calculate_short),
+                        openAi.onCalculate,
+                    )
+                }
+            }
+            else -> QuickCaptureReadyRowAction(
+                Icons.Outlined.Share,
+                stringResource(Res.string.action_quick_capture_share_short),
+                onSharePrompt,
+            )
+        }
+    }
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        // Narrow screens and large fonts put the actions below the text so neither gets squeezed.
+        val compact = maxWidth < 360.dp || LocalDensity.current.fontScale > 1.3f
+        Column(Modifier.fillMaxWidth()) {
+            if (compact) {
+                Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
+                    text()
+                    Row(
+                        modifier = Modifier.align(Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) { actions() }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Column(Modifier.weight(1f)) { text() }
+                    actions()
+                }
+            }
+            if (running) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(3.dp))
+            } else {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
+    }
+}
+
+@Composable
+private fun QuickCaptureReadyRowSupport(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
+}
+
+@Composable
+private fun QuickCaptureReadyRowAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    FilledTonalButton(onClick = onClick, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+        Text(label, maxLines = 1)
     }
 }
 
@@ -1789,17 +1873,3 @@ private fun PhotoAnalysisBadge(
 }
 
 internal data class QuickCaptureNutritionDraft(val result: NutritionEstimate, val entries: List<QuickCaptureLogEntry>, val rowCount: Int)
-
-@Composable
-internal fun QuickCaptureOpenAiAction(running: Boolean, error: String?, onCalculate: () -> Unit, onCancel: () -> Unit) {
-    Column {
-        if (running) {
-            Text(stringResource(Res.string.openai_running), style = MaterialTheme.typography.bodySmall)
-            androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            TextButton(onClick = onCancel) { Text(stringResource(Res.string.action_cancel)) }
-        } else {
-            Button(onClick = onCalculate) { Text(stringResource(Res.string.openai_calculate)) }
-        }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-    }
-}
