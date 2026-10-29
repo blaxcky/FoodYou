@@ -13,11 +13,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.*
 import kotlin.time.TimeSource
 
-enum class AiProvider(val label: String) {
-    Local("Gemma 4 E4B lokal"),
-    LocalE2B("Gemma 4 E2B lokal"),
-    Gemini("Google AI Studio"),
-    OpenAI("OpenAI / ChatGPT");
+enum class AiProvider(val label: String, val shortLabel: String) {
+    Local("Gemma 4 E4B lokal", "Gemma E4B"),
+    LocalE2B("Gemma 4 E2B lokal", "Gemma E2B"),
+    Gemini("Google AI Studio", "Gemini"),
+    OpenAI("OpenAI / ChatGPT", "OpenAI");
 
     val localModel: GemmaModel?
         get() = when (this) {
@@ -67,6 +67,12 @@ data class AiSettings(
     val visionOnCpu: Boolean = false,
     val openAi: OpenAiSettings = OpenAiSettings(),
 )
+
+/** The model that reads scale photos for the selected provider, e.g. "gpt-6-luna · Reasoning low". */
+fun AiSettings.photoModelLabel(): String = provider.localModel?.displayName ?: when (provider) {
+    AiProvider.OpenAI -> listOfNotNull(openAi.photo.model, openAi.photo.effort?.let { "Reasoning $it" }).joinToString(" · ")
+    else -> model
+}
 
 enum class ScaleErrorKind { Runtime, ResponseFormat, NonWholeGrams, Truncated, ProcessDied, Timeout }
 
@@ -128,6 +134,24 @@ data class AnalysisProgress(
     val paused: Boolean = false,
     val elapsedMillis: Long = 0,
 )
+
+/** Open photos counted by their stored AI outcome, so the status line stays true after restarts. */
+data class PhotoAnalysisSummary(val total: Int = 0, val suggested: Int = 0, val withoutSuggestion: Int = 0) {
+    val open: Int get() = total - suggested - withoutSuggestion
+
+    /** Short result such as "1 erkannt · 1 ohne Vorschlag"; null when there are no open photos. */
+    fun describe(): String? = when {
+        total == 0 -> null
+        open == total -> if (total == 1) "1 Foto bereit" else "$total Fotos bereit"
+        suggested == total -> if (total == 1) "1 Gewicht erkannt" else "$total Gewichte erkannt"
+        total == 1 -> "1 Foto ohne Vorschlag"
+        else -> listOfNotNull(
+            "$suggested erkannt".takeIf { suggested > 0 },
+            "$withoutSuggestion ohne Vorschlag".takeIf { withoutSuggestion > 0 },
+            "$open offen".takeIf { open > 0 },
+        ).joinToString(" · ")
+    }
+}
 
 /** One session per batch; persistence must atomically check that the photo is still pending. */
 class ScaleAnalysisCoordinator(private val timeSource: TimeSource = TimeSource.Monotonic) {

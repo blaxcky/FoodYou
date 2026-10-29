@@ -262,7 +262,8 @@ class QuickCaptureScreenshotTest {
             androidx.compose.foundation.layout.Column {
                 com.maksimowiczm.foodyou.ai.AiAnalysisControls(
                     com.maksimowiczm.foodyou.ai.AiProvider.Local,
-                    com.maksimowiczm.foodyou.ai.AnalysisProgress(), true, true, {}, {},
+                    com.maksimowiczm.foodyou.ai.AnalysisProgress(), true,
+                    com.maksimowiczm.foodyou.ai.PhotoAnalysisSummary(total = 3, suggested = 2, withoutSuggestion = 1), {}, {},
                 )
                 QuickCapturePhotos(
                     entries = listOf(
@@ -279,6 +280,7 @@ class QuickCaptureScreenshotTest {
         compose.onNodeWithText("Vorschlag · 118 g").assertExists()
         compose.onNodeWithContentDescription("Vorschlag abgelehnt").assertExists()
         compose.onNodeWithText("Kein Vorschlag").assertExists()
+        compose.onNodeWithText("2 erkannt · 1 ohne Vorschlag").assertExists()
         capture("photo-inbox")
     }
 

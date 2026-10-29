@@ -10,16 +10,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -178,108 +186,118 @@ internal fun AiSettingsContent(
     }
 }
 
-/** Slim status line above the photo grid; the primary action lives in [AiAnalysisActionButton]. */
+/**
+ * Slim status line above the photo grid; the primary action lives in [AiAnalysisActionButton].
+ * The provider chip opens [AiProviderSheet], which owns the privacy note and the last run's details.
+ */
 @Composable
 internal fun AiAnalysisControls(
     provider: AiProvider,
     progress: AnalysisProgress,
     canStart: Boolean,
-    hasPhotos: Boolean,
+    photos: PhotoAnalysisSummary,
     onReanalyze: () -> Unit,
     onSettings: () -> Unit,
+    onResume: () -> Unit = {},
+    modelLabel: String? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var sheetOpen by rememberSaveable { mutableStateOf(false) }
+    val paused = progress.paused && !progress.running
+    val canReanalyze = photos.total > 0 && canStart && !progress.running
     Column(Modifier.fillMaxWidth()) {
         if (progress.running) {
             val fraction = if (progress.total > 0) progress.completed.toFloat() / progress.total else 0f
             LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().height(3.dp))
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val showStopwatch = progress.running || progress.total > 0
-            val stopwatchBelowStatus = maxWidth < 360.dp || LocalDensity.current.fontScale > 1.3f
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(start = 16.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    Icons.Outlined.AutoAwesome,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                val status = when {
-                    progress.running ->
-                        "Analysiere · ${progress.completed} von ${progress.total} · ${progress.recognized} erkannt"
-                    !canStart -> "${provider.label} · nicht eingerichtet"
-                    progress.total > 0 ->
-                        "${provider.label} · ${progress.recognized} von ${progress.total} erkannt"
-                    else -> provider.label
-                }
-                Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-                    Text(
-                        status,
-                        style = MaterialTheme.typography.bodySmall,
+            // Narrow screens and large fonts move the status below the chip so neither gets squeezed.
+            val compact = maxWidth < 360.dp || LocalDensity.current.fontScale > 1.3f
+            val status: @Composable () -> Unit = {
+                when {
+                    progress.running -> Text(
+                        "Analysiere ${(progress.completed + 1).coerceAtMost(progress.total)} von ${progress.total}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    !canStart -> Text(
+                        "Nicht eingerichtet",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (showStopwatch && stopwatchBelowStatus) {
+                    paused -> Text(
+                        "Angehalten",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    else -> photos.describe()?.let { PhotoSummaryText(it, photos) }
+                }
+            }
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 12.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    AssistChip(
+                        onClick = { sheetOpen = true },
+                        label = { Text(provider.shortLabel, maxLines = 1) },
+                        leadingIcon = {
+                            Icon(
+                                provider.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(AssistChipDefaults.IconSize),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Outlined.ExpandMore,
+                                contentDescription = null,
+                                modifier = Modifier.size(AssistChipDefaults.IconSize),
+                            )
+                        },
+                    )
+                    Box(Modifier.weight(1f).padding(vertical = 6.dp)) { if (!compact) status() }
+                    if (progress.running && !compact) {
                         AnalysisStopwatch(progress.elapsedMillis)
                     }
-                    if (provider.localModel == null) {
-                        Text(
-                            if (provider == AiProvider.OpenAI) "Fotos werden an OpenAI gesendet / Photos sent to OpenAI" else "Analysierte Fotos werden an Google gesendet",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (progress.paused && !progress.running) {
-                        Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Pause,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(12.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    when {
+                        !progress.running && !canStart -> TextButton(onClick = onSettings) { Text("Einrichten") }
+                        paused && photos.suggested < photos.total -> TextButton(onClick = onResume) { Text("Fortsetzen") }
+                        else -> Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Outlined.MoreVert, contentDescription = "Weitere KI-Optionen")
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Alle offenen Fotos erneut analysieren") },
+                                    leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
+                                    enabled = canReanalyze,
+                                    onClick = {
+                                        menuOpen = false
+                                        onReanalyze()
+                                    },
                                 )
-                                Text(
-                                    "Angehalten",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                DropdownMenuItem(
+                                    text = { Text("KI-Einstellungen") },
+                                    leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                                    onClick = {
+                                        menuOpen = false
+                                        onSettings()
+                                    },
                                 )
                             }
                         }
                     }
                 }
-                if (showStopwatch && !stopwatchBelowStatus) {
-                    AnalysisStopwatch(progress.elapsedMillis)
-                }
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Outlined.MoreVert, contentDescription = "Weitere KI-Optionen")
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Alle offenen Fotos erneut analysieren") },
-                            leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
-                            enabled = hasPhotos && canStart && !progress.running,
-                            onClick = {
-                                menuOpen = false
-                                onReanalyze()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("KI-Einstellungen") },
-                            leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
-                            onClick = {
-                                menuOpen = false
-                                onSettings()
-                            },
-                        )
+                if (compact) {
+                    Column(
+                        Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        status()
+                        if (progress.running) AnalysisStopwatch(progress.elapsedMillis)
                     }
                 }
             }
@@ -287,12 +305,152 @@ internal fun AiAnalysisControls(
         progress.message?.let {
             Text(
                 it,
-                modifier = Modifier.padding(start = 40.dp, end = 16.dp, bottom = 8.dp),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    }
+    if (sheetOpen) {
+        AiProviderSheet(
+            provider = provider,
+            modelLabel = modelLabel,
+            progress = progress,
+            photos = photos,
+            canReanalyze = canReanalyze,
+            onReanalyze = onReanalyze,
+            onSettings = onSettings,
+            onDismiss = { sheetOpen = false },
+        )
+    }
+}
+
+@Composable
+private fun PhotoSummaryText(text: String, photos: PhotoAnalysisSummary) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        when {
+            photos.withoutSuggestion > 0 -> Icon(
+                Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            photos.suggested == photos.total -> Icon(
+                Icons.Outlined.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AiProviderSheet(
+    provider: AiProvider,
+    modelLabel: String?,
+    progress: AnalysisProgress,
+    photos: PhotoAnalysisSummary,
+    canReanalyze: Boolean,
+    onReanalyze: () -> Unit,
+    onSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(provider.icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(24.dp))
+                }
+                Column {
+                    Text(provider.label, style = MaterialTheme.typography.titleLarge)
+                    modelLabel?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(
+                        Icons.Outlined.Shield,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(provider.privacyNote, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Column {
+                if (progress.total > 0 && !progress.running) {
+                    val count = if (progress.total == 1) "1 Foto" else "${progress.total} Fotos"
+                    AiSheetRow("Letzter Durchlauf", "$count · ${formatAnalysisDuration(progress.elapsedMillis)}")
+                }
+                photos.describe()?.let { AiSheetRow("Offene Fotos", it) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = { onDismiss(); onSettings() }, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Einstellungen")
+                }
+                FilledTonalButton(
+                    onClick = { onDismiss(); onReanalyze() },
+                    enabled = canReanalyze,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Alle erneut")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiSheetRow(label: String, value: String) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            value,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.End,
+        )
+    }
+}
+
+private val AiProvider.icon: ImageVector
+    get() = if (localModel == null) Icons.Outlined.Cloud else Icons.Outlined.PhoneAndroid
+
+private val AiProvider.privacyNote: String
+    get() = when (this) {
+        AiProvider.OpenAI -> "Fotos werden zur Analyse an OpenAI gesendet. Es gilt das Kontingent deines API-Keys; die API-Nutzung kann Kosten verursachen."
+        AiProvider.Gemini -> "Fotos werden zur Analyse an Google gesendet. Es gilt das Kontingent deines API-Keys; die API-Nutzung kann Kosten verursachen."
+        AiProvider.Local, AiProvider.LocalE2B -> "Die Analyse läuft auf diesem Gerät; Fotos verlassen es nicht."
+    }
+
+internal fun formatAnalysisDuration(elapsedMillis: Long): String {
+    val seconds = elapsedMillis.coerceAtLeast(0) / 1_000
+    return when {
+        seconds == 0L -> "unter 1 s"
+        seconds < 60 -> "$seconds s"
+        else -> formatAnalysisElapsedTime(elapsedMillis)
     }
 }
 

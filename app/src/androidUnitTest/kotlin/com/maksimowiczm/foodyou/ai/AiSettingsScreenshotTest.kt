@@ -14,6 +14,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.*
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -66,12 +67,12 @@ class AiSettingsScreenshotTest {
         val progress = AnalysisProgress(true, 7, 10, 6, elapsedMillis = 83_000)
         show {
             Column {
-                AiAnalysisControls(AiProvider.Local, progress, true, true, {}, {})
+                AiAnalysisControls(AiProvider.Local, progress, true, PhotoAnalysisSummary(total = 10), {}, {})
                 AiAnalysisActionButton(progress, true, true, {}, {})
             }
         }
         compose.onNodeWithText("01:23").assertIsDisplayed()
-        compose.onNodeWithText("Analysiere · 7 von 10 · 6 erkannt").assertIsDisplayed()
+        compose.onNodeWithText("Analysiere 8 von 10").assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-progress.png")
     }
 
@@ -79,21 +80,58 @@ class AiSettingsScreenshotTest {
         show {
             AiAnalysisControls(AiProvider.Local,
                 AnalysisProgress(completed = 10, total = 10, recognized = 9, elapsedMillis = 125_999),
-                true, true, {}, {})
+                true, PhotoAnalysisSummary(total = 10, suggested = 9, withoutSuggestion = 1), {}, {})
         }
-        compose.onNodeWithText("02:05").assertIsDisplayed()
+        compose.onNodeWithText("9 erkannt · 1 ohne Vorschlag").assertIsDisplayed()
+        compose.onNodeWithText("02:05").assertDoesNotExist()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-completed.png")
+    }
+
+    @Test fun singlePhotoWithoutSuggestion() {
+        show {
+            AiAnalysisControls(AiProvider.OpenAI,
+                AnalysisProgress(completed = 1, total = 1, elapsedMillis = 2_400),
+                true, PhotoAnalysisSummary(total = 1, withoutSuggestion = 1), {}, {})
+        }
+        compose.onNodeWithText("1 Foto ohne Vorschlag").assertIsDisplayed()
+        compose.onNodeWithText("Fotos werden zur Analyse an OpenAI gesendet", substring = true).assertDoesNotExist()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.single-photo-without-suggestion.png")
+    }
+
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test fun providerSheet() {
+        show {
+            AiAnalysisControls(AiProvider.OpenAI,
+                AnalysisProgress(completed = 1, total = 1, elapsedMillis = 2_400),
+                true, PhotoAnalysisSummary(total = 1, withoutSuggestion = 1), {}, {},
+                modelLabel = AiSettings(AiProvider.OpenAI).photoModelLabel())
+        }
+        compose.onNodeWithText("OpenAI").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Fotos werden zur Analyse an OpenAI gesendet", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("gpt-6-luna · Reasoning low").assertIsDisplayed()
+        compose.onNodeWithText("1 Foto · 2 s").assertIsDisplayed()
+        captureScreenRoboImage("AiSettingsScreenshotTest.provider-sheet.png")
     }
 
     @Test fun batchPaused() {
         show {
             AiAnalysisControls(AiProvider.Local,
                 AnalysisProgress(completed = 7, total = 10, recognized = 6, paused = true, elapsedMillis = 3_661_000),
-                true, true, {}, {})
+                true, PhotoAnalysisSummary(total = 10, suggested = 6, withoutSuggestion = 1), {}, {})
         }
-        compose.onNodeWithText("01:01:01").assertIsDisplayed()
+        compose.onNodeWithText("01:01:01").assertDoesNotExist()
         compose.onNodeWithText("Angehalten").assertIsDisplayed()
+        compose.onNodeWithText("Fortsetzen").assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-paused.png")
+    }
+
+    @Test fun notConfigured() {
+        show {
+            AiAnalysisControls(AiProvider.OpenAI, AnalysisProgress(), false, PhotoAnalysisSummary(total = 2), {}, {})
+        }
+        compose.onNodeWithText("Nicht eingerichtet").assertIsDisplayed()
+        compose.onNodeWithText("Einrichten").assertIsDisplayed()
     }
 
     @Test
@@ -103,10 +141,10 @@ class AiSettingsScreenshotTest {
         show {
             AiAnalysisControls(AiProvider.Gemini,
                 AnalysisProgress(true, 77, 100, 66, elapsedMillis = 3_661_000),
-                true, true, {}, {})
+                true, PhotoAnalysisSummary(total = 100), {}, {})
         }
         compose.onNodeWithText("01:01:01").assertIsDisplayed()
-        compose.onNodeWithText("Analysiere · 77 von 100 · 66 erkannt").assertIsDisplayed()
+        compose.onNodeWithText("Analysiere 78 von 100").assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-narrow-large-font.png")
     }
 

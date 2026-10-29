@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 
+import com.maksimowiczm.foodyou.ai.PhotoAnalysisSummary
+import com.maksimowiczm.foodyou.ai.photoModelLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
@@ -399,9 +401,11 @@ fun QuickCaptureScreen(
                         com.maksimowiczm.foodyou.ai.AiAnalysisControls(
                             provider = aiSettings.provider, progress = aiProgress,
                             canStart = aiCanStart,
-                            hasPhotos = entries.any { it.isPendingPhoto },
+                            photos = entries.photoAnalysisSummary(),
                             onReanalyze = { ai.startAnalysis(true) },
                             onSettings = onAiSettings,
+                            onResume = { ai.startAnalysis() },
+                            modelLabel = aiSettings.photoModelLabel(),
                         )
                         QuickCapturePhotos(
                             entries = entries.filter { it.isPendingPhoto },
@@ -1229,6 +1233,15 @@ private fun QuickCaptureCompletedRow(
                 Icon(Icons.Outlined.Delete, contentDescription = stringResource(Res.string.action_delete))
             }
         },
+    )
+}
+
+internal fun List<QuickCaptureLogEntry>.photoAnalysisSummary(): PhotoAnalysisSummary {
+    val photos = filter { it.isPendingPhoto }
+    return PhotoAnalysisSummary(
+        total = photos.size,
+        suggested = photos.count { it.suggestedWeightInGrams != null },
+        withoutSuggestion = photos.count { it.suggestedWeightInGrams == null && it.aiAnalysisStatus != null },
     )
 }
 
