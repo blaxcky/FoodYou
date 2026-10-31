@@ -149,39 +149,39 @@ class AiSettingsScreenshotTest {
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-narrow-large-font.png")
     }
 
-    @Test fun openAiSettings() {
-        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-            OpenAiSettingsContent(OpenAiSettings(hasApiKey = true), false, { _, _, _ -> }, {})
-        } }
-        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai.png")
-    }
+    @Test fun openAiSettings() = showSettings(
+        AiSettings(AiProvider.OpenAI, openAi = OpenAiSettings(hasApiKey = true)), ModelDownloadState(), "openai",
+    )
 
     @Test
     @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
     fun openAiNarrowLargeFont() {
         RuntimeEnvironment.setFontScale(1.5f)
-        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-            OpenAiSettingsContent(OpenAiSettings(), false, { _, _, _ -> }, {})
-        } }
-        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").performScrollTo().assertIsDisplayed()
+        show { AiSettingsContent(AiSettings(AiProvider.OpenAI), emptyMap(), false) }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen").performScrollTo().assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai-narrow.png")
     }
 
-    @Test fun claudeSettings() {
-        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-            ClaudeSettingsContent(ClaudeSettings(hasApiKey = true), false, { _, _, _ -> }, {})
-        } }
-        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.claude.png")
-    }
+    @Test fun claudeSettings() = showSettings(
+        AiSettings(AiProvider.Claude, claude = ClaudeSettings(hasApiKey = true), nutritionProvider = NutritionProvider.Claude),
+        ModelDownloadState(), "claude",
+    )
+
+    /** Whole page in one image, so the section layout can be reviewed at a glance. */
+    @Test
+    @Config(qualifiers = "de-rDE-w390dp-h1900dp-mdpi")
+    fun claudeFullPage() = showSettings(
+        AiSettings(AiProvider.Claude, claude = ClaudeSettings(hasApiKey = true), openAi = OpenAiSettings(hasApiKey = true),
+            nutritionProvider = NutritionProvider.Claude),
+        ModelDownloadState(), "claude-full-page",
+    )
 
     @Test
     @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
     fun claudeNarrowLargeFont() {
         RuntimeEnvironment.setFontScale(1.5f)
-        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-            ClaudeSettingsContent(ClaudeSettings(), false, { _, _, _ -> }, {})
-        } }
-        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").performScrollTo().assertIsDisplayed()
+        show { AiSettingsContent(AiSettings(AiProvider.Claude, nutritionProvider = NutritionProvider.Claude), emptyMap(), false) }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen").performScrollTo().assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.claude-narrow.png")
     }
 
@@ -193,28 +193,41 @@ class AiSettingsScreenshotTest {
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai-parallel-progress.png")
     }
 
-    @Test fun openAiParallelismSavesAndDisablesTestsUntilSaved() {
-        var saved: OpenAiSettings? = null
-        show { Column(Modifier.verticalScroll(rememberScrollState())) {
-            OpenAiSettingsContent(OpenAiSettings(hasApiKey = true), false, { config, _, _ -> saved = config }, {})
-        } }
-        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").performScrollTo().performClick()
-        compose.onNodeWithText("5", useUnmergedTree = true).performClick()
-        compose.onNodeWithText("Fotomodell testen").assertIsNotEnabled()
-        compose.onNodeWithText("OpenAI-Einstellungen speichern").performScrollTo().performClick()
-        assertEquals(5, saved?.photoParallelism)
+    @Test fun onlySelectedPhotoProviderShowsItsOptions() {
+        show { AiSettingsContent(AiSettings(AiProvider.Local), emptyMap(), false) }
+        compose.onNodeWithText("Bildanalyse auf der CPU").assertExists()
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen").assertDoesNotExist()
+        compose.onNodeWithText("Fotoerkennung testen").assertDoesNotExist()
+        compose.onNodeWithText("Speichern").assertDoesNotExist()
     }
 
-    @Test fun openAiParallelismIsDisabledWhileBusy() {
-        show { Column(Modifier.verticalScroll(rememberScrollState())) {
-            OpenAiSettingsContent(OpenAiSettings(), true, { _, _, _ -> }, {})
-        } }
-        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").assertIsNotEnabled()
+    @Test fun oneSaveStoresAllEditsAndDisablesTestsUntilSaved() {
+        var saved: AiSettingsDraft? = null
+        show {
+            AiSettingsContent(
+                AiSettings(AiProvider.OpenAI, openAi = OpenAiSettings(hasApiKey = true)), emptyMap(), false,
+                onSave = { saved = it },
+            )
+        }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen").performScrollTo().performClick()
+        compose.onNodeWithText("5", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("Claude").performScrollTo().performClick()
+        compose.onNodeWithText("Fotoerkennung testen").performScrollTo().assertIsNotEnabled()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.unsaved-changes.png")
+        compose.onNodeWithText("Speichern").performClick()
+        assertEquals(5, saved?.openAi?.photoParallelism)
+        assertEquals(NutritionProvider.Claude, saved?.nutritionProvider)
+        assertEquals(AiProvider.OpenAI, saved?.provider)
+    }
+
+    @Test fun photoOptionsAreDisabledWhileBusy() {
+        show { AiSettingsContent(AiSettings(AiProvider.OpenAI), emptyMap(), true) }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen").assertIsNotEnabled()
     }
 
     private fun showSettings(settings: AiSettings, download: ModelDownloadState, name: String) {
         val downloads = settings.provider.localModel?.let { mapOf(settings.provider to download) }.orEmpty()
-        show { AiSettingsContent(settings, downloads, false, null, {}, { _, _, _, _, _ -> }, {}, { _ -> }, {}, { _ -> }) }
+        show { AiSettingsContent(settings, downloads, false) }
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.$name.png")
     }
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {

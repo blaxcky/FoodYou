@@ -13,28 +13,96 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.TravelExplore
+import androidx.compose.material.icons.outlined.Troubleshoot
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import foodyou.app.generated.resources.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+
+/** Unsaved edits of the AI screen. New API keys only live here, never in saveable UI state. */
+internal data class AiSettingsDraft(
+    val provider: AiProvider,
+    val geminiModel: String,
+    val visionOnCpu: Boolean,
+    val openAi: OpenAiSettings,
+    val claude: ClaudeSettings,
+    val nutritionProvider: NutritionProvider,
+    val geminiKey: String? = null,
+    val openAiKey: String? = null,
+    val claudeKey: String? = null,
+)
+
+internal fun AiSettings.toDraft() = AiSettingsDraft(
+    provider, model, visionOnCpu, openAi.copy(hasApiKey = false), claude.copy(hasApiKey = false), nutritionProvider,
+)
+
+/** Keeps the user's edits and takes every untouched field from the newly saved settings. */
+private fun AiSettingsDraft.rebase(old: AiSettingsDraft, new: AiSettingsDraft): AiSettingsDraft {
+    fun <T> pick(current: T, before: T, after: T) = if (current == before) after else current
+    return copy(
+        provider = pick(provider, old.provider, new.provider),
+        geminiModel = pick(geminiModel, old.geminiModel, new.geminiModel),
+        visionOnCpu = pick(visionOnCpu, old.visionOnCpu, new.visionOnCpu),
+        openAi = pick(openAi, old.openAi, new.openAi),
+        claude = pick(claude, old.claude, new.claude),
+        nutritionProvider = pick(nutritionProvider, old.nutritionProvider, new.nutritionProvider),
+    )
+}
+
+private fun AiSettingsDraft.key(provider: AiProvider): String? = when (provider) {
+    AiProvider.OpenAI -> openAiKey
+    AiProvider.Claude -> claudeKey
+    else -> geminiKey
+}
+
+private fun AiSettingsDraft.withKey(provider: AiProvider, key: String?) = when (provider) {
+    AiProvider.OpenAI -> copy(openAiKey = key)
+    AiProvider.Claude -> copy(claudeKey = key)
+    else -> copy(geminiKey = key)
+}
+
+private fun AiSettings.hasKey(provider: AiProvider): Boolean = when (provider) {
+    AiProvider.Gemini -> hasApiKey
+    AiProvider.OpenAI -> openAi.hasApiKey
+    AiProvider.Claude -> claude.hasApiKey
+    AiProvider.Local, AiProvider.LocalE2B -> true
+}
+
+private val NutritionProvider.keyProvider: AiProvider
+    get() = when (this) {
+        NutritionProvider.OpenAI -> AiProvider.OpenAI
+        NutritionProvider.Claude -> AiProvider.Claude
+    }
+
+private val keyProviders = listOf(AiProvider.Gemini, AiProvider.OpenAI, AiProvider.Claude)
 
 @Composable
 fun AiSettingsScreen(onBack: () -> Unit) {
@@ -43,91 +111,105 @@ fun AiSettingsScreen(onBack: () -> Unit) {
     val downloads by controller.downloads.collectAsStateWithLifecycle()
     val analysis by controller.analysis.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var message by remember { mutableStateOf<String?>(null) }
+    val snackbar = remember { SnackbarHostState() }
     var report by remember { mutableStateOf<String?>(null) }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     report?.let { text -> AiDiagnosticDialog(text, { clipboard.setText(androidx.compose.ui.text.AnnotatedString(text)) }, { report = null }) }
     var saving by remember { mutableStateOf(false) }
-    AiSettingsContent(settings, downloads, analysis.running || saving, message,
+    val savedMessage = stringResource(Res.string.ai_settings_saved)
+    val failedMessage = stringResource(Res.string.ai_settings_save_failed)
+    val keyRemovedMessage = stringResource(Res.string.ai_settings_key_removed)
+    // Runs one controller action at a time and reports its outcome in the snackbar.
+    val run: (suspend () -> String) -> Unit = { action ->
+        saving = true
+        scope.launch {
+            val message = try { action() } finally { saving = false }
+            snackbar.showSnackbar(message, withDismissAction = true)
+        }
+    }
+    AiSettingsContent(settings, downloads, analysis.running || saving, snackbar,
         onBack = onBack,
-        onSave = { provider, model, visionOnCpu, key, delete ->
-            saving = true
-            scope.launch {
-                try {
-                    controller.saveSettings(provider, model, visionOnCpu, key, delete)
-                    message = "Einstellungen gespeichert."
-                } catch (e: CancellationException) { throw e
-                } catch (_: Exception) { message = "Speichern fehlgeschlagen. Modellname und API-Key prüfen."
-                } finally { saving = false }
+        onSave = { draft -> run {
+            try {
+                val saved = controller.settings.value
+                if (draft.provider != saved.provider || draft.geminiModel != saved.model ||
+                    draft.visionOnCpu != saved.visionOnCpu || draft.geminiKey != null)
+                    controller.saveSettings(draft.provider, draft.geminiModel, draft.visionOnCpu, draft.geminiKey)
+                if (draft.openAi != saved.openAi.copy(hasApiKey = false) || draft.openAiKey != null)
+                    controller.saveOpenAi(draft.openAi, draft.openAiKey)
+                if (draft.claude != saved.claude.copy(hasApiKey = false) || draft.claudeKey != null)
+                    controller.saveClaude(draft.claude, draft.claudeKey)
+                if (draft.nutritionProvider != saved.nutritionProvider) controller.saveNutritionProvider(draft.nutritionProvider)
+                savedMessage
+            } catch (e: CancellationException) { throw e
+            } catch (_: Exception) { failedMessage }
+        } },
+        onRemoveKey = { provider -> run {
+            try {
+                // Removes only the key; unsaved edits stay in the draft.
+                val saved = controller.settings.value
+                when (provider) {
+                    AiProvider.OpenAI -> controller.saveOpenAi(saved.openAi, null, true)
+                    AiProvider.Claude -> controller.saveClaude(saved.claude, null, true)
+                    else -> controller.saveSettings(saved.provider, saved.model, saved.visionOnCpu, null, true)
+                }
+                keyRemovedMessage
+            } catch (e: CancellationException) { throw e
+            } catch (_: Exception) { failedMessage }
+        } },
+        onTest = { photo -> run {
+            val saved = controller.settings.value
+            if (photo) when (saved.provider) {
+                AiProvider.OpenAI -> controller.testOpenAi(false)
+                AiProvider.Claude -> controller.testClaude(false)
+                else -> controller.testConnection()
+            } else when (saved.nutritionProvider) {
+                NutritionProvider.OpenAI -> controller.testOpenAi(true)
+                NutritionProvider.Claude -> controller.testClaude(true)
             }
-        },
-        onTest = {
-            saving = true
-            scope.launch {
-                try { message = controller.testConnection() } finally { saving = false }
-            }
-        },
+        } },
         onDownload = controller::startDownload,
         onPause = controller::pauseDownload,
         onDelete = controller::deleteModel,
         onDiagnostics = { scope.launch { report = controller.diagnosticReport() } },
-        onSaveOpenAi = { config, key, delete ->
-            saving = true
-            scope.launch {
-                try { controller.saveOpenAi(config, key, delete); message = "OpenAI: OK" }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { message = "OpenAI: Speichern fehlgeschlagen / saving failed" }
-                finally { saving = false }
-            }
-        },
-        onTestOpenAi = { nutrition ->
-            saving = true
-            scope.launch { try { message = controller.testOpenAi(nutrition) } finally { saving = false } }
-        },
-        onSaveClaude = { config, key, delete ->
-            saving = true
-            scope.launch {
-                try { controller.saveClaude(config, key, delete); message = "Claude: OK" }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { message = "Claude: Speichern fehlgeschlagen / saving failed" }
-                finally { saving = false }
-            }
-        },
-        onTestClaude = { nutrition ->
-            saving = true
-            scope.launch { try { message = controller.testClaude(nutrition) } finally { saving = false } }
-        },
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AiSettingsContent(
     settings: AiSettings,
     downloads: Map<AiProvider, ModelDownloadState>,
     busy: Boolean,
-    message: String?,
-    onBack: () -> Unit,
-    onSave: (provider: AiProvider, model: String, visionOnCpu: Boolean, newKey: String?, deleteKey: Boolean) -> Unit,
-    onTest: () -> Unit,
-    onDownload: (AiProvider) -> Unit,
-    onPause: () -> Unit,
-    onDelete: (AiProvider) -> Unit,
+    snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    onBack: () -> Unit = {},
+    onSave: (AiSettingsDraft) -> Unit = {},
+    onRemoveKey: (AiProvider) -> Unit = {},
+    onTest: (photo: Boolean) -> Unit = {},
+    onDownload: (AiProvider) -> Unit = {},
+    onPause: () -> Unit = {},
+    onDelete: (AiProvider) -> Unit = {},
     onDiagnostics: () -> Unit = {},
-    onSaveOpenAi: (OpenAiSettings, String?, Boolean) -> Unit = { _, _, _ -> },
-    onTestOpenAi: (Boolean) -> Unit = {},
-    onSaveClaude: (ClaudeSettings, String?, Boolean) -> Unit = { _, _, _ -> },
-    onTestClaude: (Boolean) -> Unit = {},
 ) {
-    var provider by rememberSaveable(settings.provider) { mutableStateOf(settings.provider) }
-    var model by rememberSaveable(settings.model) { mutableStateOf(settings.model) }
-    var visionOnCpu by rememberSaveable(settings.visionOnCpu) { mutableStateOf(settings.visionOnCpu) }
-    // A plaintext API key is deliberately neither saveable nor persisted in UI state bundles.
-    var key by remember { mutableStateOf("") }
+    var baseline by remember { mutableStateOf(settings.toDraft()) }
+    var draft by remember { mutableStateOf(baseline) }
+    LaunchedEffect(settings) {
+        val saved = settings.toDraft()
+        draft = draft.rebase(baseline, saved)
+        baseline = saved
+    }
+    var editingKey by remember { mutableStateOf<AiProvider?>(null) }
+    var confirmRemoveKey by remember { mutableStateOf<AiProvider?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    val provider = draft.provider
     val localModel = provider.localModel
     val download = downloads[provider] ?: ModelDownloadState(total = localModel?.size ?: GemmaModel.E4B.size)
-    val dirty = provider != settings.provider || model != settings.model ||
-        visionOnCpu != settings.visionOnCpu || key.isNotEmpty()
+    val dirty = draft != baseline
+    val baseChanged = provider != baseline.provider || draft.geminiModel != baseline.geminiModel ||
+        draft.visionOnCpu != baseline.visionOnCpu || draft.geminiKey != null
+    val valid = draft.geminiModel.isNotBlank() && listOf(
+        draft.openAi.photo.model, draft.openAi.nutrition.model, draft.claude.photo.model, draft.claude.nutrition.model,
+    ).none(String::isBlank)
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Gemma-Modell löschen?") },
@@ -135,72 +217,341 @@ internal fun AiSettingsContent(
         confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete(provider) }) { Text("Löschen") } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Abbrechen") } },
     )
-    Scaffold(topBar = { TopAppBar(title = { Text("KI") }, navigationIcon = { ArrowBackIconButton(onBack) }) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Gewichte von Waagenfotos erkennen", style = MaterialTheme.typography.titleMedium)
-            Text("Alle Ergebnisse sind Vorschläge. Du bestätigst oder korrigierst jedes Gewicht in der Schnellerfassung.")
-            AiProvider.entries.forEach { value ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    RadioButton(selected = provider == value, onClick = { provider = value }, enabled = !busy && !download.running)
-                    Text(value.label)
+    confirmRemoveKey?.let { target ->
+        AlertDialog(
+            onDismissRequest = { confirmRemoveKey = null },
+            title = { Text(stringResource(Res.string.ai_settings_key_remove_title, target.label)) },
+            text = { Text(stringResource(Res.string.ai_settings_key_remove_text, target.label)) },
+            confirmButton = {
+                TextButton(onClick = { confirmRemoveKey = null; onRemoveKey(target) }) {
+                    Text(stringResource(Res.string.ai_settings_key_remove))
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveKey = null }) { Text("Abbrechen") } },
+        )
+    }
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("KI") }, navigationIcon = { ArrowBackIconButton(onBack) }) },
+        snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = {
+            if (dirty) AiSaveBar(
+                canSave = valid && !busy && !(download.running && baseChanged),
+                onDiscard = { draft = baseline; editingKey = null },
+                onSave = {
+                    onSave(draft)
+                    draft = draft.copy(geminiKey = null, openAiKey = null, claudeKey = null)
+                    editingKey = null
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        ) {
+            AiSettingsSection(stringResource(Res.string.ai_settings_photos), Icons.Outlined.Scale)
+            Text(
+                stringResource(Res.string.ai_settings_photos_intro),
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            AiSettingsGroup {
+                AiProvider.entries.forEach { value ->
+                    val selected = provider == value
+                    val enabled = !busy && !download.running
+                    AiSettingsRow(
+                        headline = value.localModel?.displayName ?: value.label,
+                        supporting = providerStatus(value, downloads, settings),
+                        leading = { AiRowIcon(value.icon, selected) },
+                        trailing = { RadioButton(selected = selected, onClick = null, enabled = enabled) },
+                        selected = selected,
+                        enabled = enabled,
+                        role = Role.RadioButton,
+                        onClick = { draft = draft.copy(provider = value) },
+                    )
                 }
             }
-            if (localModel != null) {
-                Text("${localModel.displayName} · etwa ${localModel.approximateSize} GB", style = MaterialTheme.typography.titleMedium)
-                Text("Nach dem Download bleiben die Fotos auf deinem Smartphone. Die Analyse benötigt freien Arbeitsspeicher und läuft nur bei geöffneter App.")
-                Text(when {
-                    download.ready -> "Modell bereit"
-                    download.verifying -> "Prüfsumme wird kontrolliert …"
-                    else -> "${download.bytes / 1_000_000} / ${download.total / 1_000_000} MB"
-                })
-                if (download.running) {
-                    LinearProgressIndicator(progress = { (download.bytes.toDouble() / download.total).toFloat() }, modifier = Modifier.fillMaxWidth())
-                    OutlinedButton(onClick = onPause) { Text("Pausieren") }
-                } else {
-                    if (!download.ready) Button(onClick = { onDownload(provider) }, enabled = !busy) {
-                        Text(if (download.bytes > 0) "Download fortsetzen" else "Gemma herunterladen")
+            AiNote(provider.privacyNote, Icons.Outlined.Shield)
+            if (!settings.hasKey(provider)) MissingKeyNote(provider)
+            AiSettingsGroup {
+                when (provider) {
+                    AiProvider.Local, AiProvider.LocalE2B -> {
+                        val model = requireNotNull(localModel)
+                        AiSettingsBlock {
+                            Text("${model.displayName} · etwa ${model.approximateSize} GB", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                when {
+                                    download.ready -> "Modell bereit"
+                                    download.verifying -> "Prüfsumme wird kontrolliert …"
+                                    else -> "${download.bytes / 1_000_000} / ${download.total / 1_000_000} MB"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            if (download.running) LinearProgressIndicator(
+                                progress = { (download.bytes.toDouble() / download.total).toFloat() },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                if (download.running) {
+                                    OutlinedButton(onClick = onPause) { Text("Pausieren") }
+                                } else {
+                                    if (!download.ready) FilledTonalButton(onClick = { onDownload(provider) }, enabled = !busy) {
+                                        Text(if (download.bytes > 0) "Download fortsetzen" else "Gemma herunterladen")
+                                    }
+                                    if (download.ready || download.bytes > 0) TextButton(onClick = { confirmDelete = true }, enabled = !busy) {
+                                        Text("Modell und Download löschen")
+                                    }
+                                }
+                            }
+                            download.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                            Text(
+                                "Die Analyse benötigt freien Arbeitsspeicher und läuft nur bei geöffneter App. " +
+                                    "Der Download pausiert beim Verlassen der App. Modellquelle: LiteRT Community / Google, Apache 2.0.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        AiSettingsRow(
+                            headline = stringResource(Res.string.ai_settings_vision_cpu),
+                            supporting = stringResource(Res.string.ai_settings_vision_cpu_help),
+                            trailing = { Switch(checked = draft.visionOnCpu, onCheckedChange = null, enabled = !busy) },
+                            enabled = !busy,
+                            role = Role.Switch,
+                            onClick = { draft = draft.copy(visionOnCpu = !draft.visionOnCpu) },
+                        )
                     }
-                    if (download.ready || download.bytes > 0) TextButton(onClick = { confirmDelete = true }, enabled = !busy) { Text("Modell und Download löschen") }
-                }
-                download.message?.let { Text(it) }
-                Text("Der Download pausiert beim Verlassen der App. Modellquelle: LiteRT Community / Google, Apache 2.0.", style = MaterialTheme.typography.bodySmall)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Bildanalyse auf der CPU")
-                        Text("Langsamer. Zum Vergleich, falls Anzeigen mit der Grafikeinheit nicht erkannt werden.",
-                            style = MaterialTheme.typography.bodySmall)
+                    AiProvider.Gemini -> AiSettingsBlock {
+                        OutlinedTextField(value = draft.geminiModel, onValueChange = { draft = draft.copy(geminiModel = it) },
+                            label = { Text(stringResource(Res.string.ai_settings_gemini_model)) },
+                            singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
                     }
-                    Switch(checked = visionOnCpu, onCheckedChange = { visionOnCpu = it }, enabled = !busy)
+                    AiProvider.OpenAI -> {
+                        CloudTaskFields(draft.openAi.photo.model, draft.openAi.photo.effort, openAiModelChoices(),
+                            ::supportedEfforts, !busy) { model, effort ->
+                            draft = draft.copy(openAi = draft.openAi.copy(photo = OpenAiTask(model, effort)))
+                        }
+                        ParallelismRow(draft.openAi.photoParallelism, !busy) {
+                            draft = draft.copy(openAi = draft.openAi.copy(photoParallelism = it))
+                        }
+                    }
+                    AiProvider.Claude -> {
+                        CloudTaskFields(draft.claude.photo.model, draft.claude.photo.effort, claudeModelChoices(),
+                            ::claudeSupportedEfforts, !busy) { model, effort ->
+                            draft = draft.copy(claude = draft.claude.copy(photo = ClaudeTask(model, effort)))
+                        }
+                        ParallelismRow(draft.claude.photoParallelism, !busy) {
+                            draft = draft.copy(claude = draft.claude.copy(photoParallelism = it))
+                        }
+                    }
                 }
-            } else if (provider == AiProvider.Gemini) {
-                Text("Bei der Analyse werden die Fotos an Google gesendet. Es gilt das Kontingent deines API-Keys; API-Nutzung kann Kosten verursachen.")
-                OutlinedTextField(value = key, onValueChange = { key = it },
-                    label = { Text(if (settings.hasApiKey) "API-Key ersetzen (gespeichert)" else "Google-AI-Studio-API-Key") },
-                    visualTransformation = PasswordVisualTransformation(), singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
-                        autoCorrectEnabled = false,
-                    ),
-                    enabled = !busy, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Gemini-Modell") },
-                    singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth())
-                OutlinedButton(onClick = onTest, enabled = !busy && !dirty && settings.hasApiKey) { Text("Verbindung testen") }
-                if (dirty) Text("Vor dem Verbindungstest bitte speichern.", style = MaterialTheme.typography.bodySmall)
-                if (settings.hasApiKey) TextButton(onClick = { key = ""; onSave(provider, model, visionOnCpu, null, true) }, enabled = !busy) { Text("API-Key entfernen") }
             }
-            Button(onClick = {
-                onSave(provider, model, visionOnCpu, key.takeIf { it.isNotBlank() }, false)
-                key = ""
-            }, enabled = !busy && !download.running && model.isNotBlank()) { Text("Einstellungen speichern") }
-            OpenAiSettingsContent(settings.openAi, busy, onSaveOpenAi, onTestOpenAi)
-            ClaudeSettingsContent(settings.claude, busy, onSaveClaude, onTestClaude)
-            OutlinedButton(onClick = onDiagnostics) { Text("KI-Diagnosebericht") }
-            message?.let { Text(it) }
+
+            AiSettingsSection(stringResource(Res.string.ai_settings_nutrition), Icons.Outlined.TravelExplore)
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                NutritionProvider.entries.forEachIndexed { index, value ->
+                    SegmentedButton(
+                        selected = draft.nutritionProvider == value,
+                        onClick = { draft = draft.copy(nutritionProvider = value) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = NutritionProvider.entries.size),
+                        enabled = !busy,
+                    ) { Text(value.label) }
+                }
+            }
+            val nutritionKeyProvider = draft.nutritionProvider.keyProvider
+            AiNote(
+                stringResource(Res.string.ai_settings_nutrition_privacy,
+                    if (nutritionKeyProvider == AiProvider.Claude) "Anthropic" else "OpenAI"),
+                Icons.Outlined.Shield,
+            )
+            if (!settings.hasKey(nutritionKeyProvider)) MissingKeyNote(nutritionKeyProvider)
+            AiSettingsGroup {
+                when (draft.nutritionProvider) {
+                    NutritionProvider.OpenAI -> CloudTaskFields(draft.openAi.nutrition.model, draft.openAi.nutrition.effort,
+                        openAiModelChoices(), ::supportedEfforts, !busy) { model, effort ->
+                        draft = draft.copy(openAi = draft.openAi.copy(nutrition = OpenAiTask(model, effort)))
+                    }
+                    NutritionProvider.Claude -> CloudTaskFields(draft.claude.nutrition.model, draft.claude.nutrition.effort,
+                        claudeModelChoices(), ::claudeSupportedEfforts, !busy) { model, effort ->
+                        draft = draft.copy(claude = draft.claude.copy(nutrition = ClaudeTask(model, effort)))
+                    }
+                }
+            }
+
+            AiSettingsSection(stringResource(Res.string.ai_settings_keys), Icons.Outlined.Key)
+            AiSettingsGroup {
+                keyProviders.forEach { target ->
+                    val saved = settings.hasKey(target)
+                    val forPhotos = provider == target
+                    val forNutrition = nutritionKeyProvider == target
+                    AiSettingsRow(
+                        headline = target.label,
+                        supporting = stringResource(when {
+                            forPhotos && forNutrition -> Res.string.ai_settings_used_both
+                            forPhotos -> Res.string.ai_settings_used_photos
+                            forNutrition -> Res.string.ai_settings_used_nutrition
+                            else -> Res.string.ai_settings_used_none
+                        }),
+                        trailing = { KeyActions(target, saved, !busy, { editingKey = target }, { confirmRemoveKey = target }) },
+                        enabled = !busy,
+                        onClick = { editingKey = if (editingKey == target) null else target },
+                    )
+                    if (editingKey == target) AiSettingsBlock {
+                        OutlinedTextField(
+                            value = draft.key(target).orEmpty(),
+                            onValueChange = { draft = draft.withKey(target, it.takeIf(String::isNotBlank)) },
+                            label = { Text(stringResource(Res.string.ai_settings_key_new, target.label)) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+
+            AiSettingsSection(stringResource(Res.string.ai_settings_check), Icons.Outlined.Troubleshoot)
+            AiSettingsGroup {
+                val saveFirst = if (dirty) stringResource(Res.string.ai_settings_save_first) else null
+                if (localModel == null) AiSettingsRow(
+                    headline = stringResource(Res.string.ai_settings_test_photo),
+                    supporting = saveFirst ?: when (provider) {
+                        AiProvider.OpenAI -> "${settings.openAi.photo.model} · ${aiEffortLabel(settings.openAi.photo.effort)}"
+                        AiProvider.Claude -> "${settings.claude.photo.model} · ${aiEffortLabel(settings.claude.photo.effort)}"
+                        else -> settings.model
+                    },
+                    trailing = { Icon(Icons.Outlined.PlayArrow, contentDescription = null) },
+                    enabled = !busy && !dirty && settings.hasKey(provider),
+                    onClick = { onTest(true) },
+                )
+                AiSettingsRow(
+                    headline = stringResource(Res.string.ai_settings_test_nutrition),
+                    supporting = saveFirst ?: stringResource(Res.string.ai_settings_test_nutrition_detail, nutritionKeyProvider.label),
+                    trailing = { Icon(Icons.Outlined.PlayArrow, contentDescription = null) },
+                    enabled = !busy && !dirty && settings.hasKey(nutritionKeyProvider),
+                    onClick = { onTest(false) },
+                )
+                AiSettingsRow(
+                    headline = stringResource(Res.string.ai_settings_diagnostics),
+                    supporting = stringResource(Res.string.ai_settings_diagnostics_detail),
+                    trailing = { Icon(Icons.Outlined.ChevronRight, contentDescription = null) },
+                    onClick = onDiagnostics,
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun providerStatus(provider: AiProvider, downloads: Map<AiProvider, ModelDownloadState>, settings: AiSettings): String {
+    val model = provider.localModel ?: return stringResource(
+        if (settings.hasKey(provider)) Res.string.ai_settings_status_cloud_key else Res.string.ai_settings_status_cloud_no_key,
+    )
+    val download = downloads[provider]
+    return when {
+        download?.ready == true -> stringResource(Res.string.ai_settings_status_local_ready)
+        download?.running == true -> stringResource(Res.string.ai_settings_status_local_loading)
+        else -> stringResource(Res.string.ai_settings_status_local_size, model.approximateSize)
+    }
+}
+
+@Composable
+private fun openAiModelChoices(): List<Pair<String, String>> = openAiModels.zip(listOf(
+    stringResource(Res.string.openai_luna), stringResource(Res.string.openai_sol), stringResource(Res.string.openai_astra),
+))
+
+@Composable
+private fun claudeModelChoices(): List<Pair<String, String>> = claudeModels.zip(listOf(
+    stringResource(Res.string.claude_luna), stringResource(Res.string.claude_sol), stringResource(Res.string.claude_astra),
+))
+
+@Composable
+private fun ParallelismRow(value: Int, enabled: Boolean, onChange: (Int) -> Unit) {
+    AiDropdownRow(
+        label = stringResource(Res.string.ai_settings_parallelism),
+        value = value.toString(),
+        supporting = stringResource(Res.string.ai_settings_parallelism_help),
+        enabled = enabled,
+    ) { close ->
+        (1..5).forEach { option ->
+            DropdownMenuItem(text = { Text(option.toString()) }, onClick = { close(); onChange(option) })
+        }
+    }
+}
+
+@Composable
+private fun AiNote(text: String, icon: ImageVector, error: Boolean = false) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun MissingKeyNote(provider: AiProvider) {
+    AiNote(stringResource(Res.string.ai_settings_key_missing, provider.label), Icons.Outlined.Key, error = true)
+}
+
+@Composable
+private fun KeyActions(provider: AiProvider, saved: Boolean, enabled: Boolean, onEdit: () -> Unit, onRemove: () -> Unit) {
+    if (!saved) {
+        TextButton(onClick = onEdit, enabled = enabled) { Text(stringResource(Res.string.ai_settings_key_add)) }
+        return
+    }
+    var menu by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+            Text(stringResource(Res.string.ai_settings_key_saved), Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        }
+        Box {
+            IconButton(onClick = { menu = true }, enabled = enabled) {
+                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(Res.string.ai_settings_key_more, provider.label))
+            }
+            DropdownMenu(menu && enabled, { menu = false }) {
+                DropdownMenuItem(text = { Text(stringResource(Res.string.ai_settings_key_replace)) }, onClick = { menu = false; onEdit() })
+                DropdownMenuItem(text = { Text(stringResource(Res.string.ai_settings_key_remove)) }, onClick = { menu = false; onRemove() })
+            }
+        }
+    }
+}
+
+/** Shown only with unsaved edits, so the screen never has more than one filled button. */
+@Composable
+private fun AiSaveBar(canSave: Boolean, onDiscard: () -> Unit, onSave: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Row(
+            Modifier.fillMaxWidth().navigationBarsPadding().imePadding()
+                .padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                stringResource(Res.string.ai_settings_unsaved),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = onDiscard) { Text(stringResource(Res.string.ai_settings_discard)) }
+            Button(onClick = onSave, enabled = canSave) { Text(stringResource(Res.string.ai_settings_save)) }
+        }
+    }
+}
+
 
 /**
  * Slim status line above the photo grid; the primary action lives in [AiAnalysisActionButton].
