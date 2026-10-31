@@ -965,4 +965,9 @@
     <string name="claude_test_nutrition">Test nutrition model and web search</string>
     <string name="claude_test_photo">Test photo model</string>
     <string name="claude_default_help">Leave empty to use the model default.</string>
+    <string name="cloud_nutrition_provider">Provider: %1$s ▾</string>
+    <string name="cloud_nutrition_running">%1$s · Calculating with web search…</string>
+    <string name="cloud_nutrition_setup">Set up %1$s</string>
+    <string name="cloud_nutrition_via">%1$s · via %2$s</string>
+    <string name="cloud_nutrition_calculate">Calculate with %1$s</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 
+import com.maksimowiczm.foodyou.ai.NutritionProvider
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -76,7 +77,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = true,
                 onQuickAdd = {},
                 onTransfer = {},
-                openAi = QuickCaptureOpenAiState(configured = true),
+                openAi = QuickCaptureCloudState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -96,7 +97,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                openAi = QuickCaptureOpenAiState(configured = true),
+                openAi = QuickCaptureCloudState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -116,7 +117,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                openAi = QuickCaptureOpenAiState(configured = true),
+                openAi = QuickCaptureCloudState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -189,7 +190,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                openAi = QuickCaptureOpenAiState(configured = true),
+                openAi = QuickCaptureCloudState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -224,7 +225,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = false,
                 onQuickAdd = {},
                 onTransfer = {},
-                openAi = QuickCaptureOpenAiState(configured = true),
+                openAi = QuickCaptureCloudState(configured = true),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -446,7 +447,7 @@ class QuickCaptureScreenshotTest {
                 hasCopiedBatch = hasCopiedBatch,
                 onQuickAdd = { opened = true },
                 onTransfer = {},
-                openAi = QuickCaptureOpenAiState(configured = false),
+                openAi = QuickCaptureCloudState(configured = false),
                 timeZone = TimeZone.UTC,
             )
         }
@@ -752,7 +753,7 @@ class QuickCaptureScreenshotTest {
         show {
             QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
                 { _, _ -> }, {}, {}, {}, false, {}, {},
-                openAi = QuickCaptureOpenAiState(configured = true))
+                openAi = QuickCaptureCloudState(configured = true))
         }
         compose.onNodeWithText("Berechnen").assertIsDisplayed()
         capture("openai-narrow")
@@ -764,9 +765,9 @@ class QuickCaptureScreenshotTest {
         show {
             QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
                 { _, _ -> }, {}, {}, {}, false, {}, {},
-                openAi = QuickCaptureOpenAiState(configured = true, running = true, onCancel = { cancelled = true }))
+                openAi = QuickCaptureCloudState(configured = true, running = true, onCancel = { cancelled = true }))
         }
-        compose.onNodeWithText("Berechnung mit Websuche …").assertIsDisplayed()
+        compose.onNodeWithText("OpenAI · Berechnung mit Websuche …").assertIsDisplayed()
         compose.onNodeWithText("Berechnen").assertDoesNotExist()
         compose.onNodeWithContentDescription("An ChatGPT teilen").assertDoesNotExist()
         compose.onNodeWithText("Abbrechen").performClick()
@@ -778,7 +779,7 @@ class QuickCaptureScreenshotTest {
         show {
             QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
                 { _, _ -> }, {}, {}, {}, false, {}, {},
-                openAi = QuickCaptureOpenAiState(configured = true, error = "OpenAI nicht erreichbar"))
+                openAi = QuickCaptureCloudState(configured = true, error = "OpenAI nicht erreichbar"))
         }
         compose.onNodeWithText("OpenAI nicht erreichbar").assertIsDisplayed()
         compose.onNodeWithText("Erneut").assertIsDisplayed()
@@ -796,6 +797,34 @@ class QuickCaptureScreenshotTest {
         }
         compose.onNodeWithText("Nährwertangaben").assertIsDisplayed()
         capture("openai-csv-sources")
+    }
+
+    @Test fun claudeProviderCanBeSelected() {
+        show {
+            var provider by remember { mutableStateOf(NutritionProvider.OpenAI) }
+            QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
+                { _, _ -> }, {}, {}, {}, false, {}, {},
+                openAi = QuickCaptureCloudState(configured = true, provider = provider, onSelectProvider = { provider = it }))
+        }
+        compose.onNodeWithContentDescription("Anbieter: OpenAI ▾").performClick()
+        compose.onNodeWithText("Claude").performClick()
+        compose.onNodeWithContentDescription("Anbieter: Claude ▾").assertIsDisplayed()
+        capture("claude-log")
+    }
+
+    @Test
+    @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
+    fun claudeNarrowRunningLocksProvider() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        show {
+            QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
+                { _, _ -> }, {}, {}, {}, false, {}, {},
+                openAi = QuickCaptureCloudState(configured = true, running = true, provider = NutritionProvider.Claude))
+        }
+        compose.onNodeWithContentDescription("Anbieter: Claude ▾").assertIsNotEnabled()
+        compose.onNodeWithText("Claude · Berechnung mit Websuche …").assertIsDisplayed()
+        compose.onNodeWithText("Abbrechen").assertIsDisplayed()
+        capture("claude-narrow-running")
     }
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {

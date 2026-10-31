@@ -61,6 +61,8 @@ enum class GemmaModel(
     val artifactName: String get() = "${fileName.removeSuffix(".litertlm")}@$revision"
 }
 
+enum class NutritionProvider(val label: String) { OpenAI("OpenAI"), Claude("Claude") }
+
 data class AiSettings(
     val provider: AiProvider = AiProvider.Local,
     val model: String = "gemini-3.8-flash",
@@ -69,6 +71,7 @@ data class AiSettings(
     val visionOnCpu: Boolean = false,
     val openAi: OpenAiSettings = OpenAiSettings(),
     val claude: ClaudeSettings = ClaudeSettings(),
+    val nutritionProvider: NutritionProvider = NutritionProvider.OpenAI,
 )
 
 /** The model that reads scale photos for the selected provider, e.g. "gpt-6-luna · Reasoning low". */
@@ -270,7 +273,8 @@ interface AiController {
     suspend fun saveClaude(settings: ClaudeSettings, newKey: String?, deleteKey: Boolean = false)
     suspend fun testClaude(nutrition: Boolean): String
     suspend fun testOpenAi(nutrition: Boolean): String
-    suspend fun estimateNutrition(prompt: String): NutritionEstimate
+    suspend fun saveNutritionProvider(provider: NutritionProvider)
+    suspend fun estimateNutrition(prompt: String, provider: NutritionProvider = NutritionProvider.OpenAI): NutritionEstimate
     suspend fun diagnosticReport(): String
     suspend fun testConnection(): String
     fun startAnalysis(reanalyze: Boolean = false)

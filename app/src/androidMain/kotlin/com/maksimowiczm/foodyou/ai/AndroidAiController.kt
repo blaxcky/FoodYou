@@ -57,6 +57,8 @@ internal class AndroidAiController(
             model = props.getProperty("model", "gemini-3.8-flash"),
             hasApiKey = keyFile.isFile,
             visionOnCpu = props.getProperty("vision_backend") == "cpu",
+            nutritionProvider = runCatching { NutritionProvider.valueOf(props.getProperty("nutrition.provider", "")) }
+                .getOrElse { if (claudeKeyFile.isFile && !openAiKeyFile.isFile) NutritionProvider.Claude else NutritionProvider.OpenAI },
             claude = ClaudeSettings(
                 ClaudeTask(props.getProperty("claude.photo.model", "claude-sonnet-5-5"), props.getProperty("claude.photo.effort", "low").takeIf { it.isNotEmpty() }),
                 ClaudeTask(props.getProperty("claude.nutrition.model", "claude-sonnet-5-5"), props.getProperty("claude.nutrition.effort", "medium").takeIf { it.isNotEmpty() }),
@@ -178,9 +180,25 @@ internal class AndroidAiController(
     } catch (e: CancellationException) { throw e
     } catch (e: Exception) { e.message ?: "Claude: Fehler / error" }
 
-    override suspend fun estimateNutrition(prompt: String): NutritionEstimate {
-        val (config, api) = openAiConfiguration()
-        return api.request(config.nutrition, prompt, web = true)
+    override suspend fun saveNutritionProvider(provider: NutritionProvider) {
+        withContext(Dispatchers.IO) { configMutex.withLock {
+            val props = java.util.Properties()
+            if (preferences.isFile) preferences.inputStream().use(props::load)
+            props.setProperty("nutrition.provider", provider.name)
+            atomicWrite(preferences, java.io.ByteArrayOutputStream().use { props.store(it, null); it.toByteArray() })
+            mutableSettings.value = readSettings()
+        } }
+    }
+
+    override suspend fun estimateNutrition(prompt: String, provider: NutritionProvider): NutritionEstimate = when (provider) {
+        NutritionProvider.OpenAI -> {
+            val (config, api) = openAiConfiguration()
+            api.request(config.nutrition, prompt, web = true)
+        }
+        NutritionProvider.Claude -> {
+            val (config, api) = claudeConfiguration()
+            api.request(config.nutrition, prompt, web = true)
+        }
     }
 
     private fun atomicWrite(file: File, bytes: ByteArray) {

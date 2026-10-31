@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalUriHandler
+import com.maksimowiczm.foodyou.ai.NutritionProvider
 import com.maksimowiczm.foodyou.ai.NutritionEstimate
 import com.maksimowiczm.foodyou.ai.AiSource
 import kotlinx.coroutines.Job
@@ -96,6 +97,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -164,7 +167,6 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.semantics
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -207,6 +209,7 @@ fun QuickCaptureScreen(
     val copiedEntryIds by viewModel.copiedEntryIds.collectAsStateWithLifecycle()
     val csvImportState by viewModel.csvImportState.collectAsStateWithLifecycle()
     val nutritionRunning by viewModel.nutritionRunning.collectAsStateWithLifecycle()
+    val nutritionRequestProvider by viewModel.nutritionRequestProvider.collectAsStateWithLifecycle()
     val nutritionDraft by viewModel.nutritionDraft.collectAsStateWithLifecycle()
     val nutritionError by viewModel.nutritionError.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable {
@@ -387,12 +390,25 @@ fun QuickCaptureScreen(
                             viewModel.resetCsvImportError()
                             showCsvImport = true
                         },
-                        openAi = QuickCaptureOpenAiState(
-                            configured = aiSettings.openAi.hasApiKey,
+                        openAi = QuickCaptureCloudState(
+                            configured = when (aiSettings.nutritionProvider) {
+                                NutritionProvider.OpenAI -> aiSettings.openAi.hasApiKey
+                                NutritionProvider.Claude -> aiSettings.claude.hasApiKey
+                            },
+                            provider = if (nutritionRunning) nutritionRequestProvider ?: aiSettings.nutritionProvider else aiSettings.nutritionProvider,
+                            onSelectProvider = { provider ->
+                                if (!nutritionRunning && nutritionDraft == null) coroutineScope.launch {
+                                    try {
+                                        ai.saveNutritionProvider(provider)
+                                        viewModel.clearNutritionError()
+                                    } catch (e: CancellationException) { throw e }
+                                    catch (_: Exception) { snackbar.showSnackbar("${provider.label}: Speichern fehlgeschlagen / saving failed") }
+                                }
+                            },
                             running = nutritionRunning,
                             error = nutritionError,
                             onCalculate = {
-                                if (nutritionDraft == null) viewModel.calculateNutrition(entries.quickCaptureGroups(aggregate))
+                                if (nutritionDraft == null) viewModel.calculateNutrition(entries.quickCaptureGroups(aggregate), aiSettings.nutritionProvider)
                             },
                             onCancel = viewModel::cancelNutrition,
                             onSetup = onAiSettings,
@@ -500,7 +516,7 @@ internal fun QuickCaptureLog(
     onQuickAdd: () -> Unit,
     onTransfer: (QuickCaptureLogGroup) -> Unit,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
-    openAi: QuickCaptureOpenAiState? = null,
+    openAi: QuickCaptureCloudState? = null,
 ) {
     var completed by rememberSaveable { mutableStateOf(false) }
     var afterEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
@@ -633,14 +649,16 @@ internal fun QuickCaptureLog(
     }
 }
 
-/** OpenAI nutrition path offered by [QuickCaptureReadyRow]; null hides it entirely. */
-internal class QuickCaptureOpenAiState(
+/** Cloud nutrition path offered by [QuickCaptureReadyRow]; null hides it entirely. */
+internal class QuickCaptureCloudState(
     val configured: Boolean,
     val running: Boolean = false,
     val error: String? = null,
     val onCalculate: () -> Unit = {},
     val onCancel: () -> Unit = {},
     val onSetup: () -> Unit = {},
+    val provider: NutritionProvider = NutritionProvider.OpenAI,
+    val onSelectProvider: (NutritionProvider) -> Unit = {},
 )
 
 /**
@@ -653,9 +671,12 @@ private fun QuickCaptureReadyRow(
     hasCopiedBatch: Boolean,
     onSharePrompt: () -> Unit,
     onQuickAdd: () -> Unit,
-    openAi: QuickCaptureOpenAiState?,
+    openAi: QuickCaptureCloudState?,
     modifier: Modifier = Modifier,
 ) {
+    var providerMenu by remember { mutableStateOf(false) }
+    val provider = openAi?.provider ?: NutritionProvider.OpenAI
+    val providerLabel = stringResource(Res.string.cloud_nutrition_provider, provider.label)
     val running = openAi?.running == true
     val configured = openAi?.configured == true
     val error = openAi?.error.takeIf { !running }
@@ -669,10 +690,24 @@ private fun QuickCaptureReadyRow(
                 ),
             style = MaterialTheme.typography.titleMedium,
         )
+        if (openAi != null) Box {
+            TextButton(onClick = { providerMenu = true }, enabled = !running,
+                contentPadding = PaddingValues(0.dp), modifier = Modifier.heightIn(min = 32.dp).semantics { contentDescription = providerLabel }) {
+                Text("${provider.label} ▾", style = MaterialTheme.typography.labelLarge)
+            }
+            androidx.compose.material3.DropdownMenu(expanded = providerMenu && !running, onDismissRequest = { providerMenu = false }) {
+                NutritionProvider.entries.forEach { value ->
+                    DropdownMenuItem(text = { Text(value.label) }, onClick = {
+                        providerMenu = false
+                        openAi.onSelectProvider(value)
+                    })
+                }
+            }
+        }
         val entryCount =
             pluralStringResource(Res.plurals.description_quick_capture_ready_entries, groups.size, groups.size)
         when {
-            running -> QuickCaptureReadyRowSupport(stringResource(Res.string.openai_running))
+            running -> QuickCaptureReadyRowSupport(stringResource(Res.string.cloud_nutrition_running, provider.label))
             error != null -> Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -691,9 +726,9 @@ private fun QuickCaptureReadyRow(
                 contentPadding = PaddingValues(0.dp),
                 modifier = Modifier.heightIn(min = 32.dp),
             ) {
-                Text(stringResource(Res.string.openai_setup), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(Res.string.cloud_nutrition_setup, provider.label), style = MaterialTheme.typography.labelLarge)
             }
-            configured -> QuickCaptureReadyRowSupport(stringResource(Res.string.openai_via, entryCount))
+            configured -> QuickCaptureReadyRowSupport(stringResource(Res.string.cloud_nutrition_via, entryCount, provider.label))
             else -> QuickCaptureReadyRowSupport(entryCount)
         }
     }
@@ -706,7 +741,7 @@ private fun QuickCaptureReadyRow(
                 }
                 if (configured) {
                     IconButton(onClick = openAi.onCalculate, enabled = groups.isNotEmpty()) {
-                        Icon(Icons.Outlined.AutoAwesome, contentDescription = stringResource(Res.string.openai_calculate))
+                        Icon(Icons.Outlined.AutoAwesome, contentDescription = stringResource(Res.string.cloud_nutrition_calculate, provider.label))
                     }
                 }
                 QuickCaptureReadyRowAction(
@@ -1590,7 +1625,7 @@ internal class QuickCaptureViewModel(
     private val csvImporter: QuickCaptureCsvImporter,
     private val savedStateHandle: SavedStateHandle,
     private val photoRegistrationScope: CoroutineScope,
-    private val nutritionEstimator: suspend (String) -> NutritionEstimate = { error("OpenAI unavailable") },
+    private val nutritionEstimator: suspend (String, NutritionProvider) -> NutritionEstimate = { _, _ -> error("Cloud AI unavailable") },
 ) : ViewModel() {
     val entries =
         observe.entries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -1605,31 +1640,34 @@ internal class QuickCaptureViewModel(
     val copiedEntryIds = savedStateHandle.getStateFlow(CopiedEntryIdsKey, emptyList<Long>())
     val csvImportState = MutableStateFlow<QuickCaptureCsvImportState>(QuickCaptureCsvImportState.Idle)
     val nutritionRunning = MutableStateFlow(false)
+    val nutritionRequestProvider = MutableStateFlow<NutritionProvider?>(null)
     val nutritionDraft = MutableStateFlow<QuickCaptureNutritionDraft?>(null)
     val nutritionError = MutableStateFlow<String?>(null)
     private var nutritionJob: Job? = null
 
-    fun calculateNutrition(groups: List<QuickCaptureLogGroup>) {
+    fun calculateNutrition(groups: List<QuickCaptureLogGroup>, provider: NutritionProvider = NutritionProvider.OpenAI) {
         if (groups.isEmpty() || nutritionJob?.isActive == true || nutritionRunning.value || nutritionDraft.value != null ||
             csvImportState.value == QuickCaptureCsvImportState.Submitting) return
         val snapshot = groups.flatMap { it.entries }.toList()
         val prompt = groups.quickCapturePrompt()
+        nutritionRequestProvider.value = provider
         nutritionRunning.value = true
         nutritionError.value = null
         nutritionJob = viewModelScope.launch {
             try {
-                val result = nutritionEstimator(prompt)
-                nutritionDraft.value = QuickCaptureNutritionDraft(result, snapshot, groups.size)
+                val result = nutritionEstimator(prompt, provider)
+                nutritionDraft.value = QuickCaptureNutritionDraft(result, snapshot, groups.size, provider)
                 csvImportState.value = when (val parsed = csvParser.parse(result.csv)) {
                     is QuickAddCsvTableParseResult.Failure -> QuickCaptureCsvImportState.InvalidCsv(parsed.error)
                     is QuickAddCsvTableParseResult.Success -> if (parsed.data.size == groups.size) QuickCaptureCsvImportState.Idle
                         else QuickCaptureCsvImportState.RowCountMismatch(groups.size, parsed.data.size)
                 }
             } catch (e: CancellationException) { throw e
-            } catch (e: Exception) { nutritionError.value = e.message ?: "OpenAI: error" }
+            } catch (e: Exception) { nutritionError.value = e.message ?: "${provider.label}: error" }
             finally { nutritionRunning.value = false }
         }
     }
+    fun clearNutritionError() { if (!nutritionRunning.value) nutritionError.value = null }
     fun cancelNutrition() { nutritionJob?.cancel(); nutritionRunning.value = false }
     fun dismissNutritionDraft() {
         if (csvImportState.value != QuickCaptureCsvImportState.Submitting) nutritionDraft.value = null
@@ -1875,4 +1913,4 @@ private fun PhotoAnalysisBadge(
     }
 }
 
-internal data class QuickCaptureNutritionDraft(val result: NutritionEstimate, val entries: List<QuickCaptureLogEntry>, val rowCount: Int)
+internal data class QuickCaptureNutritionDraft(val result: NutritionEstimate, val entries: List<QuickCaptureLogEntry>, val rowCount: Int, val provider: NutritionProvider = NutritionProvider.OpenAI)

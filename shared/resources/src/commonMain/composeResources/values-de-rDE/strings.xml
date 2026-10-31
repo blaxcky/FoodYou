@@ -839,4 +839,9 @@
     <string name="claude_test_nutrition">Nährwertmodell und Websuche testen</string>
     <string name="claude_test_photo">Fotomodell testen</string>
     <string name="claude_default_help">Leer lassen, um den Modellstandard zu verwenden.</string>
+    <string name="cloud_nutrition_provider">Anbieter: %1$s ▾</string>
+    <string name="cloud_nutrition_running">%1$s · Berechnung mit Websuche …</string>
+    <string name="cloud_nutrition_setup">%1$s einrichten</string>
+    <string name="cloud_nutrition_via">%1$s · via %2$s</string>
+    <string name="cloud_nutrition_calculate">Mit %1$s berechnen</string>
 </resources>

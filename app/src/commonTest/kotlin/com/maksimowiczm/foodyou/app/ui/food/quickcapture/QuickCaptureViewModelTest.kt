@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.food.quickcapture
 
+import com.maksimowiczm.foodyou.ai.NutritionProvider
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.CollapsedQuickCaptureCsvExample
@@ -314,8 +315,9 @@ class QuickCaptureViewModelTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val response = CompletableDeferred<com.maksimowiczm.foodyou.ai.NutritionEstimate>()
         var requests = 0
+        var requestedProvider: NutritionProvider? = null
         var imports = 0
-        val vm = viewModel(estimator = { requests++; response.await() }, importer = { _, ids ->
+        val vm = viewModel(providerEstimator = { _, provider -> requests++; requestedProvider = provider; response.await() }, importer = { _, ids ->
             assertEquals(listOf(42L), ids)
             imports++
             QuickCaptureCsvImportResult.Success
@@ -324,15 +326,17 @@ class QuickCaptureViewModelTest {
             null, null, null, CsvImportViewModelDateProvider.nowInstant(), null)
         try {
             val groups = listOf(entry).quickCaptureGroups(false)
-            vm.calculateNutrition(groups)
-            vm.calculateNutrition(groups)
+            vm.calculateNutrition(groups, NutritionProvider.Claude)
+            vm.calculateNutrition(groups, NutritionProvider.OpenAI)
             assertEquals(1, requests)
+            assertEquals(NutritionProvider.Claude, requestedProvider)
             vm.rememberCopiedBatch(listOf(999), 1)
             assertTrue(vm.copiedEntryIds.value.isEmpty())
             response.complete(com.maksimowiczm.foodyou.ai.NutritionEstimate(ValidCsv, emptyList()))
             advanceUntilIdle()
             assertEquals(0, imports)
             assertEquals(ValidCsv, vm.nutritionDraft.value?.result?.csv)
+            assertEquals(NutritionProvider.Claude, vm.nutritionDraft.value?.provider)
             vm.importCsv(ValidCsv)
             vm.importCsv(ValidCsv)
             advanceUntilIdle()
@@ -358,6 +362,7 @@ class QuickCaptureViewModelTest {
 
     private fun TestScope.viewModel(
         estimator: suspend (String) -> com.maksimowiczm.foodyou.ai.NutritionEstimate = { error("unused") },
+        providerEstimator: suspend (String, NutritionProvider) -> com.maksimowiczm.foodyou.ai.NutritionEstimate = { prompt, _ -> estimator(prompt) },
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
         repository: CsvImportViewModelQuickCaptureRepository = CsvImportViewModelQuickCaptureRepository(),
         settingsRepository: CsvImportViewModelSettingsRepository = CsvImportViewModelSettingsRepository(),
@@ -389,7 +394,7 @@ class QuickCaptureViewModelTest {
                 override suspend fun import(data: List<QuickAddCsvData>, entryIds: List<Long>) = importer(data, entryIds)
                 override suspend fun importSnapshot(data: List<QuickAddCsvData>, entries: List<QuickCaptureLogEntry>) = importer(data, entries.map { it.id })
             },
-            nutritionEstimator = estimator,
+            nutritionEstimator = providerEstimator,
             savedStateHandle = savedStateHandle,
             photoRegistrationScope = this,
         )
