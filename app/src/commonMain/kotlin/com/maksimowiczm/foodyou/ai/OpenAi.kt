@@ -13,6 +13,7 @@ data class OpenAiSettings(
     val photo: OpenAiTask = OpenAiTask("gpt-6-luna", "low"),
     val nutrition: OpenAiTask = OpenAiTask("gpt-6.1-sol", "medium"),
     val hasApiKey: Boolean = false,
+    val photoParallelism: Int = 4,
 )
 data class AiSource(val title: String, val url: String)
 data class NutritionEstimate(val csv: String, val sources: List<AiSource>)
@@ -58,12 +59,13 @@ internal class OpenAiClient(private val client: HttpClient, private val key: Str
                 timeout { requestTimeoutMillis = 300_000; socketTimeoutMillis = 300_000 }
                 setBody(body.toString())
             }
-            check(response.status.value in 200..299) { when (response.status.value) {
-                401, 403 -> "OpenAI: API-Key oder Modellzugriff prüfen / check API key and model access."
-                429 -> "OpenAI: Kontingent erschöpft / quota or rate limit exceeded."
-                400, 404 -> "OpenAI: Modell und Denkaufwand prüfen / check model and reasoning effort."
-                else -> "OpenAI: HTTP ${response.status.value}"
-            } }
+            if (response.status.value !in 200..299) {
+                val error = runCatching { Json.parseToJsonElement(response.bodyAsText()).jsonObject["error"]?.jsonObject }.getOrNull()
+                throw OpenAiHttpException(response.status.value,
+                    error?.get("code")?.jsonPrimitive?.contentOrNull,
+                    error?.get("type")?.jsonPrimitive?.contentOrNull,
+                    response.headers[HttpHeaders.RetryAfter])
+            }
             return parseOpenAiResponse(response.bodyAsText(), web)
         } catch (e: CancellationException) { throw e
         } catch (e: IllegalStateException) { throw e
@@ -113,4 +115,22 @@ internal fun parseOpenAiResponse(body: String, requireWeb: Boolean = false): Nut
     }.trim()
     check(text.isNotBlank()) { "OpenAI: leere Antwort / empty response." }
     return NutritionEstimate(text, sources.distinctBy { it.url })
+}
+
+internal class OpenAiHttpException(
+    val status: Int,
+    val code: String?,
+    val type: String?,
+    val retryAfter: String?,
+) : IllegalStateException(when (status) {
+    401, 403 -> "OpenAI: API-Key oder Modellzugriff prüfen."
+    429 -> if (code == "insufficient_quota" || code == "billing_hard_limit_reached")
+        "OpenAI: Guthaben oder Nutzungskontingent erschöpft."
+        else "OpenAI: Anfragelimit erreicht. Bitte später erneut versuchen."
+    400, 404 -> "OpenAI: Modell und Denkaufwand prüfen."
+    else -> "OpenAI: HTTP $status"
+}) {
+    val temporary: Boolean get() = status == 503 || (status == 429 &&
+        code !in setOf("insufficient_quota", "billing_hard_limit_reached") &&
+        (type == "rate_limit_error" || code in setOf("rate_limit_exceeded", "slow_down")))
 }

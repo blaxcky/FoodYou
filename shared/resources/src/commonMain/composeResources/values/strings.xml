@@ -941,4 +941,6 @@
     <string name="openai_sol">For complex tasks</string>
     <string name="openai_astra">For demanding tasks</string>
     <string name="openai_review">Review the calculated CSV and sources. Confirm to add the values to today’s matching meal and complete the requested entries.</string>
+    <string name="openai_photo_parallelism">Concurrent photo analyses: %1$d</string>
+    <string name="openai_photo_parallelism_help">1 processes photos one at a time. Higher values can speed up recognition.</string>
 </resources>

@@ -815,4 +815,6 @@
     <string name="openai_sol">Für komplexe Aufgaben</string>
     <string name="openai_astra">Für anspruchsvolle Aufgaben</string>
     <string name="openai_review">Prüfe die berechnete CSV und die Quellen. Nach deiner Bestätigung werden die Werte zur heutigen passenden Mahlzeit hinzugefügt und die angefragten Einträge erledigt.</string>
+    <string name="openai_photo_parallelism">Gleichzeitige Fotoanalysen: %1$d</string>
+    <string name="openai_photo_parallelism_help">1 verarbeitet Fotos nacheinander. Höhere Werte können die Erkennung beschleunigen.</string>
 </resources>

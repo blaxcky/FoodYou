@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.*
 import kotlin.time.TimeSource
@@ -83,6 +84,7 @@ sealed interface ScaleRecognitionResult {
 }
 
 interface ScaleWeightRecognizer {
+    val maxConcurrentPhotos: Int get() = 1
     suspend fun recognize(photoPath: String): ScaleRecognitionResult
     suspend fun close()
 }
@@ -153,6 +155,8 @@ data class PhotoAnalysisSummary(val total: Int = 0, val suggested: Int = 0, val 
     }
 }
 
+private class FatalAnalysisException(message: String) : Exception(message)
+
 /** One session per batch; persistence must atomically check that the photo is still pending. */
 class ScaleAnalysisCoordinator(private val timeSource: TimeSource = TimeSource.Monotonic) {
     private val mutex = Mutex()
@@ -185,24 +189,36 @@ class ScaleAnalysisCoordinator(private val timeSource: TimeSource = TimeSource.M
                         return@coroutineScope
                     }
                     recognizer = open()
-                    for (photo in photos) {
-                        currentCoroutineContext().ensureActive()
-                        if (!isPending(photo.id)) {
-                            mutableProgress.update { it.copy(completed = it.completed + 1) }
-                            continue
-                        }
-                        val result = recognizer.recognize(photo.path)
-                        currentCoroutineContext().ensureActive()
-                        save(photo, result)
-                        mutableProgress.update {
-                            it.copy(completed = it.completed + 1,
-                                recognized = it.recognized + if (result is ScaleRecognitionResult.Recognized) 1 else 0)
-                        }
-                        if (result is ScaleRecognitionResult.Error) {
-                            mutableProgress.update { it.copy(message = result.message) }
-                            if (result.fatal) break
+                    val session = recognizer
+                    val queueMutex = Mutex()
+                    var next = 0
+                    coroutineScope {
+                        repeat(session.maxConcurrentPhotos.coerceIn(1, 5).coerceAtMost(photos.size)) {
+                            launch {
+                                while (true) {
+                                    currentCoroutineContext().ensureActive()
+                                    val photo = queueMutex.withLock { photos.getOrNull(next++) } ?: break
+                                    if (!isPending(photo.id)) {
+                                        mutableProgress.update { it.copy(completed = it.completed + 1) }
+                                        continue
+                                    }
+                                    val result = session.recognize(photo.path)
+                                    currentCoroutineContext().ensureActive()
+                                    save(photo, result)
+                                    mutableProgress.update {
+                                        it.copy(completed = it.completed + 1,
+                                            recognized = it.recognized + if (result is ScaleRecognitionResult.Recognized) 1 else 0)
+                                    }
+                                    if (result is ScaleRecognitionResult.Error) {
+                                        mutableProgress.update { it.copy(message = result.message) }
+                                        if (result.fatal) throw FatalAnalysisException(result.message)
+                                    }
+                                }
+                            }
                         }
                     }
+                } catch (e: FatalAnalysisException) {
+                    mutableProgress.update { it.copy(message = e.message) }
                 } catch (e: CancellationException) {
                     mutableProgress.update { it.copy(paused = true) }
                     throw e

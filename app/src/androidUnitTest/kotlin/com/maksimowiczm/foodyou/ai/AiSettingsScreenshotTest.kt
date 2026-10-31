@@ -16,6 +16,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.*
+import kotlin.test.assertEquals
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RuntimeEnvironment
@@ -162,7 +163,35 @@ class AiSettingsScreenshotTest {
         show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
             OpenAiSettingsContent(OpenAiSettings(), false, { _, _, _ -> }, {})
         } }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").performScrollTo().assertIsDisplayed()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai-narrow.png")
+    }
+
+    @Test fun openAiParallelProgress() {
+        show { AiAnalysisControls(AiProvider.OpenAI,
+            AnalysisProgress(running = true, completed = 3, total = 10), true,
+            PhotoAnalysisSummary(total = 10), {}, {}) }
+        compose.onNodeWithText("3 von 10 Fotos verarbeitet").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai-parallel-progress.png")
+    }
+
+    @Test fun openAiParallelismSavesAndDisablesTestsUntilSaved() {
+        var saved: OpenAiSettings? = null
+        show { Column(Modifier.verticalScroll(rememberScrollState())) {
+            OpenAiSettingsContent(OpenAiSettings(hasApiKey = true), false, { config, _, _ -> saved = config }, {})
+        } }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").performScrollTo().performClick()
+        compose.onNodeWithText("5", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("Fotomodell testen").assertIsNotEnabled()
+        compose.onNodeWithText("OpenAI-Einstellungen speichern").performScrollTo().performClick()
+        assertEquals(5, saved?.photoParallelism)
+    }
+
+    @Test fun openAiParallelismIsDisabledWhileBusy() {
+        show { Column(Modifier.verticalScroll(rememberScrollState())) {
+            OpenAiSettingsContent(OpenAiSettings(), true, { _, _, _ -> }, {})
+        } }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").assertIsNotEnabled()
     }
 
     private fun showSettings(settings: AiSettings, download: ModelDownloadState, name: String) {

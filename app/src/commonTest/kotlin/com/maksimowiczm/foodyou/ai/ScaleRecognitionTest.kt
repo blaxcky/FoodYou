@@ -7,6 +7,98 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 
 class ScaleRecognitionTest {
+    @Test fun boundedWorkersRefillImmediatelyAndSaveOutOfOrder() = runTest {
+        for (limit in listOf(1, 4, 5)) {
+            for (count in listOf(2, 8)) {
+                val coordinator = ScaleAnalysisCoordinator()
+                val replies = (1..count).associateWith { CompletableDeferred<ScaleRecognitionResult>() }
+                val calls = mutableListOf<Int>()
+                val saved = mutableListOf<Long>()
+                var active = 0
+                var maximum = 0
+                var closed = 0
+                val recognizer = object : ScaleWeightRecognizer {
+                    override val maxConcurrentPhotos = limit
+                    override suspend fun recognize(photoPath: String): ScaleRecognitionResult {
+                        val id = photoPath.toInt()
+                        calls += id
+                        active++
+                        maximum = maxOf(maximum, active)
+                        try { return replies.getValue(id).await() } finally { active-- }
+                    }
+                    override suspend fun close() { assertEquals(0, active); closed++ }
+                }
+                val job = launch { coordinator.run((1..count).map { AnalysisPhoto(it.toLong(), "$it") },
+                    { recognizer }, { true }, { photo, _ -> saved += photo.id }) }
+                runCurrent()
+                assertEquals((1..minOf(limit, count)).toList(), calls)
+                val first = calls.last()
+                replies.getValue(first).complete(ScaleRecognitionResult.Recognized(42.0))
+                runCurrent()
+                assertEquals(listOf(first.toLong()), saved)
+                assertEquals(minOf(limit + 1, count), calls.size)
+                replies.values.forEach { it.complete(ScaleRecognitionResult.Recognized(42.0)) }
+                job.join()
+                assertEquals(minOf(limit, count), maximum)
+                assertEquals(count, saved.distinct().size)
+                assertEquals(count, coordinator.progress.value.completed)
+                assertEquals(1, closed)
+            }
+        }
+    }
+
+    @Test fun cancellationStopsAllWorkersAndPreservesSavedResultsForResume() = runTest {
+        val coordinator = ScaleAnalysisCoordinator()
+        val saved = mutableListOf<Long>()
+        var closed = 0
+        var cancelled = 0
+        val recognizer = object : ScaleWeightRecognizer {
+            override val maxConcurrentPhotos = 4
+            override suspend fun recognize(photoPath: String): ScaleRecognitionResult {
+                if (photoPath == "1") return ScaleRecognitionResult.Recognized(42.0)
+                try { awaitCancellation() } finally { cancelled++ }
+            }
+            override suspend fun close() { closed++ }
+        }
+        val job = launch { coordinator.run((1..8).map { AnalysisPhoto(it.toLong(), "$it") },
+            { recognizer }, { true }, { photo, _ -> saved += photo.id }) }
+        runCurrent()
+        job.cancelAndJoin()
+        assertEquals(listOf(1L), saved)
+        assertEquals(4, cancelled)
+        assertEquals(1, closed)
+        assertTrue(coordinator.progress.value.paused)
+        coordinator.run(listOf(AnalysisPhoto(9, "1")), { recognizer }, { true }, { photo, _ -> saved += photo.id })
+        assertEquals(listOf(1L, 9L), saved)
+        assertFalse(coordinator.progress.value.paused)
+    }
+
+    @Test fun parallelFatalErrorCancelsSiblingsWithoutPausing() = runTest {
+        val coordinator = ScaleAnalysisCoordinator()
+        val fatal = CompletableDeferred<Unit>()
+        var cancelled = 0
+        var closed = 0
+        val saved = mutableListOf<Long>()
+        val recognizer = object : ScaleWeightRecognizer {
+            override val maxConcurrentPhotos = 4
+            override suspend fun recognize(photoPath: String): ScaleRecognitionResult {
+                if (photoPath == "1") { fatal.await(); return ScaleRecognitionResult.Error("quota", true) }
+                try { awaitCancellation() } finally { cancelled++ }
+            }
+            override suspend fun close() { closed++ }
+        }
+        val job = launch { coordinator.run((1..8).map { AnalysisPhoto(it.toLong(), "$it") },
+            { recognizer }, { true }, { photo, _ -> saved += photo.id }) }
+        runCurrent()
+        fatal.complete(Unit)
+        job.join()
+        assertEquals(listOf(1L), saved)
+        assertEquals(3, cancelled)
+        assertEquals(1, closed)
+        assertFalse(coordinator.progress.value.paused)
+        assertEquals("quota", coordinator.progress.value.message)
+    }
+
     @Test fun stopwatchIncludesLoadingUpdatesDuringRecognitionAndFreezesUntilNextRun() = runTest {
         val time = TestTimeSource()
         val coordinator = ScaleAnalysisCoordinator(time)

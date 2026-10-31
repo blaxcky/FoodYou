@@ -216,7 +216,8 @@ internal fun AiAnalysisControls(
             val status: @Composable () -> Unit = {
                 when {
                     progress.running -> Text(
-                        "Analysiere ${(progress.completed + 1).coerceAtMost(progress.total)} von ${progress.total}",
+                        if (provider == AiProvider.OpenAI) "${progress.completed} von ${progress.total} Fotos verarbeitet"
+                        else "Analysiere ${(progress.completed + 1).coerceAtMost(progress.total)} von ${progress.total}",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     !canStart -> Text(

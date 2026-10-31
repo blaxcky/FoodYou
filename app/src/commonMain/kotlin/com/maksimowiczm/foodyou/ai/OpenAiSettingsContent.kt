@@ -18,8 +18,10 @@ internal fun OpenAiSettingsContent(
 ) {
     var photo by remember(settings.photo) { mutableStateOf(settings.photo) }
     var nutrition by remember(settings.nutrition) { mutableStateOf(settings.nutrition) }
+    var parallelism by remember(settings.photoParallelism) { mutableStateOf(settings.photoParallelism) }
+    var parallelismMenu by remember { mutableStateOf(false) }
     var key by remember { mutableStateOf("") }
-    val dirty = photo != settings.photo || nutrition != settings.nutrition || key.isNotEmpty()
+    val dirty = parallelism != settings.photoParallelism || photo != settings.photo || nutrition != settings.nutrition || key.isNotEmpty()
     HorizontalDivider()
     Text(stringResource(Res.string.openai_settings), style = MaterialTheme.typography.titleLarge)
     Text(stringResource(Res.string.openai_privacy))
@@ -31,11 +33,24 @@ internal fun OpenAiSettingsContent(
         modifier = Modifier.fillMaxWidth())
     Text(stringResource(Res.string.openai_photo), style = MaterialTheme.typography.titleMedium)
     OpenAiTaskFields(photo, !busy) { photo = it }
+    Box {
+        OutlinedButton(onClick = { parallelismMenu = true }, enabled = !busy) {
+            Text(stringResource(Res.string.openai_photo_parallelism, parallelism))
+        }
+        DropdownMenu(parallelismMenu && !busy, { parallelismMenu = false }) {
+            (1..5).forEach { value ->
+                DropdownMenuItem(text = { Text(value.toString()) }, onClick = {
+                    parallelism = value; parallelismMenu = false
+                })
+            }
+        }
+    }
+    Text(stringResource(Res.string.openai_photo_parallelism_help), style = MaterialTheme.typography.bodySmall)
     Text(stringResource(Res.string.openai_nutrition), style = MaterialTheme.typography.titleMedium)
     OpenAiTaskFields(nutrition, !busy) { nutrition = it }
     Text(stringResource(Res.string.openai_effort_help), style = MaterialTheme.typography.bodySmall)
     Button(onClick = {
-        onSave(OpenAiSettings(photo, nutrition, settings.hasApiKey), key.takeIf { it.isNotBlank() }, false)
+        onSave(settings.copy(photo = photo, nutrition = nutrition, photoParallelism = parallelism), key.takeIf { it.isNotBlank() }, false)
         key = ""
     }, enabled = !busy && photo.model.isNotBlank() && nutrition.model.isNotBlank()) { Text(stringResource(Res.string.openai_save)) }
     OutlinedButton(onClick = { onTest(false) }, enabled = !busy && !dirty && settings.hasApiKey) { Text(stringResource(Res.string.openai_test_photo)) }

@@ -60,6 +60,7 @@ internal class AndroidAiController(
                 OpenAiTask(props.getProperty("openai.photo.model", "gpt-6-luna"), props.getProperty("openai.photo.effort", "low").takeIf { it.isNotEmpty() }),
                 OpenAiTask(props.getProperty("openai.nutrition.model", "gpt-6.1-sol"), props.getProperty("openai.nutrition.effort", "medium").takeIf { it.isNotEmpty() }),
                 openAiKeyFile.isFile,
+                props.getProperty("openai.photo.parallelism")?.toIntOrNull()?.takeIf { it in 1..5 } ?: 4,
             ),
         )
     }
@@ -93,6 +94,7 @@ internal class AndroidAiController(
     }
 
     override suspend fun saveOpenAi(settings: OpenAiSettings, newKey: String?, deleteKey: Boolean) {
+        require(settings.photoParallelism in 1..5)
         listOf(settings.photo, settings.nutrition).forEach {
             require(it.model.matches(Regex("[A-Za-z0-9._:/-]+")))
             require(it.effort == null || it.effort.matches(Regex("[a-z]+")))
@@ -106,6 +108,7 @@ internal class AndroidAiController(
             }
             val props = java.util.Properties()
             if (preferences.isFile) preferences.inputStream().use(props::load)
+            props.setProperty("openai.photo.parallelism", settings.photoParallelism.toString())
             for ((name, task) in listOf("photo" to settings.photo, "nutrition" to settings.nutrition)) {
                 props.setProperty("openai.$name.model", task.model)
                 props.setProperty("openai.$name.effort", task.effort.orEmpty())
@@ -143,8 +146,12 @@ internal class AndroidAiController(
     private suspend fun configuration(): Pair<AiSettings, String> = withContext(Dispatchers.IO) {
         configMutex.withLock {
             val settings = mutableSettings.value
-            val key = if (settings.provider == AiProvider.Gemini && keyFile.isFile)
-                crypto.decrypt(keyFile.readBytes()).decodeToString() else ""
+            val selectedKey = when (settings.provider) {
+                AiProvider.OpenAI -> openAiKeyFile
+                AiProvider.Gemini -> keyFile
+                else -> null
+            }
+            val key = if (selectedKey?.isFile == true) crypto.decrypt(selectedKey.readBytes()).decodeToString() else ""
             settings to key
         }
     }
@@ -178,14 +185,8 @@ internal class AndroidAiController(
                                 visionOnCpu = config.visionOnCpu,
                             )
                             AiProvider.OpenAI -> {
-                                val (openConfig, api) = openAiConfiguration()
-                                object : ScaleWeightRecognizer {
-                                    override suspend fun recognize(photoPath: String): ScaleRecognitionResult = try {
-                                        val image = android.util.Base64.encodeToString(decodeScalePhoto(photoDirectory, photoPath), android.util.Base64.NO_WRAP)
-                                        parseScaleReading(api.request(openConfig.photo, SCALE_PROMPT, image).csv)
-                                    } catch (e: CancellationException) { throw e
-                                    } catch (e: Exception) { ScaleRecognitionResult.Error(e.message ?: "OpenAI: Fehler / error", true) }
-                                    override suspend fun close() = Unit
+                                OpenAiScaleWeightRecognizer(OpenAiClient(client, key), config.openAi) { path ->
+                                    android.util.Base64.encodeToString(decodeScalePhoto(photoDirectory, path), android.util.Base64.NO_WRAP)
                                 }
                             }
                             AiProvider.Gemini -> GeminiScaleWeightRecognizer(client, key, config.model, photoDirectory)
