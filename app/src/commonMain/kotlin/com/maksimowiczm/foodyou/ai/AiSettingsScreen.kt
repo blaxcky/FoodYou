@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,28 @@ internal data class AiSettingsDraft(
     val geminiKey: String? = null,
     val openAiKey: String? = null,
     val claudeKey: String? = null,
+)
+
+/** Survives recreation without the new API keys, which never enter the saved instance state. */
+private val AiSettingsDraftSaver = listSaver<AiSettingsDraft, Any?>(
+    save = {
+        listOf(it.provider.name, it.geminiModel, it.visionOnCpu, it.nutritionProvider.name,
+            it.openAi.photo.model, it.openAi.photo.effort, it.openAi.nutrition.model, it.openAi.nutrition.effort,
+            it.openAi.photoParallelism, it.claude.photo.model, it.claude.photo.effort, it.claude.nutrition.model,
+            it.claude.nutrition.effort, it.claude.photoParallelism)
+    },
+    restore = { v ->
+        AiSettingsDraft(
+            provider = AiProvider.valueOf(v[0] as String),
+            geminiModel = v[1] as String,
+            visionOnCpu = v[2] as Boolean,
+            openAi = OpenAiSettings(OpenAiTask(v[4] as String, v[5] as String?), OpenAiTask(v[6] as String, v[7] as String?),
+                photoParallelism = v[8] as Int),
+            claude = ClaudeSettings(ClaudeTask(v[9] as String, v[10] as String?), ClaudeTask(v[11] as String, v[12] as String?),
+                photoParallelism = v[13] as Int),
+            nutritionProvider = NutritionProvider.valueOf(v[3] as String),
+        )
+    },
 )
 
 internal fun AiSettings.toDraft() = AiSettingsDraft(
@@ -124,7 +147,10 @@ fun AiSettingsScreen(onBack: () -> Unit) {
         saving = true
         scope.launch {
             val message = try { action() } finally { saving = false }
-            snackbar.showSnackbar(message, withDismissAction = true)
+            // Test results and errors are the only feedback here, so they stay longer than a confirmation.
+            val confirmation = message == savedMessage || message == keyRemovedMessage
+            snackbar.showSnackbar(message, withDismissAction = true,
+                duration = if (confirmation) SnackbarDuration.Short else SnackbarDuration.Long)
         }
     }
     AiSettingsContent(settings, downloads, analysis.running || saving, snackbar,
@@ -191,8 +217,8 @@ internal fun AiSettingsContent(
     onDelete: (AiProvider) -> Unit = {},
     onDiagnostics: () -> Unit = {},
 ) {
-    var baseline by remember { mutableStateOf(settings.toDraft()) }
-    var draft by remember { mutableStateOf(baseline) }
+    var baseline by rememberSaveable(stateSaver = AiSettingsDraftSaver) { mutableStateOf(settings.toDraft()) }
+    var draft by rememberSaveable(stateSaver = AiSettingsDraftSaver) { mutableStateOf(baseline) }
     LaunchedEffect(settings) {
         val saved = settings.toDraft()
         draft = draft.rebase(baseline, saved)
@@ -316,6 +342,7 @@ internal fun AiSettingsContent(
                             headline = stringResource(Res.string.ai_settings_vision_cpu),
                             supporting = stringResource(Res.string.ai_settings_vision_cpu_help),
                             trailing = { Switch(checked = draft.visionOnCpu, onCheckedChange = null, enabled = !busy) },
+                            checked = draft.visionOnCpu,
                             enabled = !busy,
                             role = Role.Switch,
                             onClick = { draft = draft.copy(visionOnCpu = !draft.visionOnCpu) },

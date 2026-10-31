@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -68,6 +69,8 @@ internal fun AiSettingsRow(
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     selected: Boolean = false,
+    /** On/off state announced for [Role.Switch] rows. */
+    checked: Boolean? = null,
     enabled: Boolean = true,
     role: Role? = null,
     onClick: (() -> Unit)? = null,
@@ -82,6 +85,7 @@ internal fun AiSettingsRow(
     val click = when {
         onClick == null -> Modifier
         role == Role.RadioButton -> Modifier.selectable(selected, enabled = enabled, role = role, onClick = onClick)
+        checked != null -> Modifier.toggleable(checked, enabled = enabled, role = role) { onClick() }
         else -> Modifier.clickable(enabled = enabled, role = role, onClick = onClick)
     }
     Row(
