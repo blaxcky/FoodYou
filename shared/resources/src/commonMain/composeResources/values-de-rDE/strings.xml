@@ -817,4 +817,26 @@
     <string name="openai_review">Prüfe die berechnete CSV und die Quellen. Nach deiner Bestätigung werden die Werte zur heutigen passenden Mahlzeit hinzugefügt und die angefragten Einträge erledigt.</string>
     <string name="openai_photo_parallelism">Gleichzeitige Fotoanalysen: %1$d</string>
     <string name="openai_photo_parallelism_help">1 verarbeitet Fotos nacheinander. Höhere Werte können die Erkennung beschleunigen.</string>
+    <string name="claude_astra">Für anspruchsvolle Aufgaben</string>
+    <string name="claude_custom">Eigene Modell-ID</string>
+    <string name="claude_default">Modellstandard</string>
+    <string name="claude_effort">Denkaufwand (Reasoning effort)</string>
+    <string name="claude_effort_help">Höherer Denkaufwand kann länger dauern und mehr kosten.</string>
+    <string name="claude_key">Claude-API-Key</string>
+    <string name="claude_luna">Ausgewogenes Tempo und Qualität</string>
+    <string name="claude_model">Modell</string>
+    <string name="claude_nutrition">Nährwerte mit Websuche</string>
+    <string name="claude_photo">Waagenfotos</string>
+    <string name="claude_photo_parallelism">Gleichzeitige Fotoanalysen: %1$d</string>
+    <string name="claude_photo_parallelism_help">1 verarbeitet Fotos nacheinander. Höhere Werte können die Erkennung beschleunigen.</string>
+    <string name="claude_privacy">Anfragen senden Fotos oder Lebensmittelnamen und Gewichte an Claude. API-Nutzung und Websuche können Kosten verursachen.</string>
+    <string name="claude_remove">Claude-API-Key entfernen</string>
+    <string name="claude_reset">Denkaufwand auf Modellstandard zurückgesetzt.</string>
+    <string name="claude_save">Claude-Einstellungen speichern</string>
+    <string name="claude_saved_key">API-Key gespeichert</string>
+    <string name="claude_settings">Claude-Einstellungen</string>
+    <string name="claude_sol">Schnell und günstig</string>
+    <string name="claude_test_nutrition">Nährwertmodell und Websuche testen</string>
+    <string name="claude_test_photo">Fotomodell testen</string>
+    <string name="claude_default_help">Leer lassen, um den Modellstandard zu verwenden.</string>
 </resources>

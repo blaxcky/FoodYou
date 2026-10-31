@@ -20,6 +20,7 @@ internal class AndroidAiController(
 ) : AiController {
     private val directory = File(context.noBackupFilesDir, "ai").apply { mkdirs() }
     private val preferences = File(directory, "settings.properties")
+    private val claudeKeyFile = File(directory, "claude.key")
     private val openAiKeyFile = File(directory, "openai.key")
     private val keyFile = File(directory, "gemini.key")
     private val photoDirectory = File(context.filesDir, "food-snap-photos")
@@ -56,6 +57,12 @@ internal class AndroidAiController(
             model = props.getProperty("model", "gemini-3.8-flash"),
             hasApiKey = keyFile.isFile,
             visionOnCpu = props.getProperty("vision_backend") == "cpu",
+            claude = ClaudeSettings(
+                ClaudeTask(props.getProperty("claude.photo.model", "claude-sonnet-5-5"), props.getProperty("claude.photo.effort", "low").takeIf { it.isNotEmpty() }),
+                ClaudeTask(props.getProperty("claude.nutrition.model", "claude-sonnet-5-5"), props.getProperty("claude.nutrition.effort", "medium").takeIf { it.isNotEmpty() }),
+                claudeKeyFile.isFile,
+                props.getProperty("claude.photo.parallelism")?.toIntOrNull()?.takeIf { it in 1..5 } ?: 4,
+            ),
             openAi = OpenAiSettings(
                 OpenAiTask(props.getProperty("openai.photo.model", "gpt-6-luna"), props.getProperty("openai.photo.effort", "low").takeIf { it.isNotEmpty() }),
                 OpenAiTask(props.getProperty("openai.nutrition.model", "gpt-6.1-sol"), props.getProperty("openai.nutrition.effort", "medium").takeIf { it.isNotEmpty() }),
@@ -132,6 +139,45 @@ internal class AndroidAiController(
     } catch (e: CancellationException) { throw e
     } catch (e: Exception) { e.message ?: "OpenAI: Fehler / error" }
 
+    override suspend fun saveClaude(settings: ClaudeSettings, newKey: String?, deleteKey: Boolean) {
+        require(settings.photoParallelism in 1..5)
+        listOf(settings.photo, settings.nutrition).forEach {
+            require(it.model.matches(Regex("[A-Za-z0-9._:/-]+")))
+            require(it.effort == null || it.effort.matches(Regex("[a-z]+")))
+            require(it.effort == null || claudeSupportedEfforts(it.model)?.contains(it.effort) != false)
+        }
+        withContext(Dispatchers.IO) { configMutex.withLock {
+            if (deleteKey) check(!claudeKeyFile.exists() || claudeKeyFile.delete())
+            else if (newKey != null) {
+                require(newKey.isNotBlank())
+                atomicWrite(claudeKeyFile, crypto.encrypt(newKey.trim().encodeToByteArray()))
+            }
+            val props = java.util.Properties()
+            if (preferences.isFile) preferences.inputStream().use(props::load)
+            props.setProperty("claude.photo.parallelism", settings.photoParallelism.toString())
+            for ((name, task) in listOf("photo" to settings.photo, "nutrition" to settings.nutrition)) {
+                props.setProperty("claude.$name.model", task.model)
+                props.setProperty("claude.$name.effort", task.effort.orEmpty())
+            }
+            atomicWrite(preferences, java.io.ByteArrayOutputStream().use { props.store(it, null); it.toByteArray() })
+            mutableSettings.value = readSettings()
+        } }
+    }
+
+    private suspend fun claudeConfiguration(): Pair<ClaudeSettings, ClaudeClient> = withContext(Dispatchers.IO) {
+        configMutex.withLock {
+            val key = if (claudeKeyFile.isFile) crypto.decrypt(claudeKeyFile.readBytes()).decodeToString() else ""
+            settings.value.claude to ClaudeClient(client, key)
+        }
+    }
+
+    override suspend fun testClaude(nutrition: Boolean): String = try {
+        val (config, api) = claudeConfiguration()
+        api.request(if (nutrition) config.nutrition else config.photo, if (nutrition) "Search the web for nutrition values of an apple, then reply OK." else "Reply OK.", web = nutrition)
+        "Claude: OK"
+    } catch (e: CancellationException) { throw e
+    } catch (e: Exception) { e.message ?: "Claude: Fehler / error" }
+
     override suspend fun estimateNutrition(prompt: String): NutritionEstimate {
         val (config, api) = openAiConfiguration()
         return api.request(config.nutrition, prompt, web = true)
@@ -147,6 +193,7 @@ internal class AndroidAiController(
         configMutex.withLock {
             val settings = mutableSettings.value
             val selectedKey = when (settings.provider) {
+                AiProvider.Claude -> claudeKeyFile
                 AiProvider.OpenAI -> openAiKeyFile
                 AiProvider.Gemini -> keyFile
                 else -> null
@@ -159,7 +206,8 @@ internal class AndroidAiController(
     override suspend fun testConnection(): String {
         return try {
             val (settings, key) = configuration()
-            if (settings.provider == AiProvider.OpenAI) testOpenAi(false)
+            if (settings.provider == AiProvider.Claude) testClaude(false)
+            else if (settings.provider == AiProvider.OpenAI) testOpenAi(false)
             else GeminiScaleWeightRecognizer(client, key, settings.model, photoDirectory).testConnection()
         } catch (e: CancellationException) { throw e
         } catch (_: Exception) { "API-Key konnte nicht gelesen werden. Bitte erneut speichern." }
@@ -184,6 +232,11 @@ internal class AndroidAiController(
                                 context, photoDirectory, diagnostics, requireNotNull(config.provider.localModel),
                                 visionOnCpu = config.visionOnCpu,
                             )
+                            AiProvider.Claude -> {
+                                ClaudeScaleWeightRecognizer(ClaudeClient(client, key), config.claude) { path ->
+                                    android.util.Base64.encodeToString(decodeScalePhoto(photoDirectory, path), android.util.Base64.NO_WRAP)
+                                }
+                            }
                             AiProvider.OpenAI -> {
                                 OpenAiScaleWeightRecognizer(OpenAiClient(client, key), config.openAi) { path ->
                                     android.util.Base64.encodeToString(decodeScalePhoto(photoDirectory, path), android.util.Base64.NO_WRAP)
@@ -206,7 +259,7 @@ internal class AndroidAiController(
                                     else -> "error"
                                 }
                             }, selected.provider.name,
-                            selected.provider.localModel?.artifactName ?: if (selected.provider == AiProvider.OpenAI) selected.openAi.photo.model else selected.model,
+                            selected.provider.localModel?.artifactName ?: selected.photoModelLabel().substringBefore(" · "),
                             System.currentTimeMillis())
                     })
             }

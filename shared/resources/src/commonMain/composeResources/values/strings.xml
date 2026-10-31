@@ -943,4 +943,26 @@
     <string name="openai_review">Review the calculated CSV and sources. Confirm to add the values to today’s matching meal and complete the requested entries.</string>
     <string name="openai_photo_parallelism">Concurrent photo analyses: %1$d</string>
     <string name="openai_photo_parallelism_help">1 processes photos one at a time. Higher values can speed up recognition.</string>
+    <string name="claude_astra">For demanding tasks</string>
+    <string name="claude_custom">Custom model ID</string>
+    <string name="claude_default">Model default</string>
+    <string name="claude_effort">Reasoning effort</string>
+    <string name="claude_effort_help">Higher reasoning effort can take longer and cost more.</string>
+    <string name="claude_key">Claude API key</string>
+    <string name="claude_luna">Balanced speed and quality</string>
+    <string name="claude_model">Model</string>
+    <string name="claude_nutrition">Nutrition with web search</string>
+    <string name="claude_photo">Scale photos</string>
+    <string name="claude_photo_parallelism">Concurrent photo analyses: %1$d</string>
+    <string name="claude_photo_parallelism_help">1 processes photos one at a time. Higher values can speed up recognition.</string>
+    <string name="claude_privacy">Requests send photos or food names and weights to Claude. API usage and web search can incur costs.</string>
+    <string name="claude_remove">Remove Claude API key</string>
+    <string name="claude_reset">Reasoning effort reset to model default.</string>
+    <string name="claude_save">Save Claude settings</string>
+    <string name="claude_saved_key">API key saved</string>
+    <string name="claude_settings">Claude settings</string>
+    <string name="claude_sol">Fast and economical</string>
+    <string name="claude_test_nutrition">Test nutrition model and web search</string>
+    <string name="claude_test_photo">Test photo model</string>
+    <string name="claude_default_help">Leave empty to use the model default.</string>
 </resources>

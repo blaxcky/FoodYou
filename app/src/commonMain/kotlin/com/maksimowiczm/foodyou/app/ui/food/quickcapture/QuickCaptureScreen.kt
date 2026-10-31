@@ -196,6 +196,7 @@ fun QuickCaptureScreen(
     val aiCanStart =
         aiDownloads.values.none { it.running } &&
             if (aiSettings.provider.localModel != null) aiDownloads[aiSettings.provider]?.ready == true
+            else if (aiSettings.provider == com.maksimowiczm.foodyou.ai.AiProvider.Claude) aiSettings.claude.hasApiKey
             else if (aiSettings.provider == com.maksimowiczm.foodyou.ai.AiProvider.OpenAI) aiSettings.openAi.hasApiKey else aiSettings.hasApiKey
     val viewModel: QuickCaptureViewModel = koinViewModel()
     val entries by viewModel.entries.collectAsStateWithLifecycle()

@@ -84,6 +84,19 @@ fun AiSettingsScreen(onBack: () -> Unit) {
             saving = true
             scope.launch { try { message = controller.testOpenAi(nutrition) } finally { saving = false } }
         },
+        onSaveClaude = { config, key, delete ->
+            saving = true
+            scope.launch {
+                try { controller.saveClaude(config, key, delete); message = "Claude: OK" }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { message = "Claude: Speichern fehlgeschlagen / saving failed" }
+                finally { saving = false }
+            }
+        },
+        onTestClaude = { nutrition ->
+            saving = true
+            scope.launch { try { message = controller.testClaude(nutrition) } finally { saving = false } }
+        },
     )
 }
 
@@ -102,6 +115,8 @@ internal fun AiSettingsContent(
     onDiagnostics: () -> Unit = {},
     onSaveOpenAi: (OpenAiSettings, String?, Boolean) -> Unit = { _, _, _ -> },
     onTestOpenAi: (Boolean) -> Unit = {},
+    onSaveClaude: (ClaudeSettings, String?, Boolean) -> Unit = { _, _, _ -> },
+    onTestClaude: (Boolean) -> Unit = {},
 ) {
     var provider by rememberSaveable(settings.provider) { mutableStateOf(settings.provider) }
     var model by rememberSaveable(settings.model) { mutableStateOf(settings.model) }
@@ -180,6 +195,7 @@ internal fun AiSettingsContent(
                 key = ""
             }, enabled = !busy && !download.running && model.isNotBlank()) { Text("Einstellungen speichern") }
             OpenAiSettingsContent(settings.openAi, busy, onSaveOpenAi, onTestOpenAi)
+            ClaudeSettingsContent(settings.claude, busy, onSaveClaude, onTestClaude)
             OutlinedButton(onClick = onDiagnostics) { Text("KI-Diagnosebericht") }
             message?.let { Text(it) }
         }
@@ -216,7 +232,7 @@ internal fun AiAnalysisControls(
             val status: @Composable () -> Unit = {
                 when {
                     progress.running -> Text(
-                        if (provider == AiProvider.OpenAI) "${progress.completed} von ${progress.total} Fotos verarbeitet"
+                        if (provider == AiProvider.OpenAI || provider == AiProvider.Claude) "${progress.completed} von ${progress.total} Fotos verarbeitet"
                         else "Analysiere ${(progress.completed + 1).coerceAtMost(progress.total)} von ${progress.total}",
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -441,6 +457,7 @@ private val AiProvider.icon: ImageVector
 
 private val AiProvider.privacyNote: String
     get() = when (this) {
+        AiProvider.Claude -> "Fotos werden zur Analyse an Anthropic gesendet. Es gilt das Kontingent deines API-Keys; die API-Nutzung kann Kosten verursachen."
         AiProvider.OpenAI -> "Fotos werden zur Analyse an OpenAI gesendet. Es gilt das Kontingent deines API-Keys; die API-Nutzung kann Kosten verursachen."
         AiProvider.Gemini -> "Fotos werden zur Analyse an Google gesendet. Es gilt das Kontingent deines API-Keys; die API-Nutzung kann Kosten verursachen."
         AiProvider.Local, AiProvider.LocalE2B -> "Die Analyse läuft auf diesem Gerät; Fotos verlassen es nicht."

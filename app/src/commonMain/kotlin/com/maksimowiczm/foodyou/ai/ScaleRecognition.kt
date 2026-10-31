@@ -18,13 +18,14 @@ enum class AiProvider(val label: String, val shortLabel: String) {
     Local("Gemma 4 E4B lokal", "Gemma E4B"),
     LocalE2B("Gemma 4 E2B lokal", "Gemma E2B"),
     Gemini("Google AI Studio", "Gemini"),
-    OpenAI("OpenAI / ChatGPT", "OpenAI");
+    OpenAI("OpenAI / ChatGPT", "OpenAI"),
+    Claude("Anthropic / Claude", "Claude");
 
     val localModel: GemmaModel?
         get() = when (this) {
             Local -> GemmaModel.E4B
             LocalE2B -> GemmaModel.E2B
-            Gemini, OpenAI -> null
+            Gemini, OpenAI, Claude -> null
         }
 }
 
@@ -67,11 +68,13 @@ data class AiSettings(
     /** Runs Gemma's vision encoder on the CPU instead of the GPU; slower, for device comparisons. */
     val visionOnCpu: Boolean = false,
     val openAi: OpenAiSettings = OpenAiSettings(),
+    val claude: ClaudeSettings = ClaudeSettings(),
 )
 
 /** The model that reads scale photos for the selected provider, e.g. "gpt-6-luna · Reasoning low". */
 fun AiSettings.photoModelLabel(): String = provider.localModel?.displayName ?: when (provider) {
     AiProvider.OpenAI -> listOfNotNull(openAi.photo.model, openAi.photo.effort?.let { "Reasoning $it" }).joinToString(" · ")
+    AiProvider.Claude -> listOfNotNull(claude.photo.model, claude.photo.effort?.let { "Reasoning $it" }).joinToString(" · ")
     else -> model
 }
 
@@ -264,6 +267,8 @@ interface AiController {
         deleteKey: Boolean = false,
     )
     suspend fun saveOpenAi(settings: OpenAiSettings, newKey: String?, deleteKey: Boolean = false)
+    suspend fun saveClaude(settings: ClaudeSettings, newKey: String?, deleteKey: Boolean = false)
+    suspend fun testClaude(nutrition: Boolean): String
     suspend fun testOpenAi(nutrition: Boolean): String
     suspend fun estimateNutrition(prompt: String): NutritionEstimate
     suspend fun diagnosticReport(): String

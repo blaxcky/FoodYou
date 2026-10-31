@@ -167,6 +167,24 @@ class AiSettingsScreenshotTest {
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.openai-narrow.png")
     }
 
+    @Test fun claudeSettings() {
+        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
+            ClaudeSettingsContent(ClaudeSettings(hasApiKey = true), false, { _, _, _ -> }, {})
+        } }
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.claude.png")
+    }
+
+    @Test
+    @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
+    fun claudeNarrowLargeFont() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        show { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
+            ClaudeSettingsContent(ClaudeSettings(), false, { _, _, _ -> }, {})
+        } }
+        compose.onNodeWithText("Gleichzeitige Fotoanalysen: 4").performScrollTo().assertIsDisplayed()
+        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.claude-narrow.png")
+    }
+
     @Test fun openAiParallelProgress() {
         show { AiAnalysisControls(AiProvider.OpenAI,
             AnalysisProgress(running = true, completed = 3, total = 10), true,
