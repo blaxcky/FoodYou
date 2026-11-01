@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
@@ -46,8 +46,8 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -74,7 +74,6 @@ import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerOption
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerState
 import com.maksimowiczm.foodyou.app.ui.food.component.toMeasurementPickerOptions
-import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePicker
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsDatePickerState
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.ChipsMealPicker
@@ -84,6 +83,7 @@ import com.maksimowiczm.foodyou.app.ui.food.diary.component.Source
 import com.maksimowiczm.foodyou.app.ui.food.diary.component.rememberFoodMeasurementFormState
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
 import com.maksimowiczm.foodyou.common.compose.extension.add
+import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.measurement.isUserSelectable
@@ -91,10 +91,11 @@ import com.maksimowiczm.foodyou.common.domain.measurement.rawValue
 import com.maksimowiczm.foodyou.common.domain.measurement.type
 import com.maksimowiczm.foodyou.common.extension.minus
 import com.maksimowiczm.foodyou.common.extension.plus
+import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodHistory
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.selectInitialProductMealId
 import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
-import com.maksimowiczm.foodyou.food.domain.defaultEntryMeasurement
 import foodyou.app.generated.resources.*
 import kotlin.time.Duration.Companion.days
 import kotlinx.datetime.LocalDate
@@ -162,6 +163,13 @@ fun AddEntryScreen(
     } else {
         // Loading a new default after a portion edit must not replace the user's current amount.
         val initialMeasurement = remember(food.foodId) { selectedMeasurement }
+        val initialMealId by rememberSaveable(food.foodId.toString()) {
+            mutableStateOf(
+                selectInitialProductMealId(
+                    meals.map { it.id }, (food as? ProductModel)?.preferredMealId, mealId,
+                )
+            )
+        }
         val state =
             rememberFoodMeasurementFormState(
                 today = today,
@@ -172,8 +180,8 @@ fun AddEntryScreen(
                 selectedDate = date,
                 meals = meals.map { it.name },
                 selectedMeal =
-                    remember(meals, mealId) {
-                            meals.firstOrNull { it.id == mealId } ?: meals.firstOrNull()
+                    remember(meals, initialMealId) {
+                            meals.firstOrNull { it.id == initialMealId } ?: meals.firstOrNull()
                         }
                         ?.name,
                 suggestions = suggestions,

@@ -76,7 +76,7 @@ class ResyncFddbProductUseCaseTest {
                 barcode = "1234567890123",
                 note = "Local note",
                 source = source,
-            )
+            ).copy(preferredMealId = 4)
         val repository = FakeProductRepository(original)
         val useCase = useCase(repository = repository, gateway = FakeFddbProductGateway(fddbProduct()))
 
@@ -88,6 +88,7 @@ class ResyncFddbProductUseCaseTest {
         assertEquals("1234567890123", product.barcode)
         assertEquals("Local note", product.note)
         assertEquals(source, product.source)
+        assertEquals(4L, product.preferredMealId)
     }
 
     @Test

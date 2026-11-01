@@ -987,4 +987,7 @@
     <string name="cloud_nutrition_setup">Set up %1$s</string>
     <string name="cloud_nutrition_via">%1$s · via %2$s</string>
     <string name="cloud_nutrition_calculate">Calculate with %1$s</string>
+    <string name="label_preferred_meal">Default meal</string>
+    <string name="label_meal_automatic">Automatic</string>
+    <string name="label_entry_meal">Meal</string>
 </resources>

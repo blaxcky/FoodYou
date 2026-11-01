@@ -15,8 +15,8 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -36,6 +36,7 @@ import androidx.navigationevent.compose.NavigationEventHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.component.DiscardDialog
+import com.maksimowiczm.foodyou.app.ui.food.diary.component.MealSelectionField
 import com.maksimowiczm.foodyou.app.ui.food.product.ProductForm
 import com.maksimowiczm.foodyou.app.ui.food.product.rememberProductFormState
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
@@ -75,6 +76,7 @@ internal fun UpdateProductScreen(
     }
 
     val product = viewModel.product.collectAsStateWithLifecycle().value
+    val meals by viewModel.meals.collectAsStateWithLifecycle()
     val isResyncing by viewModel.isResyncing.collectAsStateWithLifecycle()
 
     if (product == null) {
@@ -89,9 +91,11 @@ internal fun UpdateProductScreen(
         val showFddbResync =
             product.source.type == FoodSource.Type.FDDB && !product.source.url.isNullOrBlank()
 
+        var preferredMealId by rememberSaveable(product.id.id) { mutableStateOf(product.preferredMealId) }
+        val isModified = productForm.isModified || preferredMealId != product.preferredMealId
         var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
         val handleBack = {
-            if (!productForm.isModified) {
+            if (!isModified) {
                 onBack()
             } else {
                 showDiscardDialog = true
@@ -99,7 +103,7 @@ internal fun UpdateProductScreen(
         }
         NavigationEventHandler(
             state = rememberNavigationEventState(NavigationEventInfo.None),
-            isBackEnabled = productForm.isModified,
+            isBackEnabled = isModified,
             onBackCompleted = { showDiscardDialog = true },
         )
         if (showDiscardDialog) {
@@ -166,7 +170,7 @@ internal fun UpdateProductScreen(
                             }
                         }
                         FilledIconButton(
-                            onClick = { viewModel.updateProduct(productForm) },
+                            onClick = { viewModel.updateProduct(productForm, preferredMealId) },
                             enabled = productForm.isValid,
                         ) {
                             Icon(imageVector = Icons.Outlined.Save, contentDescription = null)
@@ -183,6 +187,15 @@ internal fun UpdateProductScreen(
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
                 contentPadding = paddingValues,
             ) {
+                item {
+                    MealSelectionField(
+                        meals = meals.map { it.id to it.name },
+                        selectedMealId = preferredMealId,
+                        onSelect = { preferredMealId = it },
+                        allowAutomatic = true,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
                 item {
                     ProductForm(
                         state = productForm,

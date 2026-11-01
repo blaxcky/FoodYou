@@ -32,4 +32,5 @@ data class ProductEntity(
     val isPackagePortionHidden: Boolean = false,
     @ColumnInfo(defaultValue = "0")
     val isServingPortionHidden: Boolean = false,
+    val preferredMealId: Long? = null,
 )

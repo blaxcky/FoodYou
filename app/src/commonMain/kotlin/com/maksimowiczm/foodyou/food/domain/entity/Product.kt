@@ -18,6 +18,7 @@ import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
  * @param source Source of the product.
  * @param isFavorite Whether the product is marked as a local favorite.
  * @param isQuickCapture Whether the product is available from the meal card quick-capture menu.
+ * @param preferredMealId Local default meal for new entries, or null for automatic selection.
  * @param nutritionFacts Nutrition facts of the product per 100g or 100ml, depending on whether the
  *   product is solid or liquid.
  */
@@ -37,6 +38,7 @@ data class Product(
     override val nutritionFacts: NutritionFacts,
     val isPackagePortionHidden: Boolean = false,
     val isServingPortionHidden: Boolean = false,
+    val preferredMealId: Long? = null,
 ) : Food {
     override val totalWeight: Double? = packageWeight
 

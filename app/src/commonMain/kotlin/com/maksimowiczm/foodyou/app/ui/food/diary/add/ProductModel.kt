@@ -21,6 +21,7 @@ internal data class ProductModel(
     override val totalWeight: Double?,
     override val servingWeight: Double?,
     val portions: List<ProductPortion> = emptyList(),
+    val preferredMealId: Long? = null,
 ) : FoodModel {
     constructor(
         product: Product
@@ -34,6 +35,7 @@ internal data class ProductModel(
         totalWeight = product.totalWeight,
         servingWeight = product.servingWeight,
         portions = product.portions,
+        preferredMealId = product.preferredMealId,
     )
 
     constructor(

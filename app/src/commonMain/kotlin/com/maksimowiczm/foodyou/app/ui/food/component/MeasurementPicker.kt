@@ -273,7 +273,13 @@ fun rememberMeasurementPickerState(
         rememberSaveable(selectedMeasurement, stateSaver = Measurement.Saver) {
             mutableStateOf(selectedMeasurement)
         }
+    // A restored user amount must not be replaced by the original suggestion.
+    var initialMeasurementApplied by rememberSaveable(
+        selectedMeasurement, totalWeight, servingWeight, isLiquid,
+    ) { mutableStateOf(false) }
     LaunchedEffect(selectedMeasurement, totalWeight, servingWeight, isLiquid) {
+        if (initialMeasurementApplied) return@LaunchedEffect
+        initialMeasurementApplied = true
         inputField.textFieldState.setTextAndPlaceCursorAtEnd(
             selectedMeasurement.rawValue.formatClipZeros()
         )

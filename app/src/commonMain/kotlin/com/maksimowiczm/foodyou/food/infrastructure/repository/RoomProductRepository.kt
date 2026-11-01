@@ -204,6 +204,7 @@ private fun ProductEntity.toModel(
         source = FoodSource(type = this.sourceType.toDomain(), url = this.sourceUrl),
         isFavorite = this.isFavorite,
         isQuickCapture = this.isQuickCapture,
+        preferredMealId = this.preferredMealId,
         isPackagePortionHidden = this.isPackagePortionHidden,
         isServingPortionHidden = this.isServingPortionHidden,
         nutritionFacts = this.toNutritionFacts(),
@@ -231,6 +232,7 @@ private fun Product.toEntity(): ProductEntity {
         isLiquid = isLiquid,
         isFavorite = isFavorite,
         isQuickCapture = isQuickCapture,
+        preferredMealId = preferredMealId,
         isPackagePortionHidden = isPackagePortionHidden,
         isServingPortionHidden = isServingPortionHidden,
     )

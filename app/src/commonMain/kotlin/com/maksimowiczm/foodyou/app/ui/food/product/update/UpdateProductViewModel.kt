@@ -17,6 +17,7 @@ import com.maksimowiczm.foodyou.food.domain.usecase.ResyncFddbProductUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductFavoriteUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetProductQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateProductUseCase
+import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
@@ -34,7 +35,11 @@ internal class UpdateProductViewModel(
     private val setProductFavoriteUseCase: SetProductFavoriteUseCase,
     private val setProductQuickCaptureUseCase: SetProductQuickCaptureUseCase,
     private val productId: FoodId.Product,
+    mealRepository: MealRepository,
 ) : ViewModel() {
+
+    val meals = mealRepository.observeMeals()
+        .stateIn(viewModelScope, WhileSubscribed(2_000), emptyList())
 
     val product =
         observeFoodUseCase
@@ -48,7 +53,7 @@ internal class UpdateProductViewModel(
     private val _isResyncing = MutableStateFlow(false)
     val isResyncing: StateFlow<Boolean> = _isResyncing.asStateFlow()
 
-    fun updateProduct(form: ProductFormState) {
+    fun updateProduct(form: ProductFormState, preferredMealId: Long?) {
         if (!form.isValid) {
             return
         }
@@ -68,6 +73,7 @@ internal class UpdateProductViewModel(
             updateProductUseCase
                 .update(
                     id = productId,
+                    preferredMealId = preferredMealId,
                     name = form.name.value,
                     brand = form.brand.value,
                     barcode = form.barcode.value,

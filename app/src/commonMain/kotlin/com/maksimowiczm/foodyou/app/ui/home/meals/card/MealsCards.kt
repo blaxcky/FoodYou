@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.home.meals.card
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -29,12 +29,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPicker
 import com.maksimowiczm.foodyou.app.ui.food.component.rememberMeasurementPickerState
+import com.maksimowiczm.foodyou.app.ui.food.diary.component.MealSelectionField
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsCardsLayout
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.selectInitialProductMealId
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -62,7 +64,7 @@ internal fun rememberMealsCardsState(
     val selectedQuickCaptureMeasurement by
         viewModel.selectedQuickCaptureMeasurement.collectAsStateWithLifecycle()
     var quickCaptureMealId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var selectedQuickCaptureProduct by remember { mutableStateOf<QuickCaptureProductModel?>(null) }
+    var selectedQuickCaptureProductId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(homeState.selectedDate, viewModel) { viewModel.setDate(homeState.selectedDate) }
 
@@ -71,35 +73,38 @@ internal fun rememberMealsCardsState(
             products = quickCaptureProducts,
             onDismissRequest = {
                 quickCaptureMealId = null
-                selectedQuickCaptureProduct = null
+                selectedQuickCaptureProductId = null
                 viewModel.selectQuickCaptureProduct(null)
             },
             onProductClick = { product ->
-                selectedQuickCaptureProduct = product
+                selectedQuickCaptureProductId = product.id.id
                 viewModel.selectQuickCaptureProduct(product)
             },
         )
     }
 
-    val product = selectedQuickCaptureProduct
+    val product = quickCaptureProducts.firstOrNull { it.id.id == selectedQuickCaptureProductId }
+    LaunchedEffect(product?.id) { viewModel.selectQuickCaptureProduct(product) }
     val measurement =
         selectedQuickCaptureMeasurement?.takeIf { it.productId == product?.id }?.measurement
     val mealId = quickCaptureMealId
-    if (product != null && measurement != null && mealId != null) {
+    if (product != null && measurement != null && mealId != null && !diaryMeals.isNullOrEmpty()) {
         QuickCaptureAmountDialog(
             product = product,
             suggestedMeasurement = measurement,
+            meals = diaryMeals.orEmpty().map { it.id to it.name },
+            requestedMealId = mealId,
             onDismissRequest = {
-                selectedQuickCaptureProduct = null
+                selectedQuickCaptureProductId = null
                 viewModel.selectQuickCaptureProduct(null)
             },
-            onSave = { selectedMeasurement ->
+            onSave = { selectedMeasurement, selectedMealId ->
                 viewModel.createQuickCaptureEntry(
                     product = product,
                     measurement = selectedMeasurement,
-                    mealId = mealId,
+                    mealId = selectedMealId,
                 )
-                selectedQuickCaptureProduct = null
+                selectedQuickCaptureProductId = null
                 quickCaptureMealId = null
                 viewModel.selectQuickCaptureProduct(null)
             },
@@ -188,12 +193,19 @@ private fun QuickCaptureSheet(
 }
 
 @Composable
-private fun QuickCaptureAmountDialog(
+internal fun QuickCaptureAmountDialog(
     product: QuickCaptureProductModel,
     suggestedMeasurement: Measurement,
     onDismissRequest: () -> Unit,
-    onSave: (Measurement) -> Unit,
+    onSave: (Measurement, Long) -> Unit,
+    meals: List<Pair<Long, String>>,
+    requestedMealId: Long,
 ) {
+    var selectedMealId by rememberSaveable(product.id.id) {
+        mutableStateOf(selectInitialProductMealId(
+            meals.map { it.first }, product.product.preferredMealId, requestedMealId,
+        ))
+    }
     val measurementPickerState =
         rememberMeasurementPickerState(
             suggestions = emptyList(),
@@ -208,8 +220,8 @@ private fun QuickCaptureAmountDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                onClick = { onSave(measurementPickerState.measurement) },
-                enabled = measurementPickerState.inputField.error == null,
+                onClick = { selectedMealId?.let { onSave(measurementPickerState.measurement, it) } },
+                enabled = measurementPickerState.inputField.error == null && meals.any { it.first == selectedMealId },
             ) {
                 Text(stringResource(Res.string.action_save))
             }
@@ -222,6 +234,11 @@ private fun QuickCaptureAmountDialog(
         title = { Text(product.headline) },
         text = {
             Column {
+                MealSelectionField(
+                    meals = meals,
+                    selectedMealId = selectedMealId,
+                    onSelect = { selectedMealId = it },
+                )
                 MeasurementPicker(
                     state = measurementPickerState,
                     modifier = Modifier.fillMaxWidth(),
