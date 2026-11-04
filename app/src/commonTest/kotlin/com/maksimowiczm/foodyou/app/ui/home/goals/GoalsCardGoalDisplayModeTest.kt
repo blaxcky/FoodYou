@@ -161,6 +161,69 @@ class GoalsCardGoalDisplayModeTest {
         )
     }
 
+    @Test
+    fun ringGoalZonesAreOrderedAlongTheNormalRing() {
+        val summaries = goalDisplaySummaries(optimizedGoal = 1935)
+
+        val zones =
+            gaugeGoalZones(
+                ringSummary = summaries.first { it.mode == GoalDisplayMode.Normal },
+                goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
+                netEnergy = 1900,
+            )
+
+        assertEquals(listOf(GoalDisplayMode.Diet, GoalDisplayMode.Optimized), zones.map { it.mode })
+        assertEquals(listOf(1800f / 2100f, 1935f / 2100f), zones.map { it.fraction })
+        assertEquals(listOf(-100, 35), zones.map { it.remaining })
+        assertEquals(listOf(true, false), zones.map { it.exceeded })
+    }
+
+    @Test
+    fun ringGoalZonesLeaveOutGoalsBeyondTheRing() {
+        val summaries = goalDisplaySummaries(optimizedGoal = 2250)
+
+        val zones =
+            gaugeGoalZones(
+                ringSummary = summaries.first { it.mode == GoalDisplayMode.Normal },
+                goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
+                netEnergy = 1200,
+            )
+
+        assertEquals(listOf(GoalDisplayMode.Diet), zones.map { it.mode })
+    }
+
+    @Test
+    fun ringGoalZonesExcludeTheRingsOwnMode() {
+        val summaries = goalDisplaySummaries(optimizedGoal = 1935)
+
+        val zones =
+            gaugeGoalZones(
+                ringSummary = summaries.first { it.mode == GoalDisplayMode.Optimized },
+                goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
+                netEnergy = 1200,
+            )
+
+        assertEquals(listOf(GoalDisplayMode.Diet), zones.map { it.mode })
+        assertEquals(1800f / 1935f, zones.single().fraction)
+    }
+
+    @Test
+    fun ringGoalZonesAreEmptyForANonPositiveRingGoal() {
+        val zones =
+            gaugeGoalZones(
+                ringSummary =
+                    GoalDisplaySummaryModel(
+                        mode = GoalDisplayMode.Normal,
+                        energyGoal = -300,
+                        showEnergyGoalValue = true,
+                    ),
+                goalSummaries = goalDisplaySummaries(optimizedGoal = 1935),
+                netEnergy = 0,
+            )
+
+        assertEquals(emptyList(), zones)
+    }
+
     private fun goalDisplaySummaries(
         optimizedAvailable: Boolean = true,
         dietAvailable: Boolean = true,

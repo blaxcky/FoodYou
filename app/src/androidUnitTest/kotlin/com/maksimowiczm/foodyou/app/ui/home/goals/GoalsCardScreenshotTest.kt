@@ -512,6 +512,36 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun ringGoalZonesPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-phone.png",
+            fixture = RingZonesFixture,
+            width = 414,
+            height = 340,
+        )
+    }
+
+    @Test
+    fun ringGoalZonesAllExceededPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-exceeded-phone.png",
+            fixture = RingZonesFixture.copy(energy = 2340, netEnergy = 2006),
+            width = 414,
+            height = 340,
+        )
+    }
+
+    @Test
+    fun ringGoalZonesOverGoalPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-over-goal-phone.png",
+            fixture = RingZonesFixture.copy(energy = 2650, netEnergy = 2316),
+            width = 414,
+            height = 340,
+        )
+    }
+
+    @Test
     fun supplementalLargeFont() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.supplemental-large-font.png",
@@ -707,6 +737,39 @@ class GoalsCardScreenshotTest {
                         GoalDisplaySummaryModel(
                             mode = GoalDisplayMode.Diet,
                             energyGoal = 1800,
+                            showEnergyGoalValue = true,
+                        ),
+                    ),
+            )
+
+        /** Diet and Optimized both below the Normal goal, with the Diet goal already exceeded. */
+        val RingZonesFixture =
+            ReferenceFixture.copy(
+                energy = 1982,
+                burnedEnergy = 334,
+                netEnergy = 1648,
+                energyGoal = 2100,
+                proteins = 59,
+                proteinsGoal = 189,
+                carbohydrates = 245,
+                carbohydratesGoal = 152,
+                fats = 98,
+                fatsGoal = 82,
+                goalDisplaySummaries =
+                    listOf(
+                        GoalDisplaySummaryModel(
+                            mode = GoalDisplayMode.Normal,
+                            energyGoal = 2100,
+                            showEnergyGoalValue = true,
+                        ),
+                        GoalDisplaySummaryModel(
+                            mode = GoalDisplayMode.Optimized,
+                            energyGoal = 1935,
+                            showEnergyGoalValue = true,
+                        ),
+                        GoalDisplaySummaryModel(
+                            mode = GoalDisplayMode.Diet,
+                            energyGoal = 1165,
                             showEnergyGoalValue = true,
                         ),
                     ),

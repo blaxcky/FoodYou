@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.outlined.LocalFireDepartment as OutlinedLocalFireDepartment
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -48,9 +49,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -64,6 +69,7 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -139,6 +145,9 @@ internal val GoalsErrorColor = Color(0xFFC51F1F)
 private val NormalGoalComparisonBorderColor = Color(0xFFDADCE0)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 internal val DietGoalAccentColor = Color(0xFFC98A00)
+
+/** The ring section up to the Optimized goal; much lighter than the deep-blue Normal section. */
+private val OptimizedGoalZoneColor = Color(0xFF4FA9DB)
 private val DietGoalReachedTextColor = Color(0xFF2E7D32)
 private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
 private val WeeklyOverGoalBarColor = Color(0xFFC57484)
@@ -369,6 +378,12 @@ internal fun GoalsCard(
                 if (goalCardModeSwitchingEnabled) displayedGoalCardView.toGoalDisplayMode()
                 else GoalDisplayMode.Normal,
             goalDisplaySummaries = summaries,
+            ringGoalSummaries =
+                if (supplementalGoalsEnabled) {
+                    summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled)
+                } else {
+                    emptyList()
+                },
             todayRemainingEnergy = todayRemainingEnergy,
             todayEnergyGoalEditable = todayEnergyGoalEditable,
             onTodayEnergyGoalClick = onTodayEnergyGoalClick,
@@ -386,17 +401,6 @@ internal fun GoalsCard(
                 proteinsProgress = proteinsProgress,
                 carbsProgress = carbsProgress,
                 fatsProgress = fatsProgress,
-            )
-        }
-
-        val supplementalSummaries =
-            summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled)
-        if (supplementalGoalsEnabled && supplementalSummaries.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            SupplementalGoalsCard(
-                netEnergy = netEnergy,
-                summaries = supplementalSummaries,
-                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -1200,6 +1204,7 @@ private fun CaloriesOverview(
     showEnergyGoalValue: Boolean,
     goalDisplayMode: GoalDisplayMode,
     goalDisplaySummaries: List<GoalDisplaySummaryModel>,
+    ringGoalSummaries: List<GoalDisplaySummaryModel> = emptyList(),
     todayRemainingEnergy: Int? = null,
     todayEnergyGoalEditable: Boolean = false,
     onTodayEnergyGoalClick: () -> Unit = {},
@@ -1222,6 +1227,14 @@ private fun CaloriesOverview(
         }
     val selectedIndex = summaries.indexOfFirst { it.mode == goalDisplayMode }.coerceAtLeast(0)
     val currentSummary = summaries[selectedIndex]
+    val goalZones =
+        remember(currentSummary, ringGoalSummaries, netEnergy) {
+            gaugeGoalZones(
+                ringSummary = currentSummary,
+                goalSummaries = ringGoalSummaries,
+                netEnergy = netEnergy,
+            )
+        }
 
     CaloriesOverviewPageCard(
         energy = energy,
@@ -1229,6 +1242,7 @@ private fun CaloriesOverview(
         burnedEnergyDelta = burnedEnergyDelta,
         netEnergy = netEnergy,
         summary = currentSummary,
+        goalZones = goalZones,
         todayRemainingEnergy = todayRemainingEnergy.takeIf {
             currentSummary.mode == GoalDisplayMode.Normal
         },
@@ -1242,99 +1256,126 @@ private fun CaloriesOverview(
     )
 }
 
-@Composable
-private fun SupplementalGoalsCard(
+/**
+ * A supplemental goal (Optimized or Diet) that splits the energy ring into sections. The ring
+ * keeps its own goal as the full sweep; [fraction] is where this goal's section ends on it.
+ */
+@Immutable
+internal data class GaugeGoalZone(
+    val mode: GoalDisplayMode,
+    val fraction: Float,
+    val remaining: Int,
+) {
+    val exceeded: Boolean
+        get() = remaining < 0
+}
+
+/**
+ * The supplemental goals that fit on the ring of [ringSummary], ordered along the ring. A goal at
+ * or above the ring's own goal has no place on the ring, so it is left out.
+ */
+internal fun gaugeGoalZones(
+    ringSummary: GoalDisplaySummaryModel,
+    goalSummaries: List<GoalDisplaySummaryModel>,
     netEnergy: Int,
-    summaries: List<GoalDisplaySummaryModel>,
+): List<GaugeGoalZone> {
+    val ringGoal = ringSummary.percentageEnergyGoal
+    if (ringSummary.energyGoal <= 0 || ringGoal <= 0) return emptyList()
+    return goalSummaries
+        .filter { it.mode != ringSummary.mode && it.mode != GoalDisplayMode.Normal }
+        .filter { it.energyGoal in 1 until ringGoal }
+        .sortedBy { it.energyGoal }
+        .map {
+            GaugeGoalZone(
+                mode = it.mode,
+                fraction = it.energyGoal.toFloat() / ringGoal,
+                remaining = it.energyGoal - netEnergy,
+            )
+        }
+}
+
+private fun GoalDisplayMode.goalZoneColor(): Color =
+    when (this) {
+        GoalDisplayMode.Normal -> GoalsProgressColor
+        GoalDisplayMode.Optimized -> OptimizedGoalZoneColor
+        GoalDisplayMode.Diet -> DietGoalAccentColor
+    }
+
+/** The unfilled ring under a goal section: its color faintly tinted onto the card. */
+private fun GoalDisplayMode.goalZoneTrackColor(): Color =
+    lerp(GoalsCardColor, goalZoneColor(), 0.22f)
+
+/** Places each zone's value just inside the ring, next to the marker at the zone's boundary. */
+@Composable
+private fun GaugeGoalZoneLabels(
+    zones: List<GaugeGoalZone>,
+    diameter: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val labelStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
-    val valueStyle = labelStyle.copy(fontFamily = interNumberFontFamily())
-
-    FoodYouHomeCard(
+    Layout(
+        content = { zones.forEach { GaugeGoalZoneLabel(it) } },
         modifier = modifier,
-        color = GoalsCardColor,
-        shape = GoalsCardShape,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
-            summaries.forEachIndexed { index, summary ->
-                if (index > 0) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        color = GoalsTrackColor,
-                    )
-                }
-                SupplementalGoalRow(
-                    netEnergy = netEnergy,
-                    summary = summary,
-                    labelStyle = labelStyle,
-                    valueStyle = valueStyle,
-                )
+    ) { measurables, constraints ->
+        val placeables = measurables.map { it.measure(Constraints()) }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            val radius = diameter.toPx() / 2f
+            val centerX = constraints.maxWidth / 2f
+            val centerY = GaugeStrokeWidth.toPx() / 2f + radius
+            val labelRadius = radius - GaugeZoneLabelInset.toPx()
+            placeables.forEachIndexed { index, placeable ->
+                val radians = gaugeAngle(zones[index].fraction).toDouble() * PI / 180.0
+                val x = centerX + labelRadius * cos(radians).toFloat() - placeable.width / 2f
+                val y = centerY + labelRadius * sin(radians).toFloat() - placeable.height / 2f
+                placeable.place(x.roundToInt(), y.roundToInt())
             }
         }
     }
 }
 
-/** Label and remaining value share one line; the progress bar below spans the full width. */
+/**
+ * The remaining energy to a supplemental goal. Above the goal the value turns red and gets a
+ * warning sign instead of a plus, so the overshoot does not rely on color alone.
+ */
 @Composable
-private fun SupplementalGoalRow(
-    netEnergy: Int,
-    summary: GoalDisplaySummaryModel,
-    labelStyle: TextStyle,
-    valueStyle: TextStyle,
-    modifier: Modifier = Modifier,
-) {
+private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
     val energyFormatter = LocalEnergyFormatter.current
-    val remaining = summary.energyGoal - netEnergy
-    val overflow = remaining < 0
-    val accentColor = summary.mode.accentColor()
-    val calorieProgress =
-        calorieGoalProgress(netEnergy, summary.energyGoal, summary.percentageEnergyGoal)
+    val value = energyFormatter.formatEnergy(abs(zone.remaining), withSuffix = false).groupDigits()
     val label =
         stringResource(
-            if (summary.mode == GoalDisplayMode.Optimized) {
+            if (zone.mode == GoalDisplayMode.Optimized) {
                 Res.string.label_optimized
             } else {
                 Res.string.label_diet
             }
         )
-    val value =
-        "${energyFormatter.formatEnergy(abs(remaining), withSuffix = false).groupDigits()} " +
-            stringResource(Res.string.unit_kcal) +
-            " " +
-            stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
+    val status = stringResource(if (zone.exceeded) Res.string.goal_too_much else Res.string.goal_left)
+    val description = "$label: $value ${stringResource(Res.string.unit_kcal)} $status"
+    val color = if (zone.exceeded) GoalsErrorColor else GoalsMutedTextColor
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                modifier = Modifier.weight(1f),
-                color = accentColor,
-                style = labelStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = value,
-                color = if (overflow) GoalsErrorColor else GoalsTextColor,
-                style = valueStyle,
-                textAlign = TextAlign.End,
-                maxLines = 1,
+    Row(
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (zone.exceeded) {
+            Icon(
+                imageVector = Icons.Outlined.WarningAmber,
+                contentDescription = null,
+                tint = GoalsErrorColor,
+                modifier = Modifier.size(13.dp),
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        MacroProgressBar(
-            progress = calorieProgress.progress,
-            trackColor = GoalsTrackColor,
-            color = accentColor,
-            overflow = overflow,
-            overflowProgress = calorieProgress.overflowProgress,
-            overflowGapWidth = 2.dp,
-            modifier = Modifier.fillMaxWidth(),
+        Text(
+            text = value,
+            color = color,
+            style =
+                MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = interNumberFontFamily(),
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                ),
+            fontWeight = if (zone.exceeded) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }
@@ -1346,6 +1387,7 @@ private fun CaloriesOverviewPageCard(
     burnedEnergyDelta: Int?,
     netEnergy: Int,
     summary: GoalDisplaySummaryModel,
+    goalZones: List<GaugeGoalZone> = emptyList(),
     todayRemainingEnergy: Int? = null,
     todayEnergyGoalEditable: Boolean = false,
     onTodayEnergyGoalClick: () -> Unit = {},
@@ -1381,6 +1423,7 @@ private fun CaloriesOverviewPageCard(
                     burnedEnergyDelta = burnedEnergyDelta,
                     netEnergy = netEnergy,
                     summary = summary,
+                    goalZones = goalZones,
                     todayRemainingEnergy = todayRemainingEnergy,
                     todayEnergyGoalEditable = todayEnergyGoalEditable,
                     onTodayEnergyGoalClick = onTodayEnergyGoalClick,
@@ -1399,6 +1442,7 @@ private fun CaloriesOverviewPage(
     burnedEnergyDelta: Int?,
     netEnergy: Int,
     summary: GoalDisplaySummaryModel,
+    goalZones: List<GaugeGoalZone> = emptyList(),
     todayRemainingEnergy: Int? = null,
     todayEnergyGoalEditable: Boolean = false,
     onTodayEnergyGoalClick: () -> Unit = {},
@@ -1464,6 +1508,7 @@ private fun CaloriesOverviewPage(
                         progress = progress,
                         overflowProgress = overflowProgress,
                         progressColor = summary.mode.accentColor(),
+                        goalZones = goalZones,
                         valueColor = valueColor,
                         labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
                         diameter = gaugeDiameter,
@@ -1558,6 +1603,7 @@ private fun CaloriesOverviewPage(
                         progress = progress,
                         overflowProgress = overflowProgress,
                         progressColor = summary.mode.accentColor(),
+                        goalZones = goalZones,
                         valueColor = valueColor,
                         labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
                         diameter = gaugeDiameter,
@@ -2035,6 +2081,7 @@ private fun GaugeMetric(
     labelColor: Color = GoalsMutedTextColor,
     diameter: Dp,
     modifier: Modifier = Modifier,
+    goalZones: List<GaugeGoalZone> = emptyList(),
     supportingLabel: String? = null,
     supportingText: String? = null,
     supportingColor: Color = GoalsMutedTextColor,
@@ -2050,8 +2097,16 @@ private fun GaugeMetric(
             overflowProgress = overflowProgress,
             progressColor = progressColor,
             diameter = diameter,
+            goalZones = goalZones,
             modifier = Modifier.size(width = diameter, height = diameter - 7.dp),
         )
+        if (goalZones.isNotEmpty()) {
+            GaugeGoalZoneLabels(
+                zones = goalZones,
+                diameter = diameter,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
 
         Column(
             modifier = Modifier.offset(y = diameter * 0.35f),
@@ -2116,6 +2171,17 @@ private fun GaugeMetric(
     }
 }
 
+private val GaugeStrokeWidth = 10.dp
+
+/** Distance from the ring's center line to the center of a goal zone's value label. */
+private val GaugeZoneLabelInset = 21.dp
+private val GaugeZoneMarkerRadius = 6.5.dp
+private val GaugeZoneMarkerDotRadius = 3.5.dp
+private const val GaugeGapAngle = 2.5f
+
+/** The ring starts bottom left at 135° and sweeps 270° clockwise to the bottom right. */
+private fun gaugeAngle(fraction: Float): Float = 135f + 270f * fraction
+
 @Composable
 private fun SemiCircleGauge(
     progress: Float,
@@ -2123,10 +2189,21 @@ private fun SemiCircleGauge(
     progressColor: Color,
     diameter: Dp,
     modifier: Modifier = Modifier,
+    goalZones: List<GaugeGoalZone> = emptyList(),
 ) {
-    val visibleOverflowGapAngle = 2.5f
+    val visibleOverflowGapAngle = GaugeGapAngle
     Canvas(modifier = modifier) {
-        val strokeWidth = 10.dp.toPx()
+        if (goalZones.isNotEmpty()) {
+            drawZonedGauge(
+                progress = progress,
+                overflowProgress = overflowProgress,
+                progressColor = progressColor,
+                diameter = diameter.toPx(),
+                zones = goalZones,
+            )
+            return@Canvas
+        }
+        val strokeWidth = GaugeStrokeWidth.toPx()
         val arcDiameter = diameter.toPx()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
@@ -2222,6 +2299,113 @@ private fun SemiCircleGauge(
                 )
             }
         }
+    }
+}
+
+/**
+ * The same ring as [SemiCircleGauge], split into one section per goal zone and a final section up
+ * to the ring's own goal. Each section is filled in its goal's color and separated by a small gap;
+ * a marker on each boundary turns red once that goal is exceeded.
+ */
+private fun DrawScope.drawZonedGauge(
+    progress: Float,
+    overflowProgress: Float,
+    progressColor: Color,
+    diameter: Float,
+    zones: List<GaugeGoalZone>,
+) {
+    val strokeWidth = GaugeStrokeWidth.toPx()
+    val topLeft = Offset(x = (size.width - diameter) / 2f, y = strokeWidth / 2f)
+    val arcSize = Size(width = diameter, height = diameter)
+    val center = Offset(topLeft.x + diameter / 2f, topLeft.y + diameter / 2f)
+    val radius = diameter / 2f
+    val halfGap = GaugeGapAngle / 2f
+
+    fun arcPoint(angle: Float): Offset {
+        val radians = angle.toDouble() * PI / 180.0
+        return Offset(
+            x = center.x + radius * cos(radians).toFloat(),
+            y = center.y + radius * sin(radians).toFloat(),
+        )
+    }
+
+    fun arc(color: Color, startAngle: Float, endAngle: Float) {
+        if (endAngle <= startAngle) return
+        drawArc(
+            color = color,
+            startAngle = startAngle,
+            sweepAngle = endAngle - startAngle,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
+        )
+    }
+
+    val boundaries = zones.map { it.fraction.coerceIn(0f, 1f) }
+    val starts = listOf(0f) + boundaries
+    val ends = boundaries + 1f
+    val lastIndex = ends.lastIndex
+    val colors = zones.map { it.mode.goalZoneColor() } + progressColor
+    val trackColors = zones.map { it.mode.goalZoneTrackColor() } + GoalsTrackColor
+
+    fun sectionStart(index: Int): Float = gaugeAngle(starts[index]) + if (index > 0) halfGap else 0f
+
+    fun sectionEnd(index: Int): Float =
+        gaugeAngle(ends[index]) - if (index < lastIndex) halfGap else 0f
+
+    for (index in 0..lastIndex) {
+        arc(trackColors[index], sectionStart(index), sectionEnd(index))
+    }
+    drawCircle(trackColors.first(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
+    drawCircle(trackColors.last(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(1f)))
+
+    val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
+    val visibleProgress =
+        if (coercedOverflowProgress > 0f) 1f - coercedOverflowProgress else progress.coerceIn(0f, 1f)
+    val overflowGap =
+        if (visibleProgress > 0f && coercedOverflowProgress > 0f) {
+            GaugeGapAngle.coerceAtMost(270f * visibleProgress)
+        } else {
+            0f
+        }
+    val progressEndAngle = gaugeAngle(visibleProgress) - overflowGap
+
+    if (visibleProgress > 0f) {
+        drawCircle(colors.first(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
+        for (index in 0..lastIndex) {
+            if (visibleProgress <= starts[index]) break
+            val end =
+                if (visibleProgress >= ends[index]) sectionEnd(index)
+                else gaugeAngle(visibleProgress)
+            arc(colors[index], sectionStart(index), minOf(end, progressEndAngle))
+        }
+        if (coercedOverflowProgress == 0f) {
+            val section = ends.indexOfFirst { visibleProgress <= it }.coerceAtLeast(0)
+            drawCircle(
+                color = colors[section],
+                radius = strokeWidth / 2f,
+                center = arcPoint(gaugeAngle(visibleProgress)),
+            )
+        }
+    }
+
+    if (coercedOverflowProgress > 0f) {
+        arc(GoalsErrorColor, gaugeAngle(visibleProgress), gaugeAngle(1f))
+        drawCircle(GoalsErrorColor, radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(1f)))
+        if (overflowGap == 0f) {
+            drawCircle(GoalsErrorColor, radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
+        }
+    }
+
+    zones.forEach { zone ->
+        val point = arcPoint(gaugeAngle(zone.fraction.coerceIn(0f, 1f)))
+        drawCircle(GoalsCardColor, radius = GaugeZoneMarkerRadius.toPx(), center = point)
+        drawCircle(
+            color = if (zone.exceeded) GoalsErrorColor else zone.mode.goalZoneColor(),
+            radius = GaugeZoneMarkerDotRadius.toPx(),
+            center = point,
+        )
     }
 }
 

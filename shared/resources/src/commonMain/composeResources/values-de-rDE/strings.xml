@@ -699,8 +699,8 @@
     <string name="error_portion_amount_invalid">Menge größer als 0 eingeben</string>
     <string name="goal_card_mode_switching_title">Modus-Umschaltung anzeigen</string>
     <string name="goal_card_mode_switching_description">Zeigt Modusname und Knöpfe über der Zielkarte. Ausgeblendet verwendet die Karte Normal.</string>
-    <string name="supplemental_goals_title">Zusätzliche Zielbalken anzeigen</string>
-    <string name="supplemental_goals_description">Zeigt die Ziele für Optimiert und Diät unter der großen Karte, sofern verfügbar.</string>
+    <string name="supplemental_goals_title">Optimiert und Diät im Ring anzeigen</string>
+    <string name="supplemental_goals_description">Markiert die Ziele für Optimiert und Diät als Abschnitte im Kalorienring, sofern verfügbar.</string>
     <string name="headline_quick_add_csv_help">CSV importieren</string>
     <string name="description_quick_add_csv_help">Füge die folgende Kopfzeile und genau eine Datenzeile ein und tippe auf Übernehmen. Trenne Spalten mit Kommas und verwende einen Punkt für Dezimalzahlen. Energie ist immer in kcal; Eiweiß, Kohlenhydrate und Fett sind in Gramm. Beispiel:</string>
     <string name="example_quick_add_csv">name,energy,proteins,carbohydrates,fats\nJoghurt,150,10,20,3.5</string>
