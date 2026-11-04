@@ -124,6 +124,7 @@ kotlin {
         }
 
         androidUnitTest.dependencies {
+            implementation("androidx.work:work-testing:2.11.0")
             implementation(libs.androidx.testCore)
             implementation(libs.androidx.testExt.junit)
             implementation(libs.jetbrains.compose.ui.test.junit4)

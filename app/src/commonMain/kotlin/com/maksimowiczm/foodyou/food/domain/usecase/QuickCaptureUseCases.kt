@@ -68,12 +68,26 @@ class SaveQuickCaptureEntryUseCase(
     }
 }
 
+fun interface QuickCapturePhotoAnalysisScheduler {
+    suspend fun schedule(photoId: Long)
+}
+
 class CaptureQuickCapturePhotoUseCase(
     private val repository: QuickCaptureRepository,
     private val dateProvider: DateProvider,
+    private val analysisScheduler: QuickCapturePhotoAnalysisScheduler,
 ) {
-    suspend fun capture(photoPath: String): Long =
-        repository.capturePhoto(photoPath, dateProvider.nowInstant())
+    suspend fun capture(photoPath: String): Long {
+        val id = repository.capturePhoto(photoPath, dateProvider.nowInstant())
+        try {
+            analysisScheduler.schedule(id)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The photo is saved. Startup reconciliation repairs an interrupted enqueue.
+        }
+        return id
+    }
 }
 
 class ProcessQuickCapturePhotoUseCase(
