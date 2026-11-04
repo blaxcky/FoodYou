@@ -542,6 +542,26 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun ringGoalZonesFarOverGoalPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-far-over-goal-phone.png",
+            fixture = RingZonesFixture.copy(energy = 3502, burnedEnergy = 537, netEnergy = 2965),
+            width = 414,
+            height = 340,
+        )
+    }
+
+    @Test
+    fun ringGoalZonesDayStartPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-day-start-phone.png",
+            fixture = RingZonesFixture.copy(energy = 0, burnedEnergy = 0, netEnergy = 0),
+            width = 414,
+            height = 340,
+        )
+    }
+
+    @Test
     fun supplementalLargeFont() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.supplemental-large-font.png",

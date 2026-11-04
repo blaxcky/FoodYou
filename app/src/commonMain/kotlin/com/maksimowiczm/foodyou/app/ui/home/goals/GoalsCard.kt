@@ -1305,7 +1305,11 @@ private fun GoalDisplayMode.goalZoneColor(): Color =
 private fun GoalDisplayMode.goalZoneTrackColor(): Color =
     lerp(GoalsCardColor, goalZoneColor(), 0.22f)
 
-/** Places each zone's value just inside the ring, next to the marker at the zone's boundary. */
+/**
+ * Places each zone's value inside the ring, next to the marker at the zone's boundary. The label's
+ * edge facing the ring keeps the same clearance whatever its size, so a wide four-digit value moves
+ * further in instead of running into the ring.
+ */
 @Composable
 private fun GaugeGoalZoneLabels(
     zones: List<GaugeGoalZone>,
@@ -1321,11 +1325,16 @@ private fun GaugeGoalZoneLabels(
             val radius = diameter.toPx() / 2f
             val centerX = constraints.maxWidth / 2f
             val centerY = GaugeStrokeWidth.toPx() / 2f + radius
-            val labelRadius = radius - GaugeZoneLabelInset.toPx()
+            val clearance = GaugeZoneLabelClearance.toPx()
             placeables.forEachIndexed { index, placeable ->
                 val radians = gaugeAngle(zones[index].fraction).toDouble() * PI / 180.0
-                val x = centerX + labelRadius * cos(radians).toFloat() - placeable.width / 2f
-                val y = centerY + labelRadius * sin(radians).toFloat() - placeable.height / 2f
+                val cos = cos(radians).toFloat()
+                val sin = sin(radians).toFloat()
+                // Half the label's extent along the radius, from its center to the ring side.
+                val halfExtent = abs(cos) * placeable.width / 2f + abs(sin) * placeable.height / 2f
+                val labelRadius = radius - clearance - halfExtent
+                val x = centerX + labelRadius * cos - placeable.width / 2f
+                val y = centerY + labelRadius * sin - placeable.height / 2f
                 placeable.place(x.roundToInt(), y.roundToInt())
             }
         }
@@ -1339,7 +1348,12 @@ private fun GaugeGoalZoneLabels(
 @Composable
 private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
     val energyFormatter = LocalEnergyFormatter.current
-    val value = energyFormatter.formatEnergy(abs(zone.remaining), withSuffix = false).groupDigits()
+    // A narrow no-break space keeps four-digit values compact and on one line.
+    val value =
+        energyFormatter
+            .formatEnergy(abs(zone.remaining), withSuffix = false)
+            .groupDigits()
+            .replace(' ', ' ')
     val label =
         stringResource(
             if (zone.mode == GoalDisplayMode.Optimized) {
@@ -1354,7 +1368,7 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
 
     Row(
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (zone.exceeded) {
@@ -1362,7 +1376,7 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
                 imageVector = Icons.Outlined.WarningAmber,
                 contentDescription = null,
                 tint = GoalsErrorColor,
-                modifier = Modifier.size(13.dp),
+                modifier = Modifier.size(12.dp),
             )
         }
         Text(
@@ -1371,7 +1385,8 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontFamily = interNumberFontFamily(),
-                    fontSize = 12.sp,
+                    // Four digits would crowd the ring's center, so only those get smaller.
+                    fontSize = if (abs(zone.remaining) >= 1000) 10.sp else 12.sp,
                     lineHeight = 14.sp,
                 ),
             fontWeight = if (zone.exceeded) FontWeight.SemiBold else FontWeight.Medium,
@@ -2173,8 +2188,8 @@ private fun GaugeMetric(
 
 private val GaugeStrokeWidth = 10.dp
 
-/** Distance from the ring's center line to the center of a goal zone's value label. */
-private val GaugeZoneLabelInset = 21.dp
+/** Gap between the ring's center line and the nearest edge of a goal zone's value label. */
+private val GaugeZoneLabelClearance = 10.dp
 private val GaugeZoneMarkerRadius = 6.5.dp
 private val GaugeZoneMarkerDotRadius = 3.5.dp
 private const val GaugeGapAngle = 2.5f
@@ -2191,7 +2206,6 @@ private fun SemiCircleGauge(
     modifier: Modifier = Modifier,
     goalZones: List<GaugeGoalZone> = emptyList(),
 ) {
-    val visibleOverflowGapAngle = GaugeGapAngle
     Canvas(modifier = modifier) {
         if (goalZones.isNotEmpty()) {
             drawZonedGauge(
@@ -2207,105 +2221,37 @@ private fun SemiCircleGauge(
         val arcDiameter = diameter.toPx()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
-        val center = Offset(topLeft.x + arcDiameter / 2f, topLeft.y + arcDiameter / 2f)
-        val radius = arcDiameter / 2f
 
-        fun arcPoint(angle: Float): Offset {
-            val radians = angle.toDouble() * PI / 180.0
-            return Offset(
-                x = center.x + radius * cos(radians).toFloat(),
-                y = center.y + radius * sin(radians).toFloat(),
-            )
-        }
-
+        // Above the goal the whole ring turns red instead of eating back into the progress.
+        val overGoal = overflowProgress > 0f
         drawArc(
-            color = GoalsTrackColor,
-            startAngle = 135f,
+            color = if (overGoal) GoalsErrorColor else GoalsTrackColor,
+            startAngle = gaugeAngle(0f),
             sweepAngle = 270f,
             useCenter = false,
             topLeft = topLeft,
             size = arcSize,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
-        val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
-        val visibleProgress =
-            if (coercedOverflowProgress > 0f) {
-                1f - coercedOverflowProgress
-            } else {
-                progress.coerceIn(0f, 1f)
-            }
-        val progressSweepAngle = 270f * visibleProgress
-        val progressOverflowGap =
-            if (visibleProgress > 0f && coercedOverflowProgress > 0f) {
-                visibleOverflowGapAngle.coerceAtMost(progressSweepAngle)
-            } else {
-                0f
-            }
-        val hasOverflowGap = progressOverflowGap > 0f
-        val progressDrawSweepAngle = progressSweepAngle - progressOverflowGap
-        if (hasOverflowGap) {
-            drawArc(
-                color = GoalsCardColor,
-                startAngle = 135f + progressDrawSweepAngle,
-                sweepAngle = progressOverflowGap,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
-            )
-        }
-        if (progressDrawSweepAngle > 0f) {
+        val progressSweepAngle = 270f * progress.coerceIn(0f, 1f)
+        if (!overGoal && progressSweepAngle > 0f) {
             drawArc(
                 color = progressColor,
-                startAngle = 135f,
-                sweepAngle = progressDrawSweepAngle,
+                startAngle = gaugeAngle(0f),
+                sweepAngle = progressSweepAngle,
                 useCenter = false,
                 topLeft = topLeft,
                 size = arcSize,
-                style =
-                    Stroke(
-                        width = strokeWidth,
-                        cap = if (hasOverflowGap) StrokeCap.Butt else StrokeCap.Round,
-                    ),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
             )
-            if (hasOverflowGap) {
-                drawCircle(
-                    color = progressColor,
-                    radius = strokeWidth / 2f,
-                    center = arcPoint(135f),
-                )
-            }
-        }
-        if (coercedOverflowProgress > 0f) {
-            val overflowSweepAngle = 270f * coercedOverflowProgress
-            drawArc(
-                color = GoalsErrorColor,
-                startAngle = 45f - overflowSweepAngle,
-                sweepAngle = overflowSweepAngle,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style =
-                    Stroke(
-                        width = strokeWidth,
-                        cap = if (hasOverflowGap) StrokeCap.Butt else StrokeCap.Round,
-                    ),
-            )
-            if (hasOverflowGap) {
-                drawCircle(
-                    color = GoalsErrorColor,
-                    radius = strokeWidth / 2f,
-                    center = arcPoint(45f),
-                )
-            }
         }
     }
 }
 
 /**
  * The same ring as [SemiCircleGauge], split into one section per goal zone and a final section up
- * to the ring's own goal. Each section is filled in its goal's color and separated by a small gap;
- * a marker on each boundary turns red once that goal is exceeded.
+ * to the ring's own goal. Each section is filled in its goal's color and separated by a small gap,
+ * with a marker on each boundary.
  */
 private fun DrawScope.drawZonedGauge(
     progress: Float,
@@ -2360,27 +2306,28 @@ private fun DrawScope.drawZonedGauge(
     drawCircle(trackColors.first(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
     drawCircle(trackColors.last(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(1f)))
 
-    val coercedOverflowProgress = overflowProgress.coerceIn(0f, 1f)
-    val visibleProgress =
-        if (coercedOverflowProgress > 0f) 1f - coercedOverflowProgress else progress.coerceIn(0f, 1f)
-    val overflowGap =
-        if (visibleProgress > 0f && coercedOverflowProgress > 0f) {
-            GaugeGapAngle.coerceAtMost(270f * visibleProgress)
-        } else {
-            0f
-        }
-    val progressEndAngle = gaugeAngle(visibleProgress) - overflowGap
-
-    if (visibleProgress > 0f) {
-        drawCircle(colors.first(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
-        for (index in 0..lastIndex) {
-            if (visibleProgress <= starts[index]) break
-            val end =
-                if (visibleProgress >= ends[index]) sectionEnd(index)
-                else gaugeAngle(visibleProgress)
-            arc(colors[index], sectionStart(index), minOf(end, progressEndAngle))
-        }
-        if (coercedOverflowProgress == 0f) {
+    if (overflowProgress > 0f) {
+        // Above the ring's own goal the whole ring turns red; the markers keep the sections.
+        drawArc(
+            color = GoalsErrorColor,
+            startAngle = gaugeAngle(0f),
+            sweepAngle = 270f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+        )
+    } else {
+        val visibleProgress = progress.coerceIn(0f, 1f)
+        if (visibleProgress > 0f) {
+            drawCircle(colors.first(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
+            for (index in 0..lastIndex) {
+                if (visibleProgress <= starts[index]) break
+                val end =
+                    if (visibleProgress >= ends[index]) sectionEnd(index)
+                    else gaugeAngle(visibleProgress)
+                arc(colors[index], sectionStart(index), end)
+            }
             val section = ends.indexOfFirst { visibleProgress <= it }.coerceAtLeast(0)
             drawCircle(
                 color = colors[section],
@@ -2390,19 +2337,12 @@ private fun DrawScope.drawZonedGauge(
         }
     }
 
-    if (coercedOverflowProgress > 0f) {
-        arc(GoalsErrorColor, gaugeAngle(visibleProgress), gaugeAngle(1f))
-        drawCircle(GoalsErrorColor, radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(1f)))
-        if (overflowGap == 0f) {
-            drawCircle(GoalsErrorColor, radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
-        }
-    }
-
+    // The markers keep their section's color; an exceeded goal shows in its red label instead.
     zones.forEach { zone ->
         val point = arcPoint(gaugeAngle(zone.fraction.coerceIn(0f, 1f)))
         drawCircle(GoalsCardColor, radius = GaugeZoneMarkerRadius.toPx(), center = point)
         drawCircle(
-            color = if (zone.exceeded) GoalsErrorColor else zone.mode.goalZoneColor(),
+            color = zone.mode.goalZoneColor(),
             radius = GaugeZoneMarkerDotRadius.toPx(),
             center = point,
         )
