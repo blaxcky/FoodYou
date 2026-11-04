@@ -1365,6 +1365,8 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
     val status = stringResource(if (zone.exceeded) Res.string.goal_too_much else Res.string.goal_left)
     val description = "$label: $value ${stringResource(Res.string.unit_kcal)} $status"
     val color = if (zone.exceeded) GoalsErrorColor else GoalsMutedTextColor
+    // Four digits would crowd the ring's center, so those labels get smaller as a whole.
+    val fourDigits = abs(zone.remaining) >= 1000
 
     Row(
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
@@ -1376,7 +1378,7 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
                 imageVector = Icons.Outlined.WarningAmber,
                 contentDescription = null,
                 tint = GoalsErrorColor,
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(if (fourDigits) 10.dp else 12.dp),
             )
         }
         Text(
@@ -1385,8 +1387,7 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontFamily = interNumberFontFamily(),
-                    // Four digits would crowd the ring's center, so only those get smaller.
-                    fontSize = if (abs(zone.remaining) >= 1000) 10.sp else 12.sp,
+                    fontSize = if (fourDigits) 10.sp else 12.sp,
                     lineHeight = 14.sp,
                 ),
             fontWeight = if (zone.exceeded) FontWeight.SemiBold else FontWeight.Medium,
