@@ -1378,7 +1378,7 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
                 imageVector = Icons.Outlined.WarningAmber,
                 contentDescription = null,
                 tint = GoalsErrorColor,
-                modifier = Modifier.size(if (fourDigits) 6.dp else 8.dp),
+                modifier = Modifier.size(if (fourDigits) 7.dp else 8.dp),
             )
         }
         Text(
@@ -1387,8 +1387,8 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontFamily = interNumberFontFamily(),
-                    fontSize = if (fourDigits) 6.sp else 8.sp,
-                    lineHeight = if (fourDigits) 8.sp else 10.sp,
+                    fontSize = if (fourDigits) 7.sp else 8.sp,
+                    lineHeight = if (fourDigits) 9.sp else 10.sp,
                 ),
             fontWeight = if (zone.exceeded) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,
