@@ -552,6 +552,16 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun ringGoalZonesJustOverGoalPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-just-over-goal-phone.png",
+            fixture = RingZonesFixture.copy(energy = 2483, netEnergy = 2149),
+            width = 414,
+            height = 340,
+        )
+    }
+
+    @Test
     fun ringGoalZonesDayStartPhone() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-day-start-phone.png",
