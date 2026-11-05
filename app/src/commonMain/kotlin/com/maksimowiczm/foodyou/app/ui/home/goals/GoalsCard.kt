@@ -155,6 +155,9 @@ internal val DietGoalAccentColor = Color(0xFFC98A00)
 
 /** The ring section up to the Optimized goal; much lighter than the deep-blue Normal section. */
 internal val OptimizedGoalZoneColor = Color(0xFF4FA9DB)
+
+/** The empty Optimized section of the ring, clearly apart from the normal [GoalsTrackColor]. */
+internal val OptimizedGoalZoneTrackColor = Color(0xFFB5DBF0)
 private val DietGoalReachedTextColor = Color(0xFF2E7D32)
 private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
 private val WeeklyOverGoalBarColor = Color(0xFFC57484)
@@ -1351,9 +1354,15 @@ private fun GoalDisplayMode.goalZoneColor(): Color =
         GoalDisplayMode.Diet -> DietGoalAccentColor
     }
 
-/** The unfilled ring under a goal section: its color faintly tinted onto the card. */
+/**
+ * The unfilled ring under a goal section: its color faintly tinted onto the card. Optimized gets a
+ * stronger blue of its own, since a faint tint of it is lost next to the normal track's blue.
+ */
 private fun GoalDisplayMode.goalZoneTrackColor(): Color =
-    lerp(GoalsCardColor, goalZoneColor(), 0.22f)
+    when (this) {
+        GoalDisplayMode.Optimized -> OptimizedGoalZoneTrackColor
+        else -> lerp(GoalsCardColor, goalZoneColor(), 0.22f)
+    }
 
 /**
  * Places each zone's value inside the ring, next to the marker at the zone's boundary. The label's

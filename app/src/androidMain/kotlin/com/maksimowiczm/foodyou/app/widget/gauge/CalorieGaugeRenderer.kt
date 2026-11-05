@@ -22,6 +22,7 @@ import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsProgressColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTextColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTrackColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.OptimizedGoalZoneColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.OptimizedGoalZoneTrackColor
 import com.maksimowiczm.foodyou.app.widget.formatWidgetNumber
 import kotlin.math.PI
 import kotlin.math.abs
@@ -100,7 +101,12 @@ internal object CalorieGaugeRenderer {
             val lastIndex = ends.lastIndex
             val colors = zones.map { it.kind.color() } + GoalsProgressColor
             val trackColors =
-                zones.map { lerp(GoalsCardColor, it.kind.color(), ZONE_TRACK_TINT) } + GoalsTrackColor
+                zones.map {
+                    when (it.kind) {
+                        CalorieGaugeZoneKind.Optimized -> OptimizedGoalZoneTrackColor
+                        else -> lerp(GoalsCardColor, it.kind.color(), ZONE_TRACK_TINT)
+                    }
+                } + GoalsTrackColor
             val halfGap = GAP_ANGLE / 2f
 
             fun sectionStart(index: Int): Float =
