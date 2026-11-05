@@ -60,6 +60,7 @@ class CalorieGaugeWidgetScreenshotTest {
 
     @Test fun flatToday() = capture("flat", 320, 130, case = "today", model = today())
     @Test fun flatFarOverflow() = capture("flat", 320, 130, case = "far-overflow", model = farOverflow())
+    @Test fun roomyFarOverflow() = capture("roomy", 330, 200, case = "far-overflow", model = farOverflow())
     @Test fun minToday() = capture("min", 250, 110, case = "today", model = today())
     @Test fun tallToday() = capture("tall", 320, 240, case = "today", model = today())
     @Test fun wideToday() = capture("wide", 400, 150, case = "today", model = today())
@@ -158,7 +159,7 @@ class CalorieGaugeWidgetScreenshotTest {
 
     private fun overflow() = model(eatenKcal = 2480, burnedKcal = 80, steps = 6_420)
 
-    private fun farOverflow() = model(eatenKcal = 3300, burnedKcal = 50, steps = 4_105)
+    private fun farOverflow() = model(eatenKcal = 4725, burnedKcal = 173, steps = 4_315)
 
     private fun noDiet() = model(eatenKcal = 1169, burnedKcal = 80, dietGoalKcal = null)
 

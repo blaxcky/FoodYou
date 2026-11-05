@@ -12,8 +12,6 @@ internal data class CalorieGaugeLayoutSpec(
     val verticalPadding: Dp,
     val horizontalPadding: Dp,
     val showHeader: Boolean,
-    /** "% erreicht" and the goal below eaten and burned energy. */
-    val showSecondaryMetrics: Boolean,
     /** Diameter of the ring's center line. */
     val diameter: Dp,
     val stroke: Dp,
@@ -26,7 +24,6 @@ internal data class CalorieGaugeLayoutSpec(
     val unitTextSize: TextUnit,
     val metricValueTextSize: TextUnit,
     val metricLabelTextSize: TextUnit,
-    val secondaryValueTextSize: TextUnit,
     /** The system font scale; the ring's values are drawn into its bitmap and scale with it. */
     val fontScale: Float,
 ) {
@@ -52,8 +49,9 @@ internal object CalorieGaugeWidgetSizes {
     val HeaderMinHeight = 150.dp
     val HeaderHeight = 20.dp
     val HeaderSpacing = 6.dp
+    val HeaderDateTextSize = 12.sp
+    val HeaderStepsTextSize = 14.sp
     val LargeGaugeMinHeight = 110.dp
-    val SecondaryMetricsMinHeight = 100.dp
     val MaxDiameter = 200.dp
     val MinDiameter = 48.dp
 
@@ -70,7 +68,7 @@ internal const val LineHeightFactor = 1.25f
 private val RingBottomFactor = 0.5f + sqrt(2f) / 4f
 
 /** Share of the content width the ring may take; the rest is for eaten and burned energy. */
-private const val GaugeWidthShare = 0.48f
+private const val GaugeWidthShare = 0.6f
 
 internal fun calorieGaugeLayoutSpec(size: DpSize, fontScale: Float = 1f): CalorieGaugeLayoutSpec {
     val verticalPadding = 12.dp
@@ -99,18 +97,16 @@ internal fun calorieGaugeLayoutSpec(size: DpSize, fontScale: Float = 1f): Calori
         verticalPadding = verticalPadding,
         horizontalPadding = horizontalPadding,
         showHeader = showHeader,
-        showSecondaryMetrics = rowHeight >= CalorieGaugeWidgetSizes.SecondaryMetricsMinHeight,
         diameter = diameter,
         stroke = stroke,
         markerRadius = markerRadius,
         markerDotRadius = if (large) 3.5.dp else 3.dp,
         zoneLabelClearance = if (large) 10.dp else 8.dp,
-        zoneTextSize = if (large) 12.sp else 11.sp,
+        zoneTextSize = if (large) 11.sp else 10.sp,
         endTextSize = endTextSize,
         unitTextSize = if (large) 12.sp else 11.sp,
-        metricValueTextSize = if (large) 20.sp else 18.sp,
-        metricLabelTextSize = if (large) 12.sp else 11.sp,
-        secondaryValueTextSize = if (large) 14.sp else 12.sp,
+        metricValueTextSize = if (large) 18.sp else 16.sp,
+        metricLabelTextSize = if (large) 11.sp else 10.sp,
         fontScale = fontScale,
     )
 }

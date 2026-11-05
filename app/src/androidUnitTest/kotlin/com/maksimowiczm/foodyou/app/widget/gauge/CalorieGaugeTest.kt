@@ -50,11 +50,10 @@ class CalorieGaugeTest {
     }
 
     @Test
-    fun typicalCellHasHeaderSecondaryMetricsAndLargeRing() {
+    fun typicalCellHasHeaderAndLargeRing() {
         val spec = calorieGaugeLayoutSpec(DpSize(320.dp, 180.dp))
 
         assertTrue(spec.showHeader)
-        assertTrue(spec.showSecondaryMetrics)
         assertEquals(10.dp, spec.stroke)
         assertEquals(16.sp, spec.endTextSize)
         assertTrue(spec.diameter in 120.dp..130.dp, "${spec.diameter}")
@@ -62,16 +61,22 @@ class CalorieGaugeTest {
     }
 
     @Test
-    fun flatWidgetDropsHeaderAndSecondaryMetrics() {
+    fun widerCellsGiveTheRingMostOfTheWidth() {
+        val spec = calorieGaugeLayoutSpec(DpSize(330.dp, 200.dp))
+
+        assertTrue(spec.diameter > 145.dp, "${spec.diameter}")
+        assertEquals(11.sp, spec.zoneTextSize)
+    }
+
+    @Test
+    fun flatWidgetDropsHeader() {
         val spec = calorieGaugeLayoutSpec(DpSize(320.dp, 130.dp))
 
         assertFalse(spec.showHeader)
-        assertTrue(spec.showSecondaryMetrics)
         assertTrue(spec.gaugeHeight <= 106.5.dp, "${spec.gaugeHeight}")
 
         val min = calorieGaugeLayoutSpec(DpSize(250.dp, 110.dp))
         assertFalse(min.showHeader)
-        assertFalse(min.showSecondaryMetrics)
         assertEquals(8.dp, min.stroke)
         assertEquals(14.sp, min.endTextSize)
         assertTrue(min.gaugeHeight <= 86.5.dp, "${min.gaugeHeight}")

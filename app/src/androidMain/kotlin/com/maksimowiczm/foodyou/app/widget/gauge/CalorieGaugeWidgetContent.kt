@@ -36,7 +36,6 @@ import com.maksimowiczm.foodyou.app.widget.calorieWidgetLaunchIntent
 import com.maksimowiczm.foodyou.app.widget.formatWidgetNumber
 import com.maksimowiczm.foodyou.app.widget.ring.WidgetHeaderRow
 import com.maksimowiczm.foodyou.app.widget.ring.widgetCornerRadius
-import java.text.NumberFormat
 import kotlin.math.abs
 
 @Composable
@@ -60,9 +59,9 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                     context = context,
                     model = model,
                     height = CalorieGaugeWidgetSizes.HeaderHeight,
-                    dateTextSize = spec.metricLabelTextSize,
+                    dateTextSize = CalorieGaugeWidgetSizes.HeaderDateTextSize,
                     dateIconSize = CalorieGaugeWidgetSizes.HeaderHeight - 4.dp,
-                    stepsTextSize = spec.secondaryValueTextSize,
+                    stepsTextSize = CalorieGaugeWidgetSizes.HeaderStepsTextSize,
                 )
                 Spacer(modifier = GlanceModifier.height(CalorieGaugeWidgetSizes.HeaderSpacing))
             }
@@ -71,24 +70,18 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SideMetric(
-                    context = context,
                     spec = spec,
                     value = context.formatWidgetNumber(model.eatenKcal),
                     label = context.getString(R.string.widget_calorie_gauge_eaten),
-                    secondaryValue = reachedText(model),
-                    secondaryLabel = context.getString(R.string.widget_calorie_gauge_reached),
                     modifier =
                         GlanceModifier.defaultWeight()
                             .clickable(actionStartActivity(quickCaptureCameraIntent(context))),
                 )
                 Gauge(context, model, spec)
                 SideMetric(
-                    context = context,
                     spec = spec,
                     value = context.formatWidgetNumber(model.burnedKcal),
                     label = context.getString(R.string.widget_calorie_gauge_burned),
-                    secondaryValue = context.formatWidgetNumber(model.normalGoalKcal),
-                    secondaryLabel = context.getString(R.string.widget_calorie_gauge_goal),
                     modifier =
                         GlanceModifier.defaultWeight()
                             .clickable(actionStartActivity(barcodeScanIntent(context))),
@@ -137,19 +130,12 @@ private fun gaugeDescription(context: Context, gauge: CalorieGauge): String {
         .joinToString(", ")
 }
 
-private fun reachedText(model: CalorieWidgetModel): String? =
-    model.normalGoalKcal
-        .takeIf { it > 0 }
-        ?.let { NumberFormat.getPercentInstance().format(model.netKcal.toDouble() / it) }
-
+/** Eaten or burned energy beside the ring; the goal and its share are left to the ring. */
 @Composable
 private fun SideMetric(
-    context: Context,
     spec: CalorieGaugeLayoutSpec,
     value: String,
     label: String,
-    secondaryValue: String?,
-    secondaryLabel: String,
     modifier: GlanceModifier,
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -168,34 +154,11 @@ private fun SideMetric(
             text = label,
             style =
                 TextStyle(
-                    color = GlanceTheme.colors.onSurface,
+                    color = GlanceTheme.colors.onSurfaceVariant,
                     fontSize = spec.metricLabelTextSize,
                     textAlign = TextAlign.Center,
                 ),
             maxLines = 1,
         )
-        if (spec.showSecondaryMetrics) {
-            Spacer(modifier = GlanceModifier.height(8.dp))
-            Text(
-                text = secondaryValue ?: context.getString(R.string.widget_calories_placeholder),
-                style =
-                    TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = spec.secondaryValueTextSize,
-                        textAlign = TextAlign.Center,
-                    ),
-                maxLines = 1,
-            )
-            Text(
-                text = secondaryLabel,
-                style =
-                    TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = spec.metricLabelTextSize,
-                        textAlign = TextAlign.Center,
-                    ),
-                maxLines = 1,
-            )
-        }
     }
 }
