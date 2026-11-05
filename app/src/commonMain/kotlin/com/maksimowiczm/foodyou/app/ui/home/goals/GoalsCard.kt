@@ -52,7 +52,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -1311,8 +1313,8 @@ private fun GoalDisplayMode.goalZoneTrackColor(): Color =
  * edge facing the ring keeps the same clearance whatever its size, so a wide four-digit value moves
  * further in instead of running into the ring.
  *
- * The [endLabel] belongs to the marker at the ring's end. It sits left of that marker and a little
- * below it, in the ring's open bottom, so it stays clear of a zone label just above the end.
+ * The [endLabel] belongs to the marker at the ring's end. It is centered in the ring's open bottom,
+ * a little below the ring's ends, and gets only the width between their markers.
  */
 @Composable
 private fun GaugeLabels(
@@ -1328,19 +1330,27 @@ private fun GaugeLabels(
         },
         modifier = modifier,
     ) { measurables, constraints ->
-        val placeables = measurables.map { it.measure(Constraints()) }
+        val radius = diameter.toPx() / 2f
+        val endRadians = gaugeAngle(1f).toDouble() * PI / 180.0
+        val endWidth =
+            2f * radius * cos(endRadians).toFloat() - 2f * GaugeEndLabelGap.toPx()
+        val placeables =
+            measurables.mapIndexed { index, measurable ->
+                if (index == measurables.lastIndex) {
+                    measurable.measure(Constraints(maxWidth = endWidth.roundToInt().coerceAtLeast(0)))
+                } else {
+                    measurable.measure(Constraints())
+                }
+            }
         layout(constraints.maxWidth, constraints.maxHeight) {
-            val radius = diameter.toPx() / 2f
             val centerX = constraints.maxWidth / 2f
             val centerY = GaugeStrokeWidth.toPx() / 2f + radius
             val clearance = GaugeZoneLabelClearance.toPx()
 
             val end = placeables.last()
-            val endRadians = gaugeAngle(1f).toDouble() * PI / 180.0
-            val endX = centerX + radius * cos(endRadians).toFloat()
             val endY = centerY + radius * sin(endRadians).toFloat()
             end.place(
-                x = (endX - GaugeEndLabelGap.toPx() - end.width).roundToInt(),
+                x = (centerX - end.width / 2f).roundToInt(),
                 y = (endY + GaugeEndLabelDrop.toPx() - end.height / 2f).roundToInt(),
             )
 
@@ -1401,32 +1411,72 @@ private fun GaugeValueLabel(
     color: Color,
     fontWeight: FontWeight,
     fontSize: TextUnit = 12.sp,
+    unit: String? = null,
 ) {
-    Row(
-        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-        horizontalArrangement = Arrangement.spacedBy(1.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (exceeded) {
-            Icon(
-                imageVector = Icons.Outlined.WarningAmber,
-                contentDescription = null,
-                tint = GoalsErrorColor,
-                modifier = Modifier.size(fontSize.value.dp),
+    Layout(
+        content = {
+            if (exceeded) {
+                Icon(
+                    imageVector = Icons.Outlined.WarningAmber,
+                    contentDescription = null,
+                    tint = GoalsErrorColor,
+                    modifier = Modifier.size(fontSize.value.dp),
+                )
+            }
+            Text(
+                text = value,
+                color = color,
+                style =
+                    MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = interNumberFontFamily(),
+                        fontSize = fontSize,
+                        lineHeight = fontSize * 1.25f,
+                    ),
+                fontWeight = fontWeight,
+                maxLines = 1,
             )
+            if (unit != null) {
+                Text(
+                    text = unit,
+                    modifier = Modifier.padding(start = 3.dp),
+                    color = if (exceeded) GoalsErrorColor else GoalsMutedTextColor,
+                    style =
+                        MaterialTheme.typography.labelMedium.copy(
+                            fontSize = 12.sp,
+                            lineHeight = 15.sp,
+                        ),
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                )
+            }
+        },
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+    ) { measurables, constraints ->
+        val gap = 1.dp.roundToPx()
+        val all = measurables.map { it.measure(Constraints()) }
+        fun widthOf(items: List<Placeable>): Int = items.sumOf { it.width } + gap * (items.size - 1)
+        // The unit is the first thing to go when the value does not fit, as with a large font.
+        val shown =
+            if (unit != null && widthOf(all) > constraints.maxWidth) all.dropLast(1) else all
+        val valueIndex = if (exceeded) 1 else 0
+        val valueText = all[valueIndex]
+        val height = shown.maxOf { it.height }
+        layout(widthOf(shown), height) {
+            val valueY = (height - valueText.height) / 2
+            var x = 0
+            shown.forEachIndexed { index, placeable ->
+                val y =
+                    when {
+                        index == valueIndex -> valueY
+                        // The smaller unit shares the value's baseline.
+                        index > valueIndex ->
+                            valueY + valueText[FirstBaseline] - placeable[FirstBaseline]
+                        else -> (height - placeable.height) / 2
+                    }
+                placeable.place(x, y)
+                x += placeable.width + gap
+            }
         }
-        Text(
-            text = value,
-            color = color,
-            style =
-                MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = interNumberFontFamily(),
-                    fontSize = fontSize,
-                    lineHeight = fontSize * 1.25f,
-                ),
-            fontWeight = fontWeight,
-            maxLines = 1,
-        )
     }
 }
 
@@ -2160,6 +2210,7 @@ private fun GaugeMetric(
                 fontWeight = FontWeight.SemiBold,
                 // The card's main value, so it stands out from the goal values on the ring.
                 fontSize = 16.sp,
+                unit = stringResource(Res.string.unit_kcal),
             )
         }
 
@@ -2206,10 +2257,10 @@ private val GaugeZoneLabelClearance = 10.dp
 private val GaugeZoneMarkerRadius = 6.5.dp
 private val GaugeZoneMarkerDotRadius = 3.5.dp
 
-/** Gap between the ring's end marker and the right edge of its value label. */
+/** Room kept between each end of the ring and the remaining energy centered between them. */
 private val GaugeEndLabelGap = 10.dp
 
-/** How far the end value's center sits below the ring's end marker. */
+/** How far the remaining energy's center sits below the ring's ends. */
 private val GaugeEndLabelDrop = 3.dp
 private const val GaugeGapAngle = 2.5f
 
