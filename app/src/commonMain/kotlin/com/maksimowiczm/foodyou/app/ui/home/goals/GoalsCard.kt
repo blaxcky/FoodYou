@@ -116,7 +116,7 @@ import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_sum_on_goal_so_far
 import foodyou.app.generated.resources.weekly_sum_over_goal_so_far
 import foodyou.app.generated.resources.weekly_sum_under_goal_so_far
-import foodyou.app.generated.resources.weekly_goal_of
+import foodyou.app.generated.resources.weekly_of_goal
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.action_weigh_in
 import foodyou.app.generated.resources.weekly_weight_gained
@@ -170,6 +170,8 @@ private val WeeklyColumnOverHeight = 84.dp
 private val WeeklyColumnLineHeight = 8.dp
 private val WeeklyColumnUnderHeight = 76.dp
 private val WeeklyColumnValueTextSize = 11.sp
+private val WeeklyRingSize = 56.dp
+private val WeeklyRingStroke = 7.dp
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)
@@ -548,47 +550,82 @@ private fun WeeklyGoalsContent(
 /** The top of the card with the week's energy and its goal. */
 @Composable
 internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Modifier) {
-    val energyFormatter = LocalEnergyFormatter.current
-    val unit = stringResource(Res.string.unit_kcal)
-    val energy = energyFormatter.formatEnergy(model.totalEnergy, withSuffix = false).groupDigits()
-    val goal = energyFormatter.formatEnergy(model.totalGoal, withSuffix = false).groupDigits()
+    val percent = goalReachedPercentage(model.totalEnergy, model.totalGoal)
+    val percentDescription = stringResource(Res.string.goal_reached_percentage, percent)
     Row(
         modifier =
             modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+        Row(
+            modifier =
+                Modifier.weight(1f).clearAndSetSemantics {
+                    contentDescription = percentDescription
+                },
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text =
-                    buildAnnotatedString {
-                        append(energy)
-                        withStyle(SpanStyle(fontSize = 15.sp, color = GoalsMutedTextColor)) {
-                            append(" $unit")
-                        }
-                    },
-                color = GoalsTextColor,
-                style =
-                    MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = interNumberFontFamily(),
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 26.sp,
-                        lineHeight = 30.sp,
-                    ),
-                maxLines = 1,
+            WeeklyGoalRing(
+                progress = model.totalEnergy.toFloat() / model.totalGoal.coerceAtLeast(1)
             )
-            Text(
-                text = stringResource(Res.string.weekly_goal_of, "$goal $unit"),
-                color = GoalsMutedTextColor,
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Column {
+                Text(
+                    text = "$percent %",
+                    color = GoalsTextColor,
+                    style =
+                        MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = interNumberFontFamily(),
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 22.sp,
+                            lineHeight = 26.sp,
+                        ),
+                    maxLines = 1,
+                )
+                Text(
+                    text = stringResource(Res.string.weekly_of_goal),
+                    color = GoalsMutedTextColor,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                )
+            }
         }
         if (model.days.isNotEmpty()) {
             WeeklySumSoFar(sum = model.days.sumOf { it.difference })
         }
+    }
+}
+
+/**
+ * The energy of the days up to today as a share of their goals, drawn like the day's ring: blue up
+ * to the goal, then a red arc for what lies above it.
+ */
+@Composable
+private fun WeeklyGoalRing(progress: Float, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.size(WeeklyRingSize)) {
+        val stroke = WeeklyRingStroke.toPx()
+        val inset = stroke / 2
+        val arcSize = Size(size.width - stroke, size.height - stroke)
+        val topLeft = Offset(inset, inset)
+        fun arc(color: Color, sweep: Float) =
+            drawArc(
+                color = color,
+                startAngle = -90f,
+                sweepAngle = sweep,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = stroke, cap = StrokeCap.Round),
+            )
+        drawCircle(
+            color = GoalsTrackColor,
+            radius = (size.minDimension - stroke) / 2,
+            style = Stroke(width = stroke),
+        )
+        val within = progress.coerceIn(0f, 1f)
+        val overflow = (progress - 1f).coerceIn(0f, 1f)
+        if (within > 0f) arc(GoalsProgressColor, within * 360f)
+        if (overflow > 0f) arc(WeeklyColumnOverBarColor, overflow * 360f)
     }
 }
 

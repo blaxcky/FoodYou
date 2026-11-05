@@ -159,6 +159,7 @@
     <string name="weekly_sum_under_goal_so_far">under goal so far</string>
     <string name="weekly_sum_on_goal_so_far">on goal so far</string>
     <string name="weekly_goal_of">of %1$s weekly goal</string>
+    <string name="weekly_of_goal">of goal</string>
     <string name="weekly_percent">Percent</string>
     <string name="weekly_diet_goal_reached">Diet deficit reached</string>
     <string name="headline_weekly_details_style">Weekly details</string>
