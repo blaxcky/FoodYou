@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.app.ui.FoodYouApp
 import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchAction
 import com.maksimowiczm.foodyou.app.ui.FoodYouLaunchRequest
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProvider
+import com.maksimowiczm.foodyou.app.widget.gauge.CalorieGaugeWidget
 import com.maksimowiczm.foodyou.app.widget.ring.CalorieRingWidget
 
 class MainActivity : FoodYouAbstractActivity() {
@@ -44,6 +45,7 @@ class MainActivity : FoodYouAbstractActivity() {
         super.onStart()
         CalorieWidgetProvider.updateAll(this)
         CalorieRingWidget.requestUpdateAll(this)
+        CalorieGaugeWidget.requestUpdateAll(this)
     }
 }
 

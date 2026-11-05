@@ -1,0 +1,100 @@
+package com.maksimowiczm.foodyou.app.widget.gauge
+
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlinx.datetime.LocalDate
+
+class CalorieGaugeTest {
+    @Test
+    fun goalsBelowTheNormalGoalSitOnTheRingInOrder() {
+        val gauge = calorieGauge(model(optimizedGoalKcal = 1684, dietGoalKcal = 721))
+
+        assertEquals(
+            listOf(CalorieGaugeZoneKind.Diet, CalorieGaugeZoneKind.Optimized),
+            gauge.zones.map { it.kind },
+        )
+        assertEquals(721f / 2100f, gauge.zones[0].fraction)
+        assertEquals(-368, gauge.zones[0].remainingKcal)
+        assertTrue(gauge.zones[0].exceeded)
+        assertEquals(595, gauge.zones[1].remainingKcal)
+        assertEquals(1011, gauge.remainingKcal)
+        assertFalse(gauge.exceeded)
+    }
+
+    @Test
+    fun goalsAtOrAboveTheNormalGoalAndMissingGoalsAreLeftOut() {
+        val gauge = calorieGauge(model(optimizedGoalKcal = 2100, dietGoalKcal = null))
+
+        assertEquals(emptyList(), gauge.zones)
+    }
+
+    @Test
+    fun noGoalMeansNoZones() {
+        val gauge = calorieGauge(model(normalGoalKcal = 0, optimizedGoalKcal = 1684, dietGoalKcal = 721))
+
+        assertEquals(emptyList(), gauge.zones)
+    }
+
+    @Test
+    fun overTheNormalGoalTheRingOverflows() {
+        val gauge = calorieGauge(model(netKcal = 2400))
+
+        assertTrue(gauge.exceeded)
+        assertTrue(gauge.overflow > 0f)
+    }
+
+    @Test
+    fun typicalCellHasHeaderSecondaryMetricsAndLargeRing() {
+        val spec = calorieGaugeLayoutSpec(DpSize(320.dp, 180.dp))
+
+        assertTrue(spec.showHeader)
+        assertTrue(spec.showSecondaryMetrics)
+        assertEquals(10.dp, spec.stroke)
+        assertEquals(16.sp, spec.endTextSize)
+        assertTrue(spec.diameter in 120.dp..130.dp, "${spec.diameter}")
+        assertTrue(spec.gaugeHeight <= 130.dp, "${spec.gaugeHeight}")
+    }
+
+    @Test
+    fun flatWidgetDropsHeaderAndSecondaryMetrics() {
+        val spec = calorieGaugeLayoutSpec(DpSize(320.dp, 130.dp))
+
+        assertFalse(spec.showHeader)
+        assertTrue(spec.showSecondaryMetrics)
+        assertTrue(spec.gaugeHeight <= 106.5.dp, "${spec.gaugeHeight}")
+
+        val min = calorieGaugeLayoutSpec(DpSize(250.dp, 110.dp))
+        assertFalse(min.showHeader)
+        assertFalse(min.showSecondaryMetrics)
+        assertEquals(8.dp, min.stroke)
+        assertEquals(14.sp, min.endTextSize)
+        assertTrue(min.gaugeHeight <= 86.5.dp, "${min.gaugeHeight}")
+    }
+
+    private fun model(
+        netKcal: Int = 1089,
+        normalGoalKcal: Int = 2100,
+        optimizedGoalKcal: Int? = null,
+        dietGoalKcal: Int? = null,
+    ) =
+        CalorieWidgetModel(
+            date = LocalDate(2026, 11, 5),
+            countedSteps = 0,
+            eatenKcal = netKcal,
+            burnedKcal = 0,
+            netKcal = netKcal,
+            normalGoalKcal = normalGoalKcal,
+            normalLeftKcal = normalGoalKcal - netKcal,
+            optimizedGoalKcal = optimizedGoalKcal,
+            optimizedLeftKcal = optimizedGoalKcal?.let { it - netKcal },
+            dietGoalConfigured = dietGoalKcal != null,
+            dietGoalKcal = dietGoalKcal,
+            dietLeftKcal = dietGoalKcal?.let { it - netKcal },
+        )
+}

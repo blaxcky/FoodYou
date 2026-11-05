@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -68,7 +69,14 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
                 .padding(horizontal = spec.horizontalPadding, vertical = spec.padding)
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            HeaderRow(context, model, spec)
+            WidgetHeaderRow(
+                context = context,
+                model = model,
+                height = spec.headerHeight,
+                dateTextSize = spec.dateTextSize,
+                dateIconSize = spec.dateIconSize,
+                stepsTextSize = spec.headerTextSize,
+            )
             Spacer(modifier = GlanceModifier.height(CalorieRingWidgetSizes.HeaderSpacing))
             HeroRow(context, model, spec, modifier = GlanceModifier.fillMaxWidth().defaultWeight())
             if (spec.goalRows == GoalRowsMode.Inline) {
@@ -103,25 +111,33 @@ internal fun CalorieRingWidgetContent(model: CalorieWidgetModel) {
     }
 }
 
-private fun GlanceModifier.widgetCornerRadius(): GlanceModifier =
+internal fun GlanceModifier.widgetCornerRadius(): GlanceModifier =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         cornerRadius(android.R.dimen.system_app_widget_background_radius)
     } else {
         cornerRadius(18.dp)
     }
 
+/** Today's date on the left and the counted steps on the right; shared by the calorie widgets. */
 @Composable
-private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: CalorieRingLayoutSpec) {
+internal fun WidgetHeaderRow(
+    context: Context,
+    model: CalorieWidgetModel,
+    height: Dp,
+    dateTextSize: TextUnit,
+    dateIconSize: Dp,
+    stepsTextSize: TextUnit,
+) {
     val steps = context.formatWidgetNumber(model.countedSteps)
     Row(
-        modifier = GlanceModifier.fillMaxWidth().height(spec.headerHeight),
+        modifier = GlanceModifier.fillMaxWidth().height(height),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
             provider = ImageProvider(R.drawable.ic_widget_calendar),
             contentDescription = null,
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
-            modifier = GlanceModifier.size(spec.dateIconSize),
+            modifier = GlanceModifier.size(dateIconSize),
         )
         Spacer(modifier = GlanceModifier.width(6.dp))
         Text(
@@ -129,7 +145,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: Calorie
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = spec.dateTextSize,
+                    fontSize = dateTextSize,
                     fontWeight = FontWeight.Medium,
                 ),
             maxLines = 1,
@@ -139,7 +155,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: Calorie
             provider = ImageProvider(R.drawable.ic_widget_walk),
             contentDescription = null,
             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-            modifier = GlanceModifier.size(spec.headerHeight - 4.dp),
+            modifier = GlanceModifier.size(height - 4.dp),
         )
         Spacer(modifier = GlanceModifier.width(4.dp))
         Text(
@@ -147,7 +163,7 @@ private fun HeaderRow(context: Context, model: CalorieWidgetModel, spec: Calorie
             style =
                 TextStyle(
                     color = GlanceTheme.colors.onSurface,
-                    fontSize = spec.headerTextSize,
+                    fontSize = stepsTextSize,
                     fontWeight = FontWeight.Medium,
                 ),
             maxLines = 1,

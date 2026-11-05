@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.app.widget
 
 import android.content.Context
+import com.maksimowiczm.foodyou.app.widget.gauge.CalorieGaugeWidget
 import com.maksimowiczm.foodyou.app.widget.ring.CalorieRingWidget
 import org.koin.core.context.GlobalContext
 
@@ -8,4 +9,5 @@ internal actual fun updateCalorieWidgetValues() {
     val context = runCatching { GlobalContext.get().get<Context>() }.getOrNull() ?: return
     CalorieWidgetProvider.updateAllValues(context)
     CalorieRingWidget.requestUpdateAll(context)
+    CalorieGaugeWidget.requestUpdateAll(context)
 }

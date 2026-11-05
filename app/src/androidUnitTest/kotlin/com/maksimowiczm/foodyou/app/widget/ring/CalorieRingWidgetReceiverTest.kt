@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetProvider
+import com.maksimowiczm.foodyou.app.widget.gauge.CalorieGaugeWidgetReceiver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -22,11 +23,11 @@ class CalorieRingWidgetReceiverTest {
     }
 
     @Test
-    fun bothWidgetReceiversAreRegisteredWithProviderMetadata() {
+    fun allWidgetReceiversAreRegisteredWithProviderMetadata() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val packageManager = context.packageManager
 
-        for (receiver in listOf(CalorieWidgetProvider::class.java, CalorieRingWidgetReceiver::class.java)) {
+        for (receiver in widgetReceivers) {
             val info =
                 packageManager.getReceiverInfo(
                     ComponentName(context, receiver),
@@ -45,9 +46,15 @@ class CalorieRingWidgetReceiverTest {
             context.packageManager.queryBroadcastReceivers(intent, 0).map { it.activityInfo.name }
 
         assertEquals(
-            listOf(CalorieWidgetProvider::class.java.name, CalorieRingWidgetReceiver::class.java.name)
-                .sorted(),
+            widgetReceivers.map { it.name }.sorted(),
             receivers.filter { it.startsWith("com.maksimowiczm.foodyou.app.widget") }.sorted(),
         )
     }
+
+    private val widgetReceivers =
+        listOf(
+            CalorieWidgetProvider::class.java,
+            CalorieRingWidgetReceiver::class.java,
+            CalorieGaugeWidgetReceiver::class.java,
+        )
 }

@@ -150,7 +150,7 @@ private val OptimizedGoalAccentColor = GoalsProgressColor
 internal val DietGoalAccentColor = Color(0xFFC98A00)
 
 /** The ring section up to the Optimized goal; much lighter than the deep-blue Normal section. */
-private val OptimizedGoalZoneColor = Color(0xFF4FA9DB)
+internal val OptimizedGoalZoneColor = Color(0xFF4FA9DB)
 private val DietGoalReachedTextColor = Color(0xFF2E7D32)
 private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
 private val WeeklyOverGoalBarColor = Color(0xFFC57484)
