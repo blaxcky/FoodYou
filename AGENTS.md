@@ -5,38 +5,42 @@
 After each larger cohesive change, run the relevant verification, create a local commit, and
 synchronize it with GitHub using the GitHub CLI (`gh`) before moving on to the next larger task.
 
-## Local JDK 21
+## Local JDK 21 and Android SDK
 
-This project uses JDK 21 for Gradle. Use Eclipse Temurin 21 installed through DNF:
-
-```bash
-/usr/lib/jvm/temurin-21-jdk
-```
-
-Fedora 44 removed its `java-21-openjdk` packages. The `temurin-21-jdk` package provides the full
-JDK; the old `/usr/lib/jvm/java-21-openjdk` directory may still exist with only manpages.
-
-Do not use the Android Studio Flatpak JBR
-(`/var/lib/flatpak/app/com.google.AndroidStudio/x86_64/stable/active/files/extra/jbr`): it has been
-updated to JDK 25 and makes Gradle fail immediately with a bare version message such as `25.0.3`.
-The system `java` may also point to JDK 25, so always set `JAVA_HOME` explicitly.
+This project uses JDK 21 for Gradle. Use the Eclipse Temurin 21 tarball unpacked in the user's home
+directory; `jdk-21` is a symlink to the current version (`jdk-21.0.12.1+1`):
 
 ```bash
-JAVA_HOME=/usr/lib/jvm/temurin-21-jdk ./gradlew :app:compileDevReleaseKotlinAndroid
+/home/markus/.local/opt/jdk-21
 ```
+
+No JDK 21 is installed system-wide: `/usr/lib/jvm` only has JDK 25, and the `temurin-21-jdk` DNF
+package is no longer installed. Gradle 8.13 cannot run on JDK 25, and the JDK 17 under
+`~/.gradle/jdks` cannot compile the Java 21 target.
+
+Do not use the Android Studio Flatpak JBR either: it has been updated to JDK 25 and makes Gradle fail
+immediately with a bare version message such as `25.0.3`. The system `java` may also point to JDK 25,
+so always set `JAVA_HOME` explicitly.
+
+The repository has no `local.properties`, so also set `ANDROID_HOME` to the Android SDK at
+`/home/markus/Android/Sdk`; otherwise Gradle fails with "SDK location not found".
 
 Set `GRADLE_USER_HOME` to the workspace cache for Gradle commands. This keeps Gradle wrapper locks
 and dependency cache writes inside the writable repository instead of `~/.gradle`, avoiding sandbox
 approval prompts for the host Gradle cache path.
 
 ```bash
-GRADLE_USER_HOME=/home/markus/GitHub/FoodYou/.gradle \
-JAVA_HOME=/usr/lib/jvm/temurin-21-jdk \
+GRADLE_USER_HOME=/home/markus/Github/FoodYou/.gradle \
+JAVA_HOME=/home/markus/.local/opt/jdk-21 \
+ANDROID_HOME=/home/markus/Android/Sdk \
 ./gradlew :app:compileDevReleaseKotlinAndroid
 ```
 
+The JDK and SDK live outside the workspace, so the filesystem sandbox may hide them: if they appear
+to be missing, run the command outside the sandbox before concluding that they are absent.
+
 For Android Studio, use `GRADLE_LOCAL_JAVA_HOME` as the Gradle JDK and set
-`java.home=/usr/lib/jvm/temurin-21-jdk` in the ignored `.gradle/config.properties` file.
+`java.home=/home/markus/.local/opt/jdk-21` in the ignored `.gradle/config.properties` file.
 
 ## Verification Scope
 
@@ -115,10 +119,10 @@ The emulator runs headlessly on demand and preserves its app data and Quick Boot
 `cold-start` if a saved emulator snapshot is unhealthy. When Codex invokes the helper, all commands
 need host access because the filesystem sandbox exposes neither `/dev/kvm` nor the ADB server socket.
 The helper waits for Android to finish booting, pins Gradle deployment to the matching emulator
-serial, and uses Temurin JDK 21 and the workspace Gradle cache. Its headless start uses the
-AMD host GPU with Vulkan disabled; the software renderer crashes on this Fedora/Btrfs host. The AVD
-runs in the transient `foodyou-emulator.service` user unit so it remains available between separate
-Codex commands without starting automatically at login.
+serial, and uses Temurin JDK 21, the Android SDK, and the workspace Gradle cache. Its headless start
+uses the AMD host GPU with Vulkan disabled; the software renderer crashes on this Fedora/Btrfs host.
+The AVD runs in the transient `foodyou-emulator.service` user unit so it remains available between
+separate Codex commands without starting automatically at login.
 
 `inspect` writes the current UI layout plus normal and annotated screenshots to
 `captures/android-emulator/`, which is ignored by Git. Prefer layout inspection first and use the

@@ -6,8 +6,7 @@ readonly AVD_NAME="FoodYou_API_36"
 readonly APP_ID="com.maksimowiczm.foodyou"
 readonly MAIN_ACTIVITY=".app.infrastructure.android.MainActivity"
 readonly DEFAULT_SDK_DIR="/home/markus/Android/Sdk"
-readonly DEFAULT_ANDROID_CLI="/home/markus/.local/bin/android"
-readonly DEFAULT_JAVA_HOME="/usr/lib/jvm/temurin-21-jdk"
+readonly DEFAULT_JAVA_HOME="/home/markus/.local/opt/jdk-21"
 readonly BOOT_TIMEOUT_SECONDS="${FOODYOU_EMULATOR_BOOT_TIMEOUT_SECONDS:-240}"
 readonly EMULATOR_UNIT="foodyou-emulator.service"
 readonly SYSTEMCTL="/usr/bin/systemctl"
@@ -53,7 +52,7 @@ if [[ -n "${ANDROID_CLI_BIN:-}" ]]; then
 elif command -v android >/dev/null 2>&1; then
     ANDROID_CLI="$(command -v android)"
 else
-    ANDROID_CLI="$DEFAULT_ANDROID_CLI"
+    ANDROID_CLI="$SDK_DIR/cmdline-tools/latest/bin/android"
 fi
 readonly ANDROID_CLI
 
@@ -261,6 +260,7 @@ install_and_launch() {
     log "Building and installing devRelease on $serial..."
     GRADLE_USER_HOME="$REPO_ROOT/.gradle" \
         JAVA_HOME="$JAVA_HOME_DIR" \
+        ANDROID_HOME="$SDK_DIR" \
         ANDROID_SERIAL="$serial" \
         "$REPO_ROOT/gradlew" :app:installDevRelease --console=plain
 
