@@ -48,7 +48,13 @@ internal object CalorieGaugeWidgetSizes {
     val MinSize = DpSize(250.dp, 110.dp)
     val HeaderMinHeight = 150.dp
     val HeaderHeight = 20.dp
-    val HeaderSpacing = 6.dp
+    val HeaderSpacing = 2.dp
+
+    /** Room kept free under the ring so it sits a little higher below the header. */
+    val GaugeLift = 4.dp
+
+    /** Extra room between eaten or burned energy and the ring, on the ring's side. */
+    val MetricGaugeGap = 12.dp
     val HeaderDateTextSize = 12.sp
     val HeaderStepsTextSize = 14.sp
     val LargeGaugeMinHeight = 110.dp
@@ -76,7 +82,9 @@ internal fun calorieGaugeLayoutSpec(size: DpSize, fontScale: Float = 1f): Calori
     val showHeader = size.height >= CalorieGaugeWidgetSizes.HeaderMinHeight
     val header =
         if (showHeader) {
-            CalorieGaugeWidgetSizes.HeaderHeight + CalorieGaugeWidgetSizes.HeaderSpacing
+            CalorieGaugeWidgetSizes.HeaderHeight +
+                CalorieGaugeWidgetSizes.HeaderSpacing +
+                CalorieGaugeWidgetSizes.GaugeLift
         } else {
             0.dp
         }

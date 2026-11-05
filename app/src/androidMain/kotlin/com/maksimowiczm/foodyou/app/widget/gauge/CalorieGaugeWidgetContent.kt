@@ -75,6 +75,7 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                     label = context.getString(R.string.widget_calorie_gauge_eaten),
                     modifier =
                         GlanceModifier.defaultWeight()
+                            .padding(end = CalorieGaugeWidgetSizes.MetricGaugeGap)
                             .clickable(actionStartActivity(quickCaptureCameraIntent(context))),
                 )
                 Gauge(context, model, spec)
@@ -84,8 +85,12 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                     label = context.getString(R.string.widget_calorie_gauge_burned),
                     modifier =
                         GlanceModifier.defaultWeight()
+                            .padding(start = CalorieGaugeWidgetSizes.MetricGaugeGap)
                             .clickable(actionStartActivity(barcodeScanIntent(context))),
                 )
+            }
+            if (spec.showHeader) {
+                Spacer(modifier = GlanceModifier.height(CalorieGaugeWidgetSizes.GaugeLift))
             }
         }
     }
