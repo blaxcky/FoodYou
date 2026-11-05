@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
@@ -45,6 +46,9 @@ class FoodYouApplication : Application() {
                     single<com.maksimowiczm.foodyou.ai.AiController> {
                         com.maksimowiczm.foodyou.ai.AndroidAiController(this@FoodYouApplication, get(), get())
                     }
+                    single<com.maksimowiczm.foodyou.food.domain.usecase.QuickCapturePhotoAnalysisScheduler> {
+                        get<com.maksimowiczm.foodyou.ai.AiController>() as com.maksimowiczm.foodyou.ai.AndroidAiController
+                    }
                     factory {
                         CalorieWidgetUpdater(
                             observeDiaryMealsUseCase = get(),
@@ -66,6 +70,15 @@ class FoodYouApplication : Application() {
                 fddb = GlobalContext.get().get(),
                 openFoodFacts = GlobalContext.get().get(),
             )
+        }
+        coroutineScope.launch {
+            try {
+                GlobalContext.get().get<com.maksimowiczm.foodyou.ai.AiController>().reconcileBackgroundAnalysis()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.w("FoodYou", "Could not schedule pending photo analysis", e)
+            }
         }
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var started = 0

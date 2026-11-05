@@ -376,7 +376,7 @@ class QuickCaptureViewModelTest {
         return QuickCaptureViewModel(
             observe = ObserveQuickCaptureUseCase(repository),
             saveEntry = SaveQuickCaptureEntryUseCase(repository, CsvImportViewModelDateProvider),
-            capture = CaptureQuickCapturePhotoUseCase(repository, CsvImportViewModelDateProvider),
+            capture = CaptureQuickCapturePhotoUseCase(repository, CsvImportViewModelDateProvider) {},
             setAiSuggestionRejected = SetQuickCaptureAiSuggestionRejectedUseCase(repository),
             completeAfter = CompleteQuickCaptureAfterUseCase(repository),
             deleteEntries =
