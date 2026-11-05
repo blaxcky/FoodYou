@@ -82,6 +82,36 @@ class CalorieGaugeTest {
         assertTrue(min.gaugeHeight <= 86.5.dp, "${min.gaugeHeight}")
     }
 
+    @Test
+    fun actionButtonsSitWellBelowTheSideValues() {
+        val cell = calorieGaugeLayoutSpec(DpSize(320.dp, 180.dp))
+        assertEquals(36.dp, cell.actionButtonSize)
+        assertEquals(16.dp, cell.actionDrop)
+
+        val flat = calorieGaugeLayoutSpec(DpSize(320.dp, 130.dp))
+        assertEquals(32.dp, flat.actionButtonSize)
+        assertEquals(12.dp, flat.actionDrop)
+    }
+
+    @Test
+    fun actionButtonsFitTheRowAtEverySize() {
+        listOf(
+                DpSize(250.dp, 110.dp) to 1f,
+                DpSize(250.dp, 110.dp) to 1.3f,
+                DpSize(320.dp, 130.dp) to 1f,
+                DpSize(320.dp, 180.dp) to 1.3f,
+                DpSize(330.dp, 200.dp) to 1f,
+            )
+            .forEach { (size, fontScale) ->
+                val spec = calorieGaugeLayoutSpec(size, fontScale)
+                assertTrue(spec.actionDrop >= 0.dp, "$size: ${spec.actionDrop}")
+                assertTrue(
+                    spec.sideMetricHeight <= spec.rowHeight || spec.actionDrop == 0.dp,
+                    "$size @ $fontScale: ${spec.sideMetricHeight} > ${spec.rowHeight}",
+                )
+            }
+    }
+
     private fun model(
         netKcal: Int = 1089,
         normalGoalKcal: Int = 2100,

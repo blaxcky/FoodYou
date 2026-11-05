@@ -1,14 +1,17 @@
 package com.maksimowiczm.foodyou.app.widget.gauge
 
 import android.content.Context
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.appWidgetBackground
@@ -24,6 +27,8 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
@@ -73,20 +78,31 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                     spec = spec,
                     value = context.formatWidgetNumber(model.eatenKcal),
                     label = context.getString(R.string.widget_calorie_gauge_eaten),
+                    action =
+                        SideAction(
+                            icon = R.drawable.ic_shortcut_scan_barcode,
+                            description = context.getString(R.string.shortcut_scan_barcode_long),
+                            onClick = actionStartActivity(barcodeScanIntent(context)),
+                        ),
                     modifier =
                         GlanceModifier.defaultWeight()
-                            .padding(end = CalorieGaugeWidgetSizes.MetricGaugeGap)
-                            .clickable(actionStartActivity(quickCaptureCameraIntent(context))),
+                            .padding(end = CalorieGaugeWidgetSizes.MetricGaugeGap),
                 )
                 Gauge(context, model, spec)
                 SideMetric(
                     spec = spec,
                     value = context.formatWidgetNumber(model.burnedKcal),
                     label = context.getString(R.string.widget_calorie_gauge_burned),
+                    action =
+                        SideAction(
+                            icon = R.drawable.ic_shortcut_quick_capture_camera,
+                            description =
+                                context.getString(R.string.shortcut_quick_capture_camera_long),
+                            onClick = actionStartActivity(quickCaptureCameraIntent(context)),
+                        ),
                     modifier =
                         GlanceModifier.defaultWeight()
-                            .padding(start = CalorieGaugeWidgetSizes.MetricGaugeGap)
-                            .clickable(actionStartActivity(barcodeScanIntent(context))),
+                            .padding(start = CalorieGaugeWidgetSizes.MetricGaugeGap),
                 )
             }
             if (spec.showHeader) {
@@ -135,15 +151,23 @@ private fun gaugeDescription(context: Context, gauge: CalorieGauge): String {
         .joinToString(", ")
 }
 
-/** Eaten or burned energy beside the ring; the goal and its share are left to the ring. */
+/** A shortcut started from the round button under a side value. */
+private class SideAction(@DrawableRes val icon: Int, val description: String, val onClick: Action)
+
+/**
+ * Eaten or burned energy beside the ring, with its shortcut button below; the goal and its share
+ * are left to the ring. Only the button starts the shortcut, the value opens the app.
+ */
 @Composable
 private fun SideMetric(
     spec: CalorieGaugeLayoutSpec,
     value: String,
     label: String,
+    action: SideAction,
     modifier: GlanceModifier,
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(modifier = GlanceModifier.height(spec.actionDrop))
         Text(
             text = value,
             style =
@@ -165,5 +189,21 @@ private fun SideMetric(
                 ),
             maxLines = 1,
         )
+        Spacer(modifier = GlanceModifier.height(spec.actionGap + spec.actionDrop))
+        Box(
+            modifier =
+                GlanceModifier.size(spec.actionButtonSize)
+                    .background(ImageProvider(R.drawable.widget_gauge_action_background))
+                    .clickable(action.onClick)
+                    .semantics { contentDescription = action.description },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(action.icon),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                modifier = GlanceModifier.size(spec.actionIconSize),
+            )
+        }
     }
 }

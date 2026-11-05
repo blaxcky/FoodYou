@@ -24,6 +24,18 @@ internal data class CalorieGaugeLayoutSpec(
     val unitTextSize: TextUnit,
     val metricValueTextSize: TextUnit,
     val metricLabelTextSize: TextUnit,
+    /** Height of the row that holds eaten energy, the ring and burned energy. */
+    val rowHeight: Dp,
+    /** Diameter of the round action button under eaten and under burned energy. */
+    val actionButtonSize: Dp,
+    val actionIconSize: Dp,
+    /** Gap between a side value's label and its action button. */
+    val actionGap: Dp,
+    /**
+     * How far the action button sits below its value without moving the value: the side column
+     * is centered in the row, so the same room is kept above the value.
+     */
+    val actionDrop: Dp,
     /** The system font scale; the ring's values are drawn into its bitmap and scale with it. */
     val fontScale: Float,
 ) {
@@ -42,7 +54,18 @@ internal data class CalorieGaugeLayoutSpec(
 
     val endLineHeight: Dp
         get() = (endTextSize.value * LineHeightFactor * fontScale).dp
+
+    /** Full height of a side column: value, label, action button and the room around them. */
+    val sideMetricHeight: Dp
+        get() = sideMetricBlockHeight(metricValueTextSize, metricLabelTextSize, fontScale) +
+            actionGap + actionButtonSize + actionDrop * 2
 }
+
+/** Value and label as Glance lays them out; its text views add font padding to each line. */
+private fun sideMetricBlockHeight(value: TextUnit, label: TextUnit, fontScale: Float): Dp =
+    ((value.value + label.value) * SideTextLineHeightFactor * fontScale).dp
+
+private const val SideTextLineHeightFactor = 1.45f
 
 internal object CalorieGaugeWidgetSizes {
     val MinSize = DpSize(250.dp, 110.dp)
@@ -55,6 +78,9 @@ internal object CalorieGaugeWidgetSizes {
 
     /** Extra room between eaten or burned energy and the ring, on the ring's side. */
     val MetricGaugeGap = 12.dp
+
+    /** Below this row height the action buttons shrink so they stay inside the widget. */
+    val CompactActionMaxRowHeight = 96.dp
     val HeaderDateTextSize = 12.sp
     val HeaderStepsTextSize = 14.sp
     val LargeGaugeMinHeight = 110.dp
@@ -101,6 +127,27 @@ internal fun calorieGaugeLayoutSpec(size: DpSize, fontScale: Float = 1f): Calori
     val diameter =
         minOf(byHeight, byWidth, CalorieGaugeWidgetSizes.MaxDiameter)
             .coerceAtLeast(CalorieGaugeWidgetSizes.MinDiameter)
+    val metricValueTextSize = if (large) 18.sp else 16.sp
+    val metricLabelTextSize = if (large) 11.sp else 10.sp
+    val compact = rowHeight < CalorieGaugeWidgetSizes.CompactActionMaxRowHeight
+    val actionButtonSize =
+        when {
+            large -> 36.dp
+            compact -> 28.dp
+            else -> 32.dp
+        }
+    val actionGap =
+        when {
+            large -> 10.dp
+            compact -> 6.dp
+            else -> 8.dp
+        }
+    val sideBlock =
+        sideMetricBlockHeight(metricValueTextSize, metricLabelTextSize, fontScale) +
+            actionGap +
+            actionButtonSize
+    val actionDrop =
+        minOf(if (large) 16.dp else 12.dp, (rowHeight - sideBlock) / 2).coerceAtLeast(0.dp)
     return CalorieGaugeLayoutSpec(
         verticalPadding = verticalPadding,
         horizontalPadding = horizontalPadding,
@@ -113,8 +160,18 @@ internal fun calorieGaugeLayoutSpec(size: DpSize, fontScale: Float = 1f): Calori
         zoneTextSize = if (large) 11.sp else 10.sp,
         endTextSize = endTextSize,
         unitTextSize = if (large) 12.sp else 11.sp,
-        metricValueTextSize = if (large) 18.sp else 16.sp,
-        metricLabelTextSize = if (large) 11.sp else 10.sp,
+        metricValueTextSize = metricValueTextSize,
+        metricLabelTextSize = metricLabelTextSize,
+        rowHeight = rowHeight,
+        actionButtonSize = actionButtonSize,
+        actionIconSize =
+            when {
+                large -> 20.dp
+                compact -> 16.dp
+                else -> 18.dp
+            },
+        actionGap = actionGap,
+        actionDrop = actionDrop,
         fontScale = fontScale,
     )
 }
