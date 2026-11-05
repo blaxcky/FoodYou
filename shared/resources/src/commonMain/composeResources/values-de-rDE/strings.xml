@@ -328,6 +328,9 @@
     <string name="weekly_so_far">Bisher</string>
     <string name="weekly_difference">Differenz</string>
     <string name="weekly_sum">Summe</string>
+    <string name="weekly_sum_over_goal_so_far">über Ziel bis heute</string>
+    <string name="weekly_sum_under_goal_so_far">unter Ziel bis heute</string>
+    <string name="weekly_sum_on_goal_so_far">im Ziel bis heute</string>
     <string name="weekly_goal_of">von %1$s Wochenziel</string>
     <string name="weekly_percent">Prozent</string>
     <string name="weekly_diet_goal_reached">Diät-Defizit erreicht</string>

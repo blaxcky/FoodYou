@@ -298,11 +298,11 @@ class GoalsCardScreenshotTest {
     fun weeklyDifferenceBarsNarrowPhone() {
         captureRoboImage(
             filePath = "GoalsCardScreenshotTest.weekly-difference-bars-narrow-phone.png",
-            roborazziComposeOptions = goalsCardOptions(width = 320, height = 370),
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 250),
         ) {
             EnergyFormatterProvider(EnergyFormatter.kilocalories) {
                 MaterialTheme {
-                    Box(Modifier.requiredSize(320.dp, 370.dp).background(Color.White).padding(24.dp)) {
+                    Box(Modifier.requiredSize(320.dp, 250.dp).background(Color.White).padding(24.dp)) {
                         WeeklyDifferenceBars(
                             days =
                                 listOf(
@@ -345,6 +345,50 @@ class GoalsCardScreenshotTest {
                                         goal = 2_151,
                                     ),
                                 ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Up to today, Thursday, with the rest of the week still ahead. */
+    @Test
+    fun weeklyDifferenceBarsPartialWeekNarrowPhone() {
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-difference-bars-partial-week-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 250),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Box(Modifier.requiredSize(320.dp, 250.dp).background(Color.White).padding(24.dp)) {
+                        WeeklyDifferenceBars(
+                            days =
+                                listOf(
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 11, 2),
+                                        energy = 3_600,
+                                        goal = 2_600,
+                                        locked = true,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 11, 3),
+                                        energy = 2_423,
+                                        goal = 2_600,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 11, 4),
+                                        energy = 3_443,
+                                        goal = 2_600,
+                                    ),
+                                    WeekDaySummaryModel(
+                                        date = LocalDate(2026, 11, 5),
+                                        energy = 1_589,
+                                        goal = 2_600,
+                                        dietGoalReached = true,
+                                    ),
+                                ),
+                            today = LocalDate(2026, 11, 5),
                         )
                     }
                 }

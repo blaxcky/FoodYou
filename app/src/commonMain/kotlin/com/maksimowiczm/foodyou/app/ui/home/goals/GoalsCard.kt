@@ -45,9 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.lerp
@@ -65,9 +67,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -113,7 +113,9 @@ import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.weekly_diet_goal_reached
 import foodyou.app.generated.resources.weekly_difference
-import foodyou.app.generated.resources.weekly_sum
+import foodyou.app.generated.resources.weekly_sum_on_goal_so_far
+import foodyou.app.generated.resources.weekly_sum_over_goal_so_far
+import foodyou.app.generated.resources.weekly_sum_under_goal_so_far
 import foodyou.app.generated.resources.weekly_goal_of
 import foodyou.app.generated.resources.weekly_percent
 import foodyou.app.generated.resources.action_weigh_in
@@ -125,8 +127,10 @@ import foodyou.app.generated.resources.weekly_weight_measured_today
 import foodyou.app.generated.resources.weekly_weight_measured_yesterday
 import foodyou.app.generated.resources.weekly_weight_not_measured
 import foodyou.app.generated.resources.weekly_so_far
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.plus
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -155,9 +159,17 @@ private val DietGoalReachedTextColor = Color(0xFF2E7D32)
 private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
 private val WeeklyOverGoalBarColor = Color(0xFFC57484)
 private val WeeklyOverGoalTextColor = Color(0xFF9B3F55)
-private val WeeklyUnderGoalBarColor = Color(0xFFA8DABB)
-private val DifferenceTrackColor = Color(0xFFF7F2F0)
-private val WeeklyHeaderIconColor = Color(0xFFFFECE9)
+private val WeeklyColumnOverBarColor = Color(0xFFD493A0)
+private val WeeklyColumnUnderBarColor = Color(0xFF8CCBA4)
+private val WeeklyGoalLineColor = Color(0xFFC4C7C5)
+private val WeeklyFutureDayColor = Color(0xFF757575)
+private val WeeklyFutureDotColor = Color(0xFFDADCE0)
+private val WeeklyColumnBarWidth = 10.dp
+private val WeeklyColumnMaxBarLength = 56.dp
+private val WeeklyColumnOverHeight = 84.dp
+private val WeeklyColumnLineHeight = 8.dp
+private val WeeklyColumnUnderHeight = 76.dp
+private val WeeklyColumnValueTextSize = 11.sp
 private val FatTrackColor = Color(0xFFFFCFCF)
 private val FatColor = Color(0xFFFF7477)
 private val CarbsTrackColor = Color(0xFFFFE5B8)
@@ -173,18 +185,6 @@ private enum class GoalCardView {
 
 @Composable
 private fun interNumberFontFamily(): FontFamily = FontFamily(Font(Res.font.inter))
-
-/** [interNumberFontFamily] plus a light instance of the variable font for subdued signs. */
-@Composable
-private fun interNumberWithLightFontFamily(): FontFamily =
-    FontFamily(
-        Font(Res.font.inter),
-        Font(
-            Res.font.inter,
-            weight = FontWeight.Light,
-            variationSettings = FontVariation.Settings(FontVariation.weight(300)),
-        ),
-    )
 
 @Composable
 internal fun GoalsCard(
@@ -528,7 +528,8 @@ private fun WeeklyGoalsContent(
                         }
                         when (detailsStyle) {
                             WeeklyDetailsStyle.Table -> WeeklyDetailsTable(model.days)
-                            WeeklyDetailsStyle.DifferenceBars -> WeeklyDifferenceBars(model.days)
+                            WeeklyDetailsStyle.DifferenceBars ->
+                                WeeklyDifferenceBars(days = model.days, today = model.today)
                         }
                         HorizontalDivider(color = GoalsTrackColor)
                         WeeklySummaryFooter(
@@ -554,31 +555,30 @@ internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Mod
     Row(
         modifier =
             modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Box(
-            modifier = Modifier.size(46.dp).background(WeeklyHeaderIconColor, CircleShape),
-            contentAlignment = Alignment.Center,
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Icon(
-                imageVector = Icons.Filled.LocalFireDepartment,
-                contentDescription = null,
-                tint = FatColor,
-                modifier = Modifier.size(28.dp),
-            )
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
-                text = "$energy $unit",
+                text =
+                    buildAnnotatedString {
+                        append(energy)
+                        withStyle(SpanStyle(fontSize = 15.sp, color = GoalsMutedTextColor)) {
+                            append(" $unit")
+                        }
+                    },
                 color = GoalsTextColor,
                 style =
                     MaterialTheme.typography.titleLarge.copy(
                         fontFamily = interNumberFontFamily(),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 24.sp,
-                        lineHeight = 28.sp,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 26.sp,
+                        lineHeight = 30.sp,
                     ),
+                maxLines = 1,
             )
             Text(
                 text = stringResource(Res.string.weekly_goal_of, "$goal $unit"),
@@ -586,6 +586,49 @@ internal fun WeeklyGoalsHeader(model: WeekSummaryModel, modifier: Modifier = Mod
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+        if (model.days.isNotEmpty()) {
+            WeeklySumSoFar(sum = model.days.sumOf { it.difference })
+        }
+    }
+}
+
+/** The differences of the days up to today, summed: the week's exceeded or remaining energy. */
+@Composable
+private fun WeeklySumSoFar(sum: Int, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(top = 2.dp).semantics(mergeDescendants = true) {},
+        horizontalAlignment = Alignment.End,
+    ) {
+        Text(
+            text = sum.signedGroupedDigits(),
+            color =
+                when {
+                    sum > 0 -> WeeklyOverGoalTextColor
+                    sum < 0 -> DietGoalReachedTextColor
+                    else -> GoalsTextColor
+                },
+            style =
+                MaterialTheme.typography.titleMedium.copy(
+                    fontFamily = interNumberFontFamily(),
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 18.sp,
+                    fontFeatureSettings = "tnum",
+                ),
+            maxLines = 1,
+        )
+        Text(
+            text =
+                stringResource(
+                    when {
+                        sum > 0 -> Res.string.weekly_sum_over_goal_so_far
+                        sum < 0 -> Res.string.weekly_sum_under_goal_so_far
+                        else -> Res.string.weekly_sum_on_goal_so_far
+                    }
+                ),
+            color = GoalsMutedTextColor,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+        )
     }
 }
 
@@ -835,222 +878,189 @@ private fun WeeklyDetailsRow(
 }
 
 /**
- * One row per day: the difference to the goal as a bar that grows left of the center line below
- * the goal and right of it above the goal. Only the signed difference is shown; goal and consumed
- * energy are in the weekly header and the optional daily chart. Light tracks behind both halves
- * show the full scale. The day's name is red above the goal, green when the diet goal was reached,
- * and black otherwise.
- *
- * A final row, marked with the gauge icon, sums the differences of the shown days, which only run
- * up to today, so it is the remaining or exceeded energy of the week so far. All rows share one
- * scale, so the sum can be compared with the single days.
+ * The week as seven narrow columns around a dashed goal line: a day above its goal grows a bar
+ * upward, a day below it downward, each with its signed difference at the bar's end. All days
+ * share one scale. Days still ahead are a dot on the line. A day's name is green when the diet
+ * goal was reached, bold for today and muted otherwise; the sum of the shown days, which only run
+ * up to today, is in [WeeklyGoalsHeader].
  */
 @Composable
-internal fun WeeklyDifferenceBars(days: List<WeekDaySummaryModel>, modifier: Modifier = Modifier) {
+internal fun WeeklyDifferenceBars(
+    days: List<WeekDaySummaryModel>,
+    modifier: Modifier = Modifier,
+    today: LocalDate? = null,
+) {
     val dateFormatter = LocalDateFormatter.current
-    val sum = days.sumOf { it.difference }
-    val maxDifference =
-        maxOf(days.maxOfOrNull { abs(it.difference) } ?: 0, abs(sum)).coerceAtLeast(1)
-    Column(modifier = modifier.fillMaxWidth()) {
-        days.forEachIndexed { index, day ->
-            if (index > 0) {
-                Spacer(Modifier.height(8.dp))
+    val maxDifference = (days.maxOfOrNull { abs(it.difference) } ?: 0).coerceAtLeast(1)
+    val firstDate = days.firstOrNull()?.date
+    Row(
+        modifier =
+            modifier.fillMaxWidth().drawBehind {
+                val y = (WeeklyColumnOverHeight + WeeklyColumnLineHeight / 2).toPx()
+                drawLine(
+                    color = WeeklyGoalLineColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect =
+                        PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+                )
             }
-            WeeklyDifferenceBarRow(
-                day = day.tableLabel(dateFormatter.weekDayNamesShort),
-                difference = day.difference,
-                fraction = abs(day.difference).toFloat() / maxDifference,
-                locked = day.locked,
-                dietGoalReached = day.dietGoalReached,
-            )
-        }
-        if (days.isNotEmpty()) {
-            // Set apart like the total line under a column of figures: more space, a dark rule,
-            // and a taller bar in the days' colors.
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider(thickness = 1.5.dp, color = GoalsTextColor)
-            Spacer(Modifier.height(8.dp))
-            WeeklyDifferenceBarRow(
-                day = "",
-                dayIcon = Icons.Filled.Speed,
-                dayDescription = stringResource(Res.string.weekly_sum),
-                difference = sum,
-                fraction = abs(sum).toFloat() / maxDifference,
-                locked = false,
-                dietGoalReached = false,
-                total = true,
+    ) {
+        repeat(7) { index ->
+            val day = days.getOrNull(index)
+            val date = day?.date ?: firstDate?.plus(index, DateTimeUnit.DAY)
+            WeeklyDifferenceColumn(
+                day = day,
+                label = date?.weekDayLabel(dateFormatter.weekDayNamesShort).orEmpty(),
+                isToday = date != null && date == today,
+                fraction = day?.let { abs(it.difference).toFloat() / maxDifference } ?: 0f,
+                modifier = Modifier.weight(1f),
             )
         }
     }
 }
 
+/** One day of [WeeklyDifferenceBars]; [day] is null for a day still ahead. */
 @Composable
-private fun WeeklyDifferenceBarRow(
-    day: String,
-    difference: Int,
+private fun WeeklyDifferenceColumn(
+    day: WeekDaySummaryModel?,
+    label: String,
+    isToday: Boolean,
     fraction: Float,
-    locked: Boolean,
-    dietGoalReached: Boolean,
     modifier: Modifier = Modifier,
-    dayIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    dayDescription: String? = null,
-    total: Boolean = false,
 ) {
+    val difference = day?.difference ?: 0
+    val over = day != null && difference > 0
+    val under = day != null && difference < 0
+    val barLength = WeeklyColumnMaxBarLength * fraction.coerceIn(0.05f, 1f)
+    val barRound = WeeklyColumnBarWidth / 2
+    val labelColor =
+        when {
+            day == null -> WeeklyFutureDayColor
+            day.dietGoalReached -> DietGoalReachedTextColor
+            isToday -> GoalsTextColor
+            else -> GoalsMutedTextColor
+        }
     val dietGoalReachedDescription = stringResource(Res.string.weekly_diet_goal_reached)
-    val under = difference < 0
-    val barFraction = if (difference == 0) 0f else fraction.coerceIn(0.02f, 1f)
-    val differenceColor =
-        when {
-            difference < 0 -> DietGoalReachedTextColor
-            difference > 0 -> WeeklyOverGoalTextColor
-            else -> GoalsTextColor
-        }
-    val dayColor =
-        when {
-            dietGoalReached -> DietGoalReachedTextColor
-            difference > 0 -> WeeklyOverGoalTextColor
-            else -> GoalsTextColor
-        }
-    val barHeight = if (total) 28.dp else 22.dp
-    val barCorner = if (total) 8.dp else 6.dp
-    // The sign stays for color-blind and screen-reader users, but smaller, lighter and thinner
-    // than the digits, since bar direction and color already carry it visually. A hair space keeps
-    // it apart from the digits without looking like the wider digit-group space.
-    val differenceText = buildAnnotatedString {
-        when {
-            difference > 0 -> "+"
-            difference < 0 -> "\u2212"
-            else -> null
-        }?.let { sign ->
-            withStyle(
-                SpanStyle(
-                    color = differenceColor.copy(alpha = 0.9f),
-                    fontSize = (MaterialTheme.typography.bodyMedium.fontSize.value - 4).sp,
-                    fontWeight = FontWeight.Light,
-                    // Re-centers the smaller sign on the digits' height.
-                    baselineShift = BaselineShift(0.08f),
-                )
-            ) {
-                append(sign)
-                append('\u200A')
-            }
-        }
-        append(abs(difference).toString().groupDigits())
-    }
-    val rowModifier =
-        if (dietGoalReached) {
-            modifier.semantics(mergeDescendants = true) {
-                stateDescription = dietGoalReachedDescription
-            }
-        } else {
-            modifier.semantics(mergeDescendants = true) {}
-        }
 
-    Row(
-        modifier = rowModifier.fillMaxWidth().height(if (total) 40.dp else 30.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier =
+            modifier.semantics(mergeDescendants = true) {
+                if (day?.dietGoalReached == true) {
+                    stateDescription = dietGoalReachedDescription
+                }
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(modifier = Modifier.width(52.dp)) {
-            if (dayIcon != null) {
-                Icon(
-                    imageVector = dayIcon,
-                    contentDescription = dayDescription,
-                    tint = GoalsTextColor,
-                    modifier = Modifier.size(26.dp),
-                )
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = day,
-                        modifier =
-                            if (dayDescription != null) {
-                                Modifier.semantics { contentDescription = dayDescription }
-                            } else {
-                                Modifier
-                            },
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = dayColor,
-                        maxLines = 1,
-                    )
-                    if (locked) {
-                        Icon(
-                            imageVector = Icons.Filled.Lock,
-                            contentDescription = stringResource(Res.string.locked_day_status),
-                            tint = dayColor,
-                            modifier = Modifier.padding(start = 2.dp).size(11.dp),
-                        )
-                    }
-                }
-            }
-        }
-        Row(
-            modifier = Modifier.weight(1f).height(barHeight),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        Column(
+            modifier = Modifier.fillMaxWidth().height(WeeklyColumnOverHeight),
+            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
-                modifier =
-                    Modifier.weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(topStart = barCorner, bottomStart = barCorner))
-                        .background(DifferenceTrackColor),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                if (under) {
-                    Box(
-                        modifier =
-                            Modifier.fillMaxWidth(barFraction)
-                                .fillMaxHeight()
-                                .background(WeeklyUnderGoalBarColor)
-                    )
-                }
-            }
-            Box(
-                modifier =
-                    Modifier.weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(topEnd = barCorner, bottomEnd = barCorner))
-                        .background(DifferenceTrackColor),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                if (difference > 0) {
-                    Box(
-                        modifier =
-                            Modifier.fillMaxWidth(barFraction)
-                                .fillMaxHeight()
-                                .background(WeeklyOverGoalBarColor)
-                    )
-                }
+            if (over) {
+                WeeklyColumnValue(difference = difference, color = WeeklyOverGoalTextColor)
+                Box(
+                    modifier =
+                        Modifier.size(WeeklyColumnBarWidth, barLength)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = barRound,
+                                    topEnd = barRound,
+                                    bottomStart = 2.dp,
+                                    bottomEnd = 2.dp,
+                                )
+                            )
+                            .background(WeeklyColumnOverBarColor)
+                )
             }
         }
-        // The width stays that of the day rows so all center lines align; the larger total
-        // shrinks back to the day size only if a five-digit sum would not fit.
-        val differenceStyle =
-            MaterialTheme.typography.bodyMedium.copy(
-                color = differenceColor,
-                fontFamily = interNumberWithLightFontFamily(),
-                fontFeatureSettings = "tnum",
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.End,
+        Box(
+            modifier = Modifier.height(WeeklyColumnLineHeight),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (day == null) {
+                Box(Modifier.size(7.dp).background(WeeklyFutureDotColor, CircleShape))
+            }
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth().height(WeeklyColumnUnderHeight),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (under) {
+                Box(
+                    modifier =
+                        Modifier.size(WeeklyColumnBarWidth, barLength)
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 2.dp,
+                                    topEnd = 2.dp,
+                                    bottomStart = barRound,
+                                    bottomEnd = barRound,
+                                )
+                            )
+                            .background(WeeklyColumnUnderBarColor)
+                )
+                WeeklyColumnValue(difference = difference, color = DietGoalReachedTextColor)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                color = labelColor,
+                maxLines = 1,
             )
-        BasicText(
-            text = differenceText,
-            modifier = Modifier.width(64.dp),
-            style = differenceStyle,
-            maxLines = 1,
-            softWrap = false,
-            autoSize =
-                if (total) {
-                    TextAutoSize.StepBased(
-                        minFontSize = differenceStyle.fontSize,
-                        maxFontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                    )
-                } else {
-                    null
-                },
-        )
+            if (day?.locked == true) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = stringResource(Res.string.locked_day_status),
+                    tint = WeeklyFutureDayColor,
+                    modifier = Modifier.padding(start = 1.dp).size(9.dp),
+                )
+            }
+        }
     }
+}
+
+/** A column's signed difference; it shrinks rather than wrap when five digits do not fit. */
+@Composable
+private fun WeeklyColumnValue(difference: Int, color: Color) {
+    BasicText(
+        text = difference.signedGroupedDigits(),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 1.dp),
+        style =
+            TextStyle(
+                color = color,
+                fontSize = WeeklyColumnValueTextSize,
+                fontFamily = interNumberFontFamily(),
+                fontFeatureSettings = "tnum",
+                textAlign = TextAlign.Center,
+            ),
+        maxLines = 1,
+        softWrap = false,
+        autoSize =
+            TextAutoSize.StepBased(
+                minFontSize = 7.sp,
+                maxFontSize = WeeklyColumnValueTextSize,
+                stepSize = 0.5.sp,
+            ),
+    )
+}
+
+private fun Int.signedGroupedDigits(): String =
+    when {
+        this > 0 -> "+"
+        this < 0 -> "\u2212"
+        else -> ""
+    } + abs(this).toString().groupDigits()
+
+private fun LocalDate.weekDayLabel(weekDayNamesShort: List<String>): String {
+    val index = (dayOfWeek.isoDayNumber - 1).coerceIn(0, weekDayNamesShort.lastIndex)
+    return weekDayNamesShort[index].trimEnd('.')
 }
 
 @Composable
