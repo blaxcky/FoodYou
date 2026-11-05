@@ -1309,15 +1309,22 @@ private fun GoalDisplayMode.goalZoneTrackColor(): Color =
  * Places each zone's value inside the ring, next to the marker at the zone's boundary. The label's
  * edge facing the ring keeps the same clearance whatever its size, so a wide four-digit value moves
  * further in instead of running into the ring.
+ *
+ * The [endLabel] belongs to the marker at the ring's end. It sits left of that marker and a little
+ * below it, in the ring's open bottom, so it stays clear of a zone label just above the end.
  */
 @Composable
-private fun GaugeGoalZoneLabels(
+private fun GaugeLabels(
     zones: List<GaugeGoalZone>,
     diameter: Dp,
     modifier: Modifier = Modifier,
+    endLabel: @Composable () -> Unit,
 ) {
     Layout(
-        content = { zones.forEach { GaugeGoalZoneLabel(it) } },
+        content = {
+            zones.forEach { GaugeGoalZoneLabel(it) }
+            endLabel()
+        },
         modifier = modifier,
     ) { measurables, constraints ->
         val placeables = measurables.map { it.measure(Constraints()) }
@@ -1326,7 +1333,17 @@ private fun GaugeGoalZoneLabels(
             val centerX = constraints.maxWidth / 2f
             val centerY = GaugeStrokeWidth.toPx() / 2f + radius
             val clearance = GaugeZoneLabelClearance.toPx()
-            placeables.forEachIndexed { index, placeable ->
+
+            val end = placeables.last()
+            val endRadians = gaugeAngle(1f).toDouble() * PI / 180.0
+            val endX = centerX + radius * cos(endRadians).toFloat()
+            val endY = centerY + radius * sin(endRadians).toFloat()
+            end.place(
+                x = (endX - GaugeEndLabelGap.toPx() - end.width).roundToInt(),
+                y = (endY + GaugeEndLabelDrop.toPx() - end.height / 2f).roundToInt(),
+            )
+
+            placeables.dropLast(1).forEachIndexed { index, placeable ->
                 val radians = gaugeAngle(zones[index].fraction).toDouble() * PI / 180.0
                 val cos = cos(radians).toFloat()
                 val sin = sin(radians).toFloat()
@@ -1341,10 +1358,7 @@ private fun GaugeGoalZoneLabels(
     }
 }
 
-/**
- * The remaining energy to a supplemental goal. Above the goal the value turns red and gets a
- * warning sign instead of a plus, so the overshoot does not rely on color alone.
- */
+/** The remaining energy to a supplemental goal. */
 @Composable
 private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
     val energyFormatter = LocalEnergyFormatter.current
@@ -1364,21 +1378,39 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
         )
     val status = stringResource(if (zone.exceeded) Res.string.goal_too_much else Res.string.goal_left)
     val description = "$label: $value ${stringResource(Res.string.unit_kcal)} $status"
-    val color = if (zone.exceeded) GoalsErrorColor else GoalsMutedTextColor
-    // Four digits would crowd the ring's center, so those labels get smaller as a whole.
-    val fourDigits = abs(zone.remaining) >= 1000
 
+    GaugeValueLabel(
+        value = value,
+        description = description,
+        exceeded = zone.exceeded,
+        color = if (zone.exceeded) GoalsErrorColor else GoalsMutedTextColor,
+        fontWeight = if (zone.exceeded) FontWeight.SemiBold else FontWeight.Medium,
+    )
+}
+
+/**
+ * A value on the ring. Above its goal it turns red and gets a warning sign instead of a plus, so
+ * the overshoot does not rely on color alone.
+ */
+@Composable
+private fun GaugeValueLabel(
+    value: String,
+    description: String,
+    exceeded: Boolean,
+    color: Color,
+    fontWeight: FontWeight,
+) {
     Row(
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
         horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (zone.exceeded) {
+        if (exceeded) {
             Icon(
                 imageVector = Icons.Outlined.WarningAmber,
                 contentDescription = null,
                 tint = GoalsErrorColor,
-                modifier = Modifier.size(if (fourDigits) 7.dp else 8.dp),
+                modifier = Modifier.size(12.dp),
             )
         }
         Text(
@@ -1387,10 +1419,10 @@ private fun GaugeGoalZoneLabel(zone: GaugeGoalZone) {
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontFamily = interNumberFontFamily(),
-                    fontSize = if (fourDigits) 7.sp else 8.sp,
-                    lineHeight = if (fourDigits) 9.sp else 10.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
                 ),
-            fontWeight = if (zone.exceeded) FontWeight.SemiBold else FontWeight.Medium,
+            fontWeight = fontWeight,
             maxLines = 1,
         )
     }
@@ -1480,7 +1512,6 @@ private fun CaloriesOverviewPage(
     val overflowProgress = calorieProgress.overflowProgress
     val overflow = left < 0
     val remainingValue = if (overflow) -left else left
-    val valueColor = if (overflow) GoalsErrorColor else GoalsTextColor
     val remainingLabel =
         stringResource(if (overflow) Res.string.goal_too_much else Res.string.goal_left)
     val todayRemainingOverflow = todayRemainingEnergy?.let { it < 0 } == true
@@ -1525,8 +1556,7 @@ private fun CaloriesOverviewPage(
                         overflowProgress = overflowProgress,
                         progressColor = summary.mode.accentColor(),
                         goalZones = goalZones,
-                        valueColor = valueColor,
-                        labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
+                        exceeded = overflow,
                         diameter = gaugeDiameter,
                         supportingLabel =
                             todayRemainingText?.let {
@@ -1620,8 +1650,7 @@ private fun CaloriesOverviewPage(
                         overflowProgress = overflowProgress,
                         progressColor = summary.mode.accentColor(),
                         goalZones = goalZones,
-                        valueColor = valueColor,
-                        labelColor = if (overflow) GoalsErrorColor else GoalsMutedTextColor,
+                        exceeded = overflow,
                         diameter = gaugeDiameter,
                         supportingLabel =
                             todayRemainingText?.let {
@@ -2093,8 +2122,7 @@ private fun GaugeMetric(
     progress: Float,
     overflowProgress: Float,
     progressColor: Color,
-    valueColor: Color,
-    labelColor: Color = GoalsMutedTextColor,
+    exceeded: Boolean,
     diameter: Dp,
     modifier: Modifier = Modifier,
     goalZones: List<GaugeGoalZone> = emptyList(),
@@ -2116,48 +2144,28 @@ private fun GaugeMetric(
             goalZones = goalZones,
             modifier = Modifier.size(width = diameter, height = diameter - 7.dp),
         )
-        if (goalZones.isNotEmpty()) {
-            GaugeGoalZoneLabels(
-                zones = goalZones,
-                diameter = diameter,
-                modifier = Modifier.matchParentSize(),
+        // The ring's own remaining energy is the last value on the ring, as it spans the full sweep.
+        GaugeLabels(
+            zones = goalZones,
+            diameter = diameter,
+            modifier = Modifier.matchParentSize(),
+        ) {
+            GaugeValueLabel(
+                value = value.replace(' ', '\u202F'),
+                description = "$value ${stringResource(Res.string.unit_kcal)} $label",
+                exceeded = exceeded,
+                color = if (exceeded) GoalsErrorColor else GoalsTextColor,
+                fontWeight = FontWeight.SemiBold,
             )
         }
 
         Column(
-            modifier = Modifier.offset(y = diameter * 0.35f),
+            modifier = Modifier.offset(y = diameter * 0.42f),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = value,
-                color = valueColor,
-                style =
-                    MaterialTheme.typography.headlineLarge.copy(
-                        fontFamily = numberFontFamily,
-                        fontSize = 24.sp,
-                        lineHeight = 28.sp,
-                    ),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = label,
-                modifier = Modifier.padding(top = 8.dp),
-                color = labelColor,
-                style =
-                    MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                    ),
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-            )
             if (supportingLabel != null) {
                 Text(
                     text = supportingLabel,
-                    modifier = Modifier.padding(top = 10.dp),
                     color = GoalsMutedTextColor,
                     style =
                         MaterialTheme.typography.labelMedium.copy(
@@ -2193,6 +2201,12 @@ private val GaugeStrokeWidth = 10.dp
 private val GaugeZoneLabelClearance = 10.dp
 private val GaugeZoneMarkerRadius = 6.5.dp
 private val GaugeZoneMarkerDotRadius = 3.5.dp
+
+/** Gap between the ring's end marker and the right edge of its value label. */
+private val GaugeEndLabelGap = 10.dp
+
+/** How far the end value's center sits below the ring's end marker. */
+private val GaugeEndLabelDrop = 3.dp
 private const val GaugeGapAngle = 2.5f
 
 /** The ring starts bottom left at 135° and sweeps 270° clockwise to the bottom right. */
@@ -2246,6 +2260,12 @@ private fun SemiCircleGauge(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
             )
         }
+        drawGaugeMarker(
+            center = Offset(size.width / 2f, strokeWidth / 2f + arcDiameter / 2f),
+            radius = arcDiameter / 2f,
+            fraction = 1f,
+            color = progressColor,
+        )
     }
 }
 
@@ -2340,14 +2360,21 @@ private fun DrawScope.drawZonedGauge(
 
     // The markers keep their section's color; an exceeded goal shows in its red label instead.
     zones.forEach { zone ->
-        val point = arcPoint(gaugeAngle(zone.fraction.coerceIn(0f, 1f)))
-        drawCircle(GoalsCardColor, radius = GaugeZoneMarkerRadius.toPx(), center = point)
-        drawCircle(
-            color = zone.mode.goalZoneColor(),
-            radius = GaugeZoneMarkerDotRadius.toPx(),
-            center = point,
-        )
+        drawGaugeMarker(center, radius, zone.fraction, zone.mode.goalZoneColor())
     }
+    drawGaugeMarker(center, radius, 1f, progressColor)
+}
+
+/** A marker on the ring at [fraction] of its sweep, ringed in the card's color. */
+private fun DrawScope.drawGaugeMarker(center: Offset, radius: Float, fraction: Float, color: Color) {
+    val radians = gaugeAngle(fraction.coerceIn(0f, 1f)).toDouble() * PI / 180.0
+    val point =
+        Offset(
+            x = center.x + radius * cos(radians).toFloat(),
+            y = center.y + radius * sin(radians).toFloat(),
+        )
+    drawCircle(GoalsCardColor, radius = GaugeZoneMarkerRadius.toPx(), center = point)
+    drawCircle(color = color, radius = GaugeZoneMarkerDotRadius.toPx(), center = point)
 }
 
 internal fun String.groupDigits(): String {
