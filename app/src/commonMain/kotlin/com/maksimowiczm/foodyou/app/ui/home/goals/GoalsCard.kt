@@ -72,6 +72,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1399,6 +1400,7 @@ private fun GaugeValueLabel(
     exceeded: Boolean,
     color: Color,
     fontWeight: FontWeight,
+    fontSize: TextUnit = 12.sp,
 ) {
     Row(
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
@@ -1410,7 +1412,7 @@ private fun GaugeValueLabel(
                 imageVector = Icons.Outlined.WarningAmber,
                 contentDescription = null,
                 tint = GoalsErrorColor,
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(fontSize.value.dp),
             )
         }
         Text(
@@ -1419,8 +1421,8 @@ private fun GaugeValueLabel(
             style =
                 MaterialTheme.typography.labelMedium.copy(
                     fontFamily = interNumberFontFamily(),
-                    fontSize = 12.sp,
-                    lineHeight = 15.sp,
+                    fontSize = fontSize,
+                    lineHeight = fontSize * 1.25f,
                 ),
             fontWeight = fontWeight,
             maxLines = 1,
@@ -2156,6 +2158,8 @@ private fun GaugeMetric(
                 exceeded = exceeded,
                 color = if (exceeded) GoalsErrorColor else GoalsTextColor,
                 fontWeight = FontWeight.SemiBold,
+                // The card's main value, so it stands out from the goal values on the ring.
+                fontSize = 16.sp,
             )
         }
 
