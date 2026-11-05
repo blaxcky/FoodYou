@@ -26,7 +26,8 @@ internal class AndroidAiController(
     private val keyFile = File(directory, "gemini.key")
     private val photoDirectory = File(context.filesDir, "food-snap-photos")
     private val cacheDirectory = File(context.cacheDir, "gemma")
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate +
+        CoroutineExceptionHandler { _, e -> android.util.Log.w("FoodYou", "AI controller task failed", e) })
     private val dao = database.quickCaptureDao
     private val configMutex = Mutex()
     private val stores = GemmaModel.entries.associateWith { GemmaModelStore(File(directory, "models"), it) }

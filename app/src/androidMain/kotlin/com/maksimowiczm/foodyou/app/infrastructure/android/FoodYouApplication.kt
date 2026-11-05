@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
+import org.koin.dsl.binds
 import org.koin.dsl.module
 
 class FoodYouApplication : Application() {
@@ -43,12 +44,13 @@ class FoodYouApplication : Application() {
                             get<com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase>().trainingImportDao,
                             get())
                     }
-                    single<com.maksimowiczm.foodyou.ai.AiController> {
-                        com.maksimowiczm.foodyou.ai.AndroidAiController(this@FoodYouApplication, get(), get())
-                    }
-                    single<com.maksimowiczm.foodyou.food.domain.usecase.QuickCapturePhotoAnalysisScheduler> {
-                        get<com.maksimowiczm.foodyou.ai.AiController>() as com.maksimowiczm.foodyou.ai.AndroidAiController
-                    }
+                    // One definition bound to both interfaces: R8 merges single-implementation
+                    // interfaces into AndroidAiController, so a second definition that resolves
+                    // get<AiController>() would resolve itself and overflow the stack.
+                    single { com.maksimowiczm.foodyou.ai.AndroidAiController(this@FoodYouApplication, get(), get()) } binds arrayOf(
+                        com.maksimowiczm.foodyou.ai.AiController::class,
+                        com.maksimowiczm.foodyou.food.domain.usecase.QuickCapturePhotoAnalysisScheduler::class,
+                    )
                     factory {
                         CalorieWidgetUpdater(
                             observeDiaryMealsUseCase = get(),
@@ -76,7 +78,8 @@ class FoodYouApplication : Application() {
                 GlobalContext.get().get<com.maksimowiczm.foodyou.ai.AiController>().reconcileBackgroundAnalysis()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Startup must never die over background scheduling; the next save retries it.
                 android.util.Log.w("FoodYou", "Could not schedule pending photo analysis", e)
             }
         }

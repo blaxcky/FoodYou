@@ -64,6 +64,16 @@ run broad or expensive tasks such as `build`, `check`, an unfiltered `test`, ful
 all variants. Broader or more expensive verification is permitted when the user explicitly asks
 for it.
 
+### Koin Definitions Under R8
+
+`devRelease` lets R8 merge an interface that has a single implementation into that implementation,
+so `AiController::class` and `AndroidAiController::class` become the same Koin key at runtime. Never
+add a definition that resolves another type of the same object (`single<B> { get<A>() as Impl }`):
+after merging it resolves itself and the app dies in a `StackOverflowError` crash loop on every
+process start, including widget updates. Register one definition and attach extra types with
+`bind`/`binds`. Unit tests run unshrunk and will not catch this; verify Koin wiring changes with
+`./dev/android-emulator.sh install` and a clean `logcat`.
+
 ### Visual UI Changes (Roborazzi)
 
 [Roborazzi](https://github.com/takahirom/roborazzi) renders Android and Compose UI on the JVM,
