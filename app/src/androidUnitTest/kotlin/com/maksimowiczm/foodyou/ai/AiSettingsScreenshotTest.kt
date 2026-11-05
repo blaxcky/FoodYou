@@ -77,27 +77,6 @@ class AiSettingsScreenshotTest {
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.batch-progress.png")
     }
 
-    @Test fun backgroundQueued() {
-        var cancelled = false
-        show {
-            androidx.compose.material3.Scaffold(
-                floatingActionButton = { AiAnalysisActionButton(AnalysisProgress(queued = true), true, true, {}, { cancelled = true }) },
-            ) { padding ->
-                Column(Modifier.padding(padding)) {
-                    AiAnalysisControls(AiProvider.OpenAI, AnalysisProgress(queued = true),
-                        true, PhotoAnalysisSummary(total = 2), {}, {})
-                }
-            }
-        }
-        compose.onNodeWithText("Erkennung eingeplant").assertIsDisplayed()
-        compose.mainClock.advanceTimeBy(1_000)
-        compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.background-queued.png")
-        compose.onNodeWithText("Abbrechen", useUnmergedTree = true).assertExists()
-        compose.onNode(hasClickAction() and hasAnyDescendant(hasText("Abbrechen")), useUnmergedTree = true)
-            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { action -> assertEquals(true, action()) }
-        assertEquals(true, cancelled)
-    }
-
     @Test fun batchCompleted() {
         show {
             AiAnalysisControls(AiProvider.Local,
@@ -216,7 +195,6 @@ class AiSettingsScreenshotTest {
 
     @Test fun onlySelectedPhotoProviderShowsItsOptions() {
         show { AiSettingsContent(AiSettings(AiProvider.Local), emptyMap(), false) }
-        compose.onNodeWithText("Fotos automatisch im Hintergrund erkennen").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("Bildanalyse auf der CPU").assertExists()
         compose.onNodeWithText("Gleichzeitige Fotoanalysen").assertDoesNotExist()
         compose.onNodeWithText("Fotoerkennung testen").assertDoesNotExist()
@@ -231,14 +209,12 @@ class AiSettingsScreenshotTest {
                 onSave = { saved = it },
             )
         }
-        compose.onNodeWithText("Fotos automatisch im Hintergrund erkennen").performScrollTo().performClick()
         compose.onNodeWithText("Gleichzeitige Fotoanalysen").performScrollTo().performClick()
         compose.onNodeWithText("5", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Claude").performScrollTo().performClick()
         compose.onNodeWithText("Fotoerkennung testen").performScrollTo().assertIsNotEnabled()
         compose.onRoot().captureRoboImage("AiSettingsScreenshotTest.unsaved-changes.png")
         compose.onNodeWithText("Speichern").performClick()
-        assertEquals(true, saved?.backgroundPhotoAnalysisEnabled)
         assertEquals(5, saved?.openAi?.photoParallelism)
         assertEquals(NutritionProvider.Claude, saved?.nutritionProvider)
         assertEquals(AiProvider.OpenAI, saved?.provider)

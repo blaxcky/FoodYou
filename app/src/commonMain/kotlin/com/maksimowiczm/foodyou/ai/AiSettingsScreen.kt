@@ -56,7 +56,6 @@ internal data class AiSettingsDraft(
     val openAi: OpenAiSettings,
     val claude: ClaudeSettings,
     val nutritionProvider: NutritionProvider,
-    val backgroundPhotoAnalysisEnabled: Boolean = false,
     val geminiKey: String? = null,
     val openAiKey: String? = null,
     val claudeKey: String? = null,
@@ -68,7 +67,7 @@ private val AiSettingsDraftSaver = listSaver<AiSettingsDraft, Any?>(
         listOf(it.provider.name, it.geminiModel, it.visionOnCpu, it.nutritionProvider.name,
             it.openAi.photo.model, it.openAi.photo.effort, it.openAi.nutrition.model, it.openAi.nutrition.effort,
             it.openAi.photoParallelism, it.claude.photo.model, it.claude.photo.effort, it.claude.nutrition.model,
-            it.claude.nutrition.effort, it.claude.photoParallelism, it.backgroundPhotoAnalysisEnabled)
+            it.claude.nutrition.effort, it.claude.photoParallelism)
     },
     restore = { v ->
         AiSettingsDraft(
@@ -80,20 +79,18 @@ private val AiSettingsDraftSaver = listSaver<AiSettingsDraft, Any?>(
             claude = ClaudeSettings(ClaudeTask(v[9] as String, v[10] as String?), ClaudeTask(v[11] as String, v[12] as String?),
                 photoParallelism = v[13] as Int),
             nutritionProvider = NutritionProvider.valueOf(v[3] as String),
-            backgroundPhotoAnalysisEnabled = v.getOrNull(14) as? Boolean ?: false,
         )
     },
 )
 
 internal fun AiSettings.toDraft() = AiSettingsDraft(
-    provider, model, visionOnCpu, openAi.copy(hasApiKey = false), claude.copy(hasApiKey = false), nutritionProvider, backgroundPhotoAnalysisEnabled,
+    provider, model, visionOnCpu, openAi.copy(hasApiKey = false), claude.copy(hasApiKey = false), nutritionProvider,
 )
 
 /** Keeps the user's edits and takes every untouched field from the newly saved settings. */
 private fun AiSettingsDraft.rebase(old: AiSettingsDraft, new: AiSettingsDraft): AiSettingsDraft {
     fun <T> pick(current: T, before: T, after: T) = if (current == before) after else current
     return copy(
-        backgroundPhotoAnalysisEnabled = pick(backgroundPhotoAnalysisEnabled, old.backgroundPhotoAnalysisEnabled, new.backgroundPhotoAnalysisEnabled),
         provider = pick(provider, old.provider, new.provider),
         geminiModel = pick(geminiModel, old.geminiModel, new.geminiModel),
         visionOnCpu = pick(visionOnCpu, old.visionOnCpu, new.visionOnCpu),
@@ -169,9 +166,6 @@ fun AiSettingsScreen(onBack: () -> Unit) {
                 if (draft.claude != saved.claude.copy(hasApiKey = false) || draft.claudeKey != null)
                     controller.saveClaude(draft.claude, draft.claudeKey)
                 if (draft.nutritionProvider != saved.nutritionProvider) controller.saveNutritionProvider(draft.nutritionProvider)
-                if (draft.backgroundPhotoAnalysisEnabled != saved.backgroundPhotoAnalysisEnabled)
-                    controller.saveBackgroundPhotoAnalysis(draft.backgroundPhotoAnalysisEnabled)
-                controller.reconcileBackgroundAnalysis()
                 savedMessage
             } catch (e: CancellationException) { throw e
             } catch (_: Exception) { failedMessage }
@@ -378,19 +372,6 @@ internal fun AiSettingsContent(
                         }
                     }
                 }
-            }
-
-            AiSettingsGroup {
-                AiSettingsRow(
-                    headline = "Fotos automatisch im Hintergrund erkennen",
-                    supporting = if (localModel != null) "Nur für Cloud-Anbieter verfügbar."
-                        else "Neue und bisher nicht analysierte Fotos werden automatisch übertragen – auch über Mobilfunk. Die API-Nutzung kann Kosten verursachen.",
-                    trailing = { Switch(checked = draft.backgroundPhotoAnalysisEnabled, onCheckedChange = null, enabled = !busy && localModel == null) },
-                    checked = draft.backgroundPhotoAnalysisEnabled,
-                    enabled = !busy && localModel == null,
-                    role = Role.Switch,
-                    onClick = { draft = draft.copy(backgroundPhotoAnalysisEnabled = !draft.backgroundPhotoAnalysisEnabled) },
-                )
             }
 
             AiSettingsSection(stringResource(Res.string.ai_settings_nutrition), Icons.Outlined.TravelExplore)
@@ -616,8 +597,8 @@ internal fun AiAnalysisControls(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val paused = progress.paused && !progress.running && !progress.queued
-    val canReanalyze = photos.total > 0 && canStart && !progress.running && !progress.queued
+    val paused = progress.paused && !progress.running
+    val canReanalyze = photos.total > 0 && canStart && !progress.running
     Column(Modifier.fillMaxWidth()) {
         if (progress.running) {
             val fraction = if (progress.total > 0) progress.completed.toFloat() / progress.total else 0f
@@ -628,7 +609,6 @@ internal fun AiAnalysisControls(
             val compact = maxWidth < 360.dp || LocalDensity.current.fontScale > 1.3f
             val status: @Composable () -> Unit = {
                 when {
-                    progress.queued && !progress.running -> Text("Erkennung eingeplant", style = MaterialTheme.typography.bodyMedium)
                     progress.running -> Text(
                         if (provider == AiProvider.OpenAI || provider == AiProvider.Claude) "${progress.completed} von ${progress.total} Fotos verarbeitet"
                         else "Analysiere ${(progress.completed + 1).coerceAtMost(progress.total)} von ${progress.total}",
@@ -911,7 +891,7 @@ internal fun AiAnalysisActionButton(
     onCancel: () -> Unit,
 ) {
     when {
-        progress.running || progress.queued ->
+        progress.running ->
             ExtendedFloatingActionButton(
                 onClick = onCancel,
                 icon = { Icon(Icons.Outlined.Stop, contentDescription = null) },

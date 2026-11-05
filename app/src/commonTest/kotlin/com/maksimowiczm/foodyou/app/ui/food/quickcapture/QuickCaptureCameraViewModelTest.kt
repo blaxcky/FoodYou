@@ -27,16 +27,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
 class QuickCaptureCameraViewModelTest {
-    @Test fun schedulesOnlyAfterSavingAndSchedulingFailurePreservesPhoto() = runTest {
-        val repository = RecordingQuickCaptureRepository()
-        val capture = CaptureQuickCapturePhotoUseCase(repository, FixedDateProvider) { id ->
-            assertEquals(42, id.toInt())
-            assertEquals(listOf("saved.jpg"), repository.capturedPaths)
-            error("Scheduler unavailable")
-        }
-        assertEquals(42, capture.capture("saved.jpg").toInt())
-    }
-
     @Test
     fun countsPendingPhotosAndCapturesEachPathOnce() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
@@ -46,7 +36,7 @@ class QuickCaptureCameraViewModelTest {
             val cameraViewModel =
                 QuickCaptureCameraViewModel(
                     observe = ObserveQuickCaptureUseCase(repository),
-                    capture = CaptureQuickCapturePhotoUseCase(repository, FixedDateProvider) {},
+                    capture = CaptureQuickCapturePhotoUseCase(repository, FixedDateProvider),
                     photoRegistrationScope = this,
                 )
             viewModel = cameraViewModel
@@ -82,7 +72,7 @@ class QuickCaptureCameraViewModelTest {
             val repository = RecordingQuickCaptureRepository()
             val viewModel = QuickCaptureCameraViewModel(
                 observe = ObserveQuickCaptureUseCase(repository),
-                capture = CaptureQuickCapturePhotoUseCase(repository, FixedDateProvider) {},
+                capture = CaptureQuickCapturePhotoUseCase(repository, FixedDateProvider),
                 photoRegistrationScope = this,
             )
             viewModel.viewModelScope.cancel()

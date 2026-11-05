@@ -72,7 +72,6 @@ data class AiSettings(
     val openAi: OpenAiSettings = OpenAiSettings(),
     val claude: ClaudeSettings = ClaudeSettings(),
     val nutritionProvider: NutritionProvider = NutritionProvider.OpenAI,
-    val backgroundPhotoAnalysisEnabled: Boolean = false,
 )
 
 /** The model that reads scale photos for the selected provider, e.g. "gpt-6-luna · Reasoning low". */
@@ -142,7 +141,6 @@ data class AnalysisProgress(
     val message: String? = null,
     val paused: Boolean = false,
     val elapsedMillis: Long = 0,
-    val queued: Boolean = false,
 )
 
 /** Open photos counted by their stored AI outcome, so the status line stays true after restarts. */
@@ -275,8 +273,6 @@ interface AiController {
     suspend fun saveClaude(settings: ClaudeSettings, newKey: String?, deleteKey: Boolean = false)
     suspend fun testClaude(nutrition: Boolean): String
     suspend fun testOpenAi(nutrition: Boolean): String
-    suspend fun saveBackgroundPhotoAnalysis(enabled: Boolean)
-    suspend fun reconcileBackgroundAnalysis()
     suspend fun saveNutritionProvider(provider: NutritionProvider)
     suspend fun estimateNutrition(prompt: String, provider: NutritionProvider = NutritionProvider.OpenAI): NutritionEstimate
     suspend fun diagnosticReport(): String
