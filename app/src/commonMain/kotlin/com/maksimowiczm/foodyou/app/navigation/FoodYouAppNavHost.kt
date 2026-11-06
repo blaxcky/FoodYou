@@ -617,9 +617,15 @@ fun FoodYouAppNavHost(
                 onMealSettings = { navController.navigateSingleTop(MealSetup) },
             )
         }
-        forwardBackwardComposable<GoalsPersonalization> {
+        forwardBackwardComposable<GoalsPersonalization> { entry ->
+            // The preview shows the day selected on the home screen, which home's goals know.
+            val homeEntry =
+                remember(entry) {
+                    runCatching { navController.getBackStackEntry<Home>() }.getOrNull()
+                }
             GoalsCardSettings(
                 onBack = { navController.popBackStackInclusive<GoalsPersonalization>() },
+                homeViewModelStoreOwner = homeEntry,
             )
         }
     }

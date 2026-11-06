@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
@@ -47,21 +48,29 @@ import org.koin.core.qualifier.named
 @Composable
 internal fun GoalsCardSettings(
     onBack: () -> Unit,
+    homeViewModelStoreOwner: ViewModelStoreOwner? = null,
     modifier: Modifier = Modifier,
 ) {
     val repository: UserPreferencesRepository<Settings> =
         koinInject(named(Settings::class.qualifiedName!!))
     val settings by repository.observe().collectAsStateWithLifecycle(null)
     val scope = rememberCoroutineScope()
-    // The preview shows today, so the card is judged with real, possibly long values.
-    val viewModel: GoalsViewModel = koinViewModel()
-    val dateProvider: DateProvider = koinInject()
-    LaunchedEffect(viewModel) { viewModel.setDate(dateProvider.now().date) }
-    val today by viewModel.model.collectAsStateWithLifecycle()
+    // The preview shows the day selected on the home screen with its real, possibly long values,
+    // so other days can be tried there. Without the home screen it shows today.
+    val viewModel: GoalsViewModel =
+        if (homeViewModelStoreOwner != null) {
+            koinViewModel(viewModelStoreOwner = homeViewModelStoreOwner)
+        } else {
+            val ownViewModel: GoalsViewModel = koinViewModel()
+            val dateProvider: DateProvider = koinInject()
+            LaunchedEffect(ownViewModel) { ownViewModel.setDate(dateProvider.now().date) }
+            ownViewModel
+        }
+    val selectedDay by viewModel.model.collectAsStateWithLifecycle()
     settings?.let { current ->
         GoalsCardSettingsContent(
             onBack = onBack,
-            preview = today,
+            preview = selectedDay,
             goalCardModeSwitchingEnabled = current.goalCardModeSwitchingEnabled,
             supplementalGoalsEnabled = current.supplementalGoalsEnabled,
             weeklyDetailsStyle = current.weeklyDetailsStyle,
