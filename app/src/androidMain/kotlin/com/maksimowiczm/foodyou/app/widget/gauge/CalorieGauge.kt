@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.widget.gauge
 
+import com.maksimowiczm.foodyou.app.ui.home.goals.gaugeRingPosition
+import com.maksimowiczm.foodyou.app.ui.home.goals.spreadGaugeMarkers
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetProgress
 
@@ -10,10 +12,12 @@ internal enum class CalorieGaugeZoneKind {
 
 /**
  * A supplemental goal that splits the ring, as on the home screen's goals card. The ring keeps the
- * normal goal as its full sweep; [fraction] is where this goal's section ends on it.
+ * normal goal as its full sweep; [goalFraction] is this goal's share of it, and [fraction] is where
+ * its marker sits, moved back from a marker it would crowd (see [spreadGaugeMarkers]).
  */
 internal data class CalorieGaugeZone(
     val kind: CalorieGaugeZoneKind,
+    val goalFraction: Float,
     val fraction: Float,
     val remainingKcal: Int,
 ) {
@@ -22,6 +26,7 @@ internal data class CalorieGaugeZone(
 }
 
 internal data class CalorieGauge(
+    /** Where the fill ends on the ring, following the zones' moved markers. */
     val progress: Float,
     val overflow: Float,
     val zones: List<CalorieGaugeZone>,
@@ -42,17 +47,21 @@ internal fun calorieGauge(model: CalorieWidgetModel): CalorieGauge {
 
     fun zone(kind: CalorieGaugeZoneKind, goalKcal: Int?, leftKcal: Int?): CalorieGaugeZone? {
         if (goalKcal == null || leftKcal == null || goalKcal !in 1 until goal) return null
-        return CalorieGaugeZone(kind, goalKcal.toFloat() / goal, leftKcal)
+        val fraction = goalKcal.toFloat() / goal
+        return CalorieGaugeZone(kind, goalFraction = fraction, fraction = fraction, leftKcal)
     }
 
-    val zones =
+    val goalZones =
         listOfNotNull(
                 zone(CalorieGaugeZoneKind.Optimized, model.optimizedGoalKcal, model.optimizedLeftKcal),
                 zone(CalorieGaugeZoneKind.Diet, model.dietGoalKcal, model.dietLeftKcal),
             )
-            .sortedBy { it.fraction }
+            .sortedBy { it.goalFraction }
+    val goalFractions = goalZones.map { it.goalFraction }
+    val markers = spreadGaugeMarkers(goalFractions)
+    val zones = goalZones.mapIndexed { index, zone -> zone.copy(fraction = markers[index]) }
     return CalorieGauge(
-        progress = progress.progress,
+        progress = gaugeRingPosition(progress.progress, goalFractions, markers),
         overflow = progress.overflow,
         zones = zones,
         remainingKcal = model.normalLeftKcal,

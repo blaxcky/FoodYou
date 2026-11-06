@@ -1319,11 +1319,13 @@ private fun CaloriesOverview(
 
 /**
  * A supplemental goal (Optimized or Diet) that splits the energy ring into sections. The ring
- * keeps its own goal as the full sweep; [fraction] is where this goal's section ends on it.
+ * keeps its own goal as the full sweep; [goalFraction] is this goal's share of it, and [fraction]
+ * is where its marker sits, moved back from a marker it would crowd (see [spreadGaugeMarkers]).
  */
 @Immutable
 internal data class GaugeGoalZone(
     val mode: GoalDisplayMode,
+    val goalFraction: Float,
     val fraction: Float,
     val remaining: Int,
 ) {
@@ -1342,17 +1344,21 @@ internal fun gaugeGoalZones(
 ): List<GaugeGoalZone> {
     val ringGoal = ringSummary.percentageEnergyGoal
     if (ringSummary.energyGoal <= 0 || ringGoal <= 0) return emptyList()
-    return goalSummaries
-        .filter { it.mode != ringSummary.mode && it.mode != GoalDisplayMode.Normal }
-        .filter { it.energyGoal in 1 until ringGoal }
-        .sortedBy { it.energyGoal }
-        .map {
-            GaugeGoalZone(
-                mode = it.mode,
-                fraction = it.energyGoal.toFloat() / ringGoal,
-                remaining = it.energyGoal - netEnergy,
-            )
-        }
+    val goals =
+        goalSummaries
+            .filter { it.mode != ringSummary.mode && it.mode != GoalDisplayMode.Normal }
+            .filter { it.energyGoal in 1 until ringGoal }
+            .sortedBy { it.energyGoal }
+    val goalFractions = goals.map { it.energyGoal.toFloat() / ringGoal }
+    val markers = spreadGaugeMarkers(goalFractions)
+    return goals.mapIndexed { index, goal ->
+        GaugeGoalZone(
+            mode = goal.mode,
+            goalFraction = goalFractions[index],
+            fraction = markers[index],
+            remaining = goal.energyGoal - netEnergy,
+        )
+    }
 }
 
 private fun GoalDisplayMode.goalZoneColor(): Color =
@@ -2478,7 +2484,12 @@ private fun DrawScope.drawZonedGauge(
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
         )
     } else {
-        val visibleProgress = progress.coerceIn(0f, 1f)
+        val visibleProgress =
+            gaugeRingPosition(
+                progress = progress.coerceIn(0f, 1f),
+                goalFractions = zones.map { it.goalFraction },
+                markerFractions = boundaries,
+            )
         if (visibleProgress > 0f) {
             drawCircle(colors.first(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
             for (index in 0..lastIndex) {

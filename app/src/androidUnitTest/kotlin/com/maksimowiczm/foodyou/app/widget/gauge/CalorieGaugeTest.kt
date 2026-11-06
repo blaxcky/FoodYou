@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.widget.gauge
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeMarkerMinGap
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,6 +26,16 @@ class CalorieGaugeTest {
         assertEquals(595, gauge.zones[1].remainingKcal)
         assertEquals(1011, gauge.remainingKcal)
         assertFalse(gauge.exceeded)
+    }
+
+    @Test
+    fun aGoalCloseToTheNormalGoalMovesBackAndTheFillFollows() {
+        val gauge = calorieGauge(model(netKcal = 2090, optimizedGoalKcal = 2090))
+
+        val zone = gauge.zones.single()
+        assertEquals(2090f / 2100f, zone.goalFraction)
+        assertEquals(1f - GaugeMarkerMinGap, zone.fraction)
+        assertEquals(zone.fraction, gauge.progress, 1e-6f)
     }
 
     @Test

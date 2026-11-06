@@ -609,6 +609,27 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun ringGoalZoneNearTheEndPhone() {
+        // Optimized 10 kcal below the ring's goal keeps its distance from the end marker, and
+        // 2000 kcal stay short of it.
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zone-near-end-phone.png",
+            fixture =
+                RingZonesFixture.copy(
+                    energy = 2334,
+                    netEnergy = 2000,
+                    goalDisplaySummaries =
+                        RingZonesFixture.goalDisplaySummaries.map {
+                            if (it.mode == GoalDisplayMode.Optimized) it.copy(energyGoal = 2090)
+                            else it
+                        },
+                ),
+            width = 414,
+            height = 340,
+        )
+    }
+
+    @Test
     fun gaugeSizesPhone() {
         for (percent in listOf(80, 120)) {
             captureGoalsCard(
