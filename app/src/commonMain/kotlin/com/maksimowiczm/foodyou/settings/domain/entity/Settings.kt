@@ -50,7 +50,15 @@ data class Settings(
         FoodEntryAmountPickerStyle.PortionList,
     val weeklyDetailsStyle: WeeklyDetailsStyle = WeeklyDetailsStyle.DifferenceBars,
     val weeklyChartEnabled: Boolean = true,
+    /** The calorie card's ring size, in percent of its size fitted to the card. */
+    val goalGaugeSizePercent: Int = DEFAULT_GOAL_GAUGE_SIZE_PERCENT,
 ) : UserPreferences
+
+const val DEFAULT_GOAL_GAUGE_SIZE_PERCENT = 100
+
+val GOAL_GAUGE_SIZE_PERCENT_RANGE = 80..120
+
+const val GOAL_GAUGE_SIZE_PERCENT_STEP = 5
 
 data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)
 

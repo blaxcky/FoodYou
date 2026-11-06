@@ -68,6 +68,14 @@ internal class GoalsViewModel(
             initialValue = runBlocking { _weeklyDetailsStyle.first() },
         )
 
+    private val _goalGaugeSizePercent = settingsRepository.observe().map { it.goalGaugeSizePercent }
+    val goalGaugeSizePercent: StateFlow<Int> =
+        _goalGaugeSizePercent.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _goalGaugeSizePercent.first() },
+        )
+
     fun setGoalDisplayMode(goalDisplayMode: SettingsGoalDisplayMode) {
         viewModelScope.launch {
             settingsRepository.update { copy(goalDisplayMode = goalDisplayMode) }

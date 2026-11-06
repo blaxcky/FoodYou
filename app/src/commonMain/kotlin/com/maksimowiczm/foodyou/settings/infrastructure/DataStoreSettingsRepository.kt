@@ -12,11 +12,13 @@ import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStor
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.set
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_LOCKED_DAY_SURPLUS_KCAL
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_SIZE_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
@@ -88,6 +90,9 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             foodEntryAmountPickerStyle = this.getFoodEntryAmountPickerStyle(),
             weeklyDetailsStyle = this.getWeeklyDetailsStyle(),
             weeklyChartEnabled = this[SettingsPreferencesKeys.weeklyChartEnabled] ?: true,
+            goalGaugeSizePercent =
+                (this[SettingsPreferencesKeys.goalGaugeSizePercent] ?: DEFAULT_GOAL_GAUGE_SIZE_PERCENT)
+                    .coerceIn(GOAL_GAUGE_SIZE_PERCENT_RANGE),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
             todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
@@ -170,6 +175,8 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setFoodEntryAmountPickerStyle(updated.foodEntryAmountPickerStyle)
         setWithNull(SettingsPreferencesKeys.weeklyDetailsStyle, updated.weeklyDetailsStyle.name)
         this[SettingsPreferencesKeys.weeklyChartEnabled] = updated.weeklyChartEnabled
+        this[SettingsPreferencesKeys.goalGaugeSizePercent] =
+            updated.goalGaugeSizePercent.coerceIn(GOAL_GAUGE_SIZE_PERCENT_RANGE)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
         setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
@@ -473,6 +480,7 @@ private object SettingsPreferencesKeys {
     val foodEntryAmountPickerStyle = stringPreferencesKey("settings:foodEntryAmountPickerStyle")
     val weeklyDetailsStyle = stringPreferencesKey("settings:weeklyDetailsStyle")
     val weeklyChartEnabled = booleanPreferencesKey("settings:weeklyChartEnabled")
+    val goalGaugeSizePercent = intPreferencesKey("settings:goalGaugeSizePercent")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
     val todayEnergyGoalAdjustmentEpochDay =

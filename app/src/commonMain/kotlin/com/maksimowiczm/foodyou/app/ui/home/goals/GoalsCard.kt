@@ -83,6 +83,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_SIZE_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.valentinilk.shimmer.Shimmer
@@ -201,6 +202,7 @@ internal fun GoalsCard(
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
     val model = viewModel.model.collectAsStateWithLifecycle().value
+    val gaugeSizePercent = viewModel.goalGaugeSizePercent.collectAsStateWithLifecycle().value
 
     var showTodayGoalDialog by remember { mutableStateOf(false) }
 
@@ -208,6 +210,7 @@ internal fun GoalsCard(
         GoalsCardSkeleton(
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
+            gaugeSizePercent = gaugeSizePercent,
             modifier = modifier,
         )
     } else {
@@ -235,6 +238,7 @@ internal fun GoalsCard(
             onClick = { onClick(homeState.selectedDate.toEpochDays()) },
             onLongClick = onLongClick,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
+            gaugeSizePercent = gaugeSizePercent,
             modifier = modifier,
         )
     }
@@ -320,6 +324,7 @@ internal fun GoalsCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
+    gaugeSizePercent: Int = DEFAULT_GOAL_GAUGE_SIZE_PERCENT,
     modifier: Modifier = Modifier,
 ) {
     val proteinsProgress = goalProgress(proteins, proteinsGoal)
@@ -397,6 +402,7 @@ internal fun GoalsCard(
             onTodayEnergyGoalClick = onTodayEnergyGoalClick,
             onClick = onClick,
             onLongClick = onLongClick,
+            gaugeSizePercent = gaugeSizePercent,
             modifier = Modifier.fillMaxWidth(),
         ) {
             MacroGoalsFooter(
@@ -1263,6 +1269,7 @@ private fun CaloriesOverview(
     onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    gaugeSizePercent: Int,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1304,6 +1311,7 @@ private fun CaloriesOverview(
         onTodayEnergyGoalClick = onTodayEnergyGoalClick,
         onClick = onClick,
         onLongClick = onLongClick,
+        gaugeSizePercent = gaugeSizePercent,
         modifier = modifier,
         footer = footer,
     )
@@ -1549,6 +1557,7 @@ private fun CaloriesOverviewPageCard(
     onTodayEnergyGoalClick: () -> Unit = {},
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    gaugeSizePercent: Int,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1561,11 +1570,12 @@ private fun CaloriesOverviewPageCard(
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
+            val gaugeSize = gaugeSize(maxWidth - horizontalPadding * 2, gaugeSizePercent)
 
             Column(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .defaultMinSize(minHeight = 259.dp)
+                        .defaultMinSize(minHeight = 259.dp + gaugeSize.growth)
                         .padding(
                             start = horizontalPadding,
                             top = 21.dp,
@@ -1583,6 +1593,7 @@ private fun CaloriesOverviewPageCard(
                     todayRemainingEnergy = todayRemainingEnergy,
                     todayEnergyGoalEditable = todayEnergyGoalEditable,
                     onTodayEnergyGoalClick = onTodayEnergyGoalClick,
+                    gaugeSizePercent = gaugeSizePercent,
                     modifier = Modifier.fillMaxWidth(),
                     footer = footer,
                 )
@@ -1602,6 +1613,7 @@ private fun CaloriesOverviewPage(
     todayRemainingEnergy: Int? = null,
     todayEnergyGoalEditable: Boolean = false,
     onTodayEnergyGoalClick: () -> Unit = {},
+    gaugeSizePercent: Int,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1638,11 +1650,13 @@ private fun CaloriesOverviewPage(
     BoxWithConstraints(
         modifier = modifier
     ) {
-        val gaugeDiameter = (maxWidth * 0.48f).coerceIn(156.dp, 254.dp)
+        val gaugeSize = gaugeSize(maxWidth, gaugeSizePercent)
+        val gaugeDiameter = gaugeSize.diameter
         val compact = maxWidth < 320.dp
         val phoneWidth = maxWidth < 430.dp
-        val caloriesHeight = if (phoneWidth) 164.dp else 230.dp
-        val sideMetricTopPadding = if (phoneWidth) 39.dp else 50.dp
+        val caloriesHeight = (if (phoneWidth) 164.dp else 230.dp) + gaugeSize.growth
+        // The side values move with the ring's size, so they stay level with it.
+        val sideMetricTopPadding = (if (phoneWidth) 39.dp else 50.dp) * gaugeSize.scale
         val secondaryMetricTopPadding = 18.dp
 
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -2073,6 +2087,20 @@ private fun GoalDisplayMode.icon(): androidx.compose.ui.graphics.vector.ImageVec
 
 private fun Dp.coerceIn(minimumValue: Dp, maximumValue: Dp): Dp =
     coerceAtLeast(minimumValue).coerceAtMost(maximumValue)
+
+/**
+ * The ring's size on a card whose content is [width] wide. The ring is first fitted to the card and
+ * then scaled by the user's [sizePercent], so a smaller setting still shrinks it at the lower
+ * bound. [growth] is how much the scaling added, for the heights laid out around the ring.
+ */
+private class GaugeSize(val diameter: Dp, val growth: Dp, val scale: Float)
+
+private fun gaugeSize(width: Dp, sizePercent: Int): GaugeSize {
+    val fitted = (width * 0.48f).coerceIn(156.dp, 254.dp)
+    val scale = sizePercent / 100f
+    val diameter = fitted * scale
+    return GaugeSize(diameter = diameter, growth = diameter - fitted, scale = scale)
+}
 
 @Composable
 private fun SideMetric(
@@ -2716,9 +2744,10 @@ private fun WeeklySkeletonBlock(shimmer: Shimmer?, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun GoalsCardSkeleton(
+internal fun GoalsCardSkeleton(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    gaugeSizePercent: Int = DEFAULT_GOAL_GAUGE_SIZE_PERCENT,
     modifier: Modifier = Modifier,
 ) {
     val shimmer = rememberShimmer(shimmerBounds = ShimmerBounds.Window)
@@ -2734,13 +2763,14 @@ private fun GoalsCardSkeleton(
             val horizontalPadding = if (maxWidth < 430.dp) 24.dp else 48.dp
             val contentWidth = maxWidth - horizontalPadding * 2
             val phoneWidth = contentWidth < 430.dp
-            val caloriesHeight = if (phoneWidth) 164.dp else 230.dp
-            val gaugeDiameter = (contentWidth * 0.48f).coerceIn(156.dp, 254.dp)
+            val gaugeSize = gaugeSize(contentWidth, gaugeSizePercent)
+            val caloriesHeight = (if (phoneWidth) 164.dp else 230.dp) + gaugeSize.growth
+            val gaugeDiameter = gaugeSize.diameter
 
             Column(
                 modifier =
                     Modifier.fillMaxWidth()
-                        .defaultMinSize(minHeight = 259.dp)
+                        .defaultMinSize(minHeight = 259.dp + gaugeSize.growth)
                         .padding(
                             start = horizontalPadding,
                             top = 21.dp,
@@ -2757,12 +2787,12 @@ private fun GoalsCardSkeleton(
                     ) {
                         SkeletonBlock(
                             shimmer,
-                            Modifier.requiredWidth(125.dp)
-                                .height(125.dp)
+                            Modifier.requiredWidth(125.dp * gaugeSize.scale)
+                                .height(125.dp * gaugeSize.scale)
                                 .clip(RoundedCornerShape(topStart = 120.dp, topEnd = 120.dp)),
                         )
                         Column(
-                            modifier = Modifier.offset(y = 106.dp),
+                            modifier = Modifier.offset(y = 106.dp * gaugeSize.scale),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             SkeletonBlock(

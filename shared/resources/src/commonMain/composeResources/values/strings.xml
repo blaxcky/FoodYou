@@ -168,6 +168,8 @@
     <string name="weekly_details_style_bars">Bar chart</string>
     <string name="weekly_chart_title">Show daily chart</string>
     <string name="weekly_chart_description">Show the bar chart of the single days above the weekly details.</string>
+    <string name="goal_gauge_size_title">Ring size</string>
+    <string name="goal_gauge_size_description">Make the calorie card's ring a little smaller or larger.</string>
     <string name="weekly_weight_lost">lost</string>
     <string name="weekly_weight_gained">gained</string>
     <string name="weekly_weight_measured_today">today</string>

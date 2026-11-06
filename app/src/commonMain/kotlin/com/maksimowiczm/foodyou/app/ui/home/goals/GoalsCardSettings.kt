@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -24,13 +26,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
+import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_RANGE
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_STEP
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import foodyou.app.generated.resources.*
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.qualifier.named
 
 @Composable
@@ -42,13 +49,20 @@ internal fun GoalsCardSettings(
         koinInject(named(Settings::class.qualifiedName!!))
     val settings by repository.observe().collectAsStateWithLifecycle(null)
     val scope = rememberCoroutineScope()
+    // The preview shows today, so the card is judged with real, possibly long values.
+    val viewModel: GoalsViewModel = koinViewModel()
+    val dateProvider: DateProvider = koinInject()
+    LaunchedEffect(viewModel) { viewModel.setDate(dateProvider.now().date) }
+    val today by viewModel.model.collectAsStateWithLifecycle()
     settings?.let { current ->
         GoalsCardSettingsContent(
             onBack = onBack,
+            preview = today,
             goalCardModeSwitchingEnabled = current.goalCardModeSwitchingEnabled,
             supplementalGoalsEnabled = current.supplementalGoalsEnabled,
             weeklyDetailsStyle = current.weeklyDetailsStyle,
             weeklyChartEnabled = current.weeklyChartEnabled,
+            gaugeSizePercent = current.goalGaugeSizePercent,
             onModeSwitchingChange = { enabled ->
                 scope.launch { repository.update { copy(goalCardModeSwitchingEnabled = enabled) } }
             },
@@ -61,6 +75,9 @@ internal fun GoalsCardSettings(
             onWeeklyChartChange = { enabled ->
                 scope.launch { repository.update { copy(weeklyChartEnabled = enabled) } }
             },
+            onGaugeSizeChange = { percent ->
+                scope.launch { repository.update { copy(goalGaugeSizePercent = percent) } }
+            },
             modifier = modifier,
         )
     }
@@ -69,17 +86,24 @@ internal fun GoalsCardSettings(
 @Composable
 internal fun GoalsCardSettingsContent(
     onBack: () -> Unit,
+    preview: DaySummaryModel?,
     goalCardModeSwitchingEnabled: Boolean,
     supplementalGoalsEnabled: Boolean,
     weeklyDetailsStyle: WeeklyDetailsStyle,
     weeklyChartEnabled: Boolean,
+    gaugeSizePercent: Int,
     onModeSwitchingChange: (Boolean) -> Unit,
     onSupplementalGoalsChange: (Boolean) -> Unit,
     onWeeklyDetailsStyleChange: (WeeklyDetailsStyle) -> Unit,
     onWeeklyChartChange: (Boolean) -> Unit,
+    onGaugeSizeChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var previewMode by remember { mutableStateOf(GoalDisplayMode.Normal) }
+    // The preview switches modes on its own, without changing the home card's mode.
+    var previewMode by remember { mutableStateOf<GoalDisplayMode?>(null) }
+    // The slider's value while dragging, so the preview follows it before it is saved.
+    var draggedGaugeSizePercent by remember { mutableStateOf<Int?>(null) }
+    val previewGaugeSizePercent = draggedGaugeSizePercent ?: gaugeSizePercent
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -97,33 +121,52 @@ internal fun GoalsCardSettingsContent(
             contentPadding = paddingValues,
         ) {
             stickyHeader {
-                GoalsCard(
-                    energy = 1600,
-                    burnedEnergy = 250,
-                    netEnergy = 1350,
-                    energyGoal = 2000,
-                    goalCardModeSwitchingEnabled = goalCardModeSwitchingEnabled,
-                    supplementalGoalsEnabled = supplementalGoalsEnabled,
-                    goalDisplayMode = previewMode,
-                    onSelectGoalDisplayMode = { previewMode = it },
-                    goalDisplaySummaries = listOf(
-                        GoalDisplaySummaryModel(GoalDisplayMode.Normal, 2000, true),
-                        GoalDisplaySummaryModel(GoalDisplayMode.Optimized, 2200, true),
-                        GoalDisplaySummaryModel(GoalDisplayMode.Diet, 1700, true),
-                    ),
-                    proteins = 50,
-                    proteinsGoal = 75,
-                    carbohydrates = 200,
-                    carbohydratesGoal = 300,
-                    fats = 70,
-                    fatsGoal = 90,
-                    onClick = {},
-                    onLongClick = {},
-                    modifier = Modifier.padding(16.dp),
-                )
+                if (preview == null) {
+                    GoalsCardSkeleton(
+                        onClick = {},
+                        onLongClick = {},
+                        gaugeSizePercent = previewGaugeSizePercent,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                } else {
+                    GoalsCard(
+                        energy = preview.energy,
+                        burnedEnergy = preview.burnedEnergy,
+                        netEnergy = preview.netEnergy,
+                        energyGoal = preview.energyGoal,
+                        showEnergyGoalValue = preview.showEnergyGoalValue,
+                        goalCardModeSwitchingEnabled = goalCardModeSwitchingEnabled,
+                        supplementalGoalsEnabled = supplementalGoalsEnabled,
+                        goalDisplayMode = previewMode ?: preview.goalDisplayMode,
+                        onSelectGoalDisplayMode = { previewMode = it },
+                        goalDisplaySummaries = preview.goalDisplaySummaries,
+                        dietGoalDisplayModeEnabled = preview.dietGoalDisplayModeEnabled,
+                        proteins = preview.proteins,
+                        proteinsGoal = preview.proteinsGoal,
+                        carbohydrates = preview.carbohydrates,
+                        carbohydratesGoal = preview.carbohydratesGoal,
+                        fats = preview.fats,
+                        fatsGoal = preview.fatsGoal,
+                        todayRemainingEnergy = preview.todayRemainingEnergy,
+                        onClick = {},
+                        onLongClick = {},
+                        gaugeSizePercent = previewGaugeSizePercent,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
             }
 
             item { HorizontalDivider() }
+            item {
+                GaugeSizeSetting(
+                    percent = previewGaugeSizePercent,
+                    onDrag = { draggedGaugeSizePercent = it },
+                    onDragFinished = {
+                        draggedGaugeSizePercent?.let(onGaugeSizeChange)
+                        draggedGaugeSizePercent = null
+                    },
+                )
+            }
             item {
                 GoalCardSettingSwitch(
                     title = stringResource(Res.string.goal_card_mode_switching_title),
@@ -156,6 +199,36 @@ internal fun GoalsCardSettingsContent(
             }
         }
     }
+}
+
+@Composable
+private fun GaugeSizeSetting(
+    percent: Int,
+    onDrag: (Int) -> Unit,
+    onDragFinished: () -> Unit,
+) {
+    val range = GOAL_GAUGE_SIZE_PERCENT_RANGE
+    ListItem(
+        headlineContent = { Text(stringResource(Res.string.goal_gauge_size_title)) },
+        supportingContent = {
+            Column {
+                Text(stringResource(Res.string.goal_gauge_size_description))
+                Slider(
+                    value = percent.toFloat(),
+                    onValueChange = { onDrag(it.roundToInt()) },
+                    onValueChangeFinished = onDragFinished,
+                    valueRange = range.first.toFloat()..range.last.toFloat(),
+                    steps = (range.last - range.first) / GOAL_GAUGE_SIZE_PERCENT_STEP - 1,
+                )
+            }
+        },
+        trailingContent = {
+            Text(
+                text = "$percent %",
+                color = MaterialTheme.colorScheme.primary,
+            )
+        },
+    )
 }
 
 @Composable

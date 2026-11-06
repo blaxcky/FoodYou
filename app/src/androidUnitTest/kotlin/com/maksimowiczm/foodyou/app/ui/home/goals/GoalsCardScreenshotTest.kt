@@ -72,14 +72,17 @@ class GoalsCardScreenshotTest {
                         MaterialTheme {
                             GoalsCardSettingsContent(
                                 onBack = {},
+                                preview = SettingsPreviewDay,
                                 goalCardModeSwitchingEnabled = modeSwitching,
                                 supplementalGoalsEnabled = supplemental,
                                 weeklyDetailsStyle = WeeklyDetailsStyle.DifferenceBars,
                                 weeklyChartEnabled = true,
+                                gaugeSizePercent = 100,
                                 onModeSwitchingChange = {},
                                 onSupplementalGoalsChange = {},
                                 onWeeklyDetailsStyleChange = {},
                                 onWeeklyChartChange = {},
+                                onGaugeSizeChange = {},
                             )
                         }
                     }
@@ -606,6 +609,18 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun gaugeSizesPhone() {
+        for (percent in listOf(80, 120)) {
+            captureGoalsCard(
+                filePath = "GoalsCardScreenshotTest.gauge-size-$percent-phone.png",
+                fixture = RingZonesFixture.copy(gaugeSizePercent = percent),
+                width = 414,
+                height = 400,
+            )
+        }
+    }
+
+    @Test
     fun ringGoalZonesDayStartPhone() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-day-start-phone.png",
@@ -707,6 +722,7 @@ class GoalsCardScreenshotTest {
                             todayRemainingEnergy = fixture.todayRemainingEnergy,
                             onClick = {},
                             onLongClick = {},
+                            gaugeSizePercent = fixture.gaugeSizePercent,
                             modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
                         )
                     }
@@ -769,6 +785,7 @@ class GoalsCardScreenshotTest {
         val fats: Int,
         val fatsGoal: Int,
         val todayRemainingEnergy: Int? = null,
+        val gaugeSizePercent: Int = 100,
     )
 
     private companion object {
@@ -847,6 +864,29 @@ class GoalsCardScreenshotTest {
                             showEnergyGoalValue = true,
                         ),
                     ),
+            )
+
+        val SettingsPreviewDay =
+            DaySummaryModel(
+                energy = 1600,
+                burnedEnergy = 250,
+                netEnergy = 1350,
+                energyGoal = 2000,
+                showEnergyGoalValue = true,
+                goalDisplayMode = GoalDisplayMode.Normal,
+                goalDisplaySummaries =
+                    listOf(
+                        GoalDisplaySummaryModel(GoalDisplayMode.Normal, 2000, true),
+                        GoalDisplaySummaryModel(GoalDisplayMode.Optimized, 2200, true),
+                        GoalDisplaySummaryModel(GoalDisplayMode.Diet, 1700, true),
+                    ),
+                dietGoalDisplayModeEnabled = true,
+                proteins = 50,
+                proteinsGoal = 75,
+                carbohydrates = 200,
+                carbohydratesGoal = 300,
+                fats = 70,
+                fatsGoal = 90,
             )
 
         val WeeklyChartToday = LocalDate.parse("2026-07-01")
