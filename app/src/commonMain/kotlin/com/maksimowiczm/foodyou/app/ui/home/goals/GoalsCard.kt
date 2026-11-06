@@ -52,7 +52,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
@@ -157,9 +156,6 @@ internal val DietGoalAccentColor = Color(0xFFC98A00)
 
 /** The ring section up to the Optimized goal; much lighter than the deep-blue Normal section. */
 internal val OptimizedGoalZoneColor = Color(0xFF4FA9DB)
-
-/** The empty Optimized section of the ring, clearly apart from the normal [GoalsTrackColor]. */
-internal val OptimizedGoalZoneTrackColor = Color(0xFFB5DBF0)
 private val DietGoalReachedTextColor = Color(0xFF2E7D32)
 private val DietGoalReachedRowColor = Color(0xFFF0F7F0)
 private val WeeklyOverGoalBarColor = Color(0xFFC57484)
@@ -1378,16 +1374,6 @@ private fun GoalDisplayMode.goalZoneColor(): Color =
     }
 
 /**
- * The unfilled ring under a goal section: its color faintly tinted onto the card. Optimized gets a
- * stronger blue of its own, since a faint tint of it is lost next to the normal track's blue.
- */
-private fun GoalDisplayMode.goalZoneTrackColor(): Color =
-    when (this) {
-        GoalDisplayMode.Optimized -> OptimizedGoalZoneTrackColor
-        else -> lerp(GoalsCardColor, goalZoneColor(), 0.22f)
-    }
-
-/**
  * Places each zone's value inside the ring, next to the marker at the zone's boundary. The label's
  * edge facing the ring keeps the same clearance whatever its size, so a wide four-digit value moves
  * further in instead of running into the ring.
@@ -2468,18 +2454,18 @@ private fun DrawScope.drawZonedGauge(
     val ends = boundaries + 1f
     val lastIndex = ends.lastIndex
     val colors = zones.map { it.mode.goalZoneColor() } + progressColor
-    val trackColors = zones.map { it.mode.goalZoneTrackColor() } + GoalsTrackColor
 
     fun sectionStart(index: Int): Float = gaugeAngle(starts[index]) + if (index > 0) halfGap else 0f
 
     fun sectionEnd(index: Int): Float =
         gaugeAngle(ends[index]) - if (index < lastIndex) halfGap else 0f
 
+    // Every section's unfilled track is the normal ring's; only the fill shows the goal's color.
     for (index in 0..lastIndex) {
-        arc(trackColors[index], sectionStart(index), sectionEnd(index))
+        arc(GoalsTrackColor, sectionStart(index), sectionEnd(index))
     }
-    drawCircle(trackColors.first(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
-    drawCircle(trackColors.last(), radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(1f)))
+    drawCircle(GoalsTrackColor, radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(0f)))
+    drawCircle(GoalsTrackColor, radius = strokeWidth / 2f, center = arcPoint(gaugeAngle(1f)))
 
     if (overflowProgress > 0f) {
         // Above the ring's own goal the whole ring turns red; the markers keep the sections.

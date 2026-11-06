@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -22,7 +21,6 @@ import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsProgressColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTextColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTrackColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.OptimizedGoalZoneColor
-import com.maksimowiczm.foodyou.app.ui.home.goals.OptimizedGoalZoneTrackColor
 import com.maksimowiczm.foodyou.app.widget.formatWidgetNumber
 import kotlin.math.PI
 import kotlin.math.abs
@@ -43,7 +41,6 @@ internal object CalorieGaugeRenderer {
     const val MAX_PIXELS = 480
 
     private const val GAP_ANGLE = 2.5f
-    private const val ZONE_TRACK_TINT = 0.22f
 
     fun render(context: Context, spec: CalorieGaugeLayoutSpec, gauge: CalorieGauge): Bitmap {
         val density = context.resources.displayMetrics.density
@@ -100,13 +97,6 @@ internal object CalorieGaugeRenderer {
             val ends = boundaries + 1f
             val lastIndex = ends.lastIndex
             val colors = zones.map { it.kind.color() } + GoalsProgressColor
-            val trackColors =
-                zones.map {
-                    when (it.kind) {
-                        CalorieGaugeZoneKind.Optimized -> OptimizedGoalZoneTrackColor
-                        else -> lerp(GoalsCardColor, it.kind.color(), ZONE_TRACK_TINT)
-                    }
-                } + GoalsTrackColor
             val halfGap = GAP_ANGLE / 2f
 
             fun sectionStart(index: Int): Float =
@@ -115,11 +105,12 @@ internal object CalorieGaugeRenderer {
             fun sectionEnd(index: Int): Float =
                 gaugeAngle(ends[index]) - if (index < lastIndex) halfGap else 0f
 
+            // Every section's unfilled track is the normal ring's; only the fill shows the goal's color.
             for (index in 0..lastIndex) {
-                arcBetween(trackColors[index], sectionStart(index), sectionEnd(index))
+                arcBetween(GoalsTrackColor, sectionStart(index), sectionEnd(index))
             }
-            cap(trackColors.first(), 0f)
-            cap(trackColors.last(), 1f)
+            cap(GoalsTrackColor, 0f)
+            cap(GoalsTrackColor, 1f)
 
             if (gauge.overflow > 0f) {
                 arc(GoalsErrorColor, 0f, 1f, Paint.Cap.ROUND)
