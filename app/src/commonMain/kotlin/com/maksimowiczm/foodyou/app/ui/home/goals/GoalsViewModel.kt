@@ -76,6 +76,15 @@ internal class GoalsViewModel(
             initialValue = runBlocking { _goalGaugeSizePercent.first() },
         )
 
+    private val _goalGaugeStrokeWidthPercent =
+        settingsRepository.observe().map { it.goalGaugeStrokeWidthPercent }
+    val goalGaugeStrokeWidthPercent: StateFlow<Int> =
+        _goalGaugeStrokeWidthPercent.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _goalGaugeStrokeWidthPercent.first() },
+        )
+
     private val _goalGaugeMarkerGapDegrees =
         settingsRepository.observe().map { it.goalGaugeMarkerGapDegrees }
     val goalGaugeMarkerGapDegrees: StateFlow<Int> =

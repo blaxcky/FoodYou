@@ -84,6 +84,7 @@ import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_SIZE_PERCENT
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_STROKE_WIDTH_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.valentinilk.shimmer.Shimmer
@@ -200,6 +201,8 @@ internal fun GoalsCard(
 ) {
     val model = viewModel.model.collectAsStateWithLifecycle().value
     val gaugeSizePercent = viewModel.goalGaugeSizePercent.collectAsStateWithLifecycle().value
+    val gaugeStrokeWidthPercent =
+        viewModel.goalGaugeStrokeWidthPercent.collectAsStateWithLifecycle().value
     val gaugeMarkerGapDegrees =
         viewModel.goalGaugeMarkerGapDegrees.collectAsStateWithLifecycle().value
 
@@ -238,6 +241,7 @@ internal fun GoalsCard(
             onLongClick = onLongClick,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             gaugeSizePercent = gaugeSizePercent,
+            gaugeStrokeWidthPercent = gaugeStrokeWidthPercent,
             gaugeMarkerGapDegrees = gaugeMarkerGapDegrees,
             modifier = modifier,
         )
@@ -325,6 +329,7 @@ internal fun GoalsCard(
     onLongClick: () -> Unit,
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
     gaugeSizePercent: Int = DEFAULT_GOAL_GAUGE_SIZE_PERCENT,
+    gaugeStrokeWidthPercent: Int = DEFAULT_GOAL_GAUGE_STROKE_WIDTH_PERCENT,
     gaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     modifier: Modifier = Modifier,
 ) {
@@ -404,6 +409,7 @@ internal fun GoalsCard(
             onClick = onClick,
             onLongClick = onLongClick,
             gaugeSizePercent = gaugeSizePercent,
+            gaugeStrokeWidthPercent = gaugeStrokeWidthPercent,
             gaugeMarkerGapDegrees = gaugeMarkerGapDegrees,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -1272,6 +1278,7 @@ private fun CaloriesOverview(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     gaugeSizePercent: Int,
+    gaugeStrokeWidthPercent: Int,
     gaugeMarkerGapDegrees: Int,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
@@ -1316,6 +1323,7 @@ private fun CaloriesOverview(
         onClick = onClick,
         onLongClick = onLongClick,
         gaugeSizePercent = gaugeSizePercent,
+        gaugeStrokeWidthPercent = gaugeStrokeWidthPercent,
         modifier = modifier,
         footer = footer,
     )
@@ -1385,6 +1393,7 @@ private fun GoalDisplayMode.goalZoneColor(): Color =
 private fun GaugeLabels(
     zones: List<GaugeGoalZone>,
     diameter: Dp,
+    strokeWidth: Dp,
     modifier: Modifier = Modifier,
     endLabel: @Composable () -> Unit,
 ) {
@@ -1398,7 +1407,8 @@ private fun GaugeLabels(
         val radius = diameter.toPx() / 2f
         val endRadians = gaugeAngle(1f).toDouble() * PI / 180.0
         val endWidth =
-            2f * radius * cos(endRadians).toFloat() - 2f * GaugeEndLabelGap.toPx()
+            2f * radius * cos(endRadians).toFloat() -
+                2f * (strokeWidth / 2 + GaugeEndLabelGap).toPx()
         val placeables =
             measurables.mapIndexed { index, measurable ->
                 if (index == measurables.lastIndex) {
@@ -1409,8 +1419,8 @@ private fun GaugeLabels(
             }
         layout(constraints.maxWidth, constraints.maxHeight) {
             val centerX = constraints.maxWidth / 2f
-            val centerY = GaugeStrokeWidth.toPx() / 2f + radius
-            val clearance = GaugeZoneLabelClearance.toPx()
+            val centerY = strokeWidth.toPx() / 2f + radius
+            val clearance = (strokeWidth / 2 + GaugeZoneLabelGap).toPx()
 
             val end = placeables.last()
             val endY = centerY + radius * sin(endRadians).toFloat()
@@ -1559,6 +1569,7 @@ private fun CaloriesOverviewPageCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     gaugeSizePercent: Int,
+    gaugeStrokeWidthPercent: Int,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1595,6 +1606,7 @@ private fun CaloriesOverviewPageCard(
                     todayEnergyGoalEditable = todayEnergyGoalEditable,
                     onTodayEnergyGoalClick = onTodayEnergyGoalClick,
                     gaugeSizePercent = gaugeSizePercent,
+                    gaugeStrokeWidthPercent = gaugeStrokeWidthPercent,
                     modifier = Modifier.fillMaxWidth(),
                     footer = footer,
                 )
@@ -1615,6 +1627,7 @@ private fun CaloriesOverviewPage(
     todayEnergyGoalEditable: Boolean = false,
     onTodayEnergyGoalClick: () -> Unit = {},
     gaugeSizePercent: Int,
+    gaugeStrokeWidthPercent: Int,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1653,6 +1666,7 @@ private fun CaloriesOverviewPage(
     ) {
         val gaugeSize = gaugeSize(maxWidth, gaugeSizePercent)
         val gaugeDiameter = gaugeSize.diameter
+        val gaugeStrokeWidth = GaugeStrokeWidth * (gaugeStrokeWidthPercent / 100f)
         val compact = maxWidth < 320.dp
         val phoneWidth = maxWidth < 430.dp
         val caloriesHeight = (if (phoneWidth) 164.dp else 230.dp) + gaugeSize.growth
@@ -1681,6 +1695,7 @@ private fun CaloriesOverviewPage(
                         goalZones = goalZones,
                         exceeded = overflow,
                         diameter = gaugeDiameter,
+                        strokeWidth = gaugeStrokeWidth,
                         supportingLabel =
                             todayRemainingText?.let {
                                 stringResource(Res.string.goal_today_target)
@@ -1778,6 +1793,7 @@ private fun CaloriesOverviewPage(
                         goalZones = goalZones,
                         exceeded = overflow,
                         diameter = gaugeDiameter,
+                        strokeWidth = gaugeStrokeWidth,
                         supportingLabel =
                             todayRemainingText?.let {
                                 stringResource(Res.string.goal_today_target)
@@ -2267,6 +2283,7 @@ private fun GaugeMetric(
     progressColor: Color,
     exceeded: Boolean,
     diameter: Dp,
+    strokeWidth: Dp,
     modifier: Modifier = Modifier,
     goalZones: List<GaugeGoalZone> = emptyList(),
     supportingLabel: String? = null,
@@ -2284,6 +2301,7 @@ private fun GaugeMetric(
             overflowProgress = overflowProgress,
             progressColor = progressColor,
             diameter = diameter,
+            strokeWidth = strokeWidth,
             goalZones = goalZones,
             modifier = Modifier.size(width = diameter, height = diameter - 7.dp),
         )
@@ -2291,6 +2309,7 @@ private fun GaugeMetric(
         GaugeLabels(
             zones = goalZones,
             diameter = diameter,
+            strokeWidth = strokeWidth,
             modifier = Modifier.matchParentSize(),
         ) {
             GaugeValueLabel(
@@ -2341,18 +2360,22 @@ private fun GaugeMetric(
     }
 }
 
+/** The ring's line width at 100 percent. */
 private val GaugeStrokeWidth = 10.dp
 
 // Shifts the side values outward, away from the ring.
 private val SideMetricRingClearance = 6.dp
 
-/** Gap between the ring's center line and the nearest edge of a goal zone's value label. */
-private val GaugeZoneLabelClearance = 10.dp
-private val GaugeZoneMarkerRadius = 6.5.dp
-private val GaugeZoneMarkerDotRadius = 3.5.dp
+/** Gap between the ring's inner edge and the nearest edge of a goal zone's value label. */
+private val GaugeZoneLabelGap = 5.dp
 
-/** Room kept between each end of the ring and the remaining energy centered between them. */
-private val GaugeEndLabelGap = 10.dp
+/** How far a marker's card-colored rim reaches past the ring's edge, and how wide the rim is. */
+private val GaugeZoneMarkerOverhang = 1.5.dp
+private val GaugeZoneMarkerRim = 3.dp
+private val GaugeZoneMarkerMinRadius = 6.5.dp
+
+/** Room kept between the inner edge of each end of the ring and the remaining energy. */
+private val GaugeEndLabelGap = 5.dp
 
 /** How far the remaining energy's center sits below the ring's ends. */
 private val GaugeEndLabelDrop = 3.dp
@@ -2367,6 +2390,7 @@ private fun SemiCircleGauge(
     overflowProgress: Float,
     progressColor: Color,
     diameter: Dp,
+    strokeWidth: Dp,
     modifier: Modifier = Modifier,
     goalZones: List<GaugeGoalZone> = emptyList(),
 ) {
@@ -2377,11 +2401,12 @@ private fun SemiCircleGauge(
                 overflowProgress = overflowProgress,
                 progressColor = progressColor,
                 diameter = diameter.toPx(),
+                strokeWidth = strokeWidth.toPx(),
                 zones = goalZones,
             )
             return@Canvas
         }
-        val strokeWidth = GaugeStrokeWidth.toPx()
+        val strokeWidth = strokeWidth.toPx()
         val arcDiameter = diameter.toPx()
         val topLeft = Offset(x = (size.width - arcDiameter) / 2f, y = strokeWidth / 2f)
         val arcSize = Size(width = arcDiameter, height = arcDiameter)
@@ -2412,6 +2437,7 @@ private fun SemiCircleGauge(
         drawGaugeMarker(
             center = Offset(size.width / 2f, strokeWidth / 2f + arcDiameter / 2f),
             radius = arcDiameter / 2f,
+            strokeWidth = strokeWidth,
             fraction = 1f,
             color = progressColor,
         )
@@ -2428,9 +2454,9 @@ private fun DrawScope.drawZonedGauge(
     overflowProgress: Float,
     progressColor: Color,
     diameter: Float,
+    strokeWidth: Float,
     zones: List<GaugeGoalZone>,
 ) {
-    val strokeWidth = GaugeStrokeWidth.toPx()
     val topLeft = Offset(x = (size.width - diameter) / 2f, y = strokeWidth / 2f)
     val arcSize = Size(width = diameter, height = diameter)
     val center = Offset(topLeft.x + diameter / 2f, topLeft.y + diameter / 2f)
@@ -2514,21 +2540,32 @@ private fun DrawScope.drawZonedGauge(
 
     // The markers keep their section's color; an exceeded goal shows in its red label instead.
     zones.forEach { zone ->
-        drawGaugeMarker(center, radius, zone.fraction, zone.mode.goalZoneColor())
+        drawGaugeMarker(center, radius, strokeWidth, zone.fraction, zone.mode.goalZoneColor())
     }
-    drawGaugeMarker(center, radius, 1f, progressColor)
+    drawGaugeMarker(center, radius, strokeWidth, 1f, progressColor)
 }
 
-/** A marker on the ring at [fraction] of its sweep, ringed in the card's color. */
-private fun DrawScope.drawGaugeMarker(center: Offset, radius: Float, fraction: Float, color: Color) {
+/**
+ * A marker on the ring at [fraction] of its sweep, ringed in the card's color. It stays a little
+ * wider than the ring, so it still shows on a thick line.
+ */
+private fun DrawScope.drawGaugeMarker(
+    center: Offset,
+    radius: Float,
+    strokeWidth: Float,
+    fraction: Float,
+    color: Color,
+) {
     val radians = gaugeAngle(fraction.coerceIn(0f, 1f)).toDouble() * PI / 180.0
     val point =
         Offset(
             x = center.x + radius * cos(radians).toFloat(),
             y = center.y + radius * sin(radians).toFloat(),
         )
-    drawCircle(GoalsCardColor, radius = GaugeZoneMarkerRadius.toPx(), center = point)
-    drawCircle(color = color, radius = GaugeZoneMarkerDotRadius.toPx(), center = point)
+    val markerRadius =
+        maxOf(GaugeZoneMarkerMinRadius.toPx(), strokeWidth / 2f + GaugeZoneMarkerOverhang.toPx())
+    drawCircle(GoalsCardColor, radius = markerRadius, center = point)
+    drawCircle(color = color, radius = markerRadius - GaugeZoneMarkerRim.toPx(), center = point)
 }
 
 internal fun String.groupDigits(): String {

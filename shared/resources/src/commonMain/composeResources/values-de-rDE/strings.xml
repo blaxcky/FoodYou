@@ -343,6 +343,8 @@
     <string name="weekly_chart_description">Zeigt das Balkendiagramm der einzelnen Tage über den Wochendetails.</string>
     <string name="goal_gauge_size_title">Ringgröße</string>
     <string name="goal_gauge_size_description">Macht den Ring der Kalorienkarte etwas kleiner oder größer.</string>
+    <string name="goal_gauge_stroke_width_title">Linienstärke des Rings</string>
+    <string name="goal_gauge_stroke_width_description">Macht die Linie des Kalorienrings dünner oder dicker.</string>
     <string name="goal_gauge_marker_gap_title">Abstand der Zielmarkierungen</string>
     <string name="goal_gauge_marker_gap_description">Hält die Zielmarkierungen auf dem Kalorienring mindestens so weit auseinander und vom Ende entfernt, auch wenn ihre Werte näher beieinander liegen.</string>
     <string name="widget_gauge_marker_gap_title">Abstand der Zielmarkierungen im Widget</string>

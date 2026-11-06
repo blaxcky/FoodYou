@@ -31,10 +31,13 @@ import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_STROKE_WIDTH_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_MARKER_GAP_DEGREES_STEP
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_STEP
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_STROKE_WIDTH_PERCENT_RANGE
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_STROKE_WIDTH_PERCENT_STEP
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import foodyou.app.generated.resources.*
@@ -91,6 +94,10 @@ internal fun GoalsCardSettings(
             onGaugeSizeChange = { percent ->
                 scope.launch { repository.update { copy(goalGaugeSizePercent = percent) } }
             },
+            gaugeStrokeWidthPercent = current.goalGaugeStrokeWidthPercent,
+            onGaugeStrokeWidthChange = { percent ->
+                scope.launch { repository.update { copy(goalGaugeStrokeWidthPercent = percent) } }
+            },
             gaugeMarkerGapDegrees = current.goalGaugeMarkerGapDegrees,
             onGaugeMarkerGapChange = { degrees ->
                 scope.launch { repository.update { copy(goalGaugeMarkerGapDegrees = degrees) } }
@@ -121,6 +128,8 @@ internal fun GoalsCardSettingsContent(
     onWeeklyDetailsStyleChange: (WeeklyDetailsStyle) -> Unit,
     onWeeklyChartChange: (Boolean) -> Unit,
     onGaugeSizeChange: (Int) -> Unit,
+    gaugeStrokeWidthPercent: Int = DEFAULT_GOAL_GAUGE_STROKE_WIDTH_PERCENT,
+    onGaugeStrokeWidthChange: (Int) -> Unit = {},
     gaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     onGaugeMarkerGapChange: (Int) -> Unit = {},
     widgetGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
@@ -132,6 +141,8 @@ internal fun GoalsCardSettingsContent(
     // The slider's value while dragging, so the preview follows it before it is saved.
     var draggedGaugeSizePercent by remember { mutableStateOf<Int?>(null) }
     val previewGaugeSizePercent = draggedGaugeSizePercent ?: gaugeSizePercent
+    var draggedGaugeStrokeWidthPercent by remember { mutableStateOf<Int?>(null) }
+    val previewGaugeStrokeWidthPercent = draggedGaugeStrokeWidthPercent ?: gaugeStrokeWidthPercent
     var draggedGaugeMarkerGapDegrees by remember { mutableStateOf<Int?>(null) }
     val previewGaugeMarkerGapDegrees = draggedGaugeMarkerGapDegrees ?: gaugeMarkerGapDegrees
     var draggedWidgetGaugeMarkerGapDegrees by remember { mutableStateOf<Int?>(null) }
@@ -184,6 +195,7 @@ internal fun GoalsCardSettingsContent(
                         onClick = {},
                         onLongClick = {},
                         gaugeSizePercent = previewGaugeSizePercent,
+                        gaugeStrokeWidthPercent = previewGaugeStrokeWidthPercent,
                         gaugeMarkerGapDegrees = previewGaugeMarkerGapDegrees,
                         modifier = Modifier.padding(16.dp),
                     )
@@ -203,6 +215,21 @@ internal fun GoalsCardSettingsContent(
                     onDragFinished = {
                         draggedGaugeSizePercent?.let(onGaugeSizeChange)
                         draggedGaugeSizePercent = null
+                    },
+                )
+            }
+            item {
+                GaugeSliderSetting(
+                    title = stringResource(Res.string.goal_gauge_stroke_width_title),
+                    description = stringResource(Res.string.goal_gauge_stroke_width_description),
+                    value = previewGaugeStrokeWidthPercent,
+                    valueText = "$previewGaugeStrokeWidthPercent %",
+                    range = GOAL_GAUGE_STROKE_WIDTH_PERCENT_RANGE,
+                    step = GOAL_GAUGE_STROKE_WIDTH_PERCENT_STEP,
+                    onDrag = { draggedGaugeStrokeWidthPercent = it },
+                    onDragFinished = {
+                        draggedGaugeStrokeWidthPercent?.let(onGaugeStrokeWidthChange)
+                        draggedGaugeStrokeWidthPercent = null
                     },
                 )
             }

@@ -642,6 +642,18 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun gaugeStrokeWidthsPhone() {
+        for (percent in listOf(50, 200)) {
+            captureGoalsCard(
+                filePath = "GoalsCardScreenshotTest.gauge-stroke-width-$percent-phone.png",
+                fixture = RingZonesFixture.copy(gaugeStrokeWidthPercent = percent),
+                width = 414,
+                height = 340,
+            )
+        }
+    }
+
+    @Test
     fun ringGoalZonesDayStartPhone() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-day-start-phone.png",
@@ -744,6 +756,7 @@ class GoalsCardScreenshotTest {
                             onClick = {},
                             onLongClick = {},
                             gaugeSizePercent = fixture.gaugeSizePercent,
+                            gaugeStrokeWidthPercent = fixture.gaugeStrokeWidthPercent,
                             modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
                         )
                     }
@@ -807,6 +820,7 @@ class GoalsCardScreenshotTest {
         val fatsGoal: Int,
         val todayRemainingEnergy: Int? = null,
         val gaugeSizePercent: Int = 100,
+        val gaugeStrokeWidthPercent: Int = 100,
     )
 
     private companion object {
