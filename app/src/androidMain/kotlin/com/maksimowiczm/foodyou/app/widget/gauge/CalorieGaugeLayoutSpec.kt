@@ -26,7 +26,7 @@ internal data class CalorieGaugeLayoutSpec(
     val metricLabelTextSize: TextUnit,
     /** Height of the row that holds eaten energy, the ring and burned energy. */
     val rowHeight: Dp,
-    /** Diameter of the round action button under eaten and under burned energy. */
+    /** Tap area of the action icon under eaten and under burned energy. */
     val actionButtonSize: Dp,
     val actionIconSize: Dp,
     /** Gap between a side value's label and its action button. */

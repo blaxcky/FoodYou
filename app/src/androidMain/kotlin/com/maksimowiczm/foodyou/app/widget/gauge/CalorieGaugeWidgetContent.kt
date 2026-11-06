@@ -80,7 +80,7 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                     label = context.getString(R.string.widget_calorie_gauge_eaten),
                     action =
                         SideAction(
-                            icon = R.drawable.ic_shortcut_scan_barcode,
+                            icon = R.drawable.ic_widget_barcode_scanner,
                             description = context.getString(R.string.shortcut_scan_barcode_long),
                             onClick = actionStartActivity(barcodeScanIntent(context)),
                         ),
@@ -95,7 +95,7 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                     label = context.getString(R.string.widget_calorie_gauge_burned),
                     action =
                         SideAction(
-                            icon = R.drawable.ic_shortcut_quick_capture_camera,
+                            icon = R.drawable.ic_widget_add_a_photo,
                             description =
                                 context.getString(R.string.shortcut_quick_capture_camera_long),
                             onClick = actionStartActivity(quickCaptureCameraIntent(context)),
@@ -151,12 +151,12 @@ private fun gaugeDescription(context: Context, gauge: CalorieGauge): String {
         .joinToString(", ")
 }
 
-/** A shortcut started from the round button under a side value. */
+/** A shortcut started from the icon under a side value. */
 private class SideAction(@DrawableRes val icon: Int, val description: String, val onClick: Action)
 
 /**
- * Eaten or burned energy beside the ring, with its shortcut button below; the goal and its share
- * are left to the ring. Only the button starts the shortcut, the value opens the app.
+ * Eaten or burned energy beside the ring, with its shortcut icon below; the goal and its share
+ * are left to the ring. Only the icon starts the shortcut, the value opens the app.
  */
 @Composable
 private fun SideMetric(
@@ -193,7 +193,6 @@ private fun SideMetric(
         Box(
             modifier =
                 GlanceModifier.size(spec.actionButtonSize)
-                    .background(ImageProvider(R.drawable.widget_gauge_action_background))
                     .clickable(action.onClick)
                     .semantics { contentDescription = action.description },
             contentAlignment = Alignment.Center,
@@ -201,7 +200,7 @@ private fun SideMetric(
             Image(
                 provider = ImageProvider(action.icon),
                 contentDescription = null,
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
                 modifier = GlanceModifier.size(spec.actionIconSize),
             )
         }
