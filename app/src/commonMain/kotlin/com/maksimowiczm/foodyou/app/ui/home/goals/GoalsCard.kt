@@ -2344,7 +2344,7 @@ private fun GaugeMetric(
 private val GaugeStrokeWidth = 10.dp
 
 // Shifts the side values outward, away from the ring.
-private val SideMetricRingClearance = 3.dp
+private val SideMetricRingClearance = 6.dp
 
 /** Gap between the ring's center line and the nearest edge of a goal zone's value label. */
 private val GaugeZoneLabelClearance = 10.dp
