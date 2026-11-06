@@ -3,7 +3,7 @@ package com.maksimowiczm.foodyou.app.widget.gauge
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeMarkerMinGap
+import com.maksimowiczm.foodyou.app.ui.home.goals.gaugeMarkerGap
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,8 +34,15 @@ class CalorieGaugeTest {
 
         val zone = gauge.zones.single()
         assertEquals(2090f / 2100f, zone.goalFraction)
-        assertEquals(1f - GaugeMarkerMinGap, zone.fraction)
+        assertEquals(1f - gaugeMarkerGap(20), zone.fraction)
         assertEquals(zone.fraction, gauge.progress, 1e-6f)
+    }
+
+    @Test
+    fun theMarkerGapComesFromTheModel() {
+        val model = model(optimizedGoalKcal = 2090).copy(markerGapDegrees = 0)
+
+        assertEquals(2090f / 2100f, calorieGauge(model).zones.single().fraction)
     }
 
     @Test

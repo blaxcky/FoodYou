@@ -113,6 +113,7 @@ internal class CalorieWidgetUpdater(
                 settings.effectiveTodayEnergyGoalAdjustment(today, today)?.reductionKcal,
             previousDays = previousDays,
             plannedFutureDays = plannedFutureDays,
+            markerGapDegrees = settings.widgetGaugeMarkerGapDegrees,
         )
     }
 

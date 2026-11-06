@@ -7,6 +7,7 @@ import com.maksimowiczm.foodyou.app.ui.home.goals.optimizedEnergyGoalKcal
 import com.maksimowiczm.foodyou.app.ui.home.goals.roundedEnergyKcal
 import com.maksimowiczm.foodyou.app.ui.home.goals.roundedNetEnergyKcal
 import com.maksimowiczm.foodyou.app.ui.home.goals.roundedRemainingEnergyKcal
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
 import kotlinx.datetime.LocalDate
 
 internal data class CalorieWidgetModel(
@@ -22,6 +23,8 @@ internal data class CalorieWidgetModel(
     val dietGoalConfigured: Boolean,
     val dietGoalKcal: Int?,
     val dietLeftKcal: Int?,
+    /** The least distance between goal markers on the gauge's ring, set for the widget alone. */
+    val markerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
 )
 
 internal fun calorieWidgetModel(
@@ -34,6 +37,7 @@ internal fun calorieWidgetModel(
     todayEnergyGoalReductionKcal: Double? = null,
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
+    markerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
 ): CalorieWidgetModel {
     val netEnergyKcal = roundedNetEnergyKcal(eatenKcal, burnedKcal)
     val optimizedGoal =
@@ -87,5 +91,6 @@ internal fun calorieWidgetModel(
         dietGoalKcal = dietGoal?.takeIf { showDiet }?.let(::roundedEnergyKcal),
         dietLeftKcal =
             dietGoal?.takeIf { showDiet }?.let { roundedRemainingEnergyKcal(it, netEnergyKcal) },
+        markerGapDegrees = markerGapDegrees,
     )
 }

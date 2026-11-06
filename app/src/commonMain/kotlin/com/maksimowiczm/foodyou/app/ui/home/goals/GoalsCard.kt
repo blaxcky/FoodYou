@@ -83,6 +83,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_SIZE_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
@@ -203,6 +204,8 @@ internal fun GoalsCard(
 ) {
     val model = viewModel.model.collectAsStateWithLifecycle().value
     val gaugeSizePercent = viewModel.goalGaugeSizePercent.collectAsStateWithLifecycle().value
+    val gaugeMarkerGapDegrees =
+        viewModel.goalGaugeMarkerGapDegrees.collectAsStateWithLifecycle().value
 
     var showTodayGoalDialog by remember { mutableStateOf(false) }
 
@@ -239,6 +242,7 @@ internal fun GoalsCard(
             onLongClick = onLongClick,
             onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
             gaugeSizePercent = gaugeSizePercent,
+            gaugeMarkerGapDegrees = gaugeMarkerGapDegrees,
             modifier = modifier,
         )
     }
@@ -325,6 +329,7 @@ internal fun GoalsCard(
     onLongClick: () -> Unit,
     onSelectGoalDisplayMode: (GoalDisplayMode) -> Unit = {},
     gaugeSizePercent: Int = DEFAULT_GOAL_GAUGE_SIZE_PERCENT,
+    gaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     modifier: Modifier = Modifier,
 ) {
     val proteinsProgress = goalProgress(proteins, proteinsGoal)
@@ -403,6 +408,7 @@ internal fun GoalsCard(
             onClick = onClick,
             onLongClick = onLongClick,
             gaugeSizePercent = gaugeSizePercent,
+            gaugeMarkerGapDegrees = gaugeMarkerGapDegrees,
             modifier = Modifier.fillMaxWidth(),
         ) {
             MacroGoalsFooter(
@@ -1270,6 +1276,7 @@ private fun CaloriesOverview(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     gaugeSizePercent: Int,
+    gaugeMarkerGapDegrees: Int,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit = {},
 ) {
@@ -1288,11 +1295,12 @@ private fun CaloriesOverview(
     val selectedIndex = summaries.indexOfFirst { it.mode == goalDisplayMode }.coerceAtLeast(0)
     val currentSummary = summaries[selectedIndex]
     val goalZones =
-        remember(currentSummary, ringGoalSummaries, netEnergy) {
+        remember(currentSummary, ringGoalSummaries, netEnergy, gaugeMarkerGapDegrees) {
             gaugeGoalZones(
                 ringSummary = currentSummary,
                 goalSummaries = ringGoalSummaries,
                 netEnergy = netEnergy,
+                markerGapDegrees = gaugeMarkerGapDegrees,
             )
         }
 
@@ -1341,6 +1349,7 @@ internal fun gaugeGoalZones(
     ringSummary: GoalDisplaySummaryModel,
     goalSummaries: List<GoalDisplaySummaryModel>,
     netEnergy: Int,
+    markerGapDegrees: Int,
 ): List<GaugeGoalZone> {
     val ringGoal = ringSummary.percentageEnergyGoal
     if (ringSummary.energyGoal <= 0 || ringGoal <= 0) return emptyList()
@@ -1350,7 +1359,7 @@ internal fun gaugeGoalZones(
             .filter { it.energyGoal in 1 until ringGoal }
             .sortedBy { it.energyGoal }
     val goalFractions = goals.map { it.energyGoal.toFloat() / ringGoal }
-    val markers = spreadGaugeMarkers(goalFractions)
+    val markers = spreadGaugeMarkers(goalFractions, markerGapDegrees)
     return goals.mapIndexed { index, goal ->
         GaugeGoalZone(
             mode = goal.mode,

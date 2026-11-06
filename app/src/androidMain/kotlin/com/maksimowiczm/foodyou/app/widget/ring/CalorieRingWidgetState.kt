@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
 import kotlinx.datetime.LocalDate
 
 /** Stores the widget model in the Glance widget state so `update()` always renders fresh data. */
@@ -23,6 +24,7 @@ internal object CalorieRingWidgetState {
     val dietGoalConfigured = booleanPreferencesKey("diet_goal_configured")
     val dietGoalKcal = intPreferencesKey("diet_goal_kcal")
     val dietLeftKcal = intPreferencesKey("diet_left_kcal")
+    val markerGapDegrees = intPreferencesKey("marker_gap_degrees")
 }
 
 internal fun MutablePreferences.write(model: CalorieWidgetModel) {
@@ -38,6 +40,7 @@ internal fun MutablePreferences.write(model: CalorieWidgetModel) {
     this[CalorieRingWidgetState.dietGoalConfigured] = model.dietGoalConfigured
     setOrRemove(CalorieRingWidgetState.dietGoalKcal, model.dietGoalKcal)
     setOrRemove(CalorieRingWidgetState.dietLeftKcal, model.dietLeftKcal)
+    this[CalorieRingWidgetState.markerGapDegrees] = model.markerGapDegrees
 }
 
 private fun MutablePreferences.setOrRemove(key: Preferences.Key<Int>, value: Int?) {
@@ -64,5 +67,7 @@ internal fun Preferences.toCalorieWidgetModel(): CalorieWidgetModel? {
                 ?: (dietGoalKcal != null || dietLeftKcal != null),
         dietGoalKcal = dietGoalKcal,
         dietLeftKcal = dietLeftKcal,
+        markerGapDegrees =
+            this[CalorieRingWidgetState.markerGapDegrees] ?: DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     )
 }

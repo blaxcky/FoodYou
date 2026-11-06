@@ -1,21 +1,23 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
-/**
- * The least distance between two goal markers on the ring, and between a goal marker and the
- * ring's end, as a share of the ring's 270° sweep. Closer markers and their values run together.
- */
-internal const val GaugeMarkerMinGap = 20f / 270f
+/** [degrees] of the ring's 270° sweep as a share of it. */
+internal fun gaugeMarkerGap(degrees: Int): Float = degrees / 270f
 
 /**
  * Where the markers of the goals at [goalFractions] (ascending shares of the ring's own goal) sit on
- * the ring. A goal too close to the ring's end or to the next marker moves back until it keeps
- * [GaugeMarkerMinGap], even though its position then no longer matches its value.
+ * the ring. A goal closer than [minGapDegrees] to the ring's end or to the next marker moves back
+ * until it keeps that distance, even though its position then no longer matches its value; closer
+ * markers and their values run together.
  */
-internal fun spreadGaugeMarkers(goalFractions: List<Float>): List<Float> {
+internal fun spreadGaugeMarkers(
+    goalFractions: List<Float>,
+    minGapDegrees: Int,
+): List<Float> {
+    val minGap = gaugeMarkerGap(minGapDegrees)
     val markers = goalFractions.toMutableList()
     var next = 1f
     for (index in markers.indices.reversed()) {
-        markers[index] = minOf(markers[index], next - GaugeMarkerMinGap).coerceAtLeast(0f)
+        markers[index] = minOf(markers[index], next - minGap).coerceAtLeast(0f)
         next = markers[index]
     }
     return markers

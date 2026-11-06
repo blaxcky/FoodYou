@@ -52,6 +52,13 @@ data class Settings(
     val weeklyChartEnabled: Boolean = true,
     /** The calorie card's ring size, in percent of its size fitted to the card. */
     val goalGaugeSizePercent: Int = DEFAULT_GOAL_GAUGE_SIZE_PERCENT,
+    /**
+     * The least distance, in degrees of the ring's sweep, between goal markers on the calorie ring
+     * and between a goal marker and the ring's end.
+     */
+    val goalGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
+    /** The same distance on the gauge widget's ring, set apart since the widget is laid out apart. */
+    val widgetGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
 ) : UserPreferences
 
 const val DEFAULT_GOAL_GAUGE_SIZE_PERCENT = 100
@@ -59,6 +66,12 @@ const val DEFAULT_GOAL_GAUGE_SIZE_PERCENT = 100
 val GOAL_GAUGE_SIZE_PERCENT_RANGE = 80..120
 
 const val GOAL_GAUGE_SIZE_PERCENT_STEP = 5
+
+const val DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES = 20
+
+val GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE = 0..45
+
+const val GOAL_GAUGE_MARKER_GAP_DEGREES_STEP = 5
 
 data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)
 

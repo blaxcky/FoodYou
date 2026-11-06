@@ -12,12 +12,14 @@ import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStor
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.set
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_LOCKED_DAY_SURPLUS_KCAL
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_SIZE_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.EnergyFormat
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
@@ -93,6 +95,14 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             goalGaugeSizePercent =
                 (this[SettingsPreferencesKeys.goalGaugeSizePercent] ?: DEFAULT_GOAL_GAUGE_SIZE_PERCENT)
                     .coerceIn(GOAL_GAUGE_SIZE_PERCENT_RANGE),
+            goalGaugeMarkerGapDegrees =
+                (this[SettingsPreferencesKeys.goalGaugeMarkerGapDegrees]
+                        ?: DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES)
+                    .coerceIn(GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE),
+            widgetGaugeMarkerGapDegrees =
+                (this[SettingsPreferencesKeys.widgetGaugeMarkerGapDegrees]
+                        ?: DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES)
+                    .coerceIn(GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
             todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
@@ -177,6 +187,10 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.weeklyChartEnabled] = updated.weeklyChartEnabled
         this[SettingsPreferencesKeys.goalGaugeSizePercent] =
             updated.goalGaugeSizePercent.coerceIn(GOAL_GAUGE_SIZE_PERCENT_RANGE)
+        this[SettingsPreferencesKeys.goalGaugeMarkerGapDegrees] =
+            updated.goalGaugeMarkerGapDegrees.coerceIn(GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE)
+        this[SettingsPreferencesKeys.widgetGaugeMarkerGapDegrees] =
+            updated.widgetGaugeMarkerGapDegrees.coerceIn(GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
         setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
@@ -481,6 +495,8 @@ private object SettingsPreferencesKeys {
     val weeklyDetailsStyle = stringPreferencesKey("settings:weeklyDetailsStyle")
     val weeklyChartEnabled = booleanPreferencesKey("settings:weeklyChartEnabled")
     val goalGaugeSizePercent = intPreferencesKey("settings:goalGaugeSizePercent")
+    val goalGaugeMarkerGapDegrees = intPreferencesKey("settings:goalGaugeMarkerGapDegrees")
+    val widgetGaugeMarkerGapDegrees = intPreferencesKey("settings:widgetGaugeMarkerGapDegrees")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
     val todayEnergyGoalAdjustmentEpochDay =

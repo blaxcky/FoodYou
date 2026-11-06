@@ -58,7 +58,7 @@ internal fun calorieGauge(model: CalorieWidgetModel): CalorieGauge {
             )
             .sortedBy { it.goalFraction }
     val goalFractions = goalZones.map { it.goalFraction }
-    val markers = spreadGaugeMarkers(goalFractions)
+    val markers = spreadGaugeMarkers(goalFractions, model.markerGapDegrees)
     val zones = goalZones.mapIndexed { index, zone -> zone.copy(fraction = markers[index]) }
     return CalorieGauge(
         progress = gaugeRingPosition(progress.progress, goalFractions, markers),

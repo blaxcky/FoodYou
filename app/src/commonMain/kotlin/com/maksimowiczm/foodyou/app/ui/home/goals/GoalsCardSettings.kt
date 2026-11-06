@@ -28,6 +28,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
+import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE
+import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_MARKER_GAP_DEGREES_STEP
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_STEP
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
@@ -78,6 +82,17 @@ internal fun GoalsCardSettings(
             onGaugeSizeChange = { percent ->
                 scope.launch { repository.update { copy(goalGaugeSizePercent = percent) } }
             },
+            gaugeMarkerGapDegrees = current.goalGaugeMarkerGapDegrees,
+            onGaugeMarkerGapChange = { degrees ->
+                scope.launch { repository.update { copy(goalGaugeMarkerGapDegrees = degrees) } }
+            },
+            widgetGaugeMarkerGapDegrees = current.widgetGaugeMarkerGapDegrees,
+            onWidgetGaugeMarkerGapChange = { degrees ->
+                scope.launch {
+                    repository.update { copy(widgetGaugeMarkerGapDegrees = degrees) }
+                    updateCalorieWidgetValues()
+                }
+            },
             modifier = modifier,
         )
     }
@@ -97,6 +112,10 @@ internal fun GoalsCardSettingsContent(
     onWeeklyDetailsStyleChange: (WeeklyDetailsStyle) -> Unit,
     onWeeklyChartChange: (Boolean) -> Unit,
     onGaugeSizeChange: (Int) -> Unit,
+    gaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
+    onGaugeMarkerGapChange: (Int) -> Unit = {},
+    widgetGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
+    onWidgetGaugeMarkerGapChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // The preview switches modes on its own, without changing the home card's mode.
@@ -104,6 +123,11 @@ internal fun GoalsCardSettingsContent(
     // The slider's value while dragging, so the preview follows it before it is saved.
     var draggedGaugeSizePercent by remember { mutableStateOf<Int?>(null) }
     val previewGaugeSizePercent = draggedGaugeSizePercent ?: gaugeSizePercent
+    var draggedGaugeMarkerGapDegrees by remember { mutableStateOf<Int?>(null) }
+    val previewGaugeMarkerGapDegrees = draggedGaugeMarkerGapDegrees ?: gaugeMarkerGapDegrees
+    var draggedWidgetGaugeMarkerGapDegrees by remember { mutableStateOf<Int?>(null) }
+    val shownWidgetGaugeMarkerGapDegrees =
+        draggedWidgetGaugeMarkerGapDegrees ?: widgetGaugeMarkerGapDegrees
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -151,6 +175,7 @@ internal fun GoalsCardSettingsContent(
                         onClick = {},
                         onLongClick = {},
                         gaugeSizePercent = previewGaugeSizePercent,
+                        gaugeMarkerGapDegrees = previewGaugeMarkerGapDegrees,
                         modifier = Modifier.padding(16.dp),
                     )
                 }
@@ -158,12 +183,47 @@ internal fun GoalsCardSettingsContent(
 
             item { HorizontalDivider() }
             item {
-                GaugeSizeSetting(
-                    percent = previewGaugeSizePercent,
+                GaugeSliderSetting(
+                    title = stringResource(Res.string.goal_gauge_size_title),
+                    description = stringResource(Res.string.goal_gauge_size_description),
+                    value = previewGaugeSizePercent,
+                    valueText = "$previewGaugeSizePercent %",
+                    range = GOAL_GAUGE_SIZE_PERCENT_RANGE,
+                    step = GOAL_GAUGE_SIZE_PERCENT_STEP,
                     onDrag = { draggedGaugeSizePercent = it },
                     onDragFinished = {
                         draggedGaugeSizePercent?.let(onGaugeSizeChange)
                         draggedGaugeSizePercent = null
+                    },
+                )
+            }
+            item {
+                GaugeSliderSetting(
+                    title = stringResource(Res.string.goal_gauge_marker_gap_title),
+                    description = stringResource(Res.string.goal_gauge_marker_gap_description),
+                    value = previewGaugeMarkerGapDegrees,
+                    valueText = "$previewGaugeMarkerGapDegrees°",
+                    range = GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE,
+                    step = GOAL_GAUGE_MARKER_GAP_DEGREES_STEP,
+                    onDrag = { draggedGaugeMarkerGapDegrees = it },
+                    onDragFinished = {
+                        draggedGaugeMarkerGapDegrees?.let(onGaugeMarkerGapChange)
+                        draggedGaugeMarkerGapDegrees = null
+                    },
+                )
+            }
+            item {
+                GaugeSliderSetting(
+                    title = stringResource(Res.string.widget_gauge_marker_gap_title),
+                    description = stringResource(Res.string.widget_gauge_marker_gap_description),
+                    value = shownWidgetGaugeMarkerGapDegrees,
+                    valueText = "$shownWidgetGaugeMarkerGapDegrees°",
+                    range = GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE,
+                    step = GOAL_GAUGE_MARKER_GAP_DEGREES_STEP,
+                    onDrag = { draggedWidgetGaugeMarkerGapDegrees = it },
+                    onDragFinished = {
+                        draggedWidgetGaugeMarkerGapDegrees?.let(onWidgetGaugeMarkerGapChange)
+                        draggedWidgetGaugeMarkerGapDegrees = null
                     },
                 )
             }
@@ -201,30 +261,35 @@ internal fun GoalsCardSettingsContent(
     }
 }
 
+/** A setting of the card's ring, picked in [step]s across [range]. */
 @Composable
-private fun GaugeSizeSetting(
-    percent: Int,
+private fun GaugeSliderSetting(
+    title: String,
+    description: String,
+    value: Int,
+    valueText: String,
+    range: IntRange,
+    step: Int,
     onDrag: (Int) -> Unit,
     onDragFinished: () -> Unit,
 ) {
-    val range = GOAL_GAUGE_SIZE_PERCENT_RANGE
     ListItem(
-        headlineContent = { Text(stringResource(Res.string.goal_gauge_size_title)) },
+        headlineContent = { Text(title) },
         supportingContent = {
             Column {
-                Text(stringResource(Res.string.goal_gauge_size_description))
+                Text(description)
                 Slider(
-                    value = percent.toFloat(),
+                    value = value.toFloat(),
                     onValueChange = { onDrag(it.roundToInt()) },
                     onValueChangeFinished = onDragFinished,
                     valueRange = range.first.toFloat()..range.last.toFloat(),
-                    steps = (range.last - range.first) / GOAL_GAUGE_SIZE_PERCENT_STEP - 1,
+                    steps = (range.last - range.first) / step - 1,
                 )
             }
         },
         trailingContent = {
             Text(
-                text = "$percent %",
+                text = valueText,
                 color = MaterialTheme.colorScheme.primary,
             )
         },

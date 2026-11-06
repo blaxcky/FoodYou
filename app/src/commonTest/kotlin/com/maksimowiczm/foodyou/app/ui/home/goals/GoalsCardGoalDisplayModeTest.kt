@@ -171,13 +171,14 @@ class GoalsCardGoalDisplayModeTest {
                 ringSummary = summaries.first { it.mode == GoalDisplayMode.Normal },
                 goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
                 netEnergy = 1900,
+                markerGapDegrees = 20,
             )
 
         assertEquals(listOf(GoalDisplayMode.Diet, GoalDisplayMode.Optimized), zones.map { it.mode })
         assertEquals(listOf(1800f / 2100f, 1935f / 2100f), zones.map { it.goalFraction })
         // Optimized keeps its place; Diet, closer than the least gap to it, moves back.
         assertEquals(
-            listOf(1935f / 2100f - GaugeMarkerMinGap, 1935f / 2100f),
+            listOf(1935f / 2100f - gaugeMarkerGap(20), 1935f / 2100f),
             zones.map { it.fraction },
         )
         assertEquals(listOf(-100, 35), zones.map { it.remaining })
@@ -193,6 +194,7 @@ class GoalsCardGoalDisplayModeTest {
                 ringSummary = summaries.first { it.mode == GoalDisplayMode.Normal },
                 goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
                 netEnergy = 1200,
+                markerGapDegrees = 20,
             )
 
         assertEquals(listOf(GoalDisplayMode.Diet), zones.map { it.mode })
@@ -207,11 +209,12 @@ class GoalsCardGoalDisplayModeTest {
                 ringSummary = summaries.first { it.mode == GoalDisplayMode.Optimized },
                 goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
                 netEnergy = 1200,
+                markerGapDegrees = 20,
             )
 
         assertEquals(listOf(GoalDisplayMode.Diet), zones.map { it.mode })
         assertEquals(1800f / 1935f, zones.single().goalFraction)
-        assertEquals(1f - GaugeMarkerMinGap, zones.single().fraction)
+        assertEquals(1f - gaugeMarkerGap(20), zones.single().fraction)
     }
 
     @Test
@@ -223,30 +226,39 @@ class GoalsCardGoalDisplayModeTest {
                 ringSummary = summaries.first { it.mode == GoalDisplayMode.Normal },
                 goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = false),
                 netEnergy = 1200,
+                markerGapDegrees = 20,
             )
 
         assertEquals(2090f / 2100f, zones.single().goalFraction)
-        assertEquals(1f - GaugeMarkerMinGap, zones.single().fraction)
+        assertEquals(1f - gaugeMarkerGap(20), zones.single().fraction)
     }
 
     @Test
     fun gaugeMarkersFarEnoughApartStayWhereTheyAre() {
-        assertEquals(listOf(0.3f, 0.6f), spreadGaugeMarkers(listOf(0.3f, 0.6f)))
-        assertEquals(emptyList(), spreadGaugeMarkers(emptyList()))
+        assertEquals(listOf(0.3f, 0.6f), spreadGaugeMarkers(listOf(0.3f, 0.6f), 20))
+        assertEquals(emptyList(), spreadGaugeMarkers(emptyList(), 20))
     }
 
     @Test
     fun crowdedGaugeMarkersKeepTheLeastGap() {
-        val markers = spreadGaugeMarkers(listOf(0.95f, 0.96f))
+        val markers = spreadGaugeMarkers(listOf(0.95f, 0.96f), 20)
 
-        assertEquals(1f - GaugeMarkerMinGap, markers[1], 1e-6f)
-        assertEquals(1f - 2 * GaugeMarkerMinGap, markers[0], 1e-6f)
+        assertEquals(1f - gaugeMarkerGap(20), markers[1], 1e-6f)
+        assertEquals(1f - 2 * gaugeMarkerGap(20), markers[0], 1e-6f)
+    }
+
+    @Test
+    fun gaugeMarkerGapFollowsTheSetting() {
+        val goals = listOf(0.95f, 0.96f)
+
+        assertEquals(goals, spreadGaugeMarkers(goals, 0))
+        assertEquals(listOf(1f - 2 * 45f / 270f, 1f - 45f / 270f), spreadGaugeMarkers(goals, 45))
     }
 
     @Test
     fun ringFillPassesAMovedMarkerExactlyAtItsGoal() {
         val goals = listOf(0.95f)
-        val markers = spreadGaugeMarkers(goals)
+        val markers = spreadGaugeMarkers(goals, 20)
 
         assertEquals(markers[0], gaugeRingPosition(0.95f, goals, markers), 1e-6f)
         assertTrue(gaugeRingPosition(0.94f, goals, markers) < markers[0])
@@ -259,7 +271,7 @@ class GoalsCardGoalDisplayModeTest {
     @Test
     fun ringFillHandlesGoalsOfTheSameValue() {
         val goals = listOf(0.5f, 0.5f)
-        val markers = spreadGaugeMarkers(goals)
+        val markers = spreadGaugeMarkers(goals, 20)
 
         assertEquals(markers[0], gaugeRingPosition(0.5f, goals, markers), 1e-6f)
         assertTrue(gaugeRingPosition(0.6f, goals, markers) > markers[1])
@@ -277,6 +289,7 @@ class GoalsCardGoalDisplayModeTest {
                     ),
                 goalSummaries = goalDisplaySummaries(optimizedGoal = 1935),
                 netEnergy = 0,
+                markerGapDegrees = 20,
             )
 
         assertEquals(emptyList(), zones)
