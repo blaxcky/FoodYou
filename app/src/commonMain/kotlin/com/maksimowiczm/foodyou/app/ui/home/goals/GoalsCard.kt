@@ -434,7 +434,7 @@ private fun MacroGoalsFooter(
     carbsProgress: Float = goalProgress(carbohydrates, carbohydratesGoal),
     fatsProgress: Float = goalProgress(fats, fatsGoal),
 ) {
-    Spacer(Modifier.height(10.dp))
+    Spacer(Modifier.height(15.dp))
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1757,7 +1757,10 @@ private fun CaloriesOverviewPage(
                             stringResource(Res.string.goal_reached_percentage, reached)
                                 .substringAfter("% "),
                         supportingTopPadding = secondaryMetricTopPadding,
-                        modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
+                        modifier =
+                            Modifier.weight(1f)
+                                .padding(top = sideMetricTopPadding)
+                                .offset(x = -SideMetricRingClearance),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     )
                     GaugeMetric(
@@ -1784,7 +1787,10 @@ private fun CaloriesOverviewPage(
                             if (todayRemainingOverflow) GoalsErrorColor else GoalsMutedTextColor,
                     )
                     Column(
-                        modifier = Modifier.weight(1f).padding(top = sideMetricTopPadding),
+                        modifier =
+                            Modifier.weight(1f)
+                                .padding(top = sideMetricTopPadding)
+                                .offset(x = SideMetricRingClearance),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(secondaryMetricTopPadding + 3.dp),
                     ) {
@@ -2336,6 +2342,9 @@ private fun GaugeMetric(
 }
 
 private val GaugeStrokeWidth = 10.dp
+
+// Shifts the side values outward, away from the ring.
+private val SideMetricRingClearance = 3.dp
 
 /** Gap between the ring's center line and the nearest edge of a goal zone's value label. */
 private val GaugeZoneLabelClearance = 10.dp
