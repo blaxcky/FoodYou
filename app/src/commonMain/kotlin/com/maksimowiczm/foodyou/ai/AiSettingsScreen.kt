@@ -504,7 +504,7 @@ private fun providerStatus(provider: AiProvider, downloads: Map<AiProvider, Mode
 
 @Composable
 private fun openAiModelChoices(): List<Pair<String, String>> = openAiModels.zip(listOf(
-    stringResource(Res.string.openai_luna), stringResource(Res.string.openai_sol), stringResource(Res.string.openai_astra),
+    stringResource(Res.string.openai_luna), stringResource(Res.string.openai_terra), stringResource(Res.string.openai_sol), stringResource(Res.string.openai_astra),
 ))
 
 @Composable

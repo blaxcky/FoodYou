@@ -13,6 +13,9 @@ class OpenAiClientTest {
         assertNull(OpenAiTask("gpt-6-luna", "none").withModel("gpt-6.1-sol").effort)
         assertEquals("high", OpenAiTask("gpt-6-luna", "high").withModel("gpt-6-astra").effort)
         assertNull(OpenAiTask("gpt-6-luna", "low").withModel("custom").effort)
+        assertEquals("none", OpenAiTask("gpt-6-luna", "none").withModel("gpt-6.1-terra").effort)
+        assertNull(OpenAiTask("gpt-6.1-terra", "none").withModel("gpt-6.1-sol").effort)
+        assertEquals("max", OpenAiTask("gpt-6.1-terra", "max").withModel("gpt-6-astra").effort)
     }
     @Test fun sendsImageAndSelectedEffortWithoutStorage() = runTest {
         val client = HttpClient(MockEngine { request ->

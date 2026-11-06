@@ -18,9 +18,9 @@ data class OpenAiSettings(
 data class AiSource(val title: String, val url: String)
 data class NutritionEstimate(val csv: String, val sources: List<AiSource>)
 
-val openAiModels = listOf("gpt-6-luna", "gpt-6.1-sol", "gpt-6-astra")
+val openAiModels = listOf("gpt-6-luna", "gpt-6.1-terra", "gpt-6.1-sol", "gpt-6-astra")
 fun supportedEfforts(model: String): List<String>? = when (model) {
-    "gpt-6-luna" -> listOf("none", "low", "medium", "high", "xhigh", "max")
+    "gpt-6-luna", "gpt-6.1-terra" -> listOf("none", "low", "medium", "high", "xhigh", "max")
     "gpt-6.1-sol", "gpt-6-astra" -> listOf("low", "medium", "high", "xhigh", "max")
     else -> null
 }

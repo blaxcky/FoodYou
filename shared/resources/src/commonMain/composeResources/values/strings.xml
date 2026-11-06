@@ -934,6 +934,7 @@
     <string name="openai_sources">Sources</string>
     <string name="openai_stale">The requested entries changed. Please calculate again.</string>
     <string name="openai_luna">Fast and economical</string>
+    <string name="openai_terra">Fast, efficient visual reasoning</string>
     <string name="openai_sol">For complex tasks</string>
     <string name="openai_astra">For demanding tasks</string>
     <string name="openai_review">Review the calculated CSV and sources. Confirm to add the values to today’s matching meal and complete the requested entries.</string>
