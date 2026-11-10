@@ -51,9 +51,6 @@ internal const val GaugeOffRingStepAngle = 12f
 /** The dotted track past the ring's end starts this far out, clear of the ring's round cap. */
 internal const val GaugeOffRingTrackStartAngle = 5f
 
-/** How far the dotted track runs on past the farthest dot. */
-internal const val GaugeOffRingTrackOvershootAngle = 9f
-
 /**
  * Where on the ring's circle the dots of goals off the ring sit, in degrees: a goal at or below
  * zero ([goalFraction] ≤ 0) before the ring's start, one above the ring's own goal (≥ 1) past its

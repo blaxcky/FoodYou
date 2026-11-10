@@ -2528,8 +2528,9 @@ private fun DrawScope.drawZonedGauge(
 }
 
 /**
- * Goals off the ring: past the matching end the ring goes on as a fine dotted track, and each goal's
- * dot sits on it – where the ring would continue if it reached that far.
+ * Goals off the ring: past the matching end the ring goes on as a fine dotted track up to the
+ * farthest goal's dot, and each goal's dot sits on it – where the ring would continue if it
+ * reached that far.
  */
 private fun DrawScope.drawOffRingGoals(diameter: Float, strokeWidth: Float, zones: List<GaugeGoalZone>) {
     val placed = zones.offRingAngles()
@@ -2559,12 +2560,12 @@ private fun DrawScope.drawOffRingGoals(diameter: Float, strokeWidth: Float, zone
     placed.filter { it.first.placement == GaugeZonePlacement.BeforeStart }
         .minOfOrNull { it.second }
         ?.let { farthest ->
-            track(farthest - GaugeOffRingTrackOvershootAngle, gaugeAngle(0f) - GaugeOffRingTrackStartAngle)
+            track(farthest, gaugeAngle(0f) - GaugeOffRingTrackStartAngle)
         }
     placed.filter { it.first.placement == GaugeZonePlacement.PastEnd }
         .maxOfOrNull { it.second }
         ?.let { farthest ->
-            track(gaugeAngle(1f) + GaugeOffRingTrackStartAngle, farthest + GaugeOffRingTrackOvershootAngle)
+            track(gaugeAngle(1f) + GaugeOffRingTrackStartAngle, farthest)
         }
     placed.forEach { (zone, angle) ->
         drawGaugeMarkerAt(center, diameter / 2f, strokeWidth, angle, zone.mode.goalZoneColor())

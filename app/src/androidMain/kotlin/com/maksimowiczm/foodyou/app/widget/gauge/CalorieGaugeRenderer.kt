@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.app.ui.home.goals.DietGoalAccentColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingTrackColor
-import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingTrackOvershootAngle
 import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingTrackStartAngle
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsErrorColor
@@ -135,8 +134,8 @@ internal object CalorieGaugeRenderer {
         }
 
         /**
-         * Goals off the ring: past the matching end the ring goes on as a fine dotted track, and
-         * each goal's dot sits on it, as on the card.
+         * Goals off the ring: past the matching end the ring goes on as a fine dotted track up to
+         * the farthest goal's dot, and each goal's dot sits on it, as on the card.
          */
         private fun drawOffRingGoals(dots: List<Pair<CalorieGaugeZone, Float>>) {
             if (dots.isEmpty()) return
@@ -152,12 +151,11 @@ internal object CalorieGaugeRenderer {
             val start = gaugeAngle(0f)
             val end = gaugeAngle(1f)
             dots.filter { it.second < start }.minOfOrNull { it.second }?.let { farthest ->
-                val from = farthest - GaugeOffRingTrackOvershootAngle
-                canvas.drawArc(bounds, from, start - GaugeOffRingTrackStartAngle - from, false, dotted)
+                canvas.drawArc(bounds, farthest, start - GaugeOffRingTrackStartAngle - farthest, false, dotted)
             }
             dots.filter { it.second > end }.maxOfOrNull { it.second }?.let { farthest ->
                 val from = end + GaugeOffRingTrackStartAngle
-                canvas.drawArc(bounds, from, farthest + GaugeOffRingTrackOvershootAngle - from, false, dotted)
+                canvas.drawArc(bounds, from, farthest - from, false, dotted)
             }
             dots.forEach { (zone, angle) -> drawMarker(angle, zone.kind.color()) }
         }
