@@ -564,7 +564,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-phone.png",
             fixture = RingZonesFixture,
             width = 414,
-            height = 340,
+            height = 360,
         )
     }
 
@@ -574,7 +574,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-exceeded-phone.png",
             fixture = RingZonesFixture.copy(energy = 2340, netEnergy = 2006),
             width = 414,
-            height = 340,
+            height = 360,
         )
     }
 
@@ -584,7 +584,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-over-goal-phone.png",
             fixture = RingZonesFixture.copy(energy = 2650, netEnergy = 2316),
             width = 414,
-            height = 340,
+            height = 360,
         )
     }
 
@@ -594,7 +594,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-far-over-goal-phone.png",
             fixture = RingZonesFixture.copy(energy = 3502, burnedEnergy = 537, netEnergy = 2965),
             width = 414,
-            height = 340,
+            height = 360,
         )
     }
 
@@ -604,7 +604,7 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-just-over-goal-phone.png",
             fixture = RingZonesFixture.copy(energy = 2483, netEnergy = 2149),
             width = 414,
-            height = 340,
+            height = 360,
         )
     }
 
@@ -659,7 +659,43 @@ class GoalsCardScreenshotTest {
             filePath = "GoalsCardScreenshotTest.ring-goal-zones-day-start-phone.png",
             fixture = RingZonesFixture.copy(energy = 0, burnedEnergy = 0, netEnergy = 0),
             width = 414,
-            height = 340,
+            height = 360,
+        )
+    }
+
+    @Test
+    fun ringGoalZonesBudgetUsedUpPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-budget-used-up-phone.png",
+            fixture =
+                RingZonesFixture.copy(
+                    goalDisplaySummaries =
+                        RingZonesFixture.goalDisplaySummaries.map {
+                            if (it.mode == GoalDisplayMode.Diet) it.copy(energyGoal = -240) else it
+                        }
+                ),
+            width = 414,
+            height = 360,
+        )
+    }
+
+    @Test
+    fun ringGoalZonesSavedAheadPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-saved-ahead-phone.png",
+            fixture =
+                RingZonesFixture.copy(
+                    goalDisplaySummaries =
+                        RingZonesFixture.goalDisplaySummaries.map {
+                            when (it.mode) {
+                                GoalDisplayMode.Optimized -> it.copy(energyGoal = 2760)
+                                GoalDisplayMode.Diet -> it.copy(energyGoal = 2260)
+                                else -> it
+                            }
+                        }
+                ),
+            width = 414,
+            height = 360,
         )
     }
 

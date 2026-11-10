@@ -186,7 +186,7 @@ class GoalsCardGoalDisplayModeTest {
     }
 
     @Test
-    fun ringGoalZonesLeaveOutGoalsBeyondTheRing() {
+    fun ringGoalZonesKeepGoalsPastTheRingsEnd() {
         val summaries = goalDisplaySummaries(optimizedGoal = 2250)
 
         val zones =
@@ -197,7 +197,80 @@ class GoalsCardGoalDisplayModeTest {
                 markerGapDegrees = 20,
             )
 
-        assertEquals(listOf(GoalDisplayMode.Diet), zones.map { it.mode })
+        assertEquals(listOf(GoalDisplayMode.Diet, GoalDisplayMode.Optimized), zones.map { it.mode })
+        assertEquals(
+            listOf(GaugeZonePlacement.OnRing, GaugeZonePlacement.PastEnd),
+            zones.map { it.placement },
+        )
+        assertEquals(1050, zones.last().remaining)
+        // A goal off the ring is not spread with the markers on it; it keeps its own share.
+        assertEquals(2250f / 2100f, zones.last().fraction)
+    }
+
+    @Test
+    fun ringGoalZonesKeepAUsedUpGoalBeforeTheRingsStart() {
+        val summaries =
+            goalDisplaySummaries(optimizedGoal = 1935).map {
+                if (it.mode == GoalDisplayMode.Diet) it.copy(energyGoal = -250) else it
+            }
+
+        val zones =
+            gaugeGoalZones(
+                ringSummary = summaries.first { it.mode == GoalDisplayMode.Normal },
+                goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
+                netEnergy = 900,
+                markerGapDegrees = 20,
+            )
+
+        val diet = zones.first()
+        assertEquals(GoalDisplayMode.Diet, diet.mode)
+        assertEquals(GaugeZonePlacement.BeforeStart, diet.placement)
+        assertEquals(-1150, diet.remaining)
+        assertEquals(true, diet.exceeded)
+    }
+
+    @Test
+    fun ringGoalZonesLeaveOutAGoalAtTheRingsOwnGoal() {
+        val summaries =
+            goalDisplaySummaries(optimizedGoal = 1935).map {
+                if (it.mode == GoalDisplayMode.Diet) it.copy(energyGoal = 2100) else it
+            }
+
+        val zones =
+            gaugeGoalZones(
+                ringSummary = summaries.first { it.mode == GoalDisplayMode.Normal },
+                goalSummaries = summaries.supplementalGoalSummaries(dietGoalDisplayModeEnabled = true),
+                netEnergy = 900,
+                markerGapDegrees = 20,
+            )
+
+        assertEquals(listOf(GoalDisplayMode.Optimized), zones.map { it.mode })
+    }
+
+    @Test
+    fun offRingDotsStepAwayFromTheirEndNearestGoalFirst() {
+        val beforeStart =
+            listOf(
+                    offRingZone(GoalDisplayMode.Diet, -0.3f, -900),
+                    offRingZone(GoalDisplayMode.Optimized, -0.1f, -500),
+                )
+                .offRingAngles(first = 15f, step = 12f)
+        val pastEnd =
+            listOf(
+                    offRingZone(GoalDisplayMode.Diet, 1.1f, 300),
+                    offRingZone(GoalDisplayMode.Optimized, 1.3f, 700),
+                    offRingZone(GoalDisplayMode.Diet, 0.5f, 100),
+                )
+                .offRingAngles(first = 15f, step = 12f)
+
+        assertEquals(
+            listOf(GoalDisplayMode.Optimized to 120f, GoalDisplayMode.Diet to 108f),
+            beforeStart.map { (zone, angle) -> zone.mode to angle },
+        )
+        assertEquals(
+            listOf(GoalDisplayMode.Diet to 420f, GoalDisplayMode.Optimized to 432f),
+            pastEnd.map { (zone, angle) -> zone.mode to angle },
+        )
     }
 
     @Test
@@ -317,4 +390,7 @@ class GoalsCardGoalDisplayModeTest {
                 showEnergyGoalValue = dietAvailable,
             ),
         )
+
+    private fun offRingZone(mode: GoalDisplayMode, fraction: Float, remaining: Int) =
+        GaugeGoalZone(mode = mode, goalFraction = fraction, fraction = fraction, remaining = remaining)
 }
