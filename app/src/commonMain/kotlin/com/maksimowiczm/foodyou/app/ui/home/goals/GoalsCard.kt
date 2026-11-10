@@ -1765,9 +1765,20 @@ private fun CaloriesOverviewPage(
             }
 
             if (goalZones.isNotEmpty()) {
+                // Dots past the ring's end hang below its row; the legend keeps clear of them.
+                val belowRow =
+                    if (compact) {
+                        0.dp
+                    } else {
+                        (gaugeLowestPoint(gaugeDiameter, gaugeStrokeWidth, goalZones) +
+                                GoalZoneLegendGap - caloriesHeight)
+                            .coerceAtLeast(0.dp)
+                    }
                 GoalZoneLegend(
                     zones = goalZones,
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(top = GoalZoneLegendGap + belowRow, bottom = 2.dp),
                 )
             }
 
@@ -2298,6 +2309,26 @@ private fun GaugeMetric(
 
 /** The ring's line width at 100 percent. */
 private val GaugeStrokeWidth = 10.dp
+
+/** Room between the ring, or the lowest dot past its end, and the legend row under it. */
+private val GoalZoneLegendGap = 6.dp
+
+/**
+ * How far below its top the ring reaches: down to the markers at its ends or, with goals off the
+ * ring, to the farthest dot past an end, which sits further round toward the bottom.
+ */
+private fun gaugeLowestPoint(diameter: Dp, strokeWidth: Dp, zones: List<GaugeGoalZone>): Dp {
+    val radius = diameter / 2
+    val depth =
+        maxOf(
+            zones.count { it.placement == GaugeZonePlacement.BeforeStart },
+            zones.count { it.placement == GaugeZonePlacement.PastEnd },
+        )
+    val degrees =
+        if (depth == 0) 45f else 45f + GaugeOffRingFirstAngle + GaugeOffRingStepAngle * (depth - 1)
+    val markerRadius = maxOf(GaugeZoneMarkerMinRadius, strokeWidth / 2 + GaugeZoneMarkerOverhang)
+    return strokeWidth / 2 + radius + radius * sin(degrees * PI.toFloat() / 180f) + markerRadius
+}
 
 // Shifts the side values outward, away from the ring.
 private val SideMetricRingClearance = 6.dp
