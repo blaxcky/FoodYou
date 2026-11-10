@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A filled dot, tinted in a goal's color in the gauge widget's legend. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#FFFFFFFF" />
+    <size android:width="8dp" android:height="8dp" />
+</shape>

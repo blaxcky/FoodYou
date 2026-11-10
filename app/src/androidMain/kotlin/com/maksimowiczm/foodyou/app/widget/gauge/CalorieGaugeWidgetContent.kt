@@ -27,12 +27,14 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.app.infrastructure.android.barcodeScanIntent
 import com.maksimowiczm.foodyou.app.infrastructure.android.quickCaptureCameraIntent
@@ -46,8 +48,14 @@ import kotlin.math.abs
 @Composable
 internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
     val context = LocalContext.current
+    val gauge = calorieGauge(model)
     val spec =
-        calorieGaugeLayoutSpec(LocalSize.current, context.resources.configuration.fontScale)
+        calorieGaugeLayoutSpec(
+            size = LocalSize.current,
+            fontScale = context.resources.configuration.fontScale,
+            showLegend = gauge.zones.isNotEmpty(),
+            offRingDepth = gauge.offRingDepth,
+        )
 
     Box(
         modifier =
@@ -88,7 +96,7 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                         GlanceModifier.defaultWeight()
                             .padding(end = CalorieGaugeWidgetSizes.MetricGaugeGap),
                 )
-                Gauge(context, model, spec)
+                Gauge(context, gauge, spec)
                 SideMetric(
                     spec = spec,
                     value = context.formatWidgetNumber(model.burnedKcal),
@@ -105,6 +113,10 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                             .padding(start = CalorieGaugeWidgetSizes.MetricGaugeGap),
                 )
             }
+            if (spec.showLegend) {
+                Spacer(modifier = GlanceModifier.height(spec.legendGap))
+                GoalLegend(context, gauge, spec)
+            }
             if (spec.showHeader) {
                 Spacer(modifier = GlanceModifier.height(CalorieGaugeWidgetSizes.GaugeLift))
             }
@@ -113,43 +125,90 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
 }
 
 @Composable
-private fun Gauge(context: Context, model: CalorieWidgetModel, spec: CalorieGaugeLayoutSpec) {
-    val gauge = calorieGauge(model)
+private fun Gauge(context: Context, gauge: CalorieGauge, spec: CalorieGaugeLayoutSpec) {
     Image(
         provider = ImageProvider(CalorieGaugeRenderer.render(context, spec, gauge)),
-        contentDescription = gaugeDescription(context, gauge),
+        contentDescription =
+            goalDescription(context, R.string.widget_calories_normal, gauge.remainingKcal),
         contentScale = ContentScale.FillBounds,
         modifier = GlanceModifier.size(spec.gaugeWidth, spec.gaugeHeight),
     )
 }
 
-/** The values on the ring, read in the same order: normal goal first, then the goals on it. */
-private fun gaugeDescription(context: Context, gauge: CalorieGauge): String {
-    fun goal(label: Int, remainingKcal: Int): String =
-        context.getString(
-            R.string.widget_calorie_gauge_goal_description,
-            context.getString(label),
-            context.formatWidgetNumber(abs(remainingKcal)),
-            context.getString(
-                if (remainingKcal < 0) R.string.widget_calories_over_lowercase
-                else R.string.widget_calories_left_lowercase
-            ),
-        )
-
-    val zones =
-        gauge.zones.map {
-            goal(
-                label =
-                    when (it.kind) {
+/**
+ * The supplemental goals' remaining energy in one quiet row under the ring: a dot in the goal's
+ * color and the number, as on the goals card. Only an exceeded goal says so, in red.
+ */
+@Composable
+private fun GoalLegend(context: Context, gauge: CalorieGauge, spec: CalorieGaugeLayoutSpec) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        gauge.zones.forEachIndexed { index, zone ->
+            if (index > 0) Spacer(modifier = GlanceModifier.width(spec.legendItemGap))
+            val description =
+                goalDescription(
+                    context,
+                    when (zone.kind) {
                         CalorieGaugeZoneKind.Optimized -> R.string.widget_calories_optimized
                         CalorieGaugeZoneKind.Diet -> R.string.widget_calories_diet
                     },
-                remainingKcal = it.remainingKcal,
-            )
+                    zone.remainingKcal,
+                )
+            val valueColor =
+                if (zone.exceeded) GlanceTheme.colors.error else GlanceTheme.colors.onSurface
+            Row(
+                modifier = GlanceModifier.semantics { contentDescription = description },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    provider = ImageProvider(R.drawable.ic_widget_dot),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(ColorProvider(zone.kind.color())),
+                    modifier = GlanceModifier.size(spec.legendDotSize),
+                )
+                Spacer(modifier = GlanceModifier.width(5.dp))
+                Text(
+                    text = context.formatWidgetNumber(abs(zone.remainingKcal)),
+                    style =
+                        TextStyle(
+                            color = valueColor,
+                            fontSize = spec.legendTextSize,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                    maxLines = 1,
+                )
+                if (zone.exceeded) {
+                    Spacer(modifier = GlanceModifier.width(4.dp))
+                    Text(
+                        text = context.getString(R.string.widget_calories_over_lowercase),
+                        style =
+                            TextStyle(
+                                color = GlanceTheme.colors.error,
+                                fontSize = spec.metricLabelTextSize,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                        maxLines = 1,
+                    )
+                }
+            }
         }
-    return (listOf(goal(R.string.widget_calories_normal, gauge.remainingKcal)) + zones)
-        .joinToString(", ")
+    }
 }
+
+/** A goal's name with its remaining energy, as read out for the ring and the legend. */
+private fun goalDescription(context: Context, label: Int, remainingKcal: Int): String =
+    context.getString(
+        R.string.widget_calorie_gauge_goal_description,
+        context.getString(label),
+        context.formatWidgetNumber(abs(remainingKcal)),
+        context.getString(
+            if (remainingKcal < 0) R.string.widget_calories_over_lowercase
+            else R.string.widget_calories_left_lowercase
+        ),
+    )
 
 /** A shortcut started from the icon under a side value. */
 private class SideAction(@DrawableRes val icon: Int, val description: String, val onClick: Action)

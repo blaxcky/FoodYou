@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.app.widget.gauge
 
 import com.maksimowiczm.foodyou.app.ui.home.goals.gaugeRingPosition
+import com.maksimowiczm.foodyou.app.ui.home.goals.offRingDotAngles
 import com.maksimowiczm.foodyou.app.ui.home.goals.spreadGaugeMarkers
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetProgress
@@ -14,6 +15,10 @@ internal enum class CalorieGaugeZoneKind {
  * A supplemental goal that splits the ring, as on the home screen's goals card. The ring keeps the
  * normal goal as its full sweep; [goalFraction] is this goal's share of it, and [fraction] is where
  * its marker sits, moved back from a marker it would crowd (see [spreadGaugeMarkers]).
+ *
+ * A goal can lie off the ring: at or below zero once the week's budget for it is used up, or above
+ * the normal goal after enough was saved earlier in the week. Its dot then sits on a dotted
+ * continuation of the ring past the matching end.
  */
 internal data class CalorieGaugeZone(
     val kind: CalorieGaugeZoneKind,
@@ -23,30 +28,50 @@ internal data class CalorieGaugeZone(
 ) {
     val exceeded: Boolean
         get() = remainingKcal < 0
+
+    val onRing: Boolean
+        get() = goalFraction > 0f && goalFraction < 1f
 }
 
 internal data class CalorieGauge(
     /** Where the fill ends on the ring, following the zones' moved markers. */
     val progress: Float,
     val overflow: Float,
+    /** Every supplemental goal, on the ring or off it, ordered by its goal. */
     val zones: List<CalorieGaugeZone>,
-    /** The normal goal's remaining energy, shown at the ring's end. */
+    /** The normal goal's remaining energy, shown in the ring's center. */
     val remainingKcal: Int,
 ) {
     val exceeded: Boolean
         get() = remainingKcal < 0
+
+    val onRingZones: List<CalorieGaugeZone>
+        get() = zones.filter { it.onRing }
+
+    /** Each off-ring goal with the angle of its dot past the ring's end. */
+    val offRingDots: List<Pair<CalorieGaugeZone, Float>>
+        get() = offRingDotAngles(zones, { it.goalFraction })
+
+    /** How many dots sit past the ring's end on its fuller side; the ring needs room for them. */
+    val offRingDepth: Int
+        get() =
+            maxOf(
+                zones.count { it.goalFraction <= 0f },
+                zones.count { it.goalFraction >= 1f },
+            )
 }
 
 /**
- * The ring of the normal goal with the Optimized and Diet goals on it. A goal at or above the
- * normal goal has no place on the ring, so it is left out.
+ * The ring of the normal goal with the Optimized and Diet goals on it. A goal off the ring keeps
+ * its dot past the matching end; one equal to the normal goal is left out, as the ring's end marker
+ * already stands for it.
  */
 internal fun calorieGauge(model: CalorieWidgetModel): CalorieGauge {
     val goal = model.normalGoalKcal
     val progress = calorieWidgetProgress(model.netKcal, goal)
 
     fun zone(kind: CalorieGaugeZoneKind, goalKcal: Int?, leftKcal: Int?): CalorieGaugeZone? {
-        if (goalKcal == null || leftKcal == null || goalKcal !in 1 until goal) return null
+        if (goal <= 0 || goalKcal == null || leftKcal == null || goalKcal == goal) return null
         val fraction = goalKcal.toFloat() / goal
         return CalorieGaugeZone(kind, goalFraction = fraction, fraction = fraction, leftKcal)
     }
@@ -57,9 +82,12 @@ internal fun calorieGauge(model: CalorieWidgetModel): CalorieGauge {
                 zone(CalorieGaugeZoneKind.Diet, model.dietGoalKcal, model.dietLeftKcal),
             )
             .sortedBy { it.goalFraction }
-    val goalFractions = goalZones.map { it.goalFraction }
+    // Only the markers on the ring are spread; a goal off the ring keeps its own share.
+    val onRing = goalZones.filter { it.onRing }
+    val goalFractions = onRing.map { it.goalFraction }
     val markers = spreadGaugeMarkers(goalFractions, model.markerGapDegrees)
-    val zones = goalZones.mapIndexed { index, zone -> zone.copy(fraction = markers[index]) }
+    val moved = onRing.zip(markers).toMap()
+    val zones = goalZones.map { zone -> moved[zone]?.let { zone.copy(fraction = it) } ?: zone }
     return CalorieGauge(
         progress = gaugeRingPosition(progress.progress, goalFractions, markers),
         overflow = progress.overflow,

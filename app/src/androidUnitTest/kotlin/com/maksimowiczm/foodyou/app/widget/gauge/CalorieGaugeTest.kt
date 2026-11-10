@@ -46,10 +46,50 @@ class CalorieGaugeTest {
     }
 
     @Test
-    fun goalsAtOrAboveTheNormalGoalAndMissingGoalsAreLeftOut() {
+    fun aGoalAtTheNormalGoalAndMissingGoalsAreLeftOut() {
         val gauge = calorieGauge(model(optimizedGoalKcal = 2100, dietGoalKcal = null))
 
         assertEquals(emptyList(), gauge.zones)
+    }
+
+    @Test
+    fun goalsAboveTheNormalGoalSitPastTheRingsEndUnspread() {
+        val gauge = calorieGauge(model(optimizedGoalKcal = 2760, dietGoalKcal = 2260))
+
+        assertEquals(emptyList(), gauge.onRingZones)
+        assertEquals(
+            listOf(CalorieGaugeZoneKind.Diet to 420f, CalorieGaugeZoneKind.Optimized to 432f),
+            gauge.offRingDots.map { (zone, angle) -> zone.kind to angle },
+        )
+        assertEquals(2260f / 2100f, gauge.zones[0].fraction)
+        assertEquals(1171, gauge.zones[0].remainingKcal)
+        assertEquals(2, gauge.offRingDepth)
+    }
+
+    @Test
+    fun aUsedUpGoalSitsBeforeTheRingsStartAndIsExceeded() {
+        val gauge = calorieGauge(model(optimizedGoalKcal = 1935, dietGoalKcal = -240))
+
+        assertEquals(listOf(CalorieGaugeZoneKind.Optimized), gauge.onRingZones.map { it.kind })
+        val (diet, angle) = gauge.offRingDots.single()
+        assertEquals(CalorieGaugeZoneKind.Diet, diet.kind)
+        assertEquals(120f, angle)
+        assertTrue(diet.exceeded)
+        assertEquals(1, gauge.offRingDepth)
+    }
+
+    @Test
+    fun dotsPastTheEndNeedRoomBelowTheRingAndTheLegendARow() {
+        val size = DpSize(320.dp, 180.dp)
+        val plain = calorieGaugeLayoutSpec(size)
+        val withLegend = calorieGaugeLayoutSpec(size, showLegend = true)
+        val withDots = calorieGaugeLayoutSpec(size, showLegend = true, offRingDepth = 2)
+
+        assertTrue(withLegend.legendHeight > 0.dp)
+        assertEquals(0.dp, plain.legendHeight)
+        assertTrue(withLegend.diameter < plain.diameter, "${withLegend.diameter}")
+        assertTrue(withDots.diameter < withLegend.diameter, "${withDots.diameter}")
+        assertTrue(withDots.gaugeHeight <= withDots.rowHeight + 0.01.dp, "${withDots.gaugeHeight}")
     }
 
     @Test
@@ -70,12 +110,16 @@ class CalorieGaugeTest {
     @Test
     fun typicalCellHasHeaderAndLargeRing() {
         val spec = calorieGaugeLayoutSpec(DpSize(320.dp, 180.dp))
+        val withLegend = calorieGaugeLayoutSpec(DpSize(320.dp, 180.dp), showLegend = true)
 
         assertTrue(spec.showHeader)
         assertEquals(10.dp, spec.stroke)
-        assertEquals(16.sp, spec.endTextSize)
-        assertTrue(spec.diameter in 120.dp..130.dp, "${spec.diameter}")
-        assertTrue(spec.gaugeHeight <= 130.dp, "${spec.gaugeHeight}")
+        assertEquals(22.sp, spec.centerValueTextSize)
+        assertTrue(spec.diameter in 130.dp..140.dp, "${spec.diameter}")
+        assertTrue(spec.gaugeHeight <= spec.rowHeight + 0.01.dp, "${spec.gaugeHeight}")
+        // The legend row takes room from the ring, but not its line or text sizes.
+        assertEquals(10.dp, withLegend.stroke)
+        assertTrue(withLegend.diameter in 105.dp..115.dp, "${withLegend.diameter}")
     }
 
     @Test
@@ -83,7 +127,7 @@ class CalorieGaugeTest {
         val spec = calorieGaugeLayoutSpec(DpSize(330.dp, 200.dp))
 
         assertTrue(spec.diameter > 145.dp, "${spec.diameter}")
-        assertEquals(11.sp, spec.zoneTextSize)
+        assertEquals(11.sp, spec.centerLabelTextSize)
     }
 
     @Test
@@ -96,7 +140,7 @@ class CalorieGaugeTest {
         val min = calorieGaugeLayoutSpec(DpSize(250.dp, 110.dp))
         assertFalse(min.showHeader)
         assertEquals(8.dp, min.stroke)
-        assertEquals(14.sp, min.endTextSize)
+        assertEquals(18.sp, min.centerValueTextSize)
         assertTrue(min.gaugeHeight <= 86.5.dp, "${min.gaugeHeight}")
     }
 

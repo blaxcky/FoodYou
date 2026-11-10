@@ -43,3 +43,40 @@ internal fun gaugeRingPosition(
     val markerStart = markers[section - 1]
     return markerStart + (progress - goalStart) / goalWidth * (markers[section] - markerStart)
 }
+
+/** Where the first off-ring goal's dot sits past the ring's end, and the step to the next one. */
+internal const val GaugeOffRingFirstAngle = 15f
+internal const val GaugeOffRingStepAngle = 12f
+
+/** The dotted track past the ring's end starts this far out, clear of the ring's round cap. */
+internal const val GaugeOffRingTrackStartAngle = 5f
+
+/** How far the dotted track runs on past the farthest dot. */
+internal const val GaugeOffRingTrackOvershootAngle = 9f
+
+/**
+ * Where on the ring's circle the dots of goals off the ring sit, in degrees: a goal at or below
+ * zero ([goalFraction] ≤ 0) before the ring's start, one above the ring's own goal (≥ 1) past its
+ * end. The first dot sits [first] degrees out, each next one [step] further, so the goal nearest
+ * the ring's own range sits nearest its end. Goals on the ring are left out.
+ */
+internal fun <T> offRingDotAngles(
+    goals: List<T>,
+    goalFraction: (T) -> Float,
+    first: Float = GaugeOffRingFirstAngle,
+    step: Float = GaugeOffRingStepAngle,
+): List<Pair<T, Float>> {
+    val start = 135f
+    val end = start + 270f
+    val beforeStart =
+        goals
+            .filter { goalFraction(it) <= 0f }
+            .sortedByDescending(goalFraction)
+            .mapIndexed { index, goal -> goal to start - first - step * index }
+    val pastEnd =
+        goals
+            .filter { goalFraction(it) >= 1f }
+            .sortedBy(goalFraction)
+            .mapIndexed { index, goal -> goal to end + first + step * index }
+    return beforeStart + pastEnd
+}

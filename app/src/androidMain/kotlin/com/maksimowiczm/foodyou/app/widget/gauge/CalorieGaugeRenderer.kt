@@ -3,6 +3,7 @@ package com.maksimowiczm.foodyou.app.widget.gauge
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -11,9 +12,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.app.ui.home.goals.DietGoalAccentColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingTrackColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingTrackOvershootAngle
+import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingTrackStartAngle
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsErrorColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsMutedTextColor
@@ -31,10 +34,11 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Draws the ring of the home screen's goals card, its goal markers and the values on it into one
- * bitmap. Glance cannot place text freely, so the values are drawn too; they are measured like the
- * in-app labels, which lets the remaining energy drop its unit only when it really does not fit.
- * The widget always uses the card's light palette, so the colors are drawn directly.
+ * Draws the ring of the home screen's goals card into one bitmap: its goal markers, the dotted
+ * track with the dots of goals off the ring, and the normal goal's remaining energy in its center.
+ * Glance cannot place text freely, so the center value is drawn too. The goal values themselves
+ * are a Glance row under the ring. The widget always uses the card's light palette, so the colors
+ * are drawn directly.
  */
 internal object CalorieGaugeRenderer {
     /** Keeps the bitmap well within the RemoteViews limits on very large widgets. */
@@ -70,11 +74,12 @@ internal object CalorieGaugeRenderer {
         private val strokeWidth = spec.stroke.px()
 
         fun draw(gauge: CalorieGauge) {
-            if (gauge.zones.isEmpty()) drawPlainRing(gauge) else drawZonedRing(gauge)
-            gauge.zones.forEach { drawMarker(it.fraction, it.kind.color()) }
-            drawMarker(1f, GoalsProgressColor)
-            drawZoneLabels(gauge.zones)
-            drawEndLabel(gauge)
+            val zones = gauge.onRingZones
+            if (zones.isEmpty()) drawPlainRing(gauge) else drawZonedRing(gauge, zones)
+            zones.forEach { drawMarker(gaugeAngle(it.fraction.coerceIn(0f, 1f)), it.kind.color()) }
+            drawMarker(gaugeAngle(1f), GoalsProgressColor)
+            drawOffRingGoals(gauge.offRingDots)
+            drawCenterLabel(gauge)
         }
 
         /** Above the goal the whole ring turns red instead of eating back into the progress. */
@@ -87,11 +92,10 @@ internal object CalorieGaugeRenderer {
         }
 
         /**
-         * One section per goal zone and a last one up to the normal goal, each filled in its goal's
-         * color and separated by a small gap, as `drawZonedGauge` does on the card.
+         * One section per goal zone on the ring and a last one up to the normal goal, each filled
+         * in its goal's color and separated by a small gap, as `drawZonedGauge` does on the card.
          */
-        private fun drawZonedRing(gauge: CalorieGauge) {
-            val zones = gauge.zones
+        private fun drawZonedRing(gauge: CalorieGauge, zones: List<CalorieGaugeZone>) {
             val boundaries = zones.map { it.fraction.coerceIn(0f, 1f) }
             val starts = listOf(0f) + boundaries
             val ends = boundaries + 1f
@@ -130,6 +134,73 @@ internal object CalorieGaugeRenderer {
             cap(colors[section], visibleProgress)
         }
 
+        /**
+         * Goals off the ring: past the matching end the ring goes on as a fine dotted track, and
+         * each goal's dot sits on it, as on the card.
+         */
+        private fun drawOffRingGoals(dots: List<Pair<CalorieGaugeZone, Float>>) {
+            if (dots.isEmpty()) return
+            // Zero-length dashes with round caps draw a row of dots.
+            val dotted =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = spec.offRingTrackWidth.px()
+                    strokeCap = Paint.Cap.ROUND
+                    color = GaugeOffRingTrackColor.toArgb()
+                    pathEffect = DashPathEffect(floatArrayOf(0f, spec.offRingDotSpacing.px()), 0f)
+                }
+            val start = gaugeAngle(0f)
+            val end = gaugeAngle(1f)
+            dots.filter { it.second < start }.minOfOrNull { it.second }?.let { farthest ->
+                val from = farthest - GaugeOffRingTrackOvershootAngle
+                canvas.drawArc(bounds, from, start - GaugeOffRingTrackStartAngle - from, false, dotted)
+            }
+            dots.filter { it.second > end }.maxOfOrNull { it.second }?.let { farthest ->
+                val from = end + GaugeOffRingTrackStartAngle
+                canvas.drawArc(bounds, from, farthest + GaugeOffRingTrackOvershootAngle - from, false, dotted)
+            }
+            dots.forEach { (zone, angle) -> drawMarker(angle, zone.kind.color()) }
+        }
+
+        /**
+         * The normal goal's remaining energy in the ring's center with "übrig" or, in red,
+         * "zu viel" under it. A value too wide for the ring's inside is drawn smaller.
+         */
+        private fun drawCenterLabel(gauge: CalorieGauge) {
+            val color = if (gauge.exceeded) GoalsErrorColor else GoalsTextColor
+            val value = context.formatWidgetNumber(abs(gauge.remainingKcal))
+            val label =
+                context.getString(
+                    if (gauge.exceeded) R.string.widget_calories_over_lowercase
+                    else R.string.widget_calories_left_lowercase
+                )
+            val valuePaint = textPaint(color, 600, spec.centerValueTextSize)
+            val labelPaint =
+                textPaint(
+                    if (gauge.exceeded) GoalsErrorColor else GoalsMutedTextColor,
+                    if (gauge.exceeded) 600 else 400,
+                    spec.centerLabelTextSize,
+                )
+            val room = 2f * radius - strokeWidth - 2f * CenterLabelPadding.px()
+            val widest = max(valuePaint.measureText(value), labelPaint.measureText(label))
+            if (widest > room && widest > 0f) {
+                val fit = room / widest
+                valuePaint.textSize *= fit
+                labelPaint.textSize *= fit
+            }
+            val valueHeight = valuePaint.textSize * LineHeightFactor
+            val labelHeight = labelPaint.textSize * LineHeightFactor
+            val top = centerY - (valueHeight + labelHeight) / 2f
+            drawCentered(value, valuePaint, top + valueHeight / 2f)
+            drawCentered(label, labelPaint, top + valueHeight + labelHeight / 2f)
+        }
+
+        private fun drawCentered(text: String, paint: Paint, middleY: Float) {
+            val metrics = paint.fontMetrics
+            val baseline = middleY - (metrics.ascent + metrics.descent) / 2f
+            canvas.drawText(text, centerX - paint.measureText(text) / 2f, baseline, paint)
+        }
+
         private fun arc(color: Color, from: Float, to: Float, cap: Paint.Cap) {
             val sweep = 270f * (to - from)
             if (sweep <= 0f) return
@@ -148,121 +219,19 @@ internal object CalorieGaugeRenderer {
         }
 
         private fun cap(color: Color, fraction: Float) {
-            val (x, y) = point(fraction)
+            val (x, y) = point(gaugeAngle(fraction))
             canvas.drawCircle(x, y, strokeWidth / 2f, fillPaint(color))
         }
 
-        /** A marker on the ring at [fraction] of its sweep, ringed in the card's color. */
-        private fun drawMarker(fraction: Float, color: Color) {
-            val (x, y) = point(fraction.coerceIn(0f, 1f))
+        /** A marker on the ring's circle at [angle] degrees, ringed in the card's color. */
+        private fun drawMarker(angle: Float, color: Color) {
+            val (x, y) = point(angle)
             canvas.drawCircle(x, y, spec.markerRadius.px(), fillPaint(GoalsCardColor))
             canvas.drawCircle(x, y, spec.markerDotRadius.px(), fillPaint(color))
         }
 
-        /**
-         * Each zone's value sits inside the ring next to its marker. The edge facing the ring keeps
-         * the same clearance whatever the label's size, so a wide value moves further in.
-         */
-        private fun drawZoneLabels(zones: List<CalorieGaugeZone>) {
-            val clearance = spec.zoneLabelClearance.px()
-            zones.forEach { zone ->
-                val label =
-                    Label(
-                        value = context.formatWidgetNumber(abs(zone.remainingKcal)),
-                        exceeded = zone.exceeded,
-                        color = if (zone.exceeded) GoalsErrorColor else GoalsMutedTextColor,
-                        weight = if (zone.exceeded) 600 else 500,
-                        textSize = spec.zoneTextSize,
-                        unit = null,
-                    )
-                val radians = gaugeAngle(zone.fraction).toDouble() * PI / 180.0
-                val cos = cos(radians).toFloat()
-                val sin = sin(radians).toFloat()
-                val halfExtent = abs(cos) * label.width / 2f + abs(sin) * label.height / 2f
-                val labelRadius = radius - clearance - halfExtent
-                label.draw(centerX + labelRadius * cos, centerY + labelRadius * sin)
-            }
-        }
-
-        /**
-         * The normal goal's remaining energy, centered in the ring's open bottom a little below its
-         * ends. Its unit is the first thing to go when it does not fit between the end markers.
-         */
-        private fun drawEndLabel(gauge: CalorieGauge) {
-            val (_, endY) = point(1f)
-            val room = 2f * radius * cos(PI / 4).toFloat() - 2f * CalorieGaugeWidgetSizes.EndLabelGap.px()
-
-            fun label(unit: String?) =
-                Label(
-                    value = context.formatWidgetNumber(abs(gauge.remainingKcal)),
-                    exceeded = gauge.exceeded,
-                    color = if (gauge.exceeded) GoalsErrorColor else GoalsTextColor,
-                    weight = 600,
-                    textSize = spec.endTextSize,
-                    unit = unit,
-                )
-
-            val withUnit = label(context.getString(R.string.widget_calories_unit_kcal))
-            val label = if (withUnit.width <= room) withUnit else label(null)
-            label.draw(centerX, endY + CalorieGaugeWidgetSizes.EndLabelDrop.px())
-        }
-
-        /**
-         * A value with an optional unit on its baseline. Above its goal it turns red and gets a
-         * warning sign, so the overshoot does not rely on color alone.
-         */
-        private inner class Label(
-            val value: String,
-            val exceeded: Boolean,
-            color: Color,
-            weight: Int,
-            textSize: TextUnit,
-            val unit: String?,
-        ) {
-            private val valuePaint = textPaint(color, weight, textSize)
-            private val unitPaint =
-                textPaint(
-                    if (exceeded) GoalsErrorColor else GoalsMutedTextColor,
-                    400,
-                    spec.unitTextSize,
-                )
-            private val iconSize = valuePaint.textSize
-            private val gap = 1.dp.px()
-            private val unitGap = 3.dp.px()
-            private val valueWidth = valuePaint.measureText(value)
-            private val unitWidth = unit?.let { unitGap + unitPaint.measureText(it) } ?: 0f
-
-            val width: Float = (if (exceeded) iconSize + gap else 0f) + valueWidth + unitWidth
-            val height: Float = valuePaint.textSize * LineHeightFactor
-
-            fun draw(centerX: Float, centerY: Float) {
-                var x = centerX - width / 2f
-                if (exceeded) {
-                    val icon = ContextCompat.getDrawable(context, R.drawable.ic_widget_warning)
-                    icon?.mutate()?.apply {
-                        setTint(GoalsErrorColor.toArgb())
-                        val top = centerY - iconSize / 2f
-                        setBounds(
-                            x.toInt(),
-                            top.toInt(),
-                            (x + iconSize).toInt(),
-                            (top + iconSize).toInt(),
-                        )
-                        draw(canvas)
-                    }
-                    x += iconSize + gap
-                }
-                val metrics = valuePaint.fontMetrics
-                val baseline = centerY - (metrics.ascent + metrics.descent) / 2f
-                canvas.drawText(value, x, baseline, valuePaint)
-                if (unit != null) {
-                    canvas.drawText(unit, x + valueWidth + unitGap, baseline, unitPaint)
-                }
-            }
-        }
-
-        private fun point(fraction: Float): Pair<Float, Float> {
-            val radians = gaugeAngle(fraction).toDouble() * PI / 180.0
+        private fun point(angle: Float): Pair<Float, Float> {
+            val radians = angle.toDouble() * PI / 180.0
             return (centerX + radius * cos(radians).toFloat()) to
                 (centerY + radius * sin(radians).toFloat())
         }
@@ -290,10 +259,13 @@ internal object CalorieGaugeRenderer {
     }
 }
 
+/** Room kept between the ring's inner edge and the center value's widest line. */
+private val CenterLabelPadding = 4.dp
+
 /** The ring starts bottom left at 135° and sweeps 270° clockwise to the bottom right. */
 private fun gaugeAngle(fraction: Float): Float = 135f + 270f * fraction
 
-private fun CalorieGaugeZoneKind.color(): Color =
+internal fun CalorieGaugeZoneKind.color(): Color =
     when (this) {
         CalorieGaugeZoneKind.Optimized -> OptimizedGoalZoneColor
         CalorieGaugeZoneKind.Diet -> DietGoalAccentColor

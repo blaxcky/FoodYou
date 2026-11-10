@@ -54,6 +54,14 @@ class CalorieGaugeWidgetScreenshotTest {
     @Test fun cellNoDiet() = capture("cell", 320, 180, case = "no-diet", model = noDiet())
     @Test fun cellNoZones() = capture("cell", 320, 180, case = "no-zones", model = noZones())
 
+    /** The diet budget is used up: its dot sits on the dotted track before the ring's start. */
+    @Test fun cellBudgetUsedUp() = capture("cell", 320, 180, case = "budget-used-up", model = budgetUsedUp())
+
+    /** Both goals lie above the normal goal: their dots sit past the ring's end. */
+    @Test fun cellSavedAhead() = capture("cell", 320, 180, case = "saved-ahead", model = savedAhead())
+
+    @Test fun minSavedAhead() = capture("min", 250, 130, case = "saved-ahead", model = savedAhead())
+
     /** Night mode must still render the light design. */
     @Test
     fun cellNightToday() = capture("cell", 320, 180, case = "today", model = today(), night = true)
@@ -61,7 +69,7 @@ class CalorieGaugeWidgetScreenshotTest {
     @Test fun flatToday() = capture("flat", 320, 130, case = "today", model = today())
     @Test fun flatFarOverflow() = capture("flat", 320, 130, case = "far-overflow", model = farOverflow())
     @Test fun roomyFarOverflow() = capture("roomy", 330, 200, case = "far-overflow", model = farOverflow())
-    @Test fun minToday() = capture("min", 250, 110, case = "today", model = today())
+    @Test fun minToday() = capture("min", 250, 130, case = "today", model = today())
     @Test fun tallToday() = capture("tall", 320, 240, case = "today", model = today())
     @Test fun wideToday() = capture("wide", 400, 150, case = "today", model = today())
 
@@ -162,6 +170,12 @@ class CalorieGaugeWidgetScreenshotTest {
     private fun farOverflow() = model(eatenKcal = 4725, burnedKcal = 173, steps = 4_315)
 
     private fun noDiet() = model(eatenKcal = 1169, burnedKcal = 80, dietGoalKcal = null)
+
+    private fun budgetUsedUp() =
+        model(eatenKcal = 1169, burnedKcal = 80, optimizedGoalKcal = 1935, dietGoalKcal = -240)
+
+    private fun savedAhead() =
+        model(eatenKcal = 1169, burnedKcal = 80, optimizedGoalKcal = 2760, dietGoalKcal = 2260)
 
     private fun noZones() =
         model(eatenKcal = 1169, burnedKcal = 80, optimizedGoalKcal = null, dietGoalKcal = null)

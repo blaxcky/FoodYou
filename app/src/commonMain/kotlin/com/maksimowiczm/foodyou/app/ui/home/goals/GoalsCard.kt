@@ -149,6 +149,9 @@ private val NormalGoalComparisonBorderColor = Color(0xFFDADCE0)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 internal val DietGoalAccentColor = Color(0xFFC98A00)
 
+/** The dotted continuation of the ring past its end, where goals off the ring sit. */
+internal val GaugeOffRingTrackColor = Color(0xFFA9BAC6)
+
 /** The ring section up to the Optimized goal; much lighter than the deep-blue Normal section. */
 internal val OptimizedGoalZoneColor = Color(0xFF4FA9DB)
 private val DietGoalReachedTextColor = Color(0xFF2E7D32)
@@ -1392,24 +1395,11 @@ internal fun gaugeGoalZones(
     }
 }
 
-/**
- * The angle of each off-ring goal's dot: [first] degrees past the ring's end, then [step] further
- * for each next goal on that side, so the goal nearest the ring's own range sits nearest its end.
- */
+/** The angle of each off-ring goal's dot; see [offRingDotAngles]. */
 internal fun List<GaugeGoalZone>.offRingAngles(
-    first: Float,
-    step: Float,
-): List<Pair<GaugeGoalZone, Float>> {
-    val beforeStart =
-        filter { it.placement == GaugeZonePlacement.BeforeStart }
-            .sortedByDescending { it.goalFraction }
-            .mapIndexed { index, zone -> zone to gaugeAngle(0f) - first - step * index }
-    val pastEnd =
-        filter { it.placement == GaugeZonePlacement.PastEnd }
-            .sortedBy { it.goalFraction }
-            .mapIndexed { index, zone -> zone to gaugeAngle(1f) + first + step * index }
-    return beforeStart + pastEnd
-}
+    first: Float = GaugeOffRingFirstAngle,
+    step: Float = GaugeOffRingStepAngle,
+): List<Pair<GaugeGoalZone, Float>> = offRingDotAngles(this, { it.goalFraction }, first, step)
 
 private fun GoalDisplayMode.goalZoneColor(): Color =
     when (this) {
@@ -2318,16 +2308,8 @@ private val GaugeZoneMarkerRim = 3.dp
 private val GaugeZoneMarkerMinRadius = 6.5.dp
 private const val GaugeGapAngle = 2.5f
 
-/** Where the first off-ring goal's dot sits past the ring's end, and the step to the next one. */
-private const val GaugeOffRingFirstAngle = 15f
-private const val GaugeOffRingStepAngle = 12f
-
-/** The dotted track past the ring's end starts this far out, clear of the ring's round cap. */
-private const val GaugeOffRingTrackStartAngle = 5f
-private const val GaugeOffRingTrackOvershootAngle = 9f
 private val GaugeOffRingTrackWidth = 2.5.dp
 private val GaugeOffRingTrackDotSpacing = 4.dp
-private val GaugeOffRingTrackColor = Color(0xFFA9BAC6)
 
 /** The ring starts bottom left at 135° and sweeps 270° clockwise to the bottom right. */
 internal fun gaugeAngle(fraction: Float): Float = 135f + 270f * fraction
@@ -2519,7 +2501,7 @@ private fun DrawScope.drawZonedGauge(
  * dot sits on it – where the ring would continue if it reached that far.
  */
 private fun DrawScope.drawOffRingGoals(diameter: Float, strokeWidth: Float, zones: List<GaugeGoalZone>) {
-    val placed = zones.offRingAngles(GaugeOffRingFirstAngle, GaugeOffRingStepAngle)
+    val placed = zones.offRingAngles()
     if (placed.isEmpty()) return
     val topLeft = Offset(x = (size.width - diameter) / 2f, y = strokeWidth / 2f)
     val arcSize = Size(width = diameter, height = diameter)
