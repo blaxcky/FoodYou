@@ -1409,16 +1409,16 @@ private fun GoalDisplayMode.goalZoneColor(): Color =
     }
 
 /**
- * The supplemental goals' remaining energy in one quiet row under the ring: a dot in the goal's
- * color and the number. The color ties each number to its dot on the ring, so no name is needed;
- * only a goal that is exceeded says so, in red.
+ * The supplemental goals' remaining energy in one quiet row under the ring: the goal's name, and
+ * under it a dot in the goal's color and the number. The color ties each number to its dot on the
+ * ring; only a goal that is exceeded says so, in red.
  */
 @Composable
 private fun GoalZoneLegend(zones: List<GaugeGoalZone>, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         zones.forEach { GoalZoneLegendItem(it) }
     }
@@ -1445,8 +1445,24 @@ private fun GoalZoneLegendItem(zone: GaugeGoalZone) {
     val status = if (zone.exceeded) tooMuch else stringResource(Res.string.goal_left)
     val description = "$label: $value ${stringResource(Res.string.unit_kcal)} $status"
 
-    Row(
+    Column(
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label,
+            color = GoalsMutedTextColor,
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
+            maxLines = 1,
+        )
+        GoalZoneLegendValue(zone = zone, value = value, tooMuch = tooMuch)
+    }
+}
+
+@Composable
+private fun GoalZoneLegendValue(zone: GaugeGoalZone, value: String, tooMuch: String) {
+    Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
