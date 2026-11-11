@@ -39,14 +39,17 @@ internal data class CalorieGaugeLayoutSpec(
     val metricLabelTextSize: TextUnit,
     /** Height of the row that holds eaten energy, the ring and burned energy. */
     val rowHeight: Dp,
-    /** Tap area of the action icon under eaten and under burned energy. */
+    /**
+     * Tap area of the action icon under eaten and under burned energy. The icons sit at the
+     * widget's bottom edge, but a side column keeps their room so its value stays lifted.
+     */
     val actionButtonSize: Dp,
     val actionIconSize: Dp,
-    /** Gap between a side value's label and its action button. */
+    /** Gap between a side value's label and the room kept for its action button. */
     val actionGap: Dp,
     /**
-     * How far the action button sits below its value without moving the value: the side column
-     * is centered in the row, so the same room is kept above the value.
+     * Room above a side value, kept as well below the room for its button: the side column is
+     * centered in the row, so this lifts the value without crowding the ring's ends.
      */
     val actionDrop: Dp,
     /** The system font scale; the ring's values are drawn into its bitmap and scale with it. */
@@ -67,7 +70,7 @@ internal data class CalorieGaugeLayoutSpec(
     val legendHeight: Dp
         get() = legendHeight(showLegend, legendGap, legendTextSize, fontScale)
 
-    /** Full height of a side column: value, label, action button and the room around them. */
+    /** Full height of a side column: value, label, its button's room and the room around them. */
     val sideMetricHeight: Dp
         get() = sideMetricBlockHeight(metricValueTextSize, metricLabelTextSize, fontScale) +
             actionGap + actionButtonSize + actionDrop * 2

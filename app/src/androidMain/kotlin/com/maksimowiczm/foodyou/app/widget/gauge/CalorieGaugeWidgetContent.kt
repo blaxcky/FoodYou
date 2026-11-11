@@ -86,31 +86,14 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                     spec = spec,
                     value = context.formatWidgetNumber(model.eatenKcal),
                     label = context.getString(R.string.widget_calorie_gauge_eaten),
-                    action =
-                        SideAction(
-                            icon = R.drawable.ic_widget_barcode_scanner,
-                            description = context.getString(R.string.shortcut_scan_barcode_long),
-                            onClick = actionStartActivity(barcodeScanIntent(context)),
-                        ),
-                    modifier =
-                        GlanceModifier.defaultWeight()
-                            .padding(end = CalorieGaugeWidgetSizes.MetricGaugeGap),
+                    modifier = GlanceModifier.defaultWeight().ringSideGap(start = true),
                 )
                 Gauge(context, gauge, spec)
                 SideMetric(
                     spec = spec,
                     value = context.formatWidgetNumber(model.burnedKcal),
                     label = context.getString(R.string.widget_calorie_gauge_burned),
-                    action =
-                        SideAction(
-                            icon = R.drawable.ic_widget_add_a_photo,
-                            description =
-                                context.getString(R.string.shortcut_quick_capture_camera_long),
-                            onClick = actionStartActivity(quickCaptureCameraIntent(context)),
-                        ),
-                    modifier =
-                        GlanceModifier.defaultWeight()
-                            .padding(start = CalorieGaugeWidgetSizes.MetricGaugeGap),
+                    modifier = GlanceModifier.defaultWeight().ringSideGap(start = false),
                 )
             }
             if (spec.showLegend) {
@@ -121,8 +104,42 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
                 Spacer(modifier = GlanceModifier.height(CalorieGaugeWidgetSizes.GaugeLift))
             }
         }
+        // The shortcuts keep their distance from the widget's bottom edge, within thumb reach,
+        // whatever the header and the goal legend take above them.
+        Row(
+            modifier = GlanceModifier.fillMaxSize(),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            ActionButton(
+                spec = spec,
+                action =
+                    SideAction(
+                        icon = R.drawable.ic_widget_barcode_scanner,
+                        description = context.getString(R.string.shortcut_scan_barcode_long),
+                        onClick = actionStartActivity(barcodeScanIntent(context)),
+                    ),
+                modifier = GlanceModifier.defaultWeight().ringSideGap(start = true),
+            )
+            Spacer(modifier = GlanceModifier.width(spec.gaugeWidth))
+            ActionButton(
+                spec = spec,
+                action =
+                    SideAction(
+                        icon = R.drawable.ic_widget_add_a_photo,
+                        description =
+                            context.getString(R.string.shortcut_quick_capture_camera_long),
+                        onClick = actionStartActivity(quickCaptureCameraIntent(context)),
+                    ),
+                modifier = GlanceModifier.defaultWeight().ringSideGap(start = false),
+            )
+        }
     }
 }
+
+/** Room between a side column and the ring, on the ring's side. */
+private fun GlanceModifier.ringSideGap(start: Boolean): GlanceModifier =
+    if (start) padding(end = CalorieGaugeWidgetSizes.MetricGaugeGap)
+    else padding(start = CalorieGaugeWidgetSizes.MetricGaugeGap)
 
 @Composable
 private fun Gauge(context: Context, gauge: CalorieGauge, spec: CalorieGaugeLayoutSpec) {
@@ -214,15 +231,15 @@ private fun goalDescription(context: Context, label: Int, remainingKcal: Int): S
 private class SideAction(@DrawableRes val icon: Int, val description: String, val onClick: Action)
 
 /**
- * Eaten or burned energy beside the ring, with its shortcut icon below; the goal and its share
- * are left to the ring. Only the icon starts the shortcut, the value opens the app.
+ * Eaten or burned energy beside the ring; the goal and its share are left to the ring. The value
+ * opens the app. Its shortcut sits under it at the widget's bottom edge, and the room it took in
+ * this column is kept so the value stays lifted above the ring's center.
  */
 @Composable
 private fun SideMetric(
     spec: CalorieGaugeLayoutSpec,
     value: String,
     label: String,
-    action: SideAction,
     modifier: GlanceModifier,
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -248,7 +265,21 @@ private fun SideMetric(
                 ),
             maxLines = 1,
         )
-        Spacer(modifier = GlanceModifier.height(spec.actionGap + spec.actionDrop))
+        Spacer(
+            modifier =
+                GlanceModifier.height(spec.actionGap + spec.actionDrop + spec.actionButtonSize)
+        )
+    }
+}
+
+/** A side value's shortcut icon; only the icon starts the shortcut. */
+@Composable
+private fun ActionButton(
+    spec: CalorieGaugeLayoutSpec,
+    action: SideAction,
+    modifier: GlanceModifier,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.BottomCenter) {
         Box(
             modifier =
                 GlanceModifier.size(spec.actionButtonSize)
