@@ -154,7 +154,9 @@ private fun Gauge(context: Context, gauge: CalorieGauge, spec: CalorieGaugeLayou
 
 /**
  * The supplemental goals' remaining energy in one quiet row under the ring: a dot in the goal's
- * color and the number, as on the goals card. Only an exceeded goal says so, in red.
+ * color and the number, as on the goals card. An exceeded goal shows its number in red behind a red
+ * warning sign instead of a "too much" label, so two exceeded goals still fit between the
+ * shortcuts; its spoken description keeps the words.
  */
 @Composable
 private fun GoalLegend(context: Context, gauge: CalorieGauge, spec: CalorieGaugeLayoutSpec) {
@@ -186,7 +188,18 @@ private fun GoalLegend(context: Context, gauge: CalorieGauge, spec: CalorieGauge
                     colorFilter = ColorFilter.tint(ColorProvider(zone.kind.color())),
                     modifier = GlanceModifier.size(spec.legendDotSize),
                 )
-                Spacer(modifier = GlanceModifier.width(5.dp))
+                if (zone.exceeded) {
+                    Spacer(modifier = GlanceModifier.width(4.dp))
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_widget_warning),
+                        contentDescription = null,
+                        colorFilter = ColorFilter.tint(GlanceTheme.colors.error),
+                        modifier = GlanceModifier.size(spec.legendWarningSize),
+                    )
+                    Spacer(modifier = GlanceModifier.width(2.dp))
+                } else {
+                    Spacer(modifier = GlanceModifier.width(5.dp))
+                }
                 Text(
                     text = context.formatWidgetNumber(abs(zone.remainingKcal)),
                     style =
@@ -197,19 +210,6 @@ private fun GoalLegend(context: Context, gauge: CalorieGauge, spec: CalorieGauge
                         ),
                     maxLines = 1,
                 )
-                if (zone.exceeded) {
-                    Spacer(modifier = GlanceModifier.width(4.dp))
-                    Text(
-                        text = context.getString(R.string.widget_calories_over_lowercase),
-                        style =
-                            TextStyle(
-                                color = GlanceTheme.colors.error,
-                                fontSize = spec.metricLabelTextSize,
-                                fontWeight = FontWeight.Medium,
-                            ),
-                        maxLines = 1,
-                    )
-                }
             }
         }
     }

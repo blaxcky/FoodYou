@@ -29,10 +29,14 @@ internal data class CalorieGaugeLayoutSpec(
     val offRingDotSpacing: Dp,
     /** How many off-ring dots sit past the ring's end on its fuller side. */
     val offRingDepth: Int,
-    /** The row of goal values under the ring: a dot in the goal's color and the number. */
+    /**
+     * The row of goal values under the ring: a dot in the goal's color and the number, with a
+     * warning sign before the number of an exceeded goal.
+     */
     val showLegend: Boolean,
     val legendTextSize: TextUnit,
     val legendDotSize: Dp,
+    val legendWarningSize: Dp,
     val legendGap: Dp,
     val legendItemGap: Dp,
     val metricValueTextSize: TextUnit,
@@ -197,6 +201,7 @@ internal fun calorieGaugeLayoutSpec(
         showLegend = showLegend,
         legendTextSize = legendTextSize,
         legendDotSize = 7.dp,
+        legendWarningSize = 13.dp,
         legendGap = legendGap,
         legendItemGap = 16.dp,
         metricValueTextSize = metricValueTextSize,
