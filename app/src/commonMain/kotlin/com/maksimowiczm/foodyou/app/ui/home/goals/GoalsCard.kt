@@ -1794,7 +1794,7 @@ private fun CaloriesOverviewPage(
                     zones = goalZones,
                     modifier =
                         Modifier.fillMaxWidth()
-                            .padding(top = GoalZoneLegendGap + belowRow, bottom = 2.dp),
+                            .padding(top = GoalZoneLegendGap + belowRow, bottom = 7.dp),
                 )
             }
 
@@ -2327,7 +2327,7 @@ private fun GaugeMetric(
 private val GaugeStrokeWidth = 10.dp
 
 /** Room between the ring, or the lowest dot past its end, and the legend row under it. */
-private val GoalZoneLegendGap = 6.dp
+private val GoalZoneLegendGap = 11.dp
 
 /**
  * How far below its top the ring reaches: down to the markers at its ends or, with goals off the
