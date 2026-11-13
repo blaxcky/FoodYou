@@ -44,36 +44,24 @@ internal fun gaugeRingPosition(
     return markerStart + (progress - goalStart) / goalWidth * (markers[section] - markerStart)
 }
 
-/** Where the first off-ring goal's dot sits past the ring's end, and the step to the next one. */
-internal const val GaugeOffRingFirstAngle = 15f
-internal const val GaugeOffRingStepAngle = 12f
+/**
+ * The goals that lie off the ring, pinned to its ends: a goal at or below zero to the start cap, one
+ * above the ring's own goal to the end cap. Pinning them keeps the ring's outline symmetric however
+ * far off a goal lies; the legend gives the number. Each list holds the nearest goal first.
+ */
+internal data class GaugeCapGoals<T>(val atStart: List<T>, val atEnd: List<T>)
 
-/** The dotted track past the ring's end starts this far out, clear of the ring's round cap. */
-internal const val GaugeOffRingTrackStartAngle = 5f
+internal fun <T> gaugeCapGoals(goals: List<T>, goalFraction: (T) -> Float): GaugeCapGoals<T> =
+    GaugeCapGoals(
+        atStart = goals.filter { goalFraction(it) <= 0f }.sortedByDescending(goalFraction),
+        atEnd = goals.filter { goalFraction(it) >= 1f }.sortedBy(goalFraction),
+    )
 
 /**
- * Where on the ring's circle the dots of goals off the ring sit, in degrees: a goal at or below
- * zero ([goalFraction] ≤ 0) before the ring's start, one above the ring's own goal (≥ 1) past its
- * end. The first dot sits [first] degrees out, each next one [step] further, so the goal nearest
- * the ring's own range sits nearest its end. Goals on the ring are left out.
+ * The start angle and sweep, in degrees, of each of [count] equal slices of a marker shared by
+ * several goals, the first one starting at the top and going clockwise.
  */
-internal fun <T> offRingDotAngles(
-    goals: List<T>,
-    goalFraction: (T) -> Float,
-    first: Float = GaugeOffRingFirstAngle,
-    step: Float = GaugeOffRingStepAngle,
-): List<Pair<T, Float>> {
-    val start = 135f
-    val end = start + 270f
-    val beforeStart =
-        goals
-            .filter { goalFraction(it) <= 0f }
-            .sortedByDescending(goalFraction)
-            .mapIndexed { index, goal -> goal to start - first - step * index }
-    val pastEnd =
-        goals
-            .filter { goalFraction(it) >= 1f }
-            .sortedBy(goalFraction)
-            .mapIndexed { index, goal -> goal to end + first + step * index }
-    return beforeStart + pastEnd
+internal fun gaugeMarkerSlices(count: Int): List<Pair<Float, Float>> {
+    val sweep = 360f / count
+    return List(count) { index -> -90f + sweep * index to sweep }
 }

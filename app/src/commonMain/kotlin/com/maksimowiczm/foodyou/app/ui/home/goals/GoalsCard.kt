@@ -149,9 +149,6 @@ private val NormalGoalComparisonBorderColor = Color(0xFFDADCE0)
 private val OptimizedGoalAccentColor = GoalsProgressColor
 internal val DietGoalAccentColor = Color(0xFFC98A00)
 
-/** The dotted continuation of the ring past its end, where goals off the ring sit. */
-internal val GaugeOffRingTrackColor = Color(0xFFA9BAC6)
-
 /** The ring section up to the Optimized goal; much lighter than the deep-blue Normal section. */
 internal val OptimizedGoalZoneColor = Color(0xFF4FA9DB)
 private val DietGoalReachedTextColor = Color(0xFF2E7D32)
@@ -1333,7 +1330,7 @@ private fun CaloriesOverview(
  *
  * A goal can lie off the ring: at or below zero once the week's budget for it is used up, or above
  * the ring's own goal after enough was saved earlier in the week. Such a goal keeps its dot, which
- * sits on a dotted continuation of the ring past the matching end (see [placement]).
+ * is pinned to the cap at the matching end (see [placement] and [gaugeCapGoals]).
  */
 @Immutable
 internal data class GaugeGoalZone(
@@ -1364,7 +1361,7 @@ internal enum class GaugeZonePlacement {
 
 /**
  * The supplemental goals of [ringSummary]'s ring, ordered by their goal. Goals off the ring are
- * kept, so their dots can sit past the ring's ends instead of silently disappearing. A goal equal
+ * kept, so their dots can sit on the ring's end caps instead of silently disappearing. A goal equal
  * to the ring's own goal is left out, as the ring's end marker already stands for it.
  */
 internal fun gaugeGoalZones(
@@ -1395,11 +1392,9 @@ internal fun gaugeGoalZones(
     }
 }
 
-/** The angle of each off-ring goal's dot; see [offRingDotAngles]. */
-internal fun List<GaugeGoalZone>.offRingAngles(
-    first: Float = GaugeOffRingFirstAngle,
-    step: Float = GaugeOffRingStepAngle,
-): List<Pair<GaugeGoalZone, Float>> = offRingDotAngles(this, { it.goalFraction }, first, step)
+/** The goals off the ring, pinned to its caps; see [gaugeCapGoals]. */
+internal fun List<GaugeGoalZone>.capGoals(): GaugeCapGoals<GaugeGoalZone> =
+    gaugeCapGoals(this) { it.goalFraction }
 
 private fun GoalDisplayMode.goalZoneColor(): Color =
     when (this) {
@@ -1411,7 +1406,7 @@ private fun GoalDisplayMode.goalZoneColor(): Color =
 /**
  * The supplemental goals' remaining energy in one quiet row under the ring: the goal's name, and
  * under it a dot in the goal's color and the number. The color ties each number to its dot on the
- * ring; only a goal that is exceeded says so, in red.
+ * ring; an exceeded goal's excess reads "+1 504" in red.
  */
 @Composable
 private fun GoalZoneLegend(zones: List<GaugeGoalZone>, modifier: Modifier = Modifier) {
@@ -1441,8 +1436,8 @@ private fun GoalZoneLegendItem(zone: GaugeGoalZone) {
                 Res.string.label_diet
             }
         )
-    val tooMuch = stringResource(Res.string.goal_too_much)
-    val status = if (zone.exceeded) tooMuch else stringResource(Res.string.goal_left)
+    val status =
+        stringResource(if (zone.exceeded) Res.string.goal_too_much else Res.string.goal_left)
     val description = "$label: $value ${stringResource(Res.string.unit_kcal)} $status"
 
     Column(
@@ -1456,19 +1451,23 @@ private fun GoalZoneLegendItem(zone: GaugeGoalZone) {
             style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
             maxLines = 1,
         )
-        GoalZoneLegendValue(zone = zone, value = value, tooMuch = tooMuch)
+        GoalZoneLegendValue(zone = zone, value = value)
     }
 }
 
+/**
+ * The dot and the number. An exceeded goal shows its excess with a plus sign in red, a goal not
+ * yet reached its remaining energy plainly, so no row repeats the center's "zu viel".
+ */
 @Composable
-private fun GoalZoneLegendValue(zone: GaugeGoalZone, value: String, tooMuch: String) {
+private fun GoalZoneLegendValue(zone: GaugeGoalZone, value: String) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.dp).background(zone.mode.goalZoneColor(), CircleShape))
         Text(
-            text = value,
+            text = if (zone.exceeded) "+$value" else value,
             color = if (zone.exceeded) GoalsErrorColor else GoalsTextColor,
             style =
                 MaterialTheme.typography.labelLarge.copy(
@@ -1479,16 +1478,6 @@ private fun GoalZoneLegendValue(zone: GaugeGoalZone, value: String, tooMuch: Str
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
-        if (zone.exceeded) {
-            Text(
-                text = tooMuch,
-                color = GoalsErrorColor,
-                style =
-                    MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-        }
     }
 }
 
@@ -1781,12 +1770,12 @@ private fun CaloriesOverviewPage(
             }
 
             if (goalZones.isNotEmpty()) {
-                // Dots past the ring's end hang below its row; the legend keeps clear of them.
+                // The end markers can hang below the ring's row; the legend keeps clear of them.
                 val belowRow =
                     if (compact) {
                         0.dp
                     } else {
-                        (gaugeLowestPoint(gaugeDiameter, gaugeStrokeWidth, goalZones) +
+                        (gaugeLowestPoint(gaugeDiameter, gaugeStrokeWidth) +
                                 GoalZoneLegendGap - caloriesHeight)
                             .coerceAtLeast(0.dp)
                     }
@@ -2326,24 +2315,17 @@ private fun GaugeMetric(
 /** The ring's line width at 100 percent. */
 private val GaugeStrokeWidth = 10.dp
 
-/** Room between the ring, or the lowest dot past its end, and the legend row under it. */
+/** Room between the ring's end markers and the legend row under it. */
 private val GoalZoneLegendGap = 11.dp
 
 /**
- * How far below its top the ring reaches: down to the markers at its ends or, with goals off the
- * ring, to the farthest dot past an end, which sits further round toward the bottom.
+ * How far below its top the ring reaches: down to the markers on its end caps, which also carry
+ * the goals off the ring.
  */
-private fun gaugeLowestPoint(diameter: Dp, strokeWidth: Dp, zones: List<GaugeGoalZone>): Dp {
+private fun gaugeLowestPoint(diameter: Dp, strokeWidth: Dp): Dp {
     val radius = diameter / 2
-    val depth =
-        maxOf(
-            zones.count { it.placement == GaugeZonePlacement.BeforeStart },
-            zones.count { it.placement == GaugeZonePlacement.PastEnd },
-        )
-    val degrees =
-        if (depth == 0) 45f else 45f + GaugeOffRingFirstAngle + GaugeOffRingStepAngle * (depth - 1)
     val markerRadius = maxOf(GaugeZoneMarkerMinRadius, strokeWidth / 2 + GaugeZoneMarkerOverhang)
-    return strokeWidth / 2 + radius + radius * sin(degrees * PI.toFloat() / 180f) + markerRadius
+    return strokeWidth / 2 + radius + radius * sin(45f * PI.toFloat() / 180f) + markerRadius
 }
 
 // Shifts the side values outward, away from the ring.
@@ -2353,10 +2335,9 @@ private val SideMetricRingClearance = 6.dp
 private val GaugeZoneMarkerOverhang = 1.5.dp
 private val GaugeZoneMarkerRim = 3.dp
 private val GaugeZoneMarkerMinRadius = 6.5.dp
+/** A marker shared by several goals keeps its size and gives its slices a thinner rim. */
+private val GaugeSharedMarkerRim = 2.dp
 private const val GaugeGapAngle = 2.5f
-
-private val GaugeOffRingTrackWidth = 2.5.dp
-private val GaugeOffRingTrackDotSpacing = 4.dp
 
 /** The ring starts bottom left at 135° and sweeps 270° clockwise to the bottom right. */
 internal fun gaugeAngle(fraction: Float): Float = 135f + 270f * fraction
@@ -2391,10 +2372,11 @@ private fun SemiCircleGauge(
                 strokeWidth = strokeWidth.toPx(),
             )
         }
-        drawOffRingGoals(
+        drawCapGoals(
             diameter = diameter.toPx(),
             strokeWidth = strokeWidth.toPx(),
             zones = goalZones,
+            progressColor = progressColor,
         )
     }
 }
@@ -2544,47 +2526,36 @@ private fun DrawScope.drawZonedGauge(
 }
 
 /**
- * Goals off the ring: past the matching end the ring goes on as a fine dotted track up to the
- * farthest goal's dot, and each goal's dot sits on it – where the ring would continue if it
- * reached that far.
+ * Goals off the ring, pinned to its caps so the ring keeps its symmetric outline: a goal at or
+ * below zero marks the start cap, one above the ring's own goal shares the end cap's marker with
+ * that goal. A marker for several goals is split into equal slices, one per goal.
  */
-private fun DrawScope.drawOffRingGoals(diameter: Float, strokeWidth: Float, zones: List<GaugeGoalZone>) {
-    val placed = zones.offRingAngles()
-    if (placed.isEmpty()) return
-    val topLeft = Offset(x = (size.width - diameter) / 2f, y = strokeWidth / 2f)
-    val arcSize = Size(width = diameter, height = diameter)
-    val center = Offset(topLeft.x + diameter / 2f, topLeft.y + diameter / 2f)
-    // Zero-length dashes with round caps draw a row of dots.
-    val dotted =
-        Stroke(
-            width = GaugeOffRingTrackWidth.toPx(),
-            cap = StrokeCap.Round,
-            pathEffect =
-                PathEffect.dashPathEffect(floatArrayOf(0f, GaugeOffRingTrackDotSpacing.toPx())),
+private fun DrawScope.drawCapGoals(
+    diameter: Float,
+    strokeWidth: Float,
+    zones: List<GaugeGoalZone>,
+    progressColor: Color,
+) {
+    val capGoals = zones.capGoals()
+    val radius = diameter / 2f
+    val center = Offset(size.width / 2f, strokeWidth / 2f + radius)
+    if (capGoals.atStart.isNotEmpty()) {
+        drawGaugeMarkerAt(
+            center,
+            radius,
+            strokeWidth,
+            gaugeAngle(0f),
+            capGoals.atStart.map { it.mode.goalZoneColor() },
         )
-    fun track(from: Float, to: Float) =
-        drawArc(
-            color = GaugeOffRingTrackColor,
-            startAngle = from,
-            sweepAngle = to - from,
-            useCenter = false,
-            topLeft = topLeft,
-            size = arcSize,
-            style = dotted,
+    }
+    if (capGoals.atEnd.isNotEmpty()) {
+        drawGaugeMarkerAt(
+            center,
+            radius,
+            strokeWidth,
+            gaugeAngle(1f),
+            listOf(progressColor) + capGoals.atEnd.map { it.mode.goalZoneColor() },
         )
-
-    placed.filter { it.first.placement == GaugeZonePlacement.BeforeStart }
-        .minOfOrNull { it.second }
-        ?.let { farthest ->
-            track(farthest, gaugeAngle(0f) - GaugeOffRingTrackStartAngle)
-        }
-    placed.filter { it.first.placement == GaugeZonePlacement.PastEnd }
-        .maxOfOrNull { it.second }
-        ?.let { farthest ->
-            track(gaugeAngle(1f) + GaugeOffRingTrackStartAngle, farthest)
-        }
-    placed.forEach { (zone, angle) ->
-        drawGaugeMarkerAt(center, diameter / 2f, strokeWidth, angle, zone.mode.goalZoneColor())
     }
 }
 
@@ -2598,15 +2569,25 @@ private fun DrawScope.drawGaugeMarker(
     strokeWidth: Float,
     fraction: Float,
     color: Color,
-) = drawGaugeMarkerAt(center, radius, strokeWidth, gaugeAngle(fraction.coerceIn(0f, 1f)), color)
+) =
+    drawGaugeMarkerAt(
+        center,
+        radius,
+        strokeWidth,
+        gaugeAngle(fraction.coerceIn(0f, 1f)),
+        listOf(color),
+    )
 
-/** A marker on the ring's circle at [angle] degrees, sized like [drawGaugeMarker]. */
+/**
+ * A marker on the ring's circle at [angle] degrees, sized like [drawGaugeMarker]. With several
+ * [colors] its dot is split into equal slices, keeping the marker's size.
+ */
 private fun DrawScope.drawGaugeMarkerAt(
     center: Offset,
     radius: Float,
     strokeWidth: Float,
     angle: Float,
-    color: Color,
+    colors: List<Color>,
 ) {
     val radians = angle.toDouble() * PI / 180.0
     val point =
@@ -2617,7 +2598,21 @@ private fun DrawScope.drawGaugeMarkerAt(
     val markerRadius =
         maxOf(GaugeZoneMarkerMinRadius.toPx(), strokeWidth / 2f + GaugeZoneMarkerOverhang.toPx())
     drawCircle(GoalsCardColor, radius = markerRadius, center = point)
-    drawCircle(color = color, radius = markerRadius - GaugeZoneMarkerRim.toPx(), center = point)
+    if (colors.size == 1) {
+        drawCircle(colors.single(), radius = markerRadius - GaugeZoneMarkerRim.toPx(), center = point)
+        return
+    }
+    val dotRadius = markerRadius - GaugeSharedMarkerRim.toPx()
+    gaugeMarkerSlices(colors.size).zip(colors).forEach { (slice, color) ->
+        drawArc(
+            color = color,
+            startAngle = slice.first,
+            sweepAngle = slice.second,
+            useCenter = true,
+            topLeft = Offset(point.x - dotRadius, point.y - dotRadius),
+            size = Size(dotRadius * 2f, dotRadius * 2f),
+        )
+    }
 }
 
 internal fun String.groupDigits(): String {

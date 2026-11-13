@@ -248,29 +248,32 @@ class GoalsCardGoalDisplayModeTest {
     }
 
     @Test
-    fun offRingDotsStepAwayFromTheirEndNearestGoalFirst() {
-        val beforeStart =
+    fun offRingGoalsArePinnedToTheirEndCapNearestGoalFirst() {
+        val capGoals =
             listOf(
                     offRingZone(GoalDisplayMode.Diet, -0.3f, -900),
                     offRingZone(GoalDisplayMode.Optimized, -0.1f, -500),
-                )
-                .offRingAngles(first = 15f, step = 12f)
-        val pastEnd =
-            listOf(
-                    offRingZone(GoalDisplayMode.Diet, 1.1f, 300),
-                    offRingZone(GoalDisplayMode.Optimized, 1.3f, 700),
                     offRingZone(GoalDisplayMode.Diet, 0.5f, 100),
+                    offRingZone(GoalDisplayMode.Optimized, 1.3f, 700),
+                    offRingZone(GoalDisplayMode.Diet, 1.1f, 300),
                 )
-                .offRingAngles(first = 15f, step = 12f)
+                .capGoals()
 
         assertEquals(
-            listOf(GoalDisplayMode.Optimized to 120f, GoalDisplayMode.Diet to 108f),
-            beforeStart.map { (zone, angle) -> zone.mode to angle },
+            listOf(GoalDisplayMode.Optimized, GoalDisplayMode.Diet),
+            capGoals.atStart.map { it.mode },
         )
         assertEquals(
-            listOf(GoalDisplayMode.Diet to 420f, GoalDisplayMode.Optimized to 432f),
-            pastEnd.map { (zone, angle) -> zone.mode to angle },
+            listOf(GoalDisplayMode.Diet, GoalDisplayMode.Optimized),
+            capGoals.atEnd.map { it.mode },
         )
+    }
+
+    @Test
+    fun aSharedMarkerIsSplitIntoEqualSlicesFromTheTop() {
+        assertEquals(listOf(-90f to 360f), gaugeMarkerSlices(1))
+        assertEquals(listOf(-90f to 180f, 90f to 180f), gaugeMarkerSlices(2))
+        assertEquals(listOf(-90f to 120f, 30f to 120f, 150f to 120f), gaugeMarkerSlices(3))
     }
 
     @Test

@@ -54,7 +54,6 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
             size = LocalSize.current,
             fontScale = context.resources.configuration.fontScale,
             showLegend = gauge.zones.isNotEmpty(),
-            offRingDepth = gauge.offRingDepth,
         )
 
     Box(
@@ -154,9 +153,9 @@ private fun Gauge(context: Context, gauge: CalorieGauge, spec: CalorieGaugeLayou
 
 /**
  * The supplemental goals' remaining energy in one quiet row under the ring: a dot in the goal's
- * color and the number, as on the goals card. An exceeded goal shows its number in red behind a red
- * warning sign instead of a "too much" label, so two exceeded goals still fit between the
- * shortcuts; its spoken description keeps the words.
+ * color and the number, as on the goals card. An exceeded goal shows its excess in red with a plus
+ * sign instead of a "too much" label, so two exceeded goals still fit between the shortcuts; its
+ * spoken description keeps the words.
  */
 @Composable
 private fun GoalLegend(context: Context, gauge: CalorieGauge, spec: CalorieGaugeLayoutSpec) {
@@ -188,20 +187,11 @@ private fun GoalLegend(context: Context, gauge: CalorieGauge, spec: CalorieGauge
                     colorFilter = ColorFilter.tint(ColorProvider(zone.kind.color())),
                     modifier = GlanceModifier.size(spec.legendDotSize),
                 )
-                if (zone.exceeded) {
-                    Spacer(modifier = GlanceModifier.width(4.dp))
-                    Image(
-                        provider = ImageProvider(R.drawable.ic_widget_warning),
-                        contentDescription = null,
-                        colorFilter = ColorFilter.tint(GlanceTheme.colors.error),
-                        modifier = GlanceModifier.size(spec.legendWarningSize),
-                    )
-                    Spacer(modifier = GlanceModifier.width(2.dp))
-                } else {
-                    Spacer(modifier = GlanceModifier.width(5.dp))
-                }
+                Spacer(modifier = GlanceModifier.width(5.dp))
+                val value = context.formatWidgetNumber(abs(zone.remainingKcal))
                 Text(
-                    text = context.formatWidgetNumber(abs(zone.remainingKcal)),
+                    // An exceeded goal shows its excess with a plus sign, as on the card.
+                    text = if (zone.exceeded) "+$value" else value,
                     style =
                         TextStyle(
                             color = valueColor,

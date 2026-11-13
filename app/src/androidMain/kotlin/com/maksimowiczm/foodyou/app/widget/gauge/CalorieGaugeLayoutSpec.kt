@@ -5,10 +5,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingFirstAngle
-import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeOffRingStepAngle
-import kotlin.math.PI
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 /** Layout parameters derived from the widget's actual size so the ring fills the cell. */
@@ -24,19 +20,13 @@ internal data class CalorieGaugeLayoutSpec(
     /** The normal goal's remaining energy in the ring's center, and the word under it. */
     val centerValueTextSize: TextUnit,
     val centerLabelTextSize: TextUnit,
-    /** The dotted continuation of the ring past its end, for goals off the ring. */
-    val offRingTrackWidth: Dp,
-    val offRingDotSpacing: Dp,
-    /** How many off-ring dots sit past the ring's end on its fuller side. */
-    val offRingDepth: Int,
     /**
-     * The row of goal values under the ring: a dot in the goal's color and the number, with a
-     * warning sign before the number of an exceeded goal.
+     * The row of goal values under the ring: a dot in the goal's color and the number, with a plus
+     * sign before the excess of an exceeded goal.
      */
     val showLegend: Boolean,
     val legendTextSize: TextUnit,
     val legendDotSize: Dp,
-    val legendWarningSize: Dp,
     val legendGap: Dp,
     val legendItemGap: Dp,
     val metricValueTextSize: TextUnit,
@@ -66,9 +56,9 @@ internal data class CalorieGaugeLayoutSpec(
     val gaugeWidth: Dp
         get() = diameter + inset * 2
 
-    /** From the top of the ring down to its ends, or to the lowest dot past them. */
+    /** From the top of the ring down to its ends, whose markers also carry goals off the ring. */
     val gaugeHeight: Dp
-        get() = inset + diameter * ringBottomFactor(offRingDepth) + inset
+        get() = inset + diameter * RingBottomFactor + inset
 
     /** The legend row with the room above it, or nothing without supplemental goals. */
     val legendHeight: Dp
@@ -115,28 +105,17 @@ internal const val LineHeightFactor = 1.25f
 /** The ring's ends sit this share of its diameter below its top: half plus sin 45° of a radius. */
 private val RingBottomFactor = 0.5f + sqrt(2f) / 4f
 
-/**
- * The share of the diameter from the ring's top down to its lowest point: its ends, or the
- * farthest of [offRingDepth] dots past them, which sits further round toward the bottom.
- */
-private fun ringBottomFactor(offRingDepth: Int): Float {
-    if (offRingDepth <= 0) return RingBottomFactor
-    val degrees = 45f + GaugeOffRingFirstAngle + GaugeOffRingStepAngle * (offRingDepth - 1)
-    return 0.5f + sin(degrees * PI / 180.0).toFloat() / 2f
-}
-
 /** Share of the content width the ring may take; the rest is for eaten and burned energy. */
 private const val GaugeWidthShare = 0.6f
 
 /**
  * The layout for a widget of [size]. With [showLegend] the goal values take a row under the ring,
- * and [offRingDepth] dots past the ring's end need room below it; both make the ring smaller.
+ * which makes the ring smaller.
  */
 internal fun calorieGaugeLayoutSpec(
     size: DpSize,
     fontScale: Float = 1f,
     showLegend: Boolean = false,
-    offRingDepth: Int = 0,
 ): CalorieGaugeLayoutSpec {
     val verticalPadding = 12.dp
     val horizontalPadding = 16.dp
@@ -159,7 +138,7 @@ internal fun calorieGaugeLayoutSpec(
     val stroke = if (large) 10.dp else 8.dp
     val markerRadius = if (large) 6.5.dp else 5.5.dp
     val inset = maxOf(stroke / 2, markerRadius)
-    val byHeight = (rowHeight - inset * 2) / ringBottomFactor(offRingDepth)
+    val byHeight = (rowHeight - inset * 2) / RingBottomFactor
     val byWidth = (size.width - horizontalPadding * 2) * GaugeWidthShare - inset * 2
     val diameter =
         minOf(byHeight, byWidth, CalorieGaugeWidgetSizes.MaxDiameter)
@@ -195,13 +174,9 @@ internal fun calorieGaugeLayoutSpec(
         markerDotRadius = if (large) 3.5.dp else 3.dp,
         centerValueTextSize = if (large) 22.sp else 18.sp,
         centerLabelTextSize = if (large) 11.sp else 10.sp,
-        offRingTrackWidth = if (large) 2.5.dp else 2.dp,
-        offRingDotSpacing = if (large) 4.dp else 3.5.dp,
-        offRingDepth = offRingDepth,
         showLegend = showLegend,
         legendTextSize = legendTextSize,
         legendDotSize = 7.dp,
-        legendWarningSize = 13.dp,
         legendGap = legendGap,
         legendItemGap = 16.dp,
         metricValueTextSize = metricValueTextSize,

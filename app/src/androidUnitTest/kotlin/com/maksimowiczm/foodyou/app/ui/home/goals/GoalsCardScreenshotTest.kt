@@ -679,6 +679,27 @@ class GoalsCardScreenshotTest {
         )
     }
 
+    /** Both goals used up share the start cap's marker, which keeps the end marker's size. */
+    @Test
+    fun ringGoalZonesBothUsedUpPhone() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.ring-goal-zones-both-used-up-phone.png",
+            fixture =
+                RingZonesFixture.copy(
+                    goalDisplaySummaries =
+                        RingZonesFixture.goalDisplaySummaries.map {
+                            when (it.mode) {
+                                GoalDisplayMode.Optimized -> it.copy(energyGoal = -40)
+                                GoalDisplayMode.Diet -> it.copy(energyGoal = -240)
+                                else -> it
+                            }
+                        }
+                ),
+            width = 414,
+            height = 360,
+        )
+    }
+
     @Test
     fun ringGoalZonesSavedAheadPhone() {
         captureGoalsCard(

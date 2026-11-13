@@ -57,13 +57,13 @@ class CalorieGaugeTest {
         val gauge = calorieGauge(model(optimizedGoalKcal = 2760, dietGoalKcal = 2260))
 
         assertEquals(emptyList(), gauge.onRingZones)
+        assertEquals(emptyList(), gauge.capGoals.atStart)
         assertEquals(
-            listOf(CalorieGaugeZoneKind.Diet to 420f, CalorieGaugeZoneKind.Optimized to 432f),
-            gauge.offRingDots.map { (zone, angle) -> zone.kind to angle },
+            listOf(CalorieGaugeZoneKind.Diet, CalorieGaugeZoneKind.Optimized),
+            gauge.capGoals.atEnd.map { it.kind },
         )
         assertEquals(2260f / 2100f, gauge.zones[0].fraction)
         assertEquals(1171, gauge.zones[0].remainingKcal)
-        assertEquals(2, gauge.offRingDepth)
     }
 
     @Test
@@ -71,25 +71,25 @@ class CalorieGaugeTest {
         val gauge = calorieGauge(model(optimizedGoalKcal = 1935, dietGoalKcal = -240))
 
         assertEquals(listOf(CalorieGaugeZoneKind.Optimized), gauge.onRingZones.map { it.kind })
-        val (diet, angle) = gauge.offRingDots.single()
+        val diet = gauge.capGoals.atStart.single()
         assertEquals(CalorieGaugeZoneKind.Diet, diet.kind)
-        assertEquals(120f, angle)
+        assertEquals(emptyList(), gauge.capGoals.atEnd)
         assertTrue(diet.exceeded)
-        assertEquals(1, gauge.offRingDepth)
     }
 
     @Test
-    fun dotsPastTheEndNeedRoomBelowTheRingAndTheLegendARow() {
+    fun theLegendTakesARowUnderTheRing() {
         val size = DpSize(320.dp, 180.dp)
         val plain = calorieGaugeLayoutSpec(size)
         val withLegend = calorieGaugeLayoutSpec(size, showLegend = true)
-        val withDots = calorieGaugeLayoutSpec(size, showLegend = true, offRingDepth = 2)
 
         assertTrue(withLegend.legendHeight > 0.dp)
         assertEquals(0.dp, plain.legendHeight)
         assertTrue(withLegend.diameter < plain.diameter, "${withLegend.diameter}")
-        assertTrue(withDots.diameter < withLegend.diameter, "${withDots.diameter}")
-        assertTrue(withDots.gaugeHeight <= withDots.rowHeight + 0.01.dp, "${withDots.gaugeHeight}")
+        assertTrue(
+            withLegend.gaugeHeight <= withLegend.rowHeight + 0.01.dp,
+            "${withLegend.gaugeHeight}",
+        )
     }
 
     @Test
