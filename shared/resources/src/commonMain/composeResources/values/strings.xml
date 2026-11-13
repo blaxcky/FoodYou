@@ -176,6 +176,12 @@
     <string name="goal_gauge_marker_gap_description">Keeps goal markers on the calorie ring at least this far apart and away from its end, even when their values are closer.</string>
     <string name="widget_gauge_marker_gap_title">Goal marker spacing in the widget</string>
     <string name="widget_gauge_marker_gap_description">The same spacing on the calorie gauge widget, set apart since the widget is smaller.</string>
+    <string name="goal_gauge_cap_marker_title">Marker for goals off the ring</string>
+    <string name="goal_gauge_cap_marker_description">How a goal below zero or above the ring's goal is marked on the ring's end, on the card and in the widget.</string>
+    <string name="goal_gauge_cap_marker_teardrop">Teardrop</string>
+    <string name="goal_gauge_cap_marker_diamond">Diamond</string>
+    <string name="goal_gauge_cap_marker_bracket">Bracket</string>
+    <string name="goal_gauge_cap_marker_sign">Minus/plus</string>
     <string name="weekly_weight_lost">lost</string>
     <string name="weekly_weight_gained">gained</string>
     <string name="weekly_weight_measured_today">today</string>

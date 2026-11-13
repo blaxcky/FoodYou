@@ -78,6 +78,7 @@ import com.maksimowiczm.foodyou.common.compose.extension.toDp
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_SIZE_PERCENT
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_STROKE_WIDTH_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode as SettingsGoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
@@ -199,6 +200,7 @@ internal fun GoalsCard(
         viewModel.goalGaugeStrokeWidthPercent.collectAsStateWithLifecycle().value
     val gaugeMarkerGapDegrees =
         viewModel.goalGaugeMarkerGapDegrees.collectAsStateWithLifecycle().value
+    val capMarkerStyle = viewModel.goalGaugeCapMarkerStyle.collectAsStateWithLifecycle().value
 
     var showTodayGoalDialog by remember { mutableStateOf(false) }
 
@@ -210,35 +212,37 @@ internal fun GoalsCard(
             modifier = modifier,
         )
     } else {
-        GoalsCard(
-            energy = model.energy,
-            burnedEnergy = model.burnedEnergy,
-            burnedEnergyDelta = burnedEnergyDelta,
-            netEnergy = model.netEnergy,
-            energyGoal = model.energyGoal,
-            showEnergyGoalValue = model.showEnergyGoalValue,
-            goalCardModeSwitchingEnabled = model.goalCardModeSwitchingEnabled,
-            supplementalGoalsEnabled = model.supplementalGoalsEnabled,
-            goalDisplayMode = model.goalDisplayMode,
-            goalDisplaySummaries = model.goalDisplaySummaries,
-            dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
-            proteins = model.proteins,
-            proteinsGoal = model.proteinsGoal,
-            carbohydrates = model.carbohydrates,
-            carbohydratesGoal = model.carbohydratesGoal,
-            fats = model.fats,
-            fatsGoal = model.fatsGoal,
-            todayRemainingEnergy = model.todayRemainingEnergy,
-            todayEnergyGoalEditable = model.todayEnergyGoalEditable,
-            onTodayEnergyGoalClick = { showTodayGoalDialog = true },
-            onClick = { onClick(homeState.selectedDate.toEpochDays()) },
-            onLongClick = onLongClick,
-            onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
-            gaugeSizePercent = gaugeSizePercent,
-            gaugeStrokeWidthPercent = gaugeStrokeWidthPercent,
-            gaugeMarkerGapDegrees = gaugeMarkerGapDegrees,
-            modifier = modifier,
-        )
+        CompositionLocalProvider(LocalGoalGaugeCapMarkerStyle provides capMarkerStyle) {
+            GoalsCard(
+                energy = model.energy,
+                burnedEnergy = model.burnedEnergy,
+                burnedEnergyDelta = burnedEnergyDelta,
+                netEnergy = model.netEnergy,
+                energyGoal = model.energyGoal,
+                showEnergyGoalValue = model.showEnergyGoalValue,
+                goalCardModeSwitchingEnabled = model.goalCardModeSwitchingEnabled,
+                supplementalGoalsEnabled = model.supplementalGoalsEnabled,
+                goalDisplayMode = model.goalDisplayMode,
+                goalDisplaySummaries = model.goalDisplaySummaries,
+                dietGoalDisplayModeEnabled = model.dietGoalDisplayModeEnabled,
+                proteins = model.proteins,
+                proteinsGoal = model.proteinsGoal,
+                carbohydrates = model.carbohydrates,
+                carbohydratesGoal = model.carbohydratesGoal,
+                fats = model.fats,
+                fatsGoal = model.fatsGoal,
+                todayRemainingEnergy = model.todayRemainingEnergy,
+                todayEnergyGoalEditable = model.todayEnergyGoalEditable,
+                onTodayEnergyGoalClick = { showTodayGoalDialog = true },
+                onClick = { onClick(homeState.selectedDate.toEpochDays()) },
+                onLongClick = onLongClick,
+                onSelectGoalDisplayMode = { viewModel.setGoalDisplayMode(it.toSettingsGoalDisplayMode()) },
+                gaugeSizePercent = gaugeSizePercent,
+                gaugeStrokeWidthPercent = gaugeStrokeWidthPercent,
+                gaugeMarkerGapDegrees = gaugeMarkerGapDegrees,
+                modifier = modifier,
+            )
+        }
     }
 
     if (showTodayGoalDialog && model != null) {
@@ -2335,8 +2339,6 @@ private val SideMetricRingClearance = 6.dp
 private val GaugeZoneMarkerOverhang = 1.5.dp
 private val GaugeZoneMarkerRim = 3.dp
 private val GaugeZoneMarkerMinRadius = 6.5.dp
-/** A marker shared by several goals keeps its size and gives its slices a thinner rim. */
-private val GaugeSharedMarkerRim = 2.dp
 private const val GaugeGapAngle = 2.5f
 
 /** The ring starts bottom left at 135° and sweeps 270° clockwise to the bottom right. */
@@ -2352,6 +2354,7 @@ private fun SemiCircleGauge(
     modifier: Modifier = Modifier,
     goalZones: List<GaugeGoalZone> = emptyList(),
 ) {
+    val capMarkerStyle = LocalGoalGaugeCapMarkerStyle.current
     Canvas(modifier = modifier) {
         val onRingZones = goalZones.filter { it.placement == GaugeZonePlacement.OnRing }
         if (onRingZones.isNotEmpty()) {
@@ -2377,6 +2380,7 @@ private fun SemiCircleGauge(
             strokeWidth = strokeWidth.toPx(),
             zones = goalZones,
             progressColor = progressColor,
+            style = capMarkerStyle,
         )
     }
 }
@@ -2528,35 +2532,43 @@ private fun DrawScope.drawZonedGauge(
 /**
  * Goals off the ring, pinned to its caps so the ring keeps its symmetric outline: a goal at or
  * below zero marks the start cap, one above the ring's own goal shares the end cap's marker with
- * that goal. A marker for several goals is split into equal slices, one per goal.
+ * that goal. [style] sets how the marker points past the end; see [drawGaugeCapMarker].
  */
 private fun DrawScope.drawCapGoals(
     diameter: Float,
     strokeWidth: Float,
     zones: List<GaugeGoalZone>,
     progressColor: Color,
+    style: GoalGaugeCapMarkerStyle,
 ) {
     val capGoals = zones.capGoals()
     val radius = diameter / 2f
     val center = Offset(size.width / 2f, strokeWidth / 2f + radius)
-    if (capGoals.atStart.isNotEmpty()) {
-        drawGaugeMarkerAt(
-            center,
-            radius,
-            strokeWidth,
-            gaugeAngle(0f),
-            capGoals.atStart.map { it.mode.goalZoneColor() },
+    val markerRadius =
+        maxOf(GaugeZoneMarkerMinRadius.toPx(), strokeWidth / 2f + GaugeZoneMarkerOverhang.toPx())
+
+    fun cap(angle: Float, outwardAngle: Float, normalColor: Color?, goals: List<GaugeGoalZone>) {
+        val radians = angle.toDouble() * PI / 180.0
+        drawGaugeCapMarker(
+            point =
+                Offset(
+                    x = center.x + radius * cos(radians).toFloat(),
+                    y = center.y + radius * sin(radians).toFloat(),
+                ),
+            outwardAngle = outwardAngle,
+            style = style,
+            normalColor = normalColor,
+            goalColors = goals.map { it.mode.goalZoneColor() },
+            markerRadius = markerRadius,
+            dotRadius = markerRadius - GaugeZoneMarkerRim.toPx(),
+            ringStrokeWidth = strokeWidth,
+            unit = 1.dp.toPx(),
+            cardColor = GoalsCardColor,
         )
     }
-    if (capGoals.atEnd.isNotEmpty()) {
-        drawGaugeMarkerAt(
-            center,
-            radius,
-            strokeWidth,
-            gaugeAngle(1f),
-            listOf(progressColor) + capGoals.atEnd.map { it.mode.goalZoneColor() },
-        )
-    }
+
+    cap(gaugeAngle(0f), GaugeStartCapOutwardAngle, null, capGoals.atStart)
+    cap(gaugeAngle(1f), GaugeEndCapOutwardAngle, progressColor, capGoals.atEnd)
 }
 
 /**
@@ -2569,25 +2581,15 @@ private fun DrawScope.drawGaugeMarker(
     strokeWidth: Float,
     fraction: Float,
     color: Color,
-) =
-    drawGaugeMarkerAt(
-        center,
-        radius,
-        strokeWidth,
-        gaugeAngle(fraction.coerceIn(0f, 1f)),
-        listOf(color),
-    )
+) = drawGaugeMarkerAt(center, radius, strokeWidth, gaugeAngle(fraction.coerceIn(0f, 1f)), color)
 
-/**
- * A marker on the ring's circle at [angle] degrees, sized like [drawGaugeMarker]. With several
- * [colors] its dot is split into equal slices, keeping the marker's size.
- */
+/** A marker on the ring's circle at [angle] degrees, sized like [drawGaugeMarker]. */
 private fun DrawScope.drawGaugeMarkerAt(
     center: Offset,
     radius: Float,
     strokeWidth: Float,
     angle: Float,
-    colors: List<Color>,
+    color: Color,
 ) {
     val radians = angle.toDouble() * PI / 180.0
     val point =
@@ -2598,21 +2600,7 @@ private fun DrawScope.drawGaugeMarkerAt(
     val markerRadius =
         maxOf(GaugeZoneMarkerMinRadius.toPx(), strokeWidth / 2f + GaugeZoneMarkerOverhang.toPx())
     drawCircle(GoalsCardColor, radius = markerRadius, center = point)
-    if (colors.size == 1) {
-        drawCircle(colors.single(), radius = markerRadius - GaugeZoneMarkerRim.toPx(), center = point)
-        return
-    }
-    val dotRadius = markerRadius - GaugeSharedMarkerRim.toPx()
-    gaugeMarkerSlices(colors.size).zip(colors).forEach { (slice, color) ->
-        drawArc(
-            color = color,
-            startAngle = slice.first,
-            sweepAngle = slice.second,
-            useCenter = true,
-            topLeft = Offset(point.x - dotRadius, point.y - dotRadius),
-            size = Size(dotRadius * 2f, dotRadius * 2f),
-        )
-    }
+    drawCircle(color = color, radius = markerRadius - GaugeZoneMarkerRim.toPx(), center = point)
 }
 
 internal fun String.groupDigits(): String {

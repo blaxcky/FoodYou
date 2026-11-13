@@ -2,6 +2,7 @@ package com.maksimowiczm.foodyou.app.widget.ring
 
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetModel
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,6 +22,7 @@ class CalorieRingWidgetStateTest {
                 baseGoalKcal = 2100.0,
                 dietEnergyDeficitKcal = 500.0,
                 previousDays = emptyList(),
+                capMarkerStyle = GoalGaugeCapMarkerStyle.Diamond,
             )
 
         val preferences = mutablePreferencesOf().apply { write(model) }

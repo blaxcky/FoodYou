@@ -11,6 +11,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncManualFrequency
 import com.maksimowiczm.foodyou.settings.domain.entity.FddbProductSyncMode
 import com.maksimowiczm.foodyou.settings.domain.entity.FoodEntryAmountPickerStyle
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
@@ -401,6 +402,33 @@ class DataStoreSettingsRepositoryTest {
             repository.update { copy(weeklyDetailsStyle = style) }
 
             assertEquals(style, repository.observe().first().weeklyDetailsStyle)
+        }
+    }
+
+    @Test
+    fun goalGaugeCapMarkerStyleDefaultsToTeardropIgnoresUnknownValuesAndRoundTrips() = runTest {
+        val unknownRepository =
+            DataStoreSettingsRepository(
+                InMemoryPreferencesDataStore(
+                    mutablePreferencesOf(
+                        stringPreferencesKey("settings:goalGaugeCapMarkerStyle") to "Unknown"
+                    )
+                )
+            )
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        assertEquals(
+            GoalGaugeCapMarkerStyle.Teardrop,
+            repository.observe().first().goalGaugeCapMarkerStyle,
+        )
+        assertEquals(
+            GoalGaugeCapMarkerStyle.Teardrop,
+            unknownRepository.observe().first().goalGaugeCapMarkerStyle,
+        )
+        GoalGaugeCapMarkerStyle.entries.forEach { style ->
+            repository.update { copy(goalGaugeCapMarkerStyle = style) }
+
+            assertEquals(style, repository.observe().first().goalGaugeCapMarkerStyle)
         }
     }
 

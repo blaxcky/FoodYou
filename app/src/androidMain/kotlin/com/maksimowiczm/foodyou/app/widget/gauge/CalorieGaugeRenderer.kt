@@ -6,13 +6,20 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.R
 import com.maksimowiczm.foodyou.app.ui.home.goals.DietGoalAccentColor
+import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeEndCapOutwardAngle
+import com.maksimowiczm.foodyou.app.ui.home.goals.GaugeStartCapOutwardAngle
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsCardColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsErrorColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsMutedTextColor
@@ -20,7 +27,7 @@ import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsProgressColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTextColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsTrackColor
 import com.maksimowiczm.foodyou.app.ui.home.goals.OptimizedGoalZoneColor
-import com.maksimowiczm.foodyou.app.ui.home.goals.gaugeMarkerSlices
+import com.maksimowiczm.foodyou.app.ui.home.goals.drawGaugeCapMarker
 import com.maksimowiczm.foodyou.app.widget.formatWidgetNumber
 import kotlin.math.PI
 import kotlin.math.abs
@@ -132,20 +139,37 @@ internal object CalorieGaugeRenderer {
         }
 
         /**
-         * Goals off the ring, pinned to its caps so the ring keeps its symmetric outline, as on the
-         * card: a goal at or below zero marks the start cap, one above the normal goal shares the
-         * end cap's marker with it. A marker for several goals is split into equal slices.
+         * Goals off the ring, pinned to its caps so the ring keeps its symmetric outline, drawn
+         * with the card's own code in the chosen style: a goal at or below zero marks the start
+         * cap, one above the normal goal shares the end cap's marker with it.
          */
         private fun drawCapGoals(gauge: CalorieGauge) {
             val capGoals = gauge.capGoals
-            if (capGoals.atStart.isNotEmpty()) {
-                drawMarker(gaugeAngle(0f), capGoals.atStart.map { it.kind.color() })
-            }
-            if (capGoals.atEnd.isNotEmpty()) {
-                drawMarker(
-                    gaugeAngle(1f),
-                    listOf(GoalsProgressColor) + capGoals.atEnd.map { it.kind.color() },
-                )
+            if (capGoals.atStart.isEmpty() && capGoals.atEnd.isEmpty()) return
+            val size = Size(canvas.width.toFloat(), canvas.height.toFloat())
+            CanvasDrawScope().draw(
+                Density(1f),
+                LayoutDirection.Ltr,
+                androidx.compose.ui.graphics.Canvas(canvas),
+                size,
+            ) {
+                fun cap(fraction: Float, outward: Float, normal: Color?, zones: List<CalorieGaugeZone>) {
+                    val (x, y) = point(gaugeAngle(fraction))
+                    drawGaugeCapMarker(
+                        point = Offset(x, y),
+                        outwardAngle = outward,
+                        style = gauge.capMarkerStyle,
+                        normalColor = normal,
+                        goalColors = zones.map { it.kind.color() },
+                        markerRadius = spec.markerRadius.px(),
+                        dotRadius = spec.markerDotRadius.px(),
+                        ringStrokeWidth = strokeWidth,
+                        unit = scale,
+                        cardColor = GoalsCardColor,
+                    )
+                }
+                cap(0f, GaugeStartCapOutwardAngle, null, capGoals.atStart)
+                cap(1f, GaugeEndCapOutwardAngle, GoalsProgressColor, capGoals.atEnd)
             }
         }
 
@@ -210,25 +234,11 @@ internal object CalorieGaugeRenderer {
             canvas.drawCircle(x, y, strokeWidth / 2f, fillPaint(color))
         }
 
-        private fun drawMarker(angle: Float, color: Color) = drawMarker(angle, listOf(color))
-
-        /**
-         * A marker on the ring's circle at [angle] degrees, ringed in the card's color. With
-         * several [colors] its dot is split into equal slices on a thinner rim, keeping its size.
-         */
-        private fun drawMarker(angle: Float, colors: List<Color>) {
+        /** A marker on the ring's circle at [angle] degrees, ringed in the card's color. */
+        private fun drawMarker(angle: Float, color: Color) {
             val (x, y) = point(angle)
-            val markerRadius = spec.markerRadius.px()
-            canvas.drawCircle(x, y, markerRadius, fillPaint(GoalsCardColor))
-            if (colors.size == 1) {
-                canvas.drawCircle(x, y, spec.markerDotRadius.px(), fillPaint(colors.single()))
-                return
-            }
-            val dotRadius = markerRadius - (markerRadius - spec.markerDotRadius.px()) * 2f / 3f
-            val oval = RectF(x - dotRadius, y - dotRadius, x + dotRadius, y + dotRadius)
-            gaugeMarkerSlices(colors.size).zip(colors).forEach { (slice, color) ->
-                canvas.drawArc(oval, slice.first, slice.second, true, fillPaint(color))
-            }
+            canvas.drawCircle(x, y, spec.markerRadius.px(), fillPaint(GoalsCardColor))
+            canvas.drawCircle(x, y, spec.markerDotRadius.px(), fillPaint(color))
         }
 
         private fun point(angle: Float): Pair<Float, Float> {

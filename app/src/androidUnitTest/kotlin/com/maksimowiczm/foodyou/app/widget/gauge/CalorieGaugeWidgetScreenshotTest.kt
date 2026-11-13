@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.widget.gauge
 
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
@@ -54,11 +55,25 @@ class CalorieGaugeWidgetScreenshotTest {
     @Test fun cellNoDiet() = capture("cell", 320, 180, case = "no-diet", model = noDiet())
     @Test fun cellNoZones() = capture("cell", 320, 180, case = "no-zones", model = noZones())
 
-    /** The diet budget is used up: its dot sits on the dotted track before the ring's start. */
+    /** The diet budget is used up: its marker sits on the ring's start cap. */
     @Test fun cellBudgetUsedUp() = capture("cell", 320, 180, case = "budget-used-up", model = budgetUsedUp())
 
     /** Both goals lie above the normal goal: their dots sit past the ring's end. */
     @Test fun cellSavedAhead() = capture("cell", 320, 180, case = "saved-ahead", model = savedAhead())
+
+    /** Each cap marker style with one goal off each end of the ring. */
+    @Test
+    fun cellCapMarkerStyles() {
+        for (style in GoalGaugeCapMarkerStyle.entries) {
+            capture(
+                "cell",
+                320,
+                180,
+                case = "cap-${style.name.lowercase()}",
+                model = offBothEnds().copy(capMarkerStyle = style),
+            )
+        }
+    }
 
     @Test fun minSavedAhead() = capture("min", 250, 130, case = "saved-ahead", model = savedAhead())
 
@@ -176,6 +191,9 @@ class CalorieGaugeWidgetScreenshotTest {
 
     private fun savedAhead() =
         model(eatenKcal = 1169, burnedKcal = 80, optimizedGoalKcal = 2760, dietGoalKcal = 2260)
+
+    private fun offBothEnds() =
+        model(eatenKcal = 1169, burnedKcal = 80, optimizedGoalKcal = 2760, dietGoalKcal = -240)
 
     private fun noZones() =
         model(eatenKcal = 1169, burnedKcal = 80, optimizedGoalKcal = null, dietGoalKcal = null)

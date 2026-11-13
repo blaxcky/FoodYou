@@ -54,6 +54,7 @@ internal fun CalorieGaugeWidgetContent(model: CalorieWidgetModel) {
             size = LocalSize.current,
             fontScale = context.resources.configuration.fontScale,
             showLegend = gauge.zones.isNotEmpty(),
+            capBrackets = gauge.capBrackets,
         )
 
     Box(

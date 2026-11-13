@@ -61,7 +61,28 @@ data class Settings(
     val goalGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     /** The same distance on the gauge widget's ring, set apart since the widget is laid out apart. */
     val widgetGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
+    /** How a goal off the calorie ring is marked on the ring's end cap, on the card and widget. */
+    val goalGaugeCapMarkerStyle: GoalGaugeCapMarkerStyle = GoalGaugeCapMarkerStyle.Teardrop,
 ) : UserPreferences
+
+/**
+ * The marker on the calorie ring's end cap for a goal off the ring: at or below zero on the start
+ * cap, above the ring's own goal on the end cap. Each points or reads past the ring's end, so the
+ * ring keeps its symmetric outline.
+ */
+enum class GoalGaugeCapMarkerStyle {
+    /** A dot drawn out into a tip that points past the end. */
+    Teardrop,
+
+    /** A diamond with a corner pointing past the end. */
+    Diamond,
+
+    /** A colored arc closing around the ring's cap, with no dot of its own. */
+    Bracket,
+
+    /** A dot with a minus sign on the start cap and a plus sign on the end cap. */
+    Sign,
+}
 
 const val DEFAULT_GOAL_GAUGE_SIZE_PERCENT = 100
 

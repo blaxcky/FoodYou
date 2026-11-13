@@ -17,6 +17,8 @@ internal data class CalorieGaugeLayoutSpec(
     val stroke: Dp,
     val markerRadius: Dp,
     val markerDotRadius: Dp,
+    /** Room below the ring's end markers for brackets closing around its caps. */
+    val capOverhang: Dp = 0.dp,
     /** The normal goal's remaining energy in the ring's center, and the word under it. */
     val centerValueTextSize: TextUnit,
     val centerLabelTextSize: TextUnit,
@@ -58,7 +60,7 @@ internal data class CalorieGaugeLayoutSpec(
 
     /** From the top of the ring down to its ends, whose markers also carry goals off the ring. */
     val gaugeHeight: Dp
-        get() = inset + diameter * RingBottomFactor + inset
+        get() = inset + diameter * RingBottomFactor + inset + capOverhang
 
     /** The legend row with the room above it, or nothing without supplemental goals. */
     val legendHeight: Dp
@@ -110,12 +112,14 @@ private const val GaugeWidthShare = 0.6f
 
 /**
  * The layout for a widget of [size]. With [showLegend] the goal values take a row under the ring,
- * which makes the ring smaller.
+ * which makes the ring smaller. [capBrackets] brackets closing around one of the ring's caps (see
+ * `GoalGaugeCapMarkerStyle.Bracket`) reach below its end markers and need room there too.
  */
 internal fun calorieGaugeLayoutSpec(
     size: DpSize,
     fontScale: Float = 1f,
     showLegend: Boolean = false,
+    capBrackets: Int = 0,
 ): CalorieGaugeLayoutSpec {
     val verticalPadding = 12.dp
     val horizontalPadding = 16.dp
@@ -138,7 +142,10 @@ internal fun calorieGaugeLayoutSpec(
     val stroke = if (large) 10.dp else 8.dp
     val markerRadius = if (large) 6.5.dp else 5.5.dp
     val inset = maxOf(stroke / 2, markerRadius)
-    val byHeight = (rowHeight - inset * 2) / RingBottomFactor
+    // The outermost bracket's outer edge, as drawn by drawGaugeCapMarker, past the marker's edge.
+    val capOverhang =
+        if (capBrackets > 0) 2.5.dp + 1.2.dp + 3.5.dp * (capBrackets - 1) else 0.dp
+    val byHeight = (rowHeight - inset * 2 - capOverhang) / RingBottomFactor
     val byWidth = (size.width - horizontalPadding * 2) * GaugeWidthShare - inset * 2
     val diameter =
         minOf(byHeight, byWidth, CalorieGaugeWidgetSizes.MaxDiameter)
@@ -172,6 +179,7 @@ internal fun calorieGaugeLayoutSpec(
         stroke = stroke,
         markerRadius = markerRadius,
         markerDotRadius = if (large) 3.5.dp else 3.dp,
+        capOverhang = capOverhang,
         centerValueTextSize = if (large) 22.sp else 18.sp,
         centerLabelTextSize = if (large) 11.sp else 10.sp,
         showLegend = showLegend,

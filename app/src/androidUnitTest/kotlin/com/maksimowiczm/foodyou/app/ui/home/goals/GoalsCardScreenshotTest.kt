@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.home.goals
 
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -700,6 +701,34 @@ class GoalsCardScreenshotTest {
         )
     }
 
+    /**
+     * Each cap marker style with one goal off each end: the Diet goal used up before the start and
+     * the Optimized goal saved ahead past the end, where it shares the ring's own marker.
+     */
+    @Test
+    fun ringGoalZonesCapMarkerStylesPhone() {
+        for (style in GoalGaugeCapMarkerStyle.entries) {
+            captureGoalsCard(
+                filePath =
+                    "GoalsCardScreenshotTest.ring-goal-zones-cap-${style.name.lowercase()}-phone.png",
+                fixture =
+                    RingZonesFixture.copy(
+                        goalDisplaySummaries =
+                            RingZonesFixture.goalDisplaySummaries.map {
+                                when (it.mode) {
+                                    GoalDisplayMode.Optimized -> it.copy(energyGoal = 2760)
+                                    GoalDisplayMode.Diet -> it.copy(energyGoal = -240)
+                                    else -> it
+                                }
+                            }
+                    ),
+                width = 414,
+                height = 360,
+                capMarkerStyle = style,
+            )
+        }
+    }
+
     @Test
     fun ringGoalZonesSavedAheadPhone() {
         captureGoalsCard(
@@ -760,6 +789,7 @@ class GoalsCardScreenshotTest {
         width: Int = 620,
         height: Int = 430,
         fontScale: Float = 1f,
+        capMarkerStyle: GoalGaugeCapMarkerStyle = GoalGaugeCapMarkerStyle.Teardrop,
     ) {
         captureRoboImage(
             filePath = filePath,
@@ -770,6 +800,7 @@ class GoalsCardScreenshotTest {
                 width = width,
                 height = height,
                 fontScale = fontScale,
+                capMarkerStyle = capMarkerStyle,
             )
         }
     }
@@ -780,10 +811,12 @@ class GoalsCardScreenshotTest {
         width: Int,
         height: Int,
         fontScale: Float,
+        capMarkerStyle: GoalGaugeCapMarkerStyle,
     ) {
         val density = LocalDensity.current
         CompositionLocalProvider(
-            LocalDensity provides Density(density = density.density, fontScale = fontScale)
+            LocalDensity provides Density(density = density.density, fontScale = fontScale),
+            LocalGoalGaugeCapMarkerStyle provides capMarkerStyle,
         ) {
             EnergyFormatterProvider(EnergyFormatter.kilocalories) {
                 MaterialTheme {

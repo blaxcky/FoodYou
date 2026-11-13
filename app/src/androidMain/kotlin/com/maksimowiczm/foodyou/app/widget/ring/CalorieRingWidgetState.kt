@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import kotlinx.datetime.LocalDate
 
 /** Stores the widget model in the Glance widget state so `update()` always renders fresh data. */
@@ -25,6 +26,7 @@ internal object CalorieRingWidgetState {
     val dietGoalKcal = intPreferencesKey("diet_goal_kcal")
     val dietLeftKcal = intPreferencesKey("diet_left_kcal")
     val markerGapDegrees = intPreferencesKey("marker_gap_degrees")
+    val capMarkerStyle = stringPreferencesKey("cap_marker_style")
 }
 
 internal fun MutablePreferences.write(model: CalorieWidgetModel) {
@@ -41,6 +43,7 @@ internal fun MutablePreferences.write(model: CalorieWidgetModel) {
     setOrRemove(CalorieRingWidgetState.dietGoalKcal, model.dietGoalKcal)
     setOrRemove(CalorieRingWidgetState.dietLeftKcal, model.dietLeftKcal)
     this[CalorieRingWidgetState.markerGapDegrees] = model.markerGapDegrees
+    this[CalorieRingWidgetState.capMarkerStyle] = model.capMarkerStyle.name
 }
 
 private fun MutablePreferences.setOrRemove(key: Preferences.Key<Int>, value: Int?) {
@@ -69,5 +72,9 @@ internal fun Preferences.toCalorieWidgetModel(): CalorieWidgetModel? {
         dietLeftKcal = dietLeftKcal,
         markerGapDegrees =
             this[CalorieRingWidgetState.markerGapDegrees] ?: DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
+        capMarkerStyle =
+            this[CalorieRingWidgetState.capMarkerStyle]
+                ?.let { name -> GoalGaugeCapMarkerStyle.entries.firstOrNull { it.name == name } }
+                ?: GoalGaugeCapMarkerStyle.Teardrop,
     )
 }

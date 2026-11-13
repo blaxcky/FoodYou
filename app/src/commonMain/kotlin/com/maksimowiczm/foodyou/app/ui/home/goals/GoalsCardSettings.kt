@@ -38,6 +38,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_R
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_STEP
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_STROKE_WIDTH_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_STROKE_WIDTH_PERCENT_STEP
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import foodyou.app.generated.resources.*
@@ -109,6 +110,13 @@ internal fun GoalsCardSettings(
                     updateCalorieWidgetValues()
                 }
             },
+            capMarkerStyle = current.goalGaugeCapMarkerStyle,
+            onCapMarkerStyleChange = { style ->
+                scope.launch {
+                    repository.update { copy(goalGaugeCapMarkerStyle = style) }
+                    updateCalorieWidgetValues()
+                }
+            },
             modifier = modifier,
         )
     }
@@ -134,6 +142,8 @@ internal fun GoalsCardSettingsContent(
     onGaugeMarkerGapChange: (Int) -> Unit = {},
     widgetGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     onWidgetGaugeMarkerGapChange: (Int) -> Unit = {},
+    capMarkerStyle: GoalGaugeCapMarkerStyle = GoalGaugeCapMarkerStyle.Teardrop,
+    onCapMarkerStyleChange: (GoalGaugeCapMarkerStyle) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // The preview switches modes on its own, without changing the home card's mode.
@@ -173,32 +183,34 @@ internal fun GoalsCardSettingsContent(
                         modifier = Modifier.padding(16.dp),
                     )
                 } else {
-                    GoalsCard(
-                        energy = preview.energy,
-                        burnedEnergy = preview.burnedEnergy,
-                        netEnergy = preview.netEnergy,
-                        energyGoal = preview.energyGoal,
-                        showEnergyGoalValue = preview.showEnergyGoalValue,
-                        goalCardModeSwitchingEnabled = goalCardModeSwitchingEnabled,
-                        supplementalGoalsEnabled = supplementalGoalsEnabled,
-                        goalDisplayMode = previewMode ?: preview.goalDisplayMode,
-                        onSelectGoalDisplayMode = { previewMode = it },
-                        goalDisplaySummaries = preview.goalDisplaySummaries,
-                        dietGoalDisplayModeEnabled = preview.dietGoalDisplayModeEnabled,
-                        proteins = preview.proteins,
-                        proteinsGoal = preview.proteinsGoal,
-                        carbohydrates = preview.carbohydrates,
-                        carbohydratesGoal = preview.carbohydratesGoal,
-                        fats = preview.fats,
-                        fatsGoal = preview.fatsGoal,
-                        todayRemainingEnergy = preview.todayRemainingEnergy,
-                        onClick = {},
-                        onLongClick = {},
-                        gaugeSizePercent = previewGaugeSizePercent,
-                        gaugeStrokeWidthPercent = previewGaugeStrokeWidthPercent,
-                        gaugeMarkerGapDegrees = previewGaugeMarkerGapDegrees,
-                        modifier = Modifier.padding(16.dp),
-                    )
+                    CompositionLocalProvider(LocalGoalGaugeCapMarkerStyle provides capMarkerStyle) {
+                        GoalsCard(
+                            energy = preview.energy,
+                            burnedEnergy = preview.burnedEnergy,
+                            netEnergy = preview.netEnergy,
+                            energyGoal = preview.energyGoal,
+                            showEnergyGoalValue = preview.showEnergyGoalValue,
+                            goalCardModeSwitchingEnabled = goalCardModeSwitchingEnabled,
+                            supplementalGoalsEnabled = supplementalGoalsEnabled,
+                            goalDisplayMode = previewMode ?: preview.goalDisplayMode,
+                            onSelectGoalDisplayMode = { previewMode = it },
+                            goalDisplaySummaries = preview.goalDisplaySummaries,
+                            dietGoalDisplayModeEnabled = preview.dietGoalDisplayModeEnabled,
+                            proteins = preview.proteins,
+                            proteinsGoal = preview.proteinsGoal,
+                            carbohydrates = preview.carbohydrates,
+                            carbohydratesGoal = preview.carbohydratesGoal,
+                            fats = preview.fats,
+                            fatsGoal = preview.fatsGoal,
+                            todayRemainingEnergy = preview.todayRemainingEnergy,
+                            onClick = {},
+                            onLongClick = {},
+                            gaugeSizePercent = previewGaugeSizePercent,
+                            gaugeStrokeWidthPercent = previewGaugeStrokeWidthPercent,
+                            gaugeMarkerGapDegrees = previewGaugeMarkerGapDegrees,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
             }
 
@@ -262,6 +274,9 @@ internal fun GoalsCardSettingsContent(
                         draggedWidgetGaugeMarkerGapDegrees = null
                     },
                 )
+            }
+            item {
+                CapMarkerStyleSetting(style = capMarkerStyle, onChange = onCapMarkerStyleChange)
             }
             item {
                 GoalCardSettingSwitch(
@@ -365,6 +380,50 @@ private fun WeeklyDetailsStyleSetting(
         modifier = Modifier.clickable { expanded = true },
     )
 }
+
+/** Picks how a goal off the ring is marked on the ring's end cap, for the card and the widget. */
+@Composable
+private fun CapMarkerStyleSetting(
+    style: GoalGaugeCapMarkerStyle,
+    onChange: (GoalGaugeCapMarkerStyle) -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    ListItem(
+        headlineContent = { Text(stringResource(Res.string.goal_gauge_cap_marker_title)) },
+        supportingContent = { Text(stringResource(Res.string.goal_gauge_cap_marker_description)) },
+        trailingContent = {
+            Box {
+                Text(
+                    text = style.label(),
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    GoalGaugeCapMarkerStyle.entries.forEach { entry ->
+                        DropdownMenuItem(
+                            text = { Text(entry.label()) },
+                            onClick = {
+                                onChange(entry)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        },
+        modifier = Modifier.clickable { expanded = true },
+    )
+}
+
+@Composable
+private fun GoalGaugeCapMarkerStyle.label(): String =
+    when (this) {
+        GoalGaugeCapMarkerStyle.Teardrop -> stringResource(Res.string.goal_gauge_cap_marker_teardrop)
+        GoalGaugeCapMarkerStyle.Diamond -> stringResource(Res.string.goal_gauge_cap_marker_diamond)
+        GoalGaugeCapMarkerStyle.Bracket -> stringResource(Res.string.goal_gauge_cap_marker_bracket)
+        GoalGaugeCapMarkerStyle.Sign -> stringResource(Res.string.goal_gauge_cap_marker_sign)
+    }
 
 @Composable
 private fun WeeklyDetailsStyle.label(): String =

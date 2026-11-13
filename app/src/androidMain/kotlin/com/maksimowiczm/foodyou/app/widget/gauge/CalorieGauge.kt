@@ -6,6 +6,7 @@ import com.maksimowiczm.foodyou.app.ui.home.goals.gaugeRingPosition
 import com.maksimowiczm.foodyou.app.ui.home.goals.spreadGaugeMarkers
 import com.maksimowiczm.foodyou.app.widget.CalorieWidgetModel
 import com.maksimowiczm.foodyou.app.widget.calorieWidgetProgress
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 
 internal enum class CalorieGaugeZoneKind {
     Optimized,
@@ -42,12 +43,23 @@ internal data class CalorieGauge(
     val zones: List<CalorieGaugeZone>,
     /** The normal goal's remaining energy, shown in the ring's center. */
     val remainingKcal: Int,
+    /** How the goals off the ring are marked on its end caps. */
+    val capMarkerStyle: GoalGaugeCapMarkerStyle = GoalGaugeCapMarkerStyle.Teardrop,
 ) {
     val exceeded: Boolean
         get() = remainingKcal < 0
 
     val onRingZones: List<CalorieGaugeZone>
         get() = zones.filter { it.onRing }
+
+    /** How many brackets close around the fuller cap; they need room below the ring. */
+    val capBrackets: Int
+        get() =
+            if (capMarkerStyle != GoalGaugeCapMarkerStyle.Bracket) {
+                0
+            } else {
+                maxOf(capGoals.atStart.size, capGoals.atEnd.size)
+            }
 
     /** The goals off the ring, pinned to its start and end caps. */
     val capGoals: GaugeCapGoals<CalorieGaugeZone>
@@ -86,5 +98,6 @@ internal fun calorieGauge(model: CalorieWidgetModel): CalorieGauge {
         overflow = progress.overflow,
         zones = zones,
         remainingKcal = model.normalLeftKcal,
+        capMarkerStyle = model.capMarkerStyle,
     )
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.maksimowiczm.foodyou.activity.domain.repository.ActivityRepository
 import com.maksimowiczm.foodyou.app.widget.updateCalorieWidgetValues
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
@@ -92,6 +93,15 @@ internal class GoalsViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(2_000),
             initialValue = runBlocking { _goalGaugeMarkerGapDegrees.first() },
+        )
+
+    private val _goalGaugeCapMarkerStyle =
+        settingsRepository.observe().map { it.goalGaugeCapMarkerStyle }
+    val goalGaugeCapMarkerStyle: StateFlow<GoalGaugeCapMarkerStyle> =
+        _goalGaugeCapMarkerStyle.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue = runBlocking { _goalGaugeCapMarkerStyle.first() },
         )
 
     fun setGoalDisplayMode(goalDisplayMode: SettingsGoalDisplayMode) {

@@ -24,6 +24,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_MARKER_GAP_DEG
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_STROKE_WIDTH_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
+import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
@@ -93,6 +94,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             pendingProductPhotoQuality = this.getPendingProductPhotoQuality(),
             foodEntryAmountPickerStyle = this.getFoodEntryAmountPickerStyle(),
             weeklyDetailsStyle = this.getWeeklyDetailsStyle(),
+            goalGaugeCapMarkerStyle = this.getGoalGaugeCapMarkerStyle(),
             weeklyChartEnabled = this[SettingsPreferencesKeys.weeklyChartEnabled] ?: true,
             goalGaugeSizePercent =
                 (this[SettingsPreferencesKeys.goalGaugeSizePercent] ?: DEFAULT_GOAL_GAUGE_SIZE_PERCENT)
@@ -190,6 +192,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setPendingProductPhotoQuality(updated.pendingProductPhotoQuality)
         setFoodEntryAmountPickerStyle(updated.foodEntryAmountPickerStyle)
         setWithNull(SettingsPreferencesKeys.weeklyDetailsStyle, updated.weeklyDetailsStyle.name)
+        this[SettingsPreferencesKeys.goalGaugeCapMarkerStyle] = updated.goalGaugeCapMarkerStyle.name
         this[SettingsPreferencesKeys.weeklyChartEnabled] = updated.weeklyChartEnabled
         this[SettingsPreferencesKeys.goalGaugeSizePercent] =
             updated.goalGaugeSizePercent.coerceIn(GOAL_GAUGE_SIZE_PERCENT_RANGE)
@@ -374,6 +377,14 @@ private fun Preferences.getFoodEntryAmountPickerStyle(): FoodEntryAmountPickerSt
         }
         .getOrElse { FoodEntryAmountPickerStyle.PortionList }
 
+private fun Preferences.getGoalGaugeCapMarkerStyle(): GoalGaugeCapMarkerStyle =
+    runCatching {
+            this[SettingsPreferencesKeys.goalGaugeCapMarkerStyle]
+                ?.let(GoalGaugeCapMarkerStyle::valueOf)
+                ?: GoalGaugeCapMarkerStyle.Teardrop
+        }
+        .getOrElse { GoalGaugeCapMarkerStyle.Teardrop }
+
 private fun Preferences.getWeeklyDetailsStyle(): WeeklyDetailsStyle =
     runCatching {
             this[SettingsPreferencesKeys.weeklyDetailsStyle]?.let(WeeklyDetailsStyle::valueOf)
@@ -501,6 +512,7 @@ private object SettingsPreferencesKeys {
     val pendingProductPhotoQuality = stringPreferencesKey("settings:pendingProductPhotoQuality")
     val foodEntryAmountPickerStyle = stringPreferencesKey("settings:foodEntryAmountPickerStyle")
     val weeklyDetailsStyle = stringPreferencesKey("settings:weeklyDetailsStyle")
+    val goalGaugeCapMarkerStyle = stringPreferencesKey("settings:goalGaugeCapMarkerStyle")
     val weeklyChartEnabled = booleanPreferencesKey("settings:weeklyChartEnabled")
     val goalGaugeSizePercent = intPreferencesKey("settings:goalGaugeSizePercent")
     val goalGaugeStrokeWidthPercent = intPreferencesKey("settings:goalGaugeStrokeWidthPercent")
