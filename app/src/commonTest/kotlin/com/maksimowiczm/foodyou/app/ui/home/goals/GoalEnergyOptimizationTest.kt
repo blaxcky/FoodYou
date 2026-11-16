@@ -880,4 +880,47 @@ class GoalEnergyOptimizationTest {
 
         assertEquals(1350.0, goal)
     }
+
+    @Test
+    fun dietWithoutWeeklyBalancingIgnoresMissedDeficit() {
+        val goal =
+            adjustedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
+                baseEnergyGoalKcal = 2000.0,
+                dailyEnergyDeficitKcal = 550.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 3500.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+                weeklyBalancingEnabled = false,
+            )
+
+        assertEquals(1450.0, goal)
+    }
+
+    @Test
+    fun optimizedWithoutWeeklyBalancingUsesBaseGoal() {
+        val goal =
+            optimizedEnergyGoalKcal(
+                selectedDate = LocalDate(2026, 5, 19),
+                calculationDate = LocalDate(2026, 5, 19),
+                baseEnergyGoalKcal = 2000.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            consumedEnergyKcal = 3500.0,
+                            baseEnergyGoalKcal = 2000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+                weeklyBalancingEnabled = false,
+            )
+
+        assertEquals(2000.0, goal)
+    }
 }

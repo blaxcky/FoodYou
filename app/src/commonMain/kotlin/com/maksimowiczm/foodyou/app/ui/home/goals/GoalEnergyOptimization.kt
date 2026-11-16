@@ -21,6 +21,7 @@ internal fun optimizedEnergyGoalKcal(
     baseEnergyGoalKcal: Double,
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
+    weeklyBalancingEnabled: Boolean = true,
 ): Double =
     adjustedEnergyGoalKcal(
         selectedDate = selectedDate,
@@ -30,6 +31,7 @@ internal fun optimizedEnergyGoalKcal(
         previousDays = previousDays,
         plannedFutureDays = plannedFutureDays,
         includeExtraSavings = false,
+        weeklyBalancingEnabled = weeklyBalancingEnabled,
     )
 
 internal fun adjustedEnergyGoalKcal(
@@ -39,6 +41,7 @@ internal fun adjustedEnergyGoalKcal(
     dailyEnergyDeficitKcal: Double,
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
+    weeklyBalancingEnabled: Boolean = true,
 ): Double =
     adjustedEnergyGoalKcal(
         selectedDate = selectedDate,
@@ -48,6 +51,7 @@ internal fun adjustedEnergyGoalKcal(
         previousDays = previousDays,
         plannedFutureDays = plannedFutureDays,
         includeExtraSavings = true,
+        weeklyBalancingEnabled = weeklyBalancingEnabled,
     )
 
 internal fun energyGoalDiffersFromBase(
@@ -72,8 +76,10 @@ private fun adjustedEnergyGoalKcal(
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay>,
     includeExtraSavings: Boolean,
+    weeklyBalancingEnabled: Boolean,
 ): Double {
     val dailyTarget = baseEnergyGoalKcal - dailyEnergyDeficitKcal
+    if (!weeklyBalancingEnabled) return dailyTarget
     if (selectedDate.startOfWeek() != calculationDate.startOfWeek()) return dailyTarget
 
     val dietMode = dailyEnergyDeficitKcal > 0.0

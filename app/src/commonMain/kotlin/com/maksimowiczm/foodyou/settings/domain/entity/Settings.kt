@@ -1,7 +1,10 @@
 package com.maksimowiczm.foodyou.settings.domain.entity
 
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferences
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
 
 data class Settings(
     val lastRememberedVersion: String?,
@@ -63,7 +66,42 @@ data class Settings(
     val widgetGaugeMarkerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     /** How a goal off the calorie ring is marked on the ring's end cap, on the card and widget. */
     val goalGaugeCapMarkerStyle: GoalGaugeCapMarkerStyle = GoalGaugeCapMarkerStyle.Teardrop,
+    /** Whether a day's calorie goal is adjusted so the week's goal can still be met. */
+    val weeklyGoalBalancing: WeeklyGoalBalancing = WeeklyGoalBalancing.Enabled,
 ) : UserPreferences
+
+/**
+ * Whether the diet and optimized calorie goals balance the week: a day over its goal lowers the
+ * goals of the week's remaining days, a day under it raises them.
+ */
+sealed interface WeeklyGoalBalancing {
+    data object Enabled : WeeklyGoalBalancing
+
+    /** Off for the week starting on [weekStart], a Monday; on again from the next week. */
+    data class PausedForWeek(val weekStart: LocalDate) : WeeklyGoalBalancing
+
+    data object Disabled : WeeklyGoalBalancing
+
+    companion object {
+        /** Pauses the balancing for [date]'s week. */
+        fun pausedForWeekOf(date: LocalDate): WeeklyGoalBalancing =
+            PausedForWeek(date.mondayOfWeek())
+    }
+}
+
+/** Whether the goals of [date]'s week are balanced over the week. */
+fun Settings.weeklyGoalBalancingEnabled(date: LocalDate): Boolean =
+    when (val balancing = weeklyGoalBalancing) {
+        WeeklyGoalBalancing.Enabled -> true
+        WeeklyGoalBalancing.Disabled -> false
+        is WeeklyGoalBalancing.PausedForWeek -> balancing.weekStart != date.mondayOfWeek()
+    }
+
+/** Whether [weeklyGoalBalancing] is paused for [date]'s week alone. */
+fun Settings.weeklyGoalBalancingPausedForWeekOf(date: LocalDate): Boolean =
+    (weeklyGoalBalancing as? WeeklyGoalBalancing.PausedForWeek)?.weekStart == date.mondayOfWeek()
+
+private fun LocalDate.mondayOfWeek(): LocalDate = minus(dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY)
 
 /**
  * The marker on the calorie ring's end cap for a goal off the ring: at or below zero on the start

@@ -319,6 +319,14 @@
     <string name="locked_day_unlock">Entsperren</string>
     <string name="locked_day_status">Gesperrter Tag</string>
     <string name="locked_day_long_click_description">Tag sperren oder bearbeiten</string>
+    <string name="weekly_goal_balancing_title">Wochenausgleich</string>
+    <string name="weekly_goal_balancing_description">Liegst du an einem Tag über dem Ziel, sinken Diät- und Optimiert-Ziel der restlichen Wochentage, damit die Woche noch aufgeht.</string>
+    <string name="weekly_goal_balancing_enabled">An</string>
+    <string name="weekly_goal_balancing_enabled_description">Das Tagesziel gleicht die Woche aus.</string>
+    <string name="weekly_goal_balancing_paused_week">Für diese Woche aus</string>
+    <string name="weekly_goal_balancing_paused_week_description">Jeder Tag zeigt dein eingestelltes Ziel. Ab Montag wieder an.</string>
+    <string name="weekly_goal_balancing_disabled">Aus</string>
+    <string name="weekly_goal_balancing_disabled_description">Jeder Tag zeigt dein eingestelltes Ziel, bis du den Ausgleich wieder einschaltest.</string>
     <string name="label_temporary_diet_deficit">Temporäres Defizit</string>
     <string name="label_temporary_calorie_deficit">Temporäres Kaloriendefizit</string>
     <string name="neutral_temporary_daily_calorie_deficit">Ersetzt das tägliche Kaloriendefizit für die ausgewählten Daten.</string>

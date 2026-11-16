@@ -36,6 +36,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyGoalBalancing
 import com.maksimowiczm.foodyou.weight.domain.entity.DailyWeightEntry
 import com.maksimowiczm.foodyou.weight.domain.entity.WeightGoal
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
@@ -205,6 +206,35 @@ class GoalsViewModelTest {
         viewModel.unlockDay(date)
         advanceUntilIdle()
         assertEquals(emptyList(), repository.observe().first().lockedDaySurpluses)
+    }
+
+    @Test
+    fun pausingWeeklyGoalBalancingForThisWeekKeepsDietGoalFixedAndHidesOptimized() = runViewModelTest {
+        val repository =
+            InMemoryPreferencesRepository(defaultSettings().copy(dietEnergyDeficitKcal = 550.0))
+        val viewModel = createViewModel(settingsRepository = repository)
+        viewModel.setDate(Today)
+        assertEquals(WeeklyGoalBalancingChoice.Enabled, viewModel.weeklyGoalBalancing.value)
+
+        viewModel.setWeeklyGoalBalancing(WeeklyGoalBalancingChoice.PausedThisWeek)
+        advanceUntilIdle()
+
+        assertEquals(
+            WeeklyGoalBalancing.PausedForWeek(LocalDate(2026, 7, 13)),
+            repository.observe().first().weeklyGoalBalancing,
+        )
+        assertEquals(
+            WeeklyGoalBalancingChoice.PausedThisWeek,
+            viewModel.weeklyGoalBalancing.first { it == WeeklyGoalBalancingChoice.PausedThisWeek },
+        )
+        val model = viewModel.model.first { it != null }!!
+        val normal = model.goalDisplaySummaries.first { it.mode == CardGoalDisplayMode.Normal }
+        val diet = model.goalDisplaySummaries.first { it.mode == CardGoalDisplayMode.Diet }
+        assertEquals(
+            listOf(CardGoalDisplayMode.Normal, CardGoalDisplayMode.Diet),
+            model.goalDisplaySummaries.map { it.mode },
+        )
+        assertEquals(normal.energyGoal - 550, diet.energyGoal)
     }
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {

@@ -25,6 +25,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_SIZE_PERCENT_R
 import com.maksimowiczm.foodyou.settings.domain.entity.GOAL_GAUGE_STROKE_WIDTH_PERCENT_RANGE
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalDisplayMode
 import com.maksimowiczm.foodyou.settings.domain.entity.GoalGaugeCapMarkerStyle
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyGoalBalancing
 import com.maksimowiczm.foodyou.settings.domain.entity.HomeCard
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
@@ -95,6 +96,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             foodEntryAmountPickerStyle = this.getFoodEntryAmountPickerStyle(),
             weeklyDetailsStyle = this.getWeeklyDetailsStyle(),
             goalGaugeCapMarkerStyle = this.getGoalGaugeCapMarkerStyle(),
+            weeklyGoalBalancing = this.getWeeklyGoalBalancing(),
             weeklyChartEnabled = this[SettingsPreferencesKeys.weeklyChartEnabled] ?: true,
             goalGaugeSizePercent =
                 (this[SettingsPreferencesKeys.goalGaugeSizePercent] ?: DEFAULT_GOAL_GAUGE_SIZE_PERCENT)
@@ -193,6 +195,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         setFoodEntryAmountPickerStyle(updated.foodEntryAmountPickerStyle)
         setWithNull(SettingsPreferencesKeys.weeklyDetailsStyle, updated.weeklyDetailsStyle.name)
         this[SettingsPreferencesKeys.goalGaugeCapMarkerStyle] = updated.goalGaugeCapMarkerStyle.name
+        setWeeklyGoalBalancing(updated.weeklyGoalBalancing)
         this[SettingsPreferencesKeys.weeklyChartEnabled] = updated.weeklyChartEnabled
         this[SettingsPreferencesKeys.goalGaugeSizePercent] =
             updated.goalGaugeSizePercent.coerceIn(GOAL_GAUGE_SIZE_PERCENT_RANGE)
@@ -385,6 +388,38 @@ private fun Preferences.getGoalGaugeCapMarkerStyle(): GoalGaugeCapMarkerStyle =
         }
         .getOrElse { GoalGaugeCapMarkerStyle.Teardrop }
 
+private fun MutablePreferences.setWeeklyGoalBalancing(value: WeeklyGoalBalancing) {
+    when (value) {
+        WeeklyGoalBalancing.Enabled -> {
+            this[SettingsPreferencesKeys.weeklyGoalBalancing] = WEEKLY_GOAL_BALANCING_ENABLED
+            remove(SettingsPreferencesKeys.weeklyGoalBalancingPausedWeekStartEpochDay)
+        }
+        WeeklyGoalBalancing.Disabled -> {
+            this[SettingsPreferencesKeys.weeklyGoalBalancing] = WEEKLY_GOAL_BALANCING_DISABLED
+            remove(SettingsPreferencesKeys.weeklyGoalBalancingPausedWeekStartEpochDay)
+        }
+        is WeeklyGoalBalancing.PausedForWeek -> {
+            this[SettingsPreferencesKeys.weeklyGoalBalancing] = WEEKLY_GOAL_BALANCING_PAUSED_FOR_WEEK
+            this[SettingsPreferencesKeys.weeklyGoalBalancingPausedWeekStartEpochDay] =
+                value.weekStart.toEpochDays()
+        }
+    }
+}
+
+private fun Preferences.getWeeklyGoalBalancing(): WeeklyGoalBalancing =
+    when (this[SettingsPreferencesKeys.weeklyGoalBalancing]) {
+        WEEKLY_GOAL_BALANCING_DISABLED -> WeeklyGoalBalancing.Disabled
+        WEEKLY_GOAL_BALANCING_PAUSED_FOR_WEEK ->
+            this[SettingsPreferencesKeys.weeklyGoalBalancingPausedWeekStartEpochDay]
+                ?.let { WeeklyGoalBalancing.PausedForWeek(LocalDate.fromEpochDays(it.toInt())) }
+                ?: WeeklyGoalBalancing.Enabled
+        else -> WeeklyGoalBalancing.Enabled
+    }
+
+private const val WEEKLY_GOAL_BALANCING_ENABLED = "Enabled"
+private const val WEEKLY_GOAL_BALANCING_PAUSED_FOR_WEEK = "PausedForWeek"
+private const val WEEKLY_GOAL_BALANCING_DISABLED = "Disabled"
+
 private fun Preferences.getWeeklyDetailsStyle(): WeeklyDetailsStyle =
     runCatching {
             this[SettingsPreferencesKeys.weeklyDetailsStyle]?.let(WeeklyDetailsStyle::valueOf)
@@ -514,6 +549,9 @@ private object SettingsPreferencesKeys {
     val weeklyDetailsStyle = stringPreferencesKey("settings:weeklyDetailsStyle")
     val goalGaugeCapMarkerStyle = stringPreferencesKey("settings:goalGaugeCapMarkerStyle")
     val weeklyChartEnabled = booleanPreferencesKey("settings:weeklyChartEnabled")
+    val weeklyGoalBalancing = stringPreferencesKey("settings:weeklyGoalBalancing")
+    val weeklyGoalBalancingPausedWeekStartEpochDay =
+        longPreferencesKey("settings:weeklyGoalBalancingPausedWeekStartEpochDay")
     val goalGaugeSizePercent = intPreferencesKey("settings:goalGaugeSizePercent")
     val goalGaugeStrokeWidthPercent = intPreferencesKey("settings:goalGaugeStrokeWidthPercent")
     val goalGaugeMarkerGapDegrees = intPreferencesKey("settings:goalGaugeMarkerGapDegrees")

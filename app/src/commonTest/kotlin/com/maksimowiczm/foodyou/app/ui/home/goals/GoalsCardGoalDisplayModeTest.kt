@@ -396,4 +396,28 @@ class GoalsCardGoalDisplayModeTest {
 
     private fun offRingZone(mode: GoalDisplayMode, fraction: Float, remaining: Int) =
         GaugeGoalZone(mode = mode, goalFraction = fraction, fraction = fraction, remaining = remaining)
+
+    @Test
+    fun currentWeekWithoutWeeklyBalancingOffersNoOptimizedMode() {
+        assertEquals(
+            listOf(GoalDisplayMode.Normal, GoalDisplayMode.Diet),
+            availableGoalDisplayModes(
+                currentWeek = true,
+                dietEnergyDeficitKcal = 550.0,
+                weeklyBalancingEnabled = false,
+            ),
+        )
+    }
+
+    @Test
+    fun storedOptimizedModeFallsBackToNormalWithoutWeeklyBalancing() {
+        assertEquals(
+            GoalDisplayMode.Normal,
+            SettingsGoalDisplayMode.Optimized.selectedGoalDisplayMode(
+                currentWeek = true,
+                dietEnergyDeficitKcal = 550.0,
+                weeklyBalancingEnabled = false,
+            ),
+        )
+    }
 }

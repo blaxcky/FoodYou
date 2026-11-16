@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -28,16 +31,12 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -48,6 +47,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -60,6 +60,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.validatedNonNegativeEnergyKcal
 import com.maksimowiczm.foodyou.app.ui.home.goals.GoalsViewModel
+import com.maksimowiczm.foodyou.app.ui.home.goals.WeeklyGoalBalancingChoice
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
@@ -75,6 +76,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -105,12 +107,15 @@ internal fun CalendarCard(
     }
 
     val lockedDaySettings by viewModel.lockedDaySettings.collectAsStateWithLifecycle()
+    val weeklyGoalBalancing by viewModel.weeklyGoalBalancing.collectAsStateWithLifecycle()
     CalendarCard(
         calendarState = calendarState,
         lockedDays = lockedDaySettings.lockedDays,
         defaultLockedDaySurplusKcal = lockedDaySettings.defaultSurplusKcal,
         onLockDay = viewModel::lockDay,
         onUnlockDay = viewModel::unlockDay,
+        weeklyGoalBalancing = weeklyGoalBalancing,
+        onWeeklyGoalBalancingChange = viewModel::setWeeklyGoalBalancing,
         modifier = modifier,
     )
 }
@@ -123,11 +128,26 @@ internal fun CalendarCard(
     onLockDay: (LocalDate, Double) -> Unit,
     onUnlockDay: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    weeklyGoalBalancing: WeeklyGoalBalancingChoice = WeeklyGoalBalancingChoice.Enabled,
+    onWeeklyGoalBalancingChange: (WeeklyGoalBalancingChoice) -> Unit = {},
 ) {
     val colors = CalendarCardDefaults.colors()
     val dateFormatter = LocalDateFormatter.current
+    val hapticFeedback = LocalHapticFeedback.current
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showWeeklyGoalBalancingDialog by rememberSaveable { mutableStateOf(false) }
     var lockDialogDate by remember { mutableStateOf<LocalDate?>(null) }
+
+    if (showWeeklyGoalBalancingDialog) {
+        WeeklyGoalBalancingDialog(
+            selected = weeklyGoalBalancing,
+            onSelect = {
+                onWeeklyGoalBalancingChange(it)
+                showWeeklyGoalBalancingDialog = false
+            },
+            onDismiss = { showWeeklyGoalBalancingDialog = false },
+        )
+    }
 
     if (showDatePicker) {
         CalendarCardDatePickerDialog(
@@ -170,29 +190,37 @@ internal fun CalendarCard(
                             .padding(vertical = 12.dp),
                 )
 
-                TooltipBox(
-                    positionProvider =
-                        TooltipDefaults.rememberTooltipPositionProvider(
-                            TooltipAnchorPosition.Above
-                        ),
-                    tooltip = {
-                        PlainTooltip { Text(stringResource(Res.string.action_go_to_today)) }
-                    },
-                    state = rememberTooltipState(),
+                // A long press opens the weekly goal balancing choice, so this replaces an
+                // IconButton, which offers no long press, and its long-press tooltip.
+                Box(
+                    modifier =
+                        Modifier.minimumInteractiveComponentSize()
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                role = Role.Button,
+                                onClickLabel = stringResource(Res.string.action_go_to_today),
+                                onLongClickLabel =
+                                    stringResource(Res.string.weekly_goal_balancing_title),
+                                onClick = {
+                                    calendarState.onDateSelect(
+                                        date = calendarState.referenceDate,
+                                        scroll = true,
+                                    )
+                                },
+                                onLongClick = {
+                                    hapticFeedback.performHapticFeedback(
+                                        HapticFeedbackType.LongPress
+                                    )
+                                    showWeeklyGoalBalancingDialog = true
+                                },
+                            ),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    IconButton(
-                        onClick = {
-                            calendarState.onDateSelect(
-                                date = calendarState.referenceDate,
-                                scroll = true,
-                            )
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Today,
-                            contentDescription = stringResource(Res.string.action_go_to_today),
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Today,
+                        contentDescription = stringResource(Res.string.action_go_to_today),
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -538,6 +566,71 @@ internal fun LockedDayDialog(
         },
     )
 }
+
+@Composable
+private fun WeeklyGoalBalancingDialog(
+    selected: WeeklyGoalBalancingChoice,
+    onSelect: (WeeklyGoalBalancingChoice) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.weekly_goal_balancing_title)) },
+        text = {
+            Column(modifier = Modifier.selectableGroup()) {
+                Text(
+                    text = stringResource(Res.string.weekly_goal_balancing_description),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                WeeklyGoalBalancingChoice.entries.forEach { choice ->
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .clip(MaterialTheme.shapes.small)
+                                .selectable(
+                                    selected = choice == selected,
+                                    role = Role.RadioButton,
+                                    onClick = { onSelect(choice) },
+                                )
+                                .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = choice == selected, onClick = null)
+                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                            Text(
+                                text = stringResource(choice.label()),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                text = stringResource(choice.supportingText()),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+        },
+    )
+}
+
+private fun WeeklyGoalBalancingChoice.label(): StringResource =
+    when (this) {
+        WeeklyGoalBalancingChoice.Enabled -> Res.string.weekly_goal_balancing_enabled
+        WeeklyGoalBalancingChoice.PausedThisWeek -> Res.string.weekly_goal_balancing_paused_week
+        WeeklyGoalBalancingChoice.Disabled -> Res.string.weekly_goal_balancing_disabled
+    }
+
+private fun WeeklyGoalBalancingChoice.supportingText(): StringResource =
+    when (this) {
+        WeeklyGoalBalancingChoice.Enabled -> Res.string.weekly_goal_balancing_enabled_description
+        WeeklyGoalBalancingChoice.PausedThisWeek ->
+            Res.string.weekly_goal_balancing_paused_week_description
+        WeeklyGoalBalancingChoice.Disabled -> Res.string.weekly_goal_balancing_disabled_description
+    }
 
 @Immutable
 private data class CalendarCardColors(

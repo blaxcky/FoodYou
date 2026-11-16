@@ -16,8 +16,10 @@ import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
 import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.PendingProductPhotoQuality
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyGoalBalancing
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
+import com.maksimowiczm.foodyou.settings.domain.entity.weeklyGoalBalancingEnabled
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -443,6 +445,42 @@ class DataStoreSettingsRepositoryTest {
 
         repository.update { copy(weeklyChartEnabled = true) }
         assertTrue(repository.observe().first().weeklyChartEnabled)
+    }
+
+    @Test
+    fun weeklyGoalBalancingDefaultsToEnabledAndRoundTripsThroughDataStore() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        assertEquals(WeeklyGoalBalancing.Enabled, repository.observe().first().weeklyGoalBalancing)
+
+        listOf(
+                WeeklyGoalBalancing.Disabled,
+                WeeklyGoalBalancing.PausedForWeek(LocalDate(2026, 11, 16)),
+                WeeklyGoalBalancing.Enabled,
+            )
+            .forEach { balancing ->
+                repository.update { copy(weeklyGoalBalancing = balancing) }
+
+                assertEquals(balancing, repository.observe().first().weeklyGoalBalancing)
+            }
+    }
+
+    @Test
+    fun weeklyGoalBalancingPauseAppliesOnlyToItsWeek() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+        repository.update {
+            copy(weeklyGoalBalancing = WeeklyGoalBalancing.pausedForWeekOf(LocalDate(2026, 11, 18)))
+        }
+        val settings = repository.observe().first()
+
+        assertEquals(
+            WeeklyGoalBalancing.PausedForWeek(LocalDate(2026, 11, 16)),
+            settings.weeklyGoalBalancing,
+        )
+        assertTrue(settings.weeklyGoalBalancingEnabled(LocalDate(2026, 11, 15)))
+        assertFalse(settings.weeklyGoalBalancingEnabled(LocalDate(2026, 11, 16)))
+        assertFalse(settings.weeklyGoalBalancingEnabled(LocalDate(2026, 11, 22)))
+        assertTrue(settings.weeklyGoalBalancingEnabled(LocalDate(2026, 11, 23)))
     }
 
     @Test

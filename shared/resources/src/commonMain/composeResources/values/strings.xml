@@ -146,6 +146,14 @@
     <string name="locked_day_unlock">Unlock</string>
     <string name="locked_day_status">Locked day</string>
     <string name="locked_day_long_click_description">Lock or edit day</string>
+    <string name="weekly_goal_balancing_title">Weekly goal balancing</string>
+    <string name="weekly_goal_balancing_description">When you go over your goal on a day, the diet and optimized goals of the week's remaining days drop so the week still adds up.</string>
+    <string name="weekly_goal_balancing_enabled">On</string>
+    <string name="weekly_goal_balancing_enabled_description">Each day's goal balances the week.</string>
+    <string name="weekly_goal_balancing_paused_week">Off this week</string>
+    <string name="weekly_goal_balancing_paused_week_description">Each day shows your set goal. On again from Monday.</string>
+    <string name="weekly_goal_balancing_disabled">Off</string>
+    <string name="weekly_goal_balancing_disabled_description">Each day shows your set goal until you turn balancing back on.</string>
     <string name="label_temporary_diet_deficit">Temporary deficit</string>
     <string name="label_temporary_calorie_deficit">Temporary calorie deficit</string>
     <string name="neutral_temporary_daily_calorie_deficit">Overrides the daily calorie deficit for the selected dates.</string>

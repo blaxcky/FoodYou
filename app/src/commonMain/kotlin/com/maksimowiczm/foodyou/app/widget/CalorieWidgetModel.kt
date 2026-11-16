@@ -40,6 +40,7 @@ internal fun calorieWidgetModel(
     todayEnergyGoalReductionKcal: Double? = null,
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
+    weeklyBalancingEnabled: Boolean = true,
     markerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     capMarkerStyle: GoalGaugeCapMarkerStyle = GoalGaugeCapMarkerStyle.Teardrop,
 ): CalorieWidgetModel {
@@ -51,6 +52,7 @@ internal fun calorieWidgetModel(
             baseEnergyGoalKcal = baseGoalKcal,
             previousDays = previousDays,
             plannedFutureDays = plannedFutureDays,
+            weeklyBalancingEnabled = weeklyBalancingEnabled,
         )
     val dietDeficit = dietEnergyDeficitKcal?.takeIf { it > 0.0 }
     val dietGoal =
@@ -62,6 +64,7 @@ internal fun calorieWidgetModel(
                 dailyEnergyDeficitKcal = it,
                 previousDays = previousDays,
                 plannedFutureDays = plannedFutureDays,
+                weeklyBalancingEnabled = weeklyBalancingEnabled,
             )
         }
 

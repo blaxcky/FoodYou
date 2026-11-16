@@ -15,7 +15,10 @@ import com.maksimowiczm.foodyou.settings.domain.entity.LockedDaySurplus
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.TodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyDetailsStyle
+import com.maksimowiczm.foodyou.settings.domain.entity.WeeklyGoalBalancing
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
+import com.maksimowiczm.foodyou.settings.domain.entity.weeklyGoalBalancingEnabled
+import com.maksimowiczm.foodyou.settings.domain.entity.weeklyGoalBalancingPausedForWeekOf
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.lockedDaySurplus
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
@@ -124,6 +127,38 @@ internal class GoalsViewModel(
         }
     }
 
+    private val _weeklyGoalBalancing =
+        combine(settingsRepository.observe(), dateProvider.observeDate()) { settings, today ->
+                settings.weeklyGoalBalancingChoice(today)
+            }
+            .distinctUntilChanged()
+    val weeklyGoalBalancing: StateFlow<WeeklyGoalBalancingChoice> =
+        _weeklyGoalBalancing.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(2_000),
+            initialValue =
+                runBlocking { settingsRepository.observe().first() }
+                    .weeklyGoalBalancingChoice(dateProvider.now().date),
+        )
+
+    fun setWeeklyGoalBalancing(choice: WeeklyGoalBalancingChoice) {
+        viewModelScope.launch {
+            val today = dateProvider.now().date
+            settingsRepository.update {
+                copy(
+                    weeklyGoalBalancing =
+                        when (choice) {
+                            WeeklyGoalBalancingChoice.Enabled -> WeeklyGoalBalancing.Enabled
+                            WeeklyGoalBalancingChoice.PausedThisWeek ->
+                                WeeklyGoalBalancing.pausedForWeekOf(today)
+                            WeeklyGoalBalancingChoice.Disabled -> WeeklyGoalBalancing.Disabled
+                        }
+                )
+            }
+            updateCalorieWidgetValues()
+        }
+    }
+
     fun resetTodayEnergyGoalReduction() {
         viewModelScope.launch {
             settingsRepository.update { copy(todayEnergyGoalAdjustment = null) }
@@ -180,10 +215,12 @@ internal class GoalsViewModel(
             .flatMapLatest { (date, today, settings) ->
                 val currentWeek = date.startOfWeek() == today.startOfWeek()
                 val dietEnergyDeficitKcal = settings.effectiveDietEnergyDeficitKcal(date)
+                val weeklyBalancingEnabled = settings.weeklyGoalBalancingEnabled(date)
                 val availableGoalDisplayModes =
                     availableGoalDisplayModes(
                         currentWeek = currentWeek,
                         dietEnergyDeficitKcal = dietEnergyDeficitKcal,
+                        weeklyBalancingEnabled = weeklyBalancingEnabled,
                     )
                 val requestedGoalDisplayMode =
                     if (settings.goalCardModeSwitchingEnabled) settings.goalDisplayMode
@@ -192,6 +229,7 @@ internal class GoalsViewModel(
                     requestedGoalDisplayMode.selectedGoalDisplayMode(
                         currentWeek = currentWeek,
                         dietEnergyDeficitKcal = dietEnergyDeficitKcal,
+                        weeklyBalancingEnabled = weeklyBalancingEnabled,
                     )
                 val selectedDay =
                     combine(
@@ -221,7 +259,8 @@ internal class GoalsViewModel(
                     }
                 val calculationDates =
                     goalCalculationDates(selectedDate = date, today = today).takeIf {
-                        availableGoalDisplayModes.any { mode -> mode != GoalDisplayMode.Normal }
+                        weeklyBalancingEnabled &&
+                            availableGoalDisplayModes.any { mode -> mode != GoalDisplayMode.Normal }
                     }
                 val previousDays = calculationDates?.previousDays.orEmpty()
                 val plannedFutureDays = calculationDates?.plannedFutureDays.orEmpty()
@@ -300,6 +339,7 @@ internal class GoalsViewModel(
                                 dietEnergyDeficitKcal = dietEnergyDeficitKcal,
                                 previousDays = previous,
                                 plannedFutureDays = plannedFuture,
+                                weeklyBalancingEnabled = weeklyBalancingEnabled,
                             )
                         }
                     val selectedGoalDisplaySummary =
@@ -523,22 +563,40 @@ private data class SelectedGoalDay(
     val fatsGoal: Int,
 )
 
+/** The weekly goal balancing as offered to the user for the current week. */
+internal enum class WeeklyGoalBalancingChoice {
+    Enabled,
+    PausedThisWeek,
+    Disabled,
+}
+
+internal fun Settings.weeklyGoalBalancingChoice(today: LocalDate): WeeklyGoalBalancingChoice =
+    when {
+        weeklyGoalBalancing == WeeklyGoalBalancing.Disabled -> WeeklyGoalBalancingChoice.Disabled
+        weeklyGoalBalancingPausedForWeekOf(today) -> WeeklyGoalBalancingChoice.PausedThisWeek
+        else -> WeeklyGoalBalancingChoice.Enabled
+    }
+
 internal fun availableGoalDisplayModes(
     currentWeek: Boolean,
     dietEnergyDeficitKcal: Double?,
+    weeklyBalancingEnabled: Boolean = true,
 ): List<GoalDisplayMode> =
     buildList {
         add(GoalDisplayMode.Normal)
-        if (currentWeek) add(GoalDisplayMode.Optimized)
+        // The optimized goal only balances the week, so without balancing it is the normal goal.
+        if (currentWeek && weeklyBalancingEnabled) add(GoalDisplayMode.Optimized)
         if (dietEnergyDeficitKcal != null) add(GoalDisplayMode.Diet)
     }
 
 internal fun SettingsGoalDisplayMode.selectedGoalDisplayMode(
     currentWeek: Boolean,
     dietEnergyDeficitKcal: Double?,
+    weeklyBalancingEnabled: Boolean = true,
 ): GoalDisplayMode =
     when {
-        this == SettingsGoalDisplayMode.Optimized && currentWeek -> GoalDisplayMode.Optimized
+        this == SettingsGoalDisplayMode.Optimized && currentWeek && weeklyBalancingEnabled ->
+            GoalDisplayMode.Optimized
         this == SettingsGoalDisplayMode.Diet && dietEnergyDeficitKcal != null ->
             GoalDisplayMode.Diet
         else -> GoalDisplayMode.Normal
@@ -558,6 +616,7 @@ private fun GoalDisplayMode.summary(
     dietEnergyDeficitKcal: Double?,
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay>,
+    weeklyBalancingEnabled: Boolean,
 ): GoalDisplaySummaryModel {
     val energyGoal =
         if (this != GoalDisplayMode.Normal) {
@@ -573,6 +632,7 @@ private fun GoalDisplayMode.summary(
                     },
                 previousDays = previousDays,
                 plannedFutureDays = plannedFutureDays,
+                weeklyBalancingEnabled = weeklyBalancingEnabled,
             )
         } else {
             baseEnergyGoalKcal

@@ -24,6 +24,7 @@ import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveDietEnergyDeficitKcal
 import com.maksimowiczm.foodyou.settings.domain.entity.effectiveTodayEnergyGoalAdjustment
 import com.maksimowiczm.foodyou.settings.domain.entity.lockedDaySurplus
+import com.maksimowiczm.foodyou.settings.domain.entity.weeklyGoalBalancingEnabled
 import java.time.format.DateTimeFormatter
 import java.text.NumberFormat
 import java.util.Locale
@@ -63,8 +64,10 @@ internal class CalorieWidgetUpdater(
             activityRepository
                 .observeDailySummary(today, settings.stepsCaloriesPerStepKcal)
                 .first()
+        // Without weekly balancing the goals ignore the week's other days, so skip loading them.
+        val weeklyBalancingEnabled = settings.weeklyGoalBalancingEnabled(today)
         val previousDays =
-            previousWeekDates(today).map { date ->
+            previousWeekDates(today).filter { weeklyBalancingEnabled }.map { date ->
                 val previousFacts = observeDiaryMealsUseCase.observeNutritionFacts(date).first()
                 val previousGoal = goalsRepository.observeDailyGoals(date).first()
                 val previousActivity =
@@ -83,7 +86,7 @@ internal class CalorieWidgetUpdater(
                 )
             }
         val plannedFutureDays =
-            futureWeekDates(today).map { date ->
+            futureWeekDates(today).filter { weeklyBalancingEnabled }.map { date ->
                 val futureFacts = observeDiaryMealsUseCase.observeNutritionFacts(date).first()
                 val futureGoal = goalsRepository.observeDailyGoals(date).first()
                 val futureActivity =
@@ -113,6 +116,7 @@ internal class CalorieWidgetUpdater(
                 settings.effectiveTodayEnergyGoalAdjustment(today, today)?.reductionKcal,
             previousDays = previousDays,
             plannedFutureDays = plannedFutureDays,
+            weeklyBalancingEnabled = weeklyBalancingEnabled,
             markerGapDegrees = settings.widgetGaugeMarkerGapDegrees,
             capMarkerStyle = settings.goalGaugeCapMarkerStyle,
         )

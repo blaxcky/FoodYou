@@ -335,4 +335,31 @@ class CalorieWidgetModelTest {
         assertEquals(1600, model.normalGoalKcal)
         assertEquals(400, model.normalLeftKcal)
     }
+
+    @Test
+    fun withoutWeeklyBalancingDietGoalIsBaseMinusDeficitAndOptimizedIsHidden() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 7, 28),
+                eatenKcal = 1_000.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2_000.0,
+                dietEnergyDeficitKcal = 550.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = LocalDate(2026, 7, 27),
+                            consumedEnergyKcal = 4_000.0,
+                            baseEnergyGoalKcal = 2_000.0,
+                            burnedEnergyKcal = 0.0,
+                        )
+                    ),
+                weeklyBalancingEnabled = false,
+            )
+
+        assertEquals(1450, model.dietGoalKcal)
+        assertEquals(450, model.dietLeftKcal)
+        assertNull(model.optimizedGoalKcal)
+        assertNull(model.optimizedLeftKcal)
+    }
 }
