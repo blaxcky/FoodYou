@@ -416,6 +416,15 @@ private fun DailyGoalsOverview(
         OverviewRow(
             label = stringResource(Res.string.daily_goals_energy),
             value = "$energyKcal $kcal",
+            supporting =
+                if (bmrState.calculateEnergyGoal) {
+                    stringResource(
+                        Res.string.daily_goals_bmr_times_pal,
+                        bmrState.activityLevelPercent,
+                    )
+                } else {
+                    null
+                },
             isError = activeDays.any { it.energy.error != null },
             onClick = { onOpen(DailyGoalsPage.EnergyAndMacros) },
         )
@@ -516,6 +525,7 @@ private fun OverviewRow(
     value: String?,
     onClick: () -> Unit,
     isError: Boolean = false,
+    supporting: String? = null,
 ) {
     Row(
         modifier =
@@ -533,6 +543,12 @@ private fun OverviewRow(
                     text = stringResource(Res.string.daily_goals_check_input),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
+                )
+            } else if (supporting != null) {
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -604,7 +620,6 @@ private fun BasalMetabolicRatePage(state: BasalMetabolicRateProfileFormState) {
     val suggestion =
         calculateBasalMetabolicRateSuggestion(profile = state.intoProfile(), today = LocalDate.now())
     val kcal = stringResource(Res.string.unit_kcal)
-    val missingForCalculation = state.calculateEnergyGoal && state.basalMetabolicRate.value == null
 
     PageCard {
         OutlinedTextField(
@@ -612,14 +627,7 @@ private fun BasalMetabolicRatePage(state: BasalMetabolicRateProfileFormState) {
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(Res.string.daily_goals_your_bmr)) },
             suffix = { Text(kcal) },
-            supportingText = {
-                Text(
-                    stringResource(
-                        if (missingForCalculation) Res.string.daily_goals_set_bmr_first
-                        else Res.string.daily_goals_bmr_stays_fixed
-                    )
-                )
-            },
+            supportingText = { Text(stringResource(Res.string.daily_goals_bmr_stays_fixed)) },
             isError = !state.isBasalMetabolicRateValid,
             textStyle = MaterialTheme.typography.headlineSmall,
             lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.SingleLine,
@@ -856,8 +864,6 @@ private fun EnergyAndMacrosPage(
     val dayGoals = weeklyState.selectedDayGoals
     val bmrState = basalMetabolicRateProfileState
     val kcal = stringResource(Res.string.unit_kcal)
-    val canCalculate =
-        bmrState.basalMetabolicRate.value != null && bmrState.basalMetabolicRate.error == null
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionTitle(stringResource(Res.string.daily_goals_applies_to))
@@ -878,13 +884,7 @@ private fun EnergyAndMacrosPage(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionTitle(stringResource(Res.string.daily_goals_energy))
         PageCard {
-            TwoOptionToggle(
-                firstLabel = stringResource(Res.string.daily_goals_calculated),
-                secondLabel = stringResource(Res.string.daily_goals_custom_value),
-                secondSelected = !bmrState.calculateEnergyGoal,
-                onSecondSelectedChange = { custom -> bmrState.calculateEnergyGoal = !custom },
-                firstEnabled = canCalculate,
-            )
+            // With a basal metabolic rate the goal always follows it; it is typed in only without.
             val calculated = bmrState.calculatedEnergyGoalKcal?.roundToInt()
             if (bmrState.calculateEnergyGoal && calculated != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -900,6 +900,11 @@ private fun EnergyAndMacrosPage(
                     )
                     Text(text = "$calculated $kcal", style = MaterialTheme.typography.titleLarge)
                 }
+                Text(
+                    text = stringResource(Res.string.daily_goals_energy_follows),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             } else {
                 dayGoals.energy.TextField(
                     label = stringResource(Res.string.unit_energy),
@@ -907,13 +912,11 @@ private fun EnergyAndMacrosPage(
                     suffix = kcal,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (!canCalculate) {
-                    Text(
-                        text = stringResource(Res.string.daily_goals_set_bmr_first),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = stringResource(Res.string.daily_goals_set_bmr_first),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

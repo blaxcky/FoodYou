@@ -1034,10 +1034,8 @@
     <string name="daily_goals_not_set">Not set</string>
     <string name="daily_goals_check_input">Check input</string>
     <string name="daily_goals_energy_and_macros">Energy &amp; macros</string>
-    <string name="daily_goals_calculated">Calculated</string>
-    <string name="daily_goals_custom_value">Custom value</string>
     <string name="daily_goals_bmr_times_pal">Basal metabolic rate × %1$d %</string>
-    <string name="daily_goals_set_bmr_first">Set your basal metabolic rate first to calculate the energy goal.</string>
+    <string name="daily_goals_set_bmr_first">Enter a basal metabolic rate to calculate this goal automatically.</string>
     <string name="daily_goals_your_bmr">Your basal metabolic rate</string>
     <string name="daily_goals_bmr_stays_fixed">Stays fixed until you change it yourself.</string>
     <string name="daily_goals_estimate_from_body_data">Estimate from body data</string>
@@ -1065,4 +1063,5 @@
     <string name="daily_goals_macro_split_grams">%1$s / %2$s / %3$s g</string>
     <string name="daily_goals_goals_for_day">Goals for %1$s</string>
     <string name="daily_goals_pal_value">%1$d.%2$s</string>
+    <string name="daily_goals_energy_follows">Changes with your basal metabolic rate and activity level.</string>
 </resources>

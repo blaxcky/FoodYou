@@ -908,10 +908,8 @@
     <string name="daily_goals_not_set">Nicht festgelegt</string>
     <string name="daily_goals_check_input">Eingabe prüfen</string>
     <string name="daily_goals_energy_and_macros">Energie &amp; Makros</string>
-    <string name="daily_goals_calculated">Berechnet</string>
-    <string name="daily_goals_custom_value">Eigener Wert</string>
     <string name="daily_goals_bmr_times_pal">Grundumsatz × %1$d %</string>
-    <string name="daily_goals_set_bmr_first">Lege zuerst deinen Grundumsatz fest, um das Energieziel zu berechnen.</string>
+    <string name="daily_goals_set_bmr_first">Trägst du einen Grundumsatz ein, wird dieses Ziel automatisch berechnet.</string>
     <string name="daily_goals_your_bmr">Dein Grundumsatz</string>
     <string name="daily_goals_bmr_stays_fixed">Bleibt fest, bis du ihn selbst änderst.</string>
     <string name="daily_goals_estimate_from_body_data">Schätzung aus Körperdaten</string>
@@ -939,4 +937,5 @@
     <string name="daily_goals_macro_split_grams">%1$s / %2$s / %3$s g</string>
     <string name="daily_goals_goals_for_day">Ziele für %1$s</string>
     <string name="daily_goals_pal_value">%1$d,%2$s</string>
+    <string name="daily_goals_energy_follows">Ändert sich mit deinem Grundumsatz und Aktivitätslevel.</string>
 </resources>

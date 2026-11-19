@@ -20,18 +20,13 @@ internal class BasalMetabolicRateProfileFormState(
     val activityLevel: FormField<Double?, DailyGoalsFormError>,
     birthDateEpochDayState: MutableState<Long?>,
     sexState: MutableState<BiologicalSex?>,
-    calculateEnergyGoalState: MutableState<Boolean>,
     isModifiedState: State<Boolean>,
 ) {
     val isBodyDataValid: Boolean by derivedStateOf {
         weightKg.error == null && heightCm.error == null
     }
 
-    val isBasalMetabolicRateValid: Boolean by derivedStateOf {
-        basalMetabolicRate.error == null &&
-            // A calculated energy goal needs a basal metabolic rate to calculate from.
-            !(calculateEnergyGoal && basalMetabolicRate.value == null)
-    }
+    val isBasalMetabolicRateValid: Boolean by derivedStateOf { basalMetabolicRate.error == null }
 
     val isActivityLevelValid: Boolean by derivedStateOf { activityLevel.error == null }
 
@@ -51,7 +46,14 @@ internal class BasalMetabolicRateProfileFormState(
 
     var sex by sexState
 
-    var calculateEnergyGoal by calculateEnergyGoalState
+    /**
+     * Whether the energy goal is basal metabolic rate × activity level. It is whenever a basal
+     * metabolic rate is entered: changing it is how the user changes the goal. Without one, the
+     * energy goal is typed in.
+     */
+    val calculateEnergyGoal: Boolean by derivedStateOf {
+        basalMetabolicRate.error == null && basalMetabolicRate.value != null
+    }
 
     /** The activity level the user entered, or the default when the field is empty. */
     val activityLevelPercent: Int by derivedStateOf {
@@ -92,7 +94,7 @@ internal class BasalMetabolicRateProfileFormState(
             sex = sex,
             basalMetabolicRateKcal = basalMetabolicRate.value,
             physicalActivityLevelPercent = activityLevel.value?.roundToInt(),
-            calculateEnergyGoal = calculateEnergyGoal && basalMetabolicRate.value != null,
+            calculateEnergyGoal = basalMetabolicRate.value != null,
         )
 }
 
@@ -137,7 +139,6 @@ internal fun rememberBasalMetabolicRateProfileFormState(
         )
     val birthDateEpochDayState = rememberSaveableProfileState(profile.birthDate?.toEpochDays())
     val sexState = rememberSaveableProfileState(profile.sex)
-    val calculateEnergyGoalState = rememberSaveableProfileState(profile.calculateEnergyGoal)
 
     val isModifiedState = remember {
         derivedStateOf {
@@ -146,8 +147,7 @@ internal fun rememberBasalMetabolicRateProfileFormState(
                 basalMetabolicRate.value != profile.basalMetabolicRateKcal ||
                 activityLevel.value != initialActivityLevel ||
                 birthDateEpochDayState.value != profile.birthDate?.toEpochDays() ||
-                sexState.value != profile.sex ||
-                calculateEnergyGoalState.value != profile.calculateEnergyGoal
+                sexState.value != profile.sex
         }
     }
 
@@ -158,7 +158,6 @@ internal fun rememberBasalMetabolicRateProfileFormState(
         activityLevel,
         birthDateEpochDayState,
         sexState,
-        calculateEnergyGoalState,
         isModifiedState,
     ) {
         BasalMetabolicRateProfileFormState(
@@ -168,7 +167,6 @@ internal fun rememberBasalMetabolicRateProfileFormState(
             activityLevel = activityLevel,
             birthDateEpochDayState = birthDateEpochDayState,
             sexState = sexState,
-            calculateEnergyGoalState = calculateEnergyGoalState,
             isModifiedState = isModifiedState,
         )
     }
