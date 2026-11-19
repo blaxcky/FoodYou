@@ -97,6 +97,28 @@ class RoomWeightRepositoryTest {
     }
 
     @Test
+    fun weightMeasurementKeepsFixedBasalMetabolicRateAndActivityLevel() = runTest {
+        val dao = InMemoryDailyWeightEntryDao()
+        val bmrRepository = FakeBmrRepository()
+        bmrRepository.updateProfile(
+            BasalMetabolicRateProfile.Empty.copy(
+                basalMetabolicRateKcal = 1775.0,
+                physicalActivityLevelPercent = 105,
+                calculateEnergyGoal = true,
+            )
+        )
+        val repository = RoomWeightRepository(dao, InMemoryPreferencesDataStore(), bmrRepository)
+
+        repository.upsertToday(80.4)
+
+        val profile = bmrRepository.profile.value
+        assertEquals(80.4, profile.weightKg)
+        assertEquals(1775.0, profile.basalMetabolicRateKcal)
+        assertEquals(105, profile.physicalActivityLevelPercent)
+        assertTrue(profile.calculateEnergyGoal)
+    }
+
+    @Test
     fun foreignHealthConnectRecordIdIsNotPreservedWhenWritingToday() = runTest {
         val dao = InMemoryDailyWeightEntryDao()
         val repository =
