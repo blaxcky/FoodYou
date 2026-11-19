@@ -4,4 +4,5 @@ internal enum class DailyGoalsFormError {
     Required,
     NotANumber,
     Negative,
+    OutOfRange,
 }

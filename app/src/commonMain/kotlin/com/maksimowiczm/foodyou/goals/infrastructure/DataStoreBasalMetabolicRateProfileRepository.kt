@@ -36,12 +36,16 @@ private object BasalMetabolicRateProfileDataStoreKeys {
     val profile = stringPreferencesKey("goals:basal_metabolic_rate_profile")
 }
 
+/** Every field added after the first release needs a default so older stored JSON still decodes. */
 @Serializable
-private data class DataStoreBasalMetabolicRateProfile(
+internal data class DataStoreBasalMetabolicRateProfile(
     val weightKg: Double?,
     val heightCm: Double?,
     val birthDateEpochDay: Long?,
     val sex: BiologicalSex?,
+    val basalMetabolicRateKcal: Double? = null,
+    val physicalActivityLevelPercent: Int? = null,
+    val calculateEnergyGoal: Boolean = false,
 ) {
     constructor(
         profile: BasalMetabolicRateProfile
@@ -50,6 +54,9 @@ private data class DataStoreBasalMetabolicRateProfile(
         heightCm = profile.heightCm,
         birthDateEpochDay = profile.birthDate?.toEpochDays(),
         sex = profile.sex,
+        basalMetabolicRateKcal = profile.basalMetabolicRateKcal,
+        physicalActivityLevelPercent = profile.physicalActivityLevelPercent,
+        calculateEnergyGoal = profile.calculateEnergyGoal,
     )
 
     fun toProfile(): BasalMetabolicRateProfile =
@@ -58,5 +65,8 @@ private data class DataStoreBasalMetabolicRateProfile(
             heightCm = heightCm,
             birthDate = birthDateEpochDay?.let(LocalDate::fromEpochDays),
             sex = sex,
+            basalMetabolicRateKcal = basalMetabolicRateKcal,
+            physicalActivityLevelPercent = physicalActivityLevelPercent,
+            calculateEnergyGoal = calculateEnergyGoal,
         )
 }

@@ -1,17 +1,29 @@
 package com.maksimowiczm.foodyou.app.ui.goals.setup
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,34 +37,83 @@ import com.maksimowiczm.foodyou.common.domain.food.NutritionFactsField
 import com.maksimowiczm.foodyou.goals.domain.entity.DailyGoal
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
+/** The additional nutrient goals as collapsible groups, so only one group's fields show at once. */
 @Composable
 internal fun AdditionalGoalsForm(state: AdditionalGoalsFormState, modifier: Modifier = Modifier) {
     val nutrientsOrder = LocalNutrientsOrder.current
+    val groups = nutrientsOrder.filter { it != NutrientsOrder.Proteins }
+    var expanded by rememberSaveable { mutableStateOf(groups.firstOrNull()) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        nutrientsOrder.forEach {
-            when (it) {
-                NutrientsOrder.Proteins -> Unit
-                NutrientsOrder.Fats -> Fats(state)
-                NutrientsOrder.Carbohydrates -> Carbohydrates(state)
-                NutrientsOrder.Other -> Other(state)
-                NutrientsOrder.Vitamins -> Vitamins(state)
-                NutrientsOrder.Minerals -> Minerals(state)
+        groups.forEach { group ->
+            val isExpanded = expanded == group
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                shape = MaterialTheme.shapes.large,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column {
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .heightIn(min = 56.dp)
+                                .clickable(
+                                    onClickLabel = null,
+                                    role = Role.Button,
+                                    onClick = { expanded = if (isExpanded) null else group },
+                                )
+                                .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(group.additionalGoalsTitle()),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            imageVector =
+                                if (isExpanded) Icons.Outlined.ExpandLess
+                                else Icons.Outlined.ExpandMore,
+                            contentDescription = null,
+                        )
+                    }
+                    AnimatedVisibility(isExpanded) {
+                        Column(
+                            modifier =
+                                Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            when (group) {
+                                NutrientsOrder.Proteins -> Unit
+                                NutrientsOrder.Fats -> Fats(state)
+                                NutrientsOrder.Carbohydrates -> Carbohydrates(state)
+                                NutrientsOrder.Other -> Other(state)
+                                NutrientsOrder.Vitamins -> Vitamins(state)
+                                NutrientsOrder.Minerals -> Minerals(state)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+private fun NutrientsOrder.additionalGoalsTitle(): StringResource =
+    when (this) {
+        NutrientsOrder.Proteins -> Res.string.nutriment_proteins
+        NutrientsOrder.Fats -> Res.string.nutriment_fats
+        NutrientsOrder.Carbohydrates -> Res.string.nutriment_carbohydrates
+        NutrientsOrder.Other -> Res.string.headline_other
+        NutrientsOrder.Vitamins -> Res.string.headline_vitamins
+        NutrientsOrder.Minerals -> Res.string.headline_minerals
+    }
+
 @Composable
 private fun ColumnScope.Fats(state: AdditionalGoalsFormState) {
-    Text(
-        text = stringResource(Res.string.nutriment_fats),
-        modifier = Modifier.padding(top = 8.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
     state.saturatedFats.TextField(
         label = stringResource(Res.string.nutriment_saturated_fats),
         modifier = Modifier.fillMaxWidth(),
@@ -81,13 +142,6 @@ private fun ColumnScope.Fats(state: AdditionalGoalsFormState) {
 
 @Composable
 private fun ColumnScope.Carbohydrates(state: AdditionalGoalsFormState) {
-    Text(
-        text = stringResource(Res.string.nutriment_carbohydrates),
-        modifier = Modifier.padding(top = 8.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
-
     state.sugars.TextField(
         label = stringResource(Res.string.nutriment_sugars),
         modifier = Modifier.fillMaxWidth(),
@@ -112,12 +166,6 @@ private fun ColumnScope.Carbohydrates(state: AdditionalGoalsFormState) {
 
 @Composable
 private fun ColumnScope.Other(state: AdditionalGoalsFormState) {
-    Text(
-        text = stringResource(Res.string.headline_other),
-        modifier = Modifier.padding(top = 8.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
     state.salt.TextField(
         label = stringResource(Res.string.nutriment_salt),
         modifier = Modifier.fillMaxWidth(),
@@ -136,12 +184,6 @@ private fun ColumnScope.Other(state: AdditionalGoalsFormState) {
 
 @Composable
 private fun ColumnScope.Vitamins(state: AdditionalGoalsFormState) {
-    Text(
-        text = stringResource(Res.string.headline_vitamins),
-        modifier = Modifier.padding(top = 8.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
     state.vitaminAMicro.TextField(
         label = stringResource(Res.string.vitamin_a),
         modifier = Modifier.fillMaxWidth(),
@@ -211,12 +253,6 @@ private fun ColumnScope.Vitamins(state: AdditionalGoalsFormState) {
 
 @Composable
 private fun ColumnScope.Minerals(state: AdditionalGoalsFormState) {
-    Text(
-        text = stringResource(Res.string.headline_minerals),
-        modifier = Modifier.padding(top = 8.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
     state.manganeseMilli.TextField(
         label = stringResource(Res.string.mineral_manganese),
         modifier = Modifier.fillMaxWidth(),

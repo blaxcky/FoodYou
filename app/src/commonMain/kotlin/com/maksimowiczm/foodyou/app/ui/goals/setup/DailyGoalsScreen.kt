@@ -5,34 +5,46 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Percent
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -55,13 +67,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
@@ -71,14 +79,14 @@ import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.maksimowiczm.foodyou.app.ui.common.component.DiscardDialog
 import com.maksimowiczm.foodyou.app.ui.common.form.FormField
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
-import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
+import com.maksimowiczm.foodyou.app.ui.common.utility.LocalNutrientsOrder
 import com.maksimowiczm.foodyou.app.ui.common.utility.validatedNonNegativeEnergyKcal
 import com.maksimowiczm.foodyou.common.compose.extension.LaunchedCollectWithLifecycle
-import com.maksimowiczm.foodyou.common.compose.extension.add
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.compose.utility.formatClipZeros
 import com.maksimowiczm.foodyou.common.extension.now
+import com.maksimowiczm.foodyou.goals.domain.entity.BasalMetabolicRateProfile
 import com.maksimowiczm.foodyou.goals.domain.entity.BiologicalSex
 import com.maksimowiczm.foodyou.goals.domain.usecase.calculateBasalMetabolicRateSuggestion
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
@@ -89,9 +97,20 @@ import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+
+/** The overview and its sub-pages. All pages share one form, saved from the overview. */
+internal enum class DailyGoalsPage {
+    Overview,
+    BasalMetabolicRate,
+    ActivityLevel,
+    EnergyAndMacros,
+    Nutrients,
+    Diet,
+}
 
 @Composable
 fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier = Modifier) {
@@ -130,6 +149,11 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
     val defaultLockedDaySurplusKcal =
         validatedNonNegativeEnergyKcal(lockedDaySurplusInput, energyFormatter::toKcal)
 
+    CalculatedEnergyGoalSync(
+        weeklyState = weeklyState,
+        basalMetabolicRateProfileState = basalMetabolicRateProfileState,
+    )
+
     DailyGoalsContent(
         weeklyState = weeklyState,
         basalMetabolicRateProfileState = basalMetabolicRateProfileState,
@@ -142,8 +166,7 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
         onSave = {
             viewModel.update(
                 weeklyGoals = weeklyState.intoWeeklyGoals(),
-                basalMetabolicRateProfile =
-                    basalMetabolicRateProfileState.intoProfile(),
+                basalMetabolicRateProfile = basalMetabolicRateProfileState.intoProfile(),
                 dietEnergyDeficitKcal = dietEnergyDeficitState.value,
                 dietEnergyDeficitOverride = dietEnergyDeficitState.overrideValue,
                 defaultLockedDaySurplusKcal = defaultLockedDaySurplusKcal ?: return@DailyGoalsContent,
@@ -151,6 +174,37 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
         },
         modifier = modifier,
     )
+}
+
+/**
+ * Keeps every day's energy goal equal to the fixed basal metabolic rate × activity level while the
+ * calculated mode is on. It lives above the pages so a changed activity level is applied even when
+ * the user saves straight from the overview. Fields are only written when the value differs, so
+ * opening the screen does not mark it as modified.
+ */
+@Composable
+private fun CalculatedEnergyGoalSync(
+    weeklyState: WeeklyGoalsState,
+    basalMetabolicRateProfileState: BasalMetabolicRateProfileFormState,
+) {
+    LaunchedEffect(weeklyState, basalMetabolicRateProfileState) {
+        snapshotFlow {
+                if (basalMetabolicRateProfileState.calculateEnergyGoal) {
+                    basalMetabolicRateProfileState.calculatedEnergyGoalKcal?.roundToInt()
+                } else {
+                    null
+                }
+            }
+            .collect { energyKcal ->
+                if (energyKcal == null) return@collect
+                val text = energyKcal.toString()
+                weeklyState.days.forEach { day ->
+                    if (day.energy.textFieldState.text.toString() != text) {
+                        day.energy.textFieldState.setTextAndPlaceCursorAtEnd(text)
+                    }
+                }
+            }
+    }
 }
 
 @Composable
@@ -166,6 +220,7 @@ internal fun DailyGoalsContent(
     onSave: () -> Unit,
     modifier: Modifier,
 ) {
+    var page by rememberSaveable { mutableStateOf(DailyGoalsPage.Overview) }
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
     val isModified =
         weeklyState.isModified ||
@@ -177,11 +232,23 @@ internal fun DailyGoalsContent(
             basalMetabolicRateProfileState.isValid &&
             dietEnergyDeficitState.isValid &&
             lockedDaySurplusValid
-    val handleOnBack = { if (isModified) showDiscardDialog = true else onBack() }
+    val handleOnBack: () -> Unit = {
+        when {
+            page != DailyGoalsPage.Overview -> page = DailyGoalsPage.Overview
+            isModified -> showDiscardDialog = true
+            else -> onBack()
+        }
+    }
     NavigationEventHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = isModified,
-        onBackCompleted = { showDiscardDialog = true },
+        isBackEnabled = page != DailyGoalsPage.Overview || isModified,
+        onBackCompleted = {
+            if (page != DailyGoalsPage.Overview) {
+                page = DailyGoalsPage.Overview
+            } else {
+                showDiscardDialog = true
+            }
+        },
     )
     if (showDiscardDialog) {
         DiscardDialog(onDismissRequest = { showDiscardDialog = false }, onDiscard = onBack) {
@@ -190,99 +257,816 @@ internal fun DailyGoalsContent(
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollState = key(page) { rememberScrollState() }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(Res.string.headline_daily_goals)) },
+                title = { Text(stringResource(page.title())) },
                 navigationIcon = { ArrowBackIconButton(handleOnBack) },
                 actions = {
-                    FilledIconButton(
-                        onClick = onSave,
-                        shapes = IconButtonDefaults.shapes(),
-                        enabled = isValid,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Save,
-                            contentDescription = stringResource(Res.string.action_save),
-                        )
+                    if (page == DailyGoalsPage.Overview) {
+                        FilledIconButton(
+                            onClick = onSave,
+                            shapes = IconButtonDefaults.shapes(),
+                            enabled = isValid,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Save,
+                                contentDescription = stringResource(Res.string.action_save),
+                            )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
             )
         },
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier =
                 Modifier.fillMaxSize()
                     .imePadding()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = paddingValues.add(vertical = 8.dp),
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(scrollState)
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            item {
-                val state = weeklyState.selectedDayGoals
+            when (page) {
+                DailyGoalsPage.Overview ->
+                    DailyGoalsOverview(
+                        weeklyState = weeklyState,
+                        basalMetabolicRateProfileState = basalMetabolicRateProfileState,
+                        dietEnergyDeficitState = dietEnergyDeficitState,
+                        lockedDaySurplusInput = lockedDaySurplusInput,
+                        lockedDaySurplusValid = lockedDaySurplusValid,
+                        onOpen = { page = it },
+                    )
 
-                Column(modifier) {
-                    BasalMetabolicRateProfileForm(
-                        state = basalMetabolicRateProfileState,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                DailyGoalsPage.BasalMetabolicRate ->
+                    BasalMetabolicRatePage(state = basalMetabolicRateProfileState)
+
+                DailyGoalsPage.ActivityLevel ->
+                    ActivityLevelPage(state = basalMetabolicRateProfileState)
+
+                DailyGoalsPage.EnergyAndMacros ->
+                    EnergyAndMacrosPage(
+                        weeklyState = weeklyState,
+                        basalMetabolicRateProfileState = basalMetabolicRateProfileState,
                     )
-                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
-                    DietEnergyDeficitForm(
-                        state = dietEnergyDeficitState,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+
+                DailyGoalsPage.Nutrients -> NutrientsPage(weeklyState = weeklyState)
+
+                DailyGoalsPage.Diet ->
+                    DietPage(
+                        dietEnergyDeficitState = dietEnergyDeficitState,
+                        lockedDaySurplusInput = lockedDaySurplusInput,
+                        onLockedDaySurplusInputChange = onLockedDaySurplusInputChange,
+                        lockedDaySurplusValid = lockedDaySurplusValid,
                     )
-                    Spacer(Modifier.height(12.dp))
-                    LockedDaySurplusDefaultField(
-                        value = lockedDaySurplusInput,
-                        onValueChange = onLockedDaySurplusInputChange,
-                        isValid = lockedDaySurplusValid,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+private fun DailyGoalsPage.title(): StringResource =
+    when (this) {
+        DailyGoalsPage.Overview -> Res.string.headline_daily_goals
+        DailyGoalsPage.BasalMetabolicRate -> Res.string.daily_goals_basal_metabolic_rate
+        DailyGoalsPage.ActivityLevel -> Res.string.daily_goals_activity_level
+        DailyGoalsPage.EnergyAndMacros -> Res.string.daily_goals_energy_and_macros
+        DailyGoalsPage.Nutrients -> Res.string.daily_goals_additional_nutrients
+        DailyGoalsPage.Diet -> Res.string.daily_goals_headline_diet
+    }
+
+// ---------------------------------------------------------------------------------------------
+// Overview
+// ---------------------------------------------------------------------------------------------
+
+@Composable
+private fun DailyGoalsOverview(
+    weeklyState: WeeklyGoalsState,
+    basalMetabolicRateProfileState: BasalMetabolicRateProfileFormState,
+    dietEnergyDeficitState: DietEnergyDeficitFormState,
+    lockedDaySurplusInput: String,
+    lockedDaySurplusValid: Boolean,
+    onOpen: (DailyGoalsPage) -> Unit,
+) {
+    val dayGoals = weeklyState.selectedDayGoals
+    val activeDays = weeklyState.activeDays
+    val energyKcal = dayGoals.energy.value.roundToInt()
+    val kcal = stringResource(Res.string.unit_kcal)
+    val off = stringResource(Res.string.daily_goals_off)
+    val dateFormatter = LocalDateFormatter.current
+    val energyFormatter = LocalEnergyFormatter.current
+    val bmrState = basalMetabolicRateProfileState
+
+    Column(
+        modifier = Modifier.padding(horizontal = 4.dp).padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.daily_goals_your_goal),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text = energyKcal.toString(), style = MaterialTheme.typography.displaySmall)
+            Text(
+                text = kcal,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        dietEnergyDeficitState.value?.let { deficit ->
+            Text(
+                text =
+                    stringResource(
+                        Res.string.daily_goals_diet_goal,
+                        (dayGoals.energy.value - deficit).roundToInt(),
+                    ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+
+    OverviewGroup(title = stringResource(Res.string.daily_goals_headline_needs)) {
+        OverviewRow(
+            label = stringResource(Res.string.daily_goals_basal_metabolic_rate),
+            value =
+                bmrState.basalMetabolicRate.value?.let { "${it.roundToInt()} $kcal" }
+                    ?: stringResource(Res.string.daily_goals_not_set),
+            isError = !bmrState.isBasalMetabolicRateValid || !bmrState.isBodyDataValid,
+            onClick = { onOpen(DailyGoalsPage.BasalMetabolicRate) },
+        )
+        OverviewDivider()
+        OverviewRow(
+            label = stringResource(Res.string.daily_goals_activity_level),
+            value = stringResource(Res.string.daily_goals_percent_value, bmrState.activityLevelPercent),
+            isError = !bmrState.isActivityLevelValid,
+            onClick = { onOpen(DailyGoalsPage.ActivityLevel) },
+        )
+    }
+
+    OverviewGroup(title = stringResource(Res.string.daily_goals_headline_goals)) {
+        OverviewRow(
+            label = stringResource(Res.string.daily_goals_energy),
+            value = "$energyKcal $kcal",
+            isError = activeDays.any { it.energy.error != null },
+            onClick = { onOpen(DailyGoalsPage.EnergyAndMacros) },
+        )
+        OverviewDivider()
+        OverviewRow(
+            label = stringResource(Res.string.headline_macronutrients),
+            value = macroSummary(dayGoals),
+            isError =
+                activeDays.any {
+                    it.proteins.error != null || it.fats.error != null || it.carbs.error != null
+                },
+            onClick = { onOpen(DailyGoalsPage.EnergyAndMacros) },
+        )
+        OverviewDivider()
+        OverviewRow(
+            label = stringResource(Res.string.daily_goals_additional_nutrients),
+            value = null,
+            isError = activeDays.any { !it.additionalState.isValid },
+            onClick = { onOpen(DailyGoalsPage.Nutrients) },
+        )
+        OverviewDivider()
+        OverviewRow(
+            label = stringResource(Res.string.daily_goals_applies_to),
+            value =
+                stringResource(
+                    if (weeklyState.useSeparateGoals) Res.string.daily_goals_per_weekday
+                    else Res.string.daily_goals_all_days
+                ),
+            onClick = { onOpen(DailyGoalsPage.EnergyAndMacros) },
+        )
+    }
+
+    OverviewGroup(title = stringResource(Res.string.daily_goals_headline_diet)) {
+        OverviewRow(
+            label = stringResource(Res.string.label_daily_calorie_deficit),
+            value = dietEnergyDeficitState.value?.let { "${it.formatClipZeros()} $kcal" } ?: off,
+            isError =
+                dietEnergyDeficitState.textFieldState.text.isNotBlank() &&
+                    dietEnergyDeficitState.parsedValue == null,
+            onClick = { onOpen(DailyGoalsPage.Diet) },
+        )
+        OverviewDivider()
+        OverviewRow(
+            label = stringResource(Res.string.label_temporary_diet_deficit),
+            value =
+                dietEnergyDeficitState.overrideValue?.let {
+                    "${dateFormatter.formatDateShort(it.startDate)} – " +
+                        dateFormatter.formatDateShort(it.endDate)
+                } ?: off,
+            isError = !dietEnergyDeficitState.override.isValid,
+            onClick = { onOpen(DailyGoalsPage.Diet) },
+        )
+        OverviewDivider()
+        OverviewRow(
+            label = stringResource(Res.string.daily_goals_locked_days),
+            value = "+$lockedDaySurplusInput ${energyFormatter.suffix()}",
+            isError = !lockedDaySurplusValid,
+            onClick = { onOpen(DailyGoalsPage.Diet) },
+        )
+    }
+}
+
+@Composable
+private fun macroSummary(state: DailyGoalsFormState): String =
+    if (state.inputType == InputType.Percentage) {
+        stringResource(
+            Res.string.daily_goals_macro_split_percent,
+            state.proteinsSlider.roundToInt(),
+            state.fatsSlider.roundToInt(),
+            state.carbsSlider.roundToInt(),
+        )
+    } else {
+        stringResource(
+            Res.string.daily_goals_macro_split_grams,
+            state.proteins.value.formatClipZeros("%.0f"),
+            state.fats.value.formatClipZeros("%.0f"),
+            state.carbs.value.formatClipZeros("%.0f"),
+        )
+    }
+
+@Composable
+private fun OverviewGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionTitle(title)
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(content = content)
+        }
+    }
+}
+
+@Composable
+private fun OverviewRow(
+    label: String,
+    value: String?,
+    onClick: () -> Unit,
+    isError: Boolean = false,
+) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clickable(onClick = onClick)
+                .padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            if (isError) {
+                Text(
+                    text = stringResource(Res.string.daily_goals_check_input),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+        if (value != null) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun OverviewDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 16.dp),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
+}
+
+@Composable
+private fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        modifier = modifier.padding(horizontal = 4.dp),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+    )
+}
+
+@Composable
+private fun PageCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shape = MaterialTheme.shapes.large,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun PageHint(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(horizontal = 4.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+// ---------------------------------------------------------------------------------------------
+// Basal metabolic rate
+// ---------------------------------------------------------------------------------------------
+
+@Composable
+private fun BasalMetabolicRatePage(state: BasalMetabolicRateProfileFormState) {
+    val suggestion =
+        calculateBasalMetabolicRateSuggestion(profile = state.intoProfile(), today = LocalDate.now())
+    val kcal = stringResource(Res.string.unit_kcal)
+    val missingForCalculation = state.calculateEnergyGoal && state.basalMetabolicRate.value == null
+
+    PageCard {
+        OutlinedTextField(
+            state = state.basalMetabolicRate.textFieldState,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(Res.string.daily_goals_your_bmr)) },
+            suffix = { Text(kcal) },
+            supportingText = {
+                Text(
+                    stringResource(
+                        if (missingForCalculation) Res.string.daily_goals_set_bmr_first
+                        else Res.string.daily_goals_bmr_stays_fixed
                     )
-                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
-                    Text(
-                        text = stringResource(Res.string.action_set_goals),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                    WeightOrPercentageToggle(
-                        useDistribution = state.inputType == InputType.Percentage,
-                        onUseDistributionChange = {
-                            state.inputType = if (it) InputType.Percentage else InputType.Weight
-                        },
-                        modifier =
-                            Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp),
-                    )
-                    if (state.inputType == InputType.Percentage) {
-                        MacroInputSliderForm(
-                            state = state,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                )
+            },
+            isError = !state.isBasalMetabolicRateValid,
+            textStyle = MaterialTheme.typography.headlineSmall,
+            lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        )
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionTitle(stringResource(Res.string.daily_goals_estimate_from_body_data))
+        PageCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                BodyMetricTextField(
+                    field = state.weightKg,
+                    label = stringResource(Res.string.weight),
+                    suffix = stringResource(Res.string.unit_kilogram_short),
+                    modifier = Modifier.weight(1f),
+                )
+                BodyMetricTextField(
+                    field = state.heightCm,
+                    label = stringResource(Res.string.height),
+                    suffix = stringResource(Res.string.unit_centimeter_short),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            DatePickerField(
+                date = state.birthDate,
+                onDateChange = { state.birthDate = it },
+                label = stringResource(Res.string.birth_date),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = stringResource(Res.string.biological_sex),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                BiologicalSexToggle(
+                    sex = state.sex,
+                    onSexChange = { state.sex = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            if (suggestion == null) {
+                Text(
+                    text = stringResource(Res.string.hint_body_data_required_for_bmr),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                val estimated = suggestion.basalMetabolicRateKcal
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.daily_goals_estimated),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    } else {
-                        MacroInput(
-                            state = state,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        Text(
+                            text = "$estimated $kcal",
+                            style = MaterialTheme.typography.titleLarge,
                         )
                     }
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    DayPicker(
-                        useSeparateGoals = weeklyState.useSeparateGoals,
-                        onUseSeparateGoalsChange = { weeklyState.useSeparateGoals = it },
-                        selectedDay = weeklyState.selectedDay,
-                        onSelectedDayChange = { weeklyState.selectedDay = it },
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        modifier = Modifier.fillMaxWidth(),
+                    if (state.basalMetabolicRate.value?.roundToInt() != estimated) {
+                        FilledTonalButton(onClick = { state.adoptBasalMetabolicRate(estimated) }) {
+                            Text(stringResource(Res.string.daily_goals_adopt))
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(Res.string.daily_goals_matches_your_value),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        PageHint(stringResource(Res.string.daily_goals_estimate_explanation))
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Activity level
+// ---------------------------------------------------------------------------------------------
+
+private val activityLevelPresets =
+    listOf(
+        105 to Res.string.daily_goals_pal_untracked,
+        120 to Res.string.daily_goals_pal_lying,
+        145 to Res.string.daily_goals_pal_seated,
+        165 to Res.string.daily_goals_pal_seated_some,
+        185 to Res.string.daily_goals_pal_standing,
+        210 to Res.string.daily_goals_pal_heavy,
+    )
+
+@Composable
+private fun ActivityLevelPage(state: BasalMetabolicRateProfileFormState) {
+    val percent = state.activityLevelPercent
+    val isValid = state.isActivityLevelValid
+    val min = BasalMetabolicRateProfile.MIN_PHYSICAL_ACTIVITY_LEVEL_PERCENT
+    val max = BasalMetabolicRateProfile.MAX_PHYSICAL_ACTIVITY_LEVEL_PERCENT
+    // 105 % is shown as "PAL 1,05" (German) or "PAL 1.05" (English).
+    val palText =
+        stringResource(
+            Res.string.daily_goals_pal_value,
+            percent / 100,
+            (percent % 100).toString().padStart(2, '0'),
+        )
+
+    PageCard {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilledTonalIconButton(
+                onClick = { state.setActivityLevel(percent - 1) },
+                enabled = isValid && percent > min,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Remove,
+                    contentDescription = stringResource(Res.string.daily_goals_decrease),
+                )
+            }
+            OutlinedTextField(
+                state = state.activityLevel.textFieldState,
+                modifier = Modifier.weight(1f),
+                label = { Text(stringResource(Res.string.daily_goals_activity_level_percent)) },
+                suffix = { Text("%") },
+                isError = !isValid,
+                textStyle =
+                    MaterialTheme.typography.headlineMedium.copy(textAlign = TextAlign.Center),
+                lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            FilledTonalIconButton(
+                onClick = { state.setActivityLevel(percent + 1) },
+                enabled = isValid && percent < max,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = stringResource(Res.string.daily_goals_increase),
+                )
+            }
+        }
+        val calculated = state.calculatedEnergyGoalKcal?.roundToInt()
+        Text(
+            text =
+                when {
+                    !isValid -> stringResource(Res.string.daily_goals_pal_range_error)
+                    calculated != null ->
+                        stringResource(Res.string.daily_goals_pal_summary, palText, calculated)
+                    else -> stringResource(Res.string.daily_goals_pal_summary_no_bmr, palText)
+                },
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+            color =
+                if (isValid) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.error,
+        )
+        Slider(
+            value = percent.coerceIn(min, max).toFloat(),
+            onValueChange = { state.setActivityLevel(it.roundToInt()) },
+            valueRange = min.toFloat()..max.toFloat(),
+        )
+    }
+
+    Text(
+        text = stringResource(Res.string.daily_goals_pal_hint),
+        modifier = Modifier.padding(horizontal = 4.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionTitle(stringResource(Res.string.daily_goals_reference_values))
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.selectableGroup()) {
+                activityLevelPresets.forEachIndexed { index, (presetPercent, title) ->
+                    if (index > 0) OverviewDivider()
+                    val selected = isValid && percent == presetPercent
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .heightIn(min = 56.dp)
+                                .selectable(
+                                    selected = selected,
+                                    onClick = { state.setActivityLevel(presetPercent) },
+                                    role = Role.RadioButton,
+                                )
+                                .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        RadioButton(selected = selected, onClick = null)
+                        Text(
+                            text =
+                                stringResource(Res.string.daily_goals_percent_value, presetPercent),
+                            modifier = Modifier.width(56.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = stringResource(title),
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
+        }
+        PageHint(stringResource(Res.string.daily_goals_pal_source))
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Energy and macros
+// ---------------------------------------------------------------------------------------------
+
+@Composable
+private fun EnergyAndMacrosPage(
+    weeklyState: WeeklyGoalsState,
+    basalMetabolicRateProfileState: BasalMetabolicRateProfileFormState,
+) {
+    val dayGoals = weeklyState.selectedDayGoals
+    val bmrState = basalMetabolicRateProfileState
+    val kcal = stringResource(Res.string.unit_kcal)
+    val canCalculate =
+        bmrState.basalMetabolicRate.value != null && bmrState.basalMetabolicRate.error == null
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionTitle(stringResource(Res.string.daily_goals_applies_to))
+        TwoOptionToggle(
+            firstLabel = stringResource(Res.string.daily_goals_all_days),
+            secondLabel = stringResource(Res.string.daily_goals_per_weekday),
+            secondSelected = weeklyState.useSeparateGoals,
+            onSecondSelectedChange = { weeklyState.useSeparateGoals = it },
+        )
+        AnimatedVisibility(weeklyState.useSeparateGoals) {
+            WeekdayPicker(
+                selectedDay = weeklyState.selectedDay,
+                onSelectedDayChange = { weeklyState.selectedDay = it },
+            )
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionTitle(stringResource(Res.string.daily_goals_energy))
+        PageCard {
+            TwoOptionToggle(
+                firstLabel = stringResource(Res.string.daily_goals_calculated),
+                secondLabel = stringResource(Res.string.daily_goals_custom_value),
+                secondSelected = !bmrState.calculateEnergyGoal,
+                onSecondSelectedChange = { custom -> bmrState.calculateEnergyGoal = !custom },
+                firstEnabled = canCalculate,
+            )
+            val calculated = bmrState.calculatedEnergyGoalKcal?.roundToInt()
+            if (bmrState.calculateEnergyGoal && calculated != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text =
+                            stringResource(
+                                Res.string.daily_goals_bmr_times_pal,
+                                bmrState.activityLevelPercent,
+                            ),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    AdditionalGoalsForm(
-                        state = state.additionalState,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    Text(text = "$calculated $kcal", style = MaterialTheme.typography.titleLarge)
+                }
+            } else {
+                dayGoals.energy.TextField(
+                    label = stringResource(Res.string.unit_energy),
+                    color = MaterialTheme.colorScheme.outline,
+                    suffix = kcal,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (!canCalculate) {
+                    Text(
+                        text = stringResource(Res.string.daily_goals_set_bmr_first),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
         }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionTitle(stringResource(Res.string.headline_macronutrients))
+        PageCard {
+            WeightOrPercentageToggle(
+                useDistribution = dayGoals.inputType == InputType.Percentage,
+                onUseDistributionChange = {
+                    dayGoals.inputType = if (it) InputType.Percentage else InputType.Weight
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (dayGoals.inputType == InputType.Percentage) {
+                MacroInputSliderForm(state = dayGoals, modifier = Modifier.fillMaxWidth())
+            } else {
+                MacroInput(state = dayGoals, modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
+private fun TwoOptionToggle(
+    firstLabel: String,
+    secondLabel: String,
+    secondSelected: Boolean,
+    onSecondSelectedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    firstEnabled: Boolean = true,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+    ) {
+        ToggleButton(
+            checked = !secondSelected,
+            onCheckedChange = { onSecondSelectedChange(false) },
+            enabled = firstEnabled,
+            modifier = Modifier.weight(1f).height(48.dp).semantics { role = Role.RadioButton },
+            shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+        ) {
+            Text(firstLabel)
+        }
+        ToggleButton(
+            checked = secondSelected,
+            onCheckedChange = { onSecondSelectedChange(true) },
+            modifier = Modifier.weight(1f).height(48.dp).semantics { role = Role.RadioButton },
+            shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+        ) {
+            Text(secondLabel)
+        }
+    }
+}
+
+@Composable
+private fun WeekdayPicker(
+    selectedDay: Int,
+    onSelectedDayChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val weekDayNamesShort = LocalDateFormatter.current.weekDayNamesShort
+
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        contentPadding = PaddingValues(vertical = 4.dp),
+    ) {
+        item {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        ButtonGroupDefaults.ConnectedSpaceBetween,
+                        Alignment.CenterHorizontally,
+                    )
+            ) {
+                weekDayNamesShort.forEachIndexed { i, name ->
+                    ToggleButton(
+                        checked = selectedDay == i,
+                        onCheckedChange = {
+                            onSelectedDayChange(i)
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        },
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        shapes =
+                            when (i) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                weekDayNamesShort.lastIndex ->
+                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
+
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                    ) {
+                        Text(name)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Additional nutrients
+// ---------------------------------------------------------------------------------------------
+
+@Composable
+private fun NutrientsPage(weeklyState: WeeklyGoalsState) {
+    if (weeklyState.useSeparateGoals) {
+        val weekDayNamesShort = LocalDateFormatter.current.weekDayNamesShort
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionTitle(
+                stringResource(
+                    Res.string.daily_goals_goals_for_day,
+                    weekDayNamesShort.getOrElse(weeklyState.selectedDay) { "" },
+                )
+            )
+            WeekdayPicker(
+                selectedDay = weeklyState.selectedDay,
+                onSelectedDayChange = { weeklyState.selectedDay = it },
+            )
+        }
+    }
+    AdditionalGoalsForm(
+        state = weeklyState.selectedDayGoals.additionalState,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+// ---------------------------------------------------------------------------------------------
+// Diet
+// ---------------------------------------------------------------------------------------------
+
+@Composable
+private fun DietPage(
+    dietEnergyDeficitState: DietEnergyDeficitFormState,
+    lockedDaySurplusInput: String,
+    onLockedDaySurplusInputChange: (String) -> Unit,
+    lockedDaySurplusValid: Boolean,
+) {
+    PageCard { DietEnergyDeficitForm(state = dietEnergyDeficitState) }
+    PageCard {
+        Text(
+            text = stringResource(Res.string.daily_goals_locked_days),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        LockedDaySurplusDefaultField(
+            value = lockedDaySurplusInput,
+            onValueChange = onLockedDaySurplusInputChange,
+            isValid = lockedDaySurplusValid,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -336,6 +1120,17 @@ internal class DietEnergyDeficitFormState(
     }
 
     val isModified: Boolean by derivedStateOf { input != initialInput || override.isModified }
+
+    /**
+     * Turns the temporary deficit on or off. An empty temporary deficit starts with the daily one,
+     * so switching it on does not leave an empty, invalid field that blocks saving.
+     */
+    fun setTemporaryDeficitEnabled(enabled: Boolean) {
+        if (enabled && override.textFieldState.text.isBlank() && value != null) {
+            override.textFieldState.setTextAndPlaceCursorAtEnd(input.trim())
+        }
+        override.enabled = enabled
+    }
 }
 
 @Composable
@@ -466,7 +1261,11 @@ private fun DietEnergyDeficitForm(
             isError = state.textFieldState.text.isNotBlank() && state.parsedValue == null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         )
-        TemporaryDietEnergyDeficitForm(state = state.override, modifier = Modifier.fillMaxWidth())
+        TemporaryDietEnergyDeficitForm(
+            state = state.override,
+            onEnabledChange = state::setTemporaryDeficitEnabled,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -479,13 +1278,14 @@ private fun String.parsePositiveDeficit(): Double? =
 @Composable
 private fun TemporaryDietEnergyDeficitForm(
     state: TemporaryDietEnergyDeficitFormState,
+    onEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             modifier =
                 Modifier.fillMaxWidth()
-                    .clickable { state.enabled = !state.enabled }
+                    .clickable { onEnabledChange(!state.enabled) }
                     .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -543,127 +1343,9 @@ private fun TemporaryDietEnergyDeficitForm(
     }
 }
 
-@Composable
-private fun BasalMetabolicRateProfileForm(
-    state: BasalMetabolicRateProfileFormState,
-    modifier: Modifier = Modifier,
-) {
-    val today = LocalDate.now()
-    val suggestion =
-        calculateBasalMetabolicRateSuggestion(profile = state.intoProfile(), today = today)
-
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = stringResource(Res.string.headline_body_data),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            BodyMetricTextField(
-                field = state.weightKg,
-                label = stringResource(Res.string.weight),
-                suffix = stringResource(Res.string.unit_kilogram_short),
-                modifier = Modifier.weight(1f),
-            )
-            BodyMetricTextField(
-                field = state.heightCm,
-                label = stringResource(Res.string.height),
-                suffix = stringResource(Res.string.unit_centimeter_short),
-                modifier = Modifier.weight(1f),
-            )
-        }
-        BirthDatePickerField(
-            birthDate = state.birthDate,
-            onBirthDateChange = { state.birthDate = it },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = stringResource(Res.string.biological_sex),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            BiologicalSexToggle(
-                sex = state.sex,
-                onSexChange = { state.sex = it },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        if (suggestion == null) {
-            Text(
-                text = stringResource(Res.string.hint_body_data_required_for_bmr),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            BmrSuggestionBlock(
-                basalMetabolicRateKcal = suggestion.basalMetabolicRateKcal,
-                minimalActivityKcal = suggestion.minimalActivityKcal,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun BmrSuggestionBlock(
-    basalMetabolicRateKcal: Int,
-    minimalActivityKcal: Int,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = stringResource(Res.string.headline_basal_metabolic_rate_suggestions),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text =
-                    stringResource(
-                        Res.string.neutral_basal_metabolic_rate_value,
-                        basalMetabolicRateKcal,
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                text = minimalActivitySuggestionText(minimalActivityKcal),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-    }
-}
-
-@Composable
-private fun minimalActivitySuggestionText(minimalActivityKcal: Int): AnnotatedString {
-    val text = stringResource(Res.string.neutral_minimal_activity_value, minimalActivityKcal)
-    val valueText = "$minimalActivityKcal ${stringResource(Res.string.unit_kcal)}"
-    val valueIndex = text.lastIndexOf(valueText)
-
-    return buildAnnotatedString {
-        if (valueIndex == -1) {
-            append(text)
-            return@buildAnnotatedString
-        }
-
-        append(text.substring(0, valueIndex))
-        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-            append(valueText)
-        }
-        append(text.substring(valueIndex + valueText.length))
-    }
-}
+// ---------------------------------------------------------------------------------------------
+// Shared fields
+// ---------------------------------------------------------------------------------------------
 
 @Composable
 private fun BodyMetricTextField(
@@ -680,20 +1362,6 @@ private fun BodyMetricTextField(
         isError = field.error != null,
         keyboardOptions =
             KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-    )
-}
-
-@Composable
-private fun BirthDatePickerField(
-    birthDate: LocalDate?,
-    onBirthDateChange: (LocalDate?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    DatePickerField(
-        date = birthDate,
-        onDateChange = onBirthDateChange,
-        label = stringResource(Res.string.birth_date),
-        modifier = modifier,
     )
 }
 
@@ -787,89 +1455,6 @@ private fun BiologicalSexToggle(
 private fun LocalDate.toUtcEpochMillis(): Long = toEpochDays() * 86_400_000L
 
 @Composable
-private fun DayPicker(
-    useSeparateGoals: Boolean,
-    onUseSeparateGoalsChange: (Boolean) -> Unit,
-    selectedDay: Int,
-    onSelectedDayChange: (Int) -> Unit,
-    contentPadding: PaddingValues,
-    modifier: Modifier = Modifier,
-) {
-    val hapticFeedback = LocalHapticFeedback.current
-
-    Column(modifier) {
-        Text(
-            text = stringResource(Res.string.headline_pick_the_days),
-            modifier = Modifier.padding(contentPadding),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .clickable { onUseSeparateGoalsChange(!useSeparateGoals) }
-                    .padding(contentPadding),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Checkbox(
-                modifier = Modifier.padding(vertical = 16.dp),
-                checked = useSeparateGoals,
-                onCheckedChange = null,
-            )
-            Text(
-                text = stringResource(Res.string.action_set_separate_goals),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        AnimatedVisibility(useSeparateGoals) {
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                contentPadding = contentPadding,
-            ) {
-                item {
-                    val dateFormatter = LocalDateFormatter.current
-                    val weekDayNamesShort = dateFormatter.weekDayNamesShort
-
-                    Row(
-                        horizontalArrangement =
-                            Arrangement.spacedBy(
-                                ButtonGroupDefaults.ConnectedSpaceBetween,
-                                Alignment.CenterHorizontally,
-                            )
-                    ) {
-                        weekDayNamesShort.forEachIndexed { i, name ->
-                            ToggleButton(
-                                checked = selectedDay == i,
-                                onCheckedChange = {
-                                    onSelectedDayChange(i)
-                                    hapticFeedback.performHapticFeedback(
-                                        HapticFeedbackType.SegmentTick
-                                    )
-                                },
-                                modifier = Modifier.semantics { role = Role.RadioButton },
-                                shapes =
-                                    when (i) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        weekDayNamesShort.lastIndex ->
-                                            ButtonGroupDefaults.connectedTrailingButtonShapes()
-
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    },
-                            ) {
-                                Text(name)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun WeightOrPercentageToggle(
     useDistribution: Boolean,
     onUseDistributionChange: (Boolean) -> Unit,
@@ -886,7 +1471,7 @@ private fun WeightOrPercentageToggle(
         ToggleButton(
             checked = !useDistribution,
             onCheckedChange = { onUseDistributionChange(false) },
-            modifier = Modifier.height(56.dp).semantics { role = Role.RadioButton },
+            modifier = Modifier.height(48.dp).semantics { role = Role.RadioButton },
             shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
         ) {
             Icon(painter = painterResource(Res.drawable.ic_weight), contentDescription = null)
@@ -896,7 +1481,7 @@ private fun WeightOrPercentageToggle(
         ToggleButton(
             checked = useDistribution,
             onCheckedChange = { onUseDistributionChange(true) },
-            modifier = Modifier.height(56.dp).semantics { role = Role.RadioButton },
+            modifier = Modifier.height(48.dp).semantics { role = Role.RadioButton },
             shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
         ) {
             Icon(imageVector = Icons.Outlined.Percent, contentDescription = null)
@@ -906,22 +1491,13 @@ private fun WeightOrPercentageToggle(
     }
 }
 
+/** Macro sliders; the energy they refer to is edited in the energy section above. */
 @Composable
 private fun MacroInputSliderForm(state: DailyGoalsFormState, modifier: Modifier = Modifier) {
     val nutrientsPalette = LocalNutrientsPalette.current
     val nutrientsOrder = LocalNutrientsOrder.current
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        OutlinedTextField(
-            state = state.energy.textFieldState,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(Res.string.unit_energy)) },
-            suffix = { Text(stringResource(Res.string.unit_kcal)) },
-            isError = state.energy.error != null,
-            keyboardOptions =
-                KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-        )
-
         nutrientsOrder.forEach {
             when (it) {
                 NutrientsOrder.Proteins ->
@@ -986,19 +1562,13 @@ private fun MacroSlider(
     }
 }
 
+/** Macro gram fields; the energy goal is edited in the energy section above. */
 @Composable
 private fun MacroInput(state: DailyGoalsFormState, modifier: Modifier = Modifier) {
     val nutrientsPalette = LocalNutrientsPalette.current
     val nutrientsOrder = LocalNutrientsOrder.current
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.energy.TextField(
-            label = stringResource(Res.string.unit_energy),
-            color = MaterialTheme.colorScheme.outline,
-            suffix = stringResource(Res.string.unit_kcal),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
         nutrientsOrder.forEach {
             when (it) {
                 NutrientsOrder.Proteins ->

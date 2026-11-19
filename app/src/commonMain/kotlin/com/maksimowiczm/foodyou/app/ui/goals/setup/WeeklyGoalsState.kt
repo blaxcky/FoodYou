@@ -35,6 +35,13 @@ internal class WeeklyGoalsState(
 
     val isModified by isModifiedState
 
+    val days: List<DailyGoalsFormState>
+        get() = listOf(monday, tuesday, wednesday, thursday, friday, saturday, sunday)
+
+    /** The day forms that are saved: only Monday's when every day shares the same goals. */
+    val activeDays: List<DailyGoalsFormState>
+        get() = if (useSeparateGoals) days else listOf(monday)
+
     val selectedDayGoals: DailyGoalsFormState by derivedStateOf {
         when (selectedDay) {
             0 -> monday
