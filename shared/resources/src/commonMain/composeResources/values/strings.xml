@@ -1064,4 +1064,9 @@
     <string name="daily_goals_goals_for_day">Goals for %1$s</string>
     <string name="daily_goals_pal_value">%1$d.%2$s</string>
     <string name="daily_goals_energy_follows">Changes with your basal metabolic rate and activity level.</string>
+    <string name="daily_goals_weight_loss_per_week">Weight loss per week</string>
+    <string name="daily_goals_suggested_deficit">Suggestion: %1$d kcal a day</string>
+    <string name="daily_goals_matches_your_deficit">Matches your deficit</string>
+    <string name="daily_goals_deficit_formula_hint">Based on 7700 kcal per kilogram of body fat.</string>
+    <string name="daily_goals_decimal_separator" translatable="false">.</string>
 </resources>

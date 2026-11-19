@@ -89,6 +89,8 @@ import com.maksimowiczm.foodyou.common.extension.now
 import com.maksimowiczm.foodyou.goals.domain.entity.BasalMetabolicRateProfile
 import com.maksimowiczm.foodyou.goals.domain.entity.BiologicalSex
 import com.maksimowiczm.foodyou.goals.domain.usecase.calculateBasalMetabolicRateSuggestion
+import com.maksimowiczm.foodyou.goals.domain.usecase.dailyEnergyDeficitKcal
+import com.maksimowiczm.foodyou.goals.domain.usecase.weeklyWeightLossKg
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
@@ -1255,6 +1257,7 @@ private fun DietEnergyDeficitForm(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        WeeklyWeightLossCalculator(state = state)
         OutlinedTextField(
             state = state.textFieldState,
             modifier = Modifier.fillMaxWidth(),
@@ -1269,6 +1272,76 @@ private fun DietEnergyDeficitForm(
             onEnabledChange = state::setTemporaryDeficitEnabled,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+/**
+ * Suggests a daily deficit from the weight the user wants to lose per week. The weekly amount is
+ * only a helper and is not stored; it starts from the current deficit.
+ */
+@Composable
+private fun WeeklyWeightLossCalculator(state: DietEnergyDeficitFormState) {
+    val decimalSeparator = stringResource(Res.string.daily_goals_decimal_separator)
+    val prefill =
+        remember(decimalSeparator) {
+            state.value
+                ?.let { weeklyWeightLossKg(it).formatClipZeros("%.2f") }
+                ?.replace(",", ".")
+                ?.replace(".", decimalSeparator)
+                .orEmpty()
+        }
+    val weeklyLossState = rememberTextFieldState(prefill)
+    val weeklyLossText = weeklyLossState.text.toString()
+    val weeklyLossKg = weeklyLossText.trim().replace(',', '.').toDoubleOrNull()
+    val isInvalid = weeklyLossText.isNotBlank() && (weeklyLossKg == null || weeklyLossKg < 0)
+    val suggestedKcal =
+        if (weeklyLossText.isNotEmpty() && weeklyLossText == prefill) {
+            // The prefill is rounded; unchanged, it stands for the current deficit itself.
+            state.value?.roundToInt()
+        } else {
+            weeklyLossKg?.takeIf { it > 0.0 }?.let { dailyEnergyDeficitKcal(it).roundToInt() }
+        }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            state = weeklyLossState,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(Res.string.daily_goals_weight_loss_per_week)) },
+            suffix = { Text(stringResource(Res.string.unit_kilogram_short)) },
+            supportingText = { Text(stringResource(Res.string.daily_goals_deficit_formula_hint)) },
+            isError = isInvalid,
+            lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        )
+        if (suggestedKcal != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.daily_goals_suggested_deficit, suggestedKcal),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (state.value?.roundToInt() != suggestedKcal) {
+                    FilledTonalButton(
+                        onClick = {
+                            state.textFieldState.setTextAndPlaceCursorAtEnd(
+                                suggestedKcal.toString()
+                            )
+                        }
+                    ) {
+                        Text(stringResource(Res.string.daily_goals_adopt))
+                    }
+                } else {
+                    Text(
+                        text = stringResource(Res.string.daily_goals_matches_your_deficit),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
 
