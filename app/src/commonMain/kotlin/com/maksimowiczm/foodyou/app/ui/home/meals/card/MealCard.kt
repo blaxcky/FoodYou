@@ -6,9 +6,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -28,26 +28,31 @@ import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -559,43 +564,104 @@ private fun BottomSheetContent(
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = RectangleShape,
         )
-        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
-        ListItem(
-            headlineContent = { Text(stringResource(Res.string.action_edit_entry)) },
-            modifier = Modifier.clickable { onEdit() },
-            leadingContent = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        EntryActionsRow(
+            editableProductId = (entry as? FoodMealEntryModel)?.editableProductId,
+            onAddToEntry = { showAddToEntryDialog = true },
+            onEdit = onEdit,
+            onEditFood = onEditFood,
+            onDelete = { showDeleteDialog = true },
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 24.dp),
         )
-        val productId = (entry as? FoodMealEntryModel)?.editableProductId
-        if (productId != null) {
-            ListItem(
-                headlineContent = { Text(stringResource(Res.string.action_edit_food)) },
-                modifier = Modifier.clickable { onEditFood(productId) },
-                leadingContent = {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = null)
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    }
+}
+
+/**
+ * Frequent entry actions stay visible as buttons; the rarely used food edit and the destructive
+ * delete live behind the overflow menu.
+ */
+@Composable
+private fun EntryActionsRow(
+    editableProductId: FoodId.Product?,
+    onAddToEntry: () -> Unit,
+    onEdit: () -> Unit,
+    onEditFood: (FoodId.Product) -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var menuExpanded by rememberSaveable { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Button(onClick = onAddToEntry, modifier = Modifier.weight(1f).height(52.dp)) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+            Text(
+                text = stringResource(Res.string.action_add_to_entry),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        ListItem(
-            headlineContent = { Text(stringResource(Res.string.action_add_to_entry)) },
-            modifier = Modifier.clickable { showAddToEntryDialog = true },
-            leadingContent = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(Res.string.action_delete_entry)) },
-            modifier = Modifier.clickable { showDeleteDialog = true },
-            leadingContent = {
-                Icon(imageVector = Icons.Default.Delete, contentDescription = null)
-            },
-            colors =
-                ListItemDefaults.colors(
-                    headlineColor = MaterialTheme.colorScheme.error,
-                    leadingIconColor = MaterialTheme.colorScheme.error,
-                    containerColor = Color.Transparent,
-                ),
-        )
+        FilledTonalButton(onClick = onEdit, modifier = Modifier.weight(1f).height(52.dp)) {
+            Icon(
+                imageVector = Icons.Outlined.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+            Text(
+                text = stringResource(Res.string.action_edit),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box {
+            OutlinedIconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(52.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(Res.string.action_show_more),
+                )
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                if (editableProductId != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.action_edit_food)) },
+                        onClick = {
+                            menuExpanded = false
+                            onEditFood(editableProductId)
+                        },
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Outlined.Description, contentDescription = null)
+                        },
+                    )
+                    HorizontalDivider()
+                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.action_delete_entry)) },
+                    onClick = {
+                        menuExpanded = false
+                        onDelete()
+                    },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = null)
+                    },
+                    colors =
+                        MenuDefaults.itemColors(
+                            textColor = MaterialTheme.colorScheme.error,
+                            leadingIconColor = MaterialTheme.colorScheme.error,
+                        ),
+                )
+            }
+        }
     }
 }
 
