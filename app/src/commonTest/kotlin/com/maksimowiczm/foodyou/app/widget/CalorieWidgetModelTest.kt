@@ -362,4 +362,31 @@ class CalorieWidgetModelTest {
         assertNull(model.optimizedGoalKcal)
         assertNull(model.optimizedLeftKcal)
     }
+
+    @Test
+    fun maxEnergyDeficitCapsOnlyTheDietGoal() {
+        val model =
+            calorieWidgetModel(
+                today = LocalDate(2026, 11, 17),
+                eatenKcal = 0.0,
+                burnedKcal = 0.0,
+                baseGoalKcal = 2_200.0,
+                dietEnergyDeficitKcal = 550.0,
+                previousDays =
+                    listOf(
+                        GoalEnergyOptimizationDay(
+                            date = LocalDate(2026, 11, 16),
+                            consumedEnergyKcal = 4_200.0,
+                            baseEnergyGoalKcal = 2_200.0,
+                            burnedEnergyKcal = 0.0,
+                            dietEnergyDeficitKcal = 550.0,
+                        )
+                    ),
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        assertEquals(1400, model.dietGoalKcal)
+        // The optimized goal keeps catching up the whole surplus: 2200 - 2000 / 6.
+        assertEquals(1867, model.optimizedGoalKcal)
+    }
 }

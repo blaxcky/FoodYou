@@ -525,6 +525,27 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun dietModeCappedCatchUp() {
+        captureGoalsCard(
+            filePath = "GoalsCardScreenshotTest.mode-diet-capped.png",
+            fixture =
+                SupplementalFixture.copy(
+                    goalDisplayMode = GoalDisplayMode.Diet,
+                    goalDisplaySummaries =
+                        SupplementalFixture.goalDisplaySummaries.map {
+                            if (it.mode == GoalDisplayMode.Diet) {
+                                it.copy(energyGoal = 1300, uncaughtBalanceKcal = 700)
+                            } else {
+                                it
+                            }
+                        },
+                ),
+            width = 414,
+            height = 500,
+        )
+    }
+
+    @Test
     fun dietModeDisabled() {
         captureGoalsCard(
             filePath = "GoalsCardScreenshotTest.mode-diet-disabled.png",

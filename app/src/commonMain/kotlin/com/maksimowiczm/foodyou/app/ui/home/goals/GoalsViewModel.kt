@@ -340,6 +340,7 @@ internal class GoalsViewModel(
                                 previousDays = previous,
                                 plannedFutureDays = plannedFuture,
                                 weeklyBalancingEnabled = weeklyBalancingEnabled,
+                                maxEnergyDeficitKcal = settings.maxEnergyDeficitKcal,
                             )
                         }
                     val selectedGoalDisplaySummary =
@@ -609,7 +610,7 @@ internal fun percentageEnergyGoalKcal(energyGoalKcal: Double, baseEnergyGoalKcal
         roundedEnergyKcal(baseEnergyGoalKcal)
     }
 
-private fun GoalDisplayMode.summary(
+internal fun GoalDisplayMode.summary(
     selectedDate: LocalDate,
     calculationDate: LocalDate,
     baseEnergyGoalKcal: Double,
@@ -617,10 +618,11 @@ private fun GoalDisplayMode.summary(
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay>,
     weeklyBalancingEnabled: Boolean,
+    maxEnergyDeficitKcal: Double?,
 ): GoalDisplaySummaryModel {
-    val energyGoal =
+    val adjustedGoal =
         if (this != GoalDisplayMode.Normal) {
-            adjustedEnergyGoalKcal(
+            adjustedEnergyGoal(
                 selectedDate = selectedDate,
                 calculationDate = calculationDate,
                 baseEnergyGoalKcal = baseEnergyGoalKcal,
@@ -633,10 +635,14 @@ private fun GoalDisplayMode.summary(
                 previousDays = previousDays,
                 plannedFutureDays = plannedFutureDays,
                 weeklyBalancingEnabled = weeklyBalancingEnabled,
+                // Only the diet goal is capped; the optimized goal shows the whole balance.
+                maxEnergyDeficitKcal =
+                    maxEnergyDeficitKcal.takeIf { this == GoalDisplayMode.Diet },
             )
         } else {
-            baseEnergyGoalKcal
+            null
         }
+    val energyGoal = adjustedGoal?.energyGoalKcal ?: baseEnergyGoalKcal
 
     val showEnergyGoalValue =
         when (this) {
@@ -658,5 +664,7 @@ private fun GoalDisplayMode.summary(
                 energyGoalKcal = energyGoal,
                 baseEnergyGoalKcal = baseEnergyGoalKcal,
             ),
+        uncaughtBalanceKcal =
+            adjustedGoal?.uncaughtBalanceKcal?.let(::roundedEnergyKcal)?.takeIf { it > 0 },
     )
 }

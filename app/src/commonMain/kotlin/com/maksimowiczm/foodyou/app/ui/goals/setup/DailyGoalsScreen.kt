@@ -91,6 +91,7 @@ import com.maksimowiczm.foodyou.goals.domain.entity.BiologicalSex
 import com.maksimowiczm.foodyou.goals.domain.usecase.calculateBasalMetabolicRateSuggestion
 import com.maksimowiczm.foodyou.goals.domain.usecase.dailyEnergyDeficitKcal
 import com.maksimowiczm.foodyou.goals.domain.usecase.weeklyWeightLossKg
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_MAX_ENERGY_DEFICIT_KCAL
 import com.maksimowiczm.foodyou.settings.domain.entity.DietEnergyDeficitOverride
 import com.maksimowiczm.foodyou.settings.domain.entity.NutrientsOrder
 import foodyou.app.generated.resources.*
@@ -137,6 +138,7 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
         rememberDietEnergyDeficitFormState(
             initialValue = setupState.dietEnergyDeficitKcal,
             initialOverride = setupState.dietEnergyDeficitOverride,
+            initialMaxEnergyDeficit = setupState.maxEnergyDeficitKcal,
         )
     val energyFormatter = LocalEnergyFormatter.current
     val initialLockedDaySurplusInput =
@@ -171,6 +173,7 @@ fun DailyGoalsScreen(onBack: () -> Unit, onSave: () -> Unit, modifier: Modifier 
                 basalMetabolicRateProfile = basalMetabolicRateProfileState.intoProfile(),
                 dietEnergyDeficitKcal = dietEnergyDeficitState.value,
                 dietEnergyDeficitOverride = dietEnergyDeficitState.overrideValue,
+                maxEnergyDeficitKcal = dietEnergyDeficitState.catchUpCap.value,
                 defaultLockedDaySurplusKcal = defaultLockedDaySurplusKcal ?: return@DailyGoalsContent,
             )
         },
@@ -466,6 +469,15 @@ private fun DailyGoalsOverview(
             isError =
                 dietEnergyDeficitState.textFieldState.text.isNotBlank() &&
                     dietEnergyDeficitState.parsedValue == null,
+            onClick = { onOpen(DailyGoalsPage.Diet) },
+        )
+        OverviewDivider()
+        OverviewRow(
+            label = stringResource(Res.string.label_max_daily_energy_deficit),
+            value =
+                dietEnergyDeficitState.catchUpCap.value?.let { "${it.formatClipZeros()} $kcal" }
+                    ?: off,
+            isError = !dietEnergyDeficitState.catchUpCap.isValid,
             onClick = { onOpen(DailyGoalsPage.Diet) },
         )
         OverviewDivider()
@@ -1062,6 +1074,12 @@ private fun DietPage(
 ) {
     PageCard { DietEnergyDeficitForm(state = dietEnergyDeficitState) }
     PageCard {
+        MaxEnergyDeficitForm(
+            state = dietEnergyDeficitState.catchUpCap,
+            dietEnergyDeficitKcal = dietEnergyDeficitState.value,
+        )
+    }
+    PageCard {
         Text(
             text = stringResource(Res.string.daily_goals_locked_days),
             style = MaterialTheme.typography.titleMedium,
@@ -1108,11 +1126,14 @@ internal class DietEnergyDeficitFormState(
     val textFieldState: TextFieldState,
     private val initialInput: String,
     overrideState: TemporaryDietEnergyDeficitFormState,
+    catchUpCapState: MaxEnergyDeficitFormState,
 ) {
     private val input: String
         get() = textFieldState.text.toString()
 
     val override: TemporaryDietEnergyDeficitFormState = overrideState
+
+    val catchUpCap: MaxEnergyDeficitFormState = catchUpCapState
 
     val parsedValue: Double? by derivedStateOf { input.parseNonNegativeDeficit() }
 
@@ -1121,10 +1142,12 @@ internal class DietEnergyDeficitFormState(
     val overrideValue: DietEnergyDeficitOverride? by derivedStateOf { override.value }
 
     val isValid: Boolean by derivedStateOf {
-        (input.isBlank() || parsedValue != null) && override.isValid
+        (input.isBlank() || parsedValue != null) && override.isValid && catchUpCap.isValid
     }
 
-    val isModified: Boolean by derivedStateOf { input != initialInput || override.isModified }
+    val isModified: Boolean by derivedStateOf {
+        input != initialInput || override.isModified || catchUpCap.isModified
+    }
 
     /**
      * Turns the temporary deficit on or off. An empty temporary deficit starts with the daily one,
@@ -1142,16 +1165,63 @@ internal class DietEnergyDeficitFormState(
 internal fun rememberDietEnergyDeficitFormState(
     initialValue: Double?,
     initialOverride: DietEnergyDeficitOverride? = null,
+    initialMaxEnergyDeficit: Double? = DEFAULT_MAX_ENERGY_DEFICIT_KCAL,
 ): DietEnergyDeficitFormState {
     val sanitizedInitialValue = initialValue?.takeIf { it > 0.0 }
     val textFieldState = rememberTextFieldState(sanitizedInitialValue?.formatClipZeros().orEmpty())
     val overrideState = rememberTemporaryDietEnergyDeficitFormState(initialOverride)
+    val catchUpCapState = rememberMaxEnergyDeficitFormState(initialMaxEnergyDeficit)
 
-    return remember(textFieldState, sanitizedInitialValue, overrideState) {
+    return remember(textFieldState, sanitizedInitialValue, overrideState, catchUpCapState) {
         DietEnergyDeficitFormState(
             textFieldState = textFieldState,
             initialInput = sanitizedInitialValue?.formatClipZeros().orEmpty(),
             overrideState = overrideState,
+            catchUpCapState = catchUpCapState,
+        )
+    }
+}
+
+/**
+ * The cap on how far the weekly balancing lowers the diet goal below the normal goal. Turned off,
+ * the field keeps its text, so switching it back on restores the last cap.
+ */
+@Stable
+internal class MaxEnergyDeficitFormState(
+    val textFieldState: TextFieldState,
+    private val initialEnabled: Boolean,
+    private val initialInput: String,
+    enabledState: MutableState<Boolean>,
+) {
+    private val input: String
+        get() = textFieldState.text.toString()
+
+    var enabled by enabledState
+
+    val parsedValue: Double? by derivedStateOf { input.parsePositiveDeficit() }
+
+    val value: Double? by derivedStateOf { if (enabled) parsedValue else null }
+
+    val isValid: Boolean by derivedStateOf { !enabled || parsedValue != null }
+
+    val isModified: Boolean by derivedStateOf {
+        enabled != initialEnabled || (enabled && input != initialInput)
+    }
+}
+
+@Composable
+internal fun rememberMaxEnergyDeficitFormState(initialValue: Double?): MaxEnergyDeficitFormState {
+    val sanitizedInitialValue = initialValue?.takeIf { it.isFinite() && it > 0.0 }
+    val initialInput = (sanitizedInitialValue ?: DEFAULT_MAX_ENERGY_DEFICIT_KCAL).formatClipZeros()
+    val textFieldState = rememberTextFieldState(initialInput)
+    val enabledState = rememberSaveable { mutableStateOf(sanitizedInitialValue != null) }
+
+    return remember(textFieldState, sanitizedInitialValue, enabledState) {
+        MaxEnergyDeficitFormState(
+            textFieldState = textFieldState,
+            initialEnabled = sanitizedInitialValue != null,
+            initialInput = initialInput,
+            enabledState = enabledState,
         )
     }
 }
@@ -1341,6 +1411,53 @@ private fun WeeklyWeightLossCalculator(state: DietEnergyDeficitFormState) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MaxEnergyDeficitForm(state: MaxEnergyDeficitFormState, dietEnergyDeficitKcal: Double?) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = stringResource(Res.string.daily_goals_catch_up_cap_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = stringResource(Res.string.daily_goals_catch_up_cap_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .clickable { state.enabled = !state.enabled }
+                    .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Checkbox(checked = state.enabled, onCheckedChange = null)
+            Text(
+                text = stringResource(Res.string.daily_goals_catch_up_cap_enabled),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        AnimatedVisibility(state.enabled) {
+            val catchUpKcal =
+                state.parsedValue?.let { cap ->
+                    (cap - (dietEnergyDeficitKcal ?: 0.0)).coerceAtLeast(0.0).roundToInt()
+                }
+            OutlinedTextField(
+                state = state.textFieldState,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(Res.string.label_max_daily_energy_deficit)) },
+                supportingText =
+                    catchUpKcal?.let {
+                        { Text(stringResource(Res.string.daily_goals_catch_up_cap_supporting, it)) }
+                    },
+                suffix = { Text(stringResource(Res.string.unit_kcal)) },
+                isError = state.parsedValue == null,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            )
         }
     }
 }

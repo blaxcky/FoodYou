@@ -95,6 +95,7 @@ import foodyou.app.generated.resources.goal_display_mode_normal
 import foodyou.app.generated.resources.goal_display_mode_optimized
 import foodyou.app.generated.resources.goal_fat
 import foodyou.app.generated.resources.goal_goal
+import foodyou.app.generated.resources.goals_uncaught_balance
 import foodyou.app.generated.resources.goal_left
 import foodyou.app.generated.resources.goal_protein
 import foodyou.app.generated.resources.goal_reached_percentage
@@ -411,6 +412,17 @@ internal fun GoalsCard(
             gaugeMarkerGapDegrees = gaugeMarkerGapDegrees,
             modifier = Modifier.fillMaxWidth(),
         ) {
+            val uncaughtBalanceKcal =
+                summaries
+                    .firstOrNull { it.mode == GoalDisplayMode.Diet }
+                    ?.uncaughtBalanceKcal
+                    ?.takeIf {
+                        goalCardModeSwitchingEnabled &&
+                            displayedGoalCardView.toGoalDisplayMode() == GoalDisplayMode.Diet
+                    }
+            if (uncaughtBalanceKcal != null) {
+                UncaughtBalanceHint(uncaughtBalanceKcal)
+            }
             MacroGoalsFooter(
                 proteins = proteins,
                 proteinsGoal = proteinsGoal,
@@ -424,6 +436,19 @@ internal fun GoalsCard(
             )
         }
     }
+}
+
+/** Says how much of the week's balance the capped diet goal no longer catches up. */
+@Composable
+private fun UncaughtBalanceHint(uncaughtBalanceKcal: Int) {
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = stringResource(Res.string.goals_uncaught_balance, uncaughtBalanceKcal),
+        modifier = Modifier.fillMaxWidth(),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @Composable

@@ -237,6 +237,38 @@ class GoalsViewModelTest {
         assertEquals(normal.energyGoal - 550, diet.energyGoal)
     }
 
+    @Test
+    fun maxEnergyDeficitCapsTheDietSummaryButNotTheOptimizedOne() {
+        val tuesday = LocalDate(2026, 11, 17)
+        val monday =
+            GoalEnergyOptimizationDay(
+                date = LocalDate(2026, 11, 16),
+                consumedEnergyKcal = 4_200.0,
+                baseEnergyGoalKcal = 2_200.0,
+                burnedEnergyKcal = 0.0,
+                dietEnergyDeficitKcal = 550.0,
+            )
+        fun summary(mode: CardGoalDisplayMode) =
+            mode.summary(
+                selectedDate = tuesday,
+                calculationDate = tuesday,
+                baseEnergyGoalKcal = 2_200.0,
+                dietEnergyDeficitKcal = 550.0,
+                previousDays = listOf(monday),
+                plannedFutureDays = emptyList(),
+                weeklyBalancingEnabled = true,
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        val diet = summary(CardGoalDisplayMode.Diet)
+        val optimized = summary(CardGoalDisplayMode.Optimized)
+
+        assertEquals(1_400, diet.energyGoal)
+        assertEquals(1_050, diet.uncaughtBalanceKcal)
+        assertEquals(1_867, optimized.energyGoal)
+        assertEquals(null, optimized.uncaughtBalanceKcal)
+    }
+
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         try {

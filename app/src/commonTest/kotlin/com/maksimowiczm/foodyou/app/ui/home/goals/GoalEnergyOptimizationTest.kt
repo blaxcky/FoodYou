@@ -923,4 +923,130 @@ class GoalEnergyOptimizationTest {
 
         assertEquals(2000.0, goal)
     }
+
+    private fun cappedDietDay(date: LocalDate, consumedEnergyKcal: Double, deficitKcal: Double = 550.0) =
+        GoalEnergyOptimizationDay(
+            date = date,
+            consumedEnergyKcal = consumedEnergyKcal,
+            baseEnergyGoalKcal = 2_200.0,
+            burnedEnergyKcal = 0.0,
+            dietEnergyDeficitKcal = deficitKcal,
+        )
+
+    private val monday = LocalDate(2026, 11, 16)
+    private val tuesday = LocalDate(2026, 11, 17)
+    private val sunday = LocalDate(2026, 11, 22)
+
+    // Mon to Fri on the diet target, Sat 2550 kcal over it.
+    private val dietWeekUntilSunday =
+        List(5) { cappedDietDay(LocalDate(2026, 11, 16 + it), 1_650.0) } +
+            cappedDietDay(LocalDate(2026, 11, 21), 4_200.0)
+
+    @Test
+    fun maxEnergyDeficitCapsTuesdaysCatchUpAfterAnExcessiveMonday() {
+        val result =
+            adjustedEnergyGoal(
+                selectedDate = tuesday,
+                calculationDate = tuesday,
+                baseEnergyGoalKcal = 2_200.0,
+                dailyEnergyDeficitKcal = 550.0,
+                previousDays = listOf(cappedDietDay(monday, 4_200.0)),
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        assertEquals(1_400.0, result.energyGoalKcal)
+        assertEquals(1_050.0, result.uncaughtBalanceKcal)
+    }
+
+    @Test
+    fun withoutMaxEnergyDeficitTheWholeBalanceIsCaughtUp() {
+        val result =
+            adjustedEnergyGoal(
+                selectedDate = tuesday,
+                calculationDate = tuesday,
+                baseEnergyGoalKcal = 2_200.0,
+                dailyEnergyDeficitKcal = 550.0,
+                previousDays = listOf(cappedDietDay(monday, 4_200.0)),
+                maxEnergyDeficitKcal = null,
+            )
+
+        assertEquals(1_225.0, result.energyGoalKcal)
+        assertEquals(0.0, result.uncaughtBalanceKcal)
+    }
+
+    @Test
+    fun maxEnergyDeficitKeepsSundayReachableAfterAnExcessiveSaturday() {
+        val capped =
+            adjustedEnergyGoal(
+                selectedDate = sunday,
+                calculationDate = sunday,
+                baseEnergyGoalKcal = 2_200.0,
+                dailyEnergyDeficitKcal = 550.0,
+                previousDays = dietWeekUntilSunday,
+                maxEnergyDeficitKcal = 800.0,
+            )
+        val uncapped =
+            adjustedEnergyGoalKcal(
+                selectedDate = sunday,
+                calculationDate = sunday,
+                baseEnergyGoalKcal = 2_200.0,
+                dailyEnergyDeficitKcal = 550.0,
+                previousDays = dietWeekUntilSunday,
+            )
+
+        assertEquals(-900.0, uncapped)
+        assertEquals(1_400.0, capped.energyGoalKcal)
+        assertEquals(2_300.0, capped.uncaughtBalanceKcal)
+    }
+
+    @Test
+    fun dietDeficitAboveTheCapKeepsThePlainDietTarget() {
+        val result =
+            adjustedEnergyGoal(
+                selectedDate = tuesday,
+                calculationDate = tuesday,
+                baseEnergyGoalKcal = 2_200.0,
+                dailyEnergyDeficitKcal = 1_000.0,
+                previousDays = listOf(cappedDietDay(monday, 4_200.0, deficitKcal = 1_000.0)),
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        assertEquals(1_200.0, result.energyGoalKcal)
+    }
+
+    @Test
+    fun maxEnergyDeficitLeavesDietSavingsUntouched() {
+        val result =
+            adjustedEnergyGoal(
+                selectedDate = tuesday,
+                calculationDate = tuesday,
+                baseEnergyGoalKcal = 2_200.0,
+                dailyEnergyDeficitKcal = 550.0,
+                previousDays = listOf(cappedDietDay(monday, 1_050.0)),
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        assertEquals(1_750.0, result.energyGoalKcal)
+        assertEquals(0.0, result.uncaughtBalanceKcal)
+    }
+
+    @Test
+    fun maxEnergyDeficitNeverCapsTheOptimizedGoal() {
+        val week =
+            List(5) { cappedDietDay(LocalDate(2026, 11, 16 + it), 2_200.0, deficitKcal = 0.0) } +
+                cappedDietDay(LocalDate(2026, 11, 21), 4_700.0, deficitKcal = 0.0)
+
+        val result =
+            adjustedEnergyGoal(
+                selectedDate = sunday,
+                calculationDate = sunday,
+                baseEnergyGoalKcal = 2_200.0,
+                dailyEnergyDeficitKcal = 0.0,
+                previousDays = week,
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        assertEquals(-300.0, result.energyGoalKcal)
+        assertEquals(0.0, result.uncaughtBalanceKcal)
+    }
 }

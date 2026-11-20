@@ -117,6 +117,7 @@ internal class CalorieWidgetUpdater(
             previousDays = previousDays,
             plannedFutureDays = plannedFutureDays,
             weeklyBalancingEnabled = weeklyBalancingEnabled,
+            maxEnergyDeficitKcal = settings.maxEnergyDeficitKcal,
             markerGapDegrees = settings.widgetGaugeMarkerGapDegrees,
             capMarkerStyle = settings.goalGaugeCapMarkerStyle,
         )

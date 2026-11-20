@@ -41,6 +41,7 @@ internal fun calorieWidgetModel(
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
     weeklyBalancingEnabled: Boolean = true,
+    maxEnergyDeficitKcal: Double? = null,
     markerGapDegrees: Int = DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES,
     capMarkerStyle: GoalGaugeCapMarkerStyle = GoalGaugeCapMarkerStyle.Teardrop,
 ): CalorieWidgetModel {
@@ -65,6 +66,7 @@ internal fun calorieWidgetModel(
                 previousDays = previousDays,
                 plannedFutureDays = plannedFutureDays,
                 weeklyBalancingEnabled = weeklyBalancingEnabled,
+                maxEnergyDeficitKcal = maxEnergyDeficitKcal,
             )
         }
 

@@ -23,7 +23,7 @@ internal fun optimizedEnergyGoalKcal(
     plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
     weeklyBalancingEnabled: Boolean = true,
 ): Double =
-    adjustedEnergyGoalKcal(
+    balancedEnergyGoal(
         selectedDate = selectedDate,
         calculationDate = calculationDate,
         baseEnergyGoalKcal = baseEnergyGoalKcal,
@@ -32,7 +32,17 @@ internal fun optimizedEnergyGoalKcal(
         plannedFutureDays = plannedFutureDays,
         includeExtraSavings = false,
         weeklyBalancingEnabled = weeklyBalancingEnabled,
+        maxEnergyDeficitKcal = null,
     )
+        .energyGoalKcal
+
+/**
+ * A balanced energy goal and the part of the week's balance it no longer catches up.
+ *
+ * @param uncaughtBalanceKcal The energy the remaining open days of the week leave unbalanced because
+ *   the diet goal is capped at the maximum daily energy deficit; 0 when the cap does not apply.
+ */
+internal data class AdjustedEnergyGoal(val energyGoalKcal: Double, val uncaughtBalanceKcal: Double)
 
 internal fun adjustedEnergyGoalKcal(
     selectedDate: LocalDate,
@@ -42,8 +52,37 @@ internal fun adjustedEnergyGoalKcal(
     previousDays: List<GoalEnergyOptimizationDay>,
     plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
     weeklyBalancingEnabled: Boolean = true,
+    maxEnergyDeficitKcal: Double? = null,
 ): Double =
-    adjustedEnergyGoalKcal(
+    adjustedEnergyGoal(
+            selectedDate = selectedDate,
+            calculationDate = calculationDate,
+            baseEnergyGoalKcal = baseEnergyGoalKcal,
+            dailyEnergyDeficitKcal = dailyEnergyDeficitKcal,
+            previousDays = previousDays,
+            plannedFutureDays = plannedFutureDays,
+            weeklyBalancingEnabled = weeklyBalancingEnabled,
+            maxEnergyDeficitKcal = maxEnergyDeficitKcal,
+        )
+        .energyGoalKcal
+
+/**
+ * The balanced goal. In diet mode (a positive [dailyEnergyDeficitKcal]) [maxEnergyDeficitKcal] caps
+ * how far the catch-up lowers the goal: it never goes more than that below [baseEnergyGoalKcal], and
+ * never above the plain diet target. What the cap leaves uncaught is not carried anywhere; the balance
+ * starts over every Monday, so one excessive day cannot make the rest of the week unreachable.
+ */
+internal fun adjustedEnergyGoal(
+    selectedDate: LocalDate,
+    calculationDate: LocalDate,
+    baseEnergyGoalKcal: Double,
+    dailyEnergyDeficitKcal: Double,
+    previousDays: List<GoalEnergyOptimizationDay>,
+    plannedFutureDays: List<GoalEnergyOptimizationDay> = emptyList(),
+    weeklyBalancingEnabled: Boolean = true,
+    maxEnergyDeficitKcal: Double? = null,
+): AdjustedEnergyGoal =
+    balancedEnergyGoal(
         selectedDate = selectedDate,
         calculationDate = calculationDate,
         baseEnergyGoalKcal = baseEnergyGoalKcal,
@@ -52,6 +91,7 @@ internal fun adjustedEnergyGoalKcal(
         plannedFutureDays = plannedFutureDays,
         includeExtraSavings = true,
         weeklyBalancingEnabled = weeklyBalancingEnabled,
+        maxEnergyDeficitKcal = maxEnergyDeficitKcal,
     )
 
 internal fun energyGoalDiffersFromBase(
@@ -68,7 +108,7 @@ internal fun roundedNetEnergyKcal(consumedEnergy: Double, burnedEnergy: Double):
 internal fun roundedRemainingEnergyKcal(energyGoalKcal: Double, netEnergyKcal: Int): Int =
     roundedEnergyKcal(energyGoalKcal) - netEnergyKcal
 
-private fun adjustedEnergyGoalKcal(
+private fun balancedEnergyGoal(
     selectedDate: LocalDate,
     calculationDate: LocalDate,
     baseEnergyGoalKcal: Double,
@@ -77,10 +117,12 @@ private fun adjustedEnergyGoalKcal(
     plannedFutureDays: List<GoalEnergyOptimizationDay>,
     includeExtraSavings: Boolean,
     weeklyBalancingEnabled: Boolean,
-): Double {
+    maxEnergyDeficitKcal: Double?,
+): AdjustedEnergyGoal {
     val dailyTarget = baseEnergyGoalKcal - dailyEnergyDeficitKcal
-    if (!weeklyBalancingEnabled) return dailyTarget
-    if (selectedDate.startOfWeek() != calculationDate.startOfWeek()) return dailyTarget
+    val unadjusted = AdjustedEnergyGoal(energyGoalKcal = dailyTarget, uncaughtBalanceKcal = 0.0)
+    if (!weeklyBalancingEnabled) return unadjusted
+    if (selectedDate.startOfWeek() != calculationDate.startOfWeek()) return unadjusted
 
     val dietMode = dailyEnergyDeficitKcal > 0.0
     val actualBalance =
@@ -126,10 +168,21 @@ private fun adjustedEnergyGoalKcal(
                         day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit)
         }
 
-    return if (selectedDayIsOverplanned) {
-        dailyTarget
+    if (selectedDayIsOverplanned) return unadjusted
+
+    val balancedGoal = (dailyTarget - dailyAdjustment).coerceAtMost(baseEnergyGoalKcal)
+    val maxDeficit = maxEnergyDeficitKcal?.takeIf { dietMode && it > 0.0 }
+    // The cap only limits the catch-up: a deficit above it keeps the plain diet target.
+    val floor =
+        maxDeficit?.let { baseEnergyGoalKcal - maxOf(it, dailyEnergyDeficitKcal) }
+            ?: return AdjustedEnergyGoal(energyGoalKcal = balancedGoal, uncaughtBalanceKcal = 0.0)
+    return if (balancedGoal < floor) {
+        AdjustedEnergyGoal(
+            energyGoalKcal = floor,
+            uncaughtBalanceKcal = (floor - balancedGoal) * unplannedOpenDays,
+        )
     } else {
-        (dailyTarget - dailyAdjustment).coerceAtMost(baseEnergyGoalKcal)
+        AdjustedEnergyGoal(energyGoalKcal = balancedGoal, uncaughtBalanceKcal = 0.0)
     }
 }
 

@@ -18,6 +18,11 @@ data class Settings(
     val goalDisplayMode: GoalDisplayMode,
     val dietEnergyDeficitKcal: Double?,
     val dietEnergyDeficitOverride: DietEnergyDeficitOverride? = null,
+    /**
+     * How far, at most, the weekly balancing lowers the diet goal below the normal goal; null lets it
+     * catch up the whole week's balance however low the goal gets. Only the diet goal is capped.
+     */
+    val maxEnergyDeficitKcal: Double? = DEFAULT_MAX_ENERGY_DEFICIT_KCAL,
     val onboardingFinished: Boolean,
     val energyFormat: EnergyFormat,
     val appLaunchInfo: AppLaunchInfo,
@@ -143,6 +148,9 @@ const val GOAL_GAUGE_MARKER_GAP_DEGREES_STEP = 5
 data class LockedDaySurplus(val date: LocalDate, val surplusKcal: Double)
 
 const val DEFAULT_LOCKED_DAY_SURPLUS_KCAL = 500.0
+
+/** A 500-600 kcal diet deficit plus a moderate catch-up of a day over the goal. */
+const val DEFAULT_MAX_ENERGY_DEFICIT_KCAL = 800.0
 
 fun Settings.lockedDaySurplus(date: LocalDate): LockedDaySurplus? =
     lockedDaySurpluses.firstOrNull { it.date == date }

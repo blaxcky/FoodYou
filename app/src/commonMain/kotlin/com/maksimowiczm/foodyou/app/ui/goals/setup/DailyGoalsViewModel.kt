@@ -34,6 +34,7 @@ internal class DailyGoalsViewModel(
                     basalMetabolicRateProfile = basalMetabolicRateProfile,
                     dietEnergyDeficitKcal = settings.dietEnergyDeficitKcal,
                     dietEnergyDeficitOverride = settings.dietEnergyDeficitOverride,
+                    maxEnergyDeficitKcal = settings.maxEnergyDeficitKcal,
                     defaultLockedDaySurplusKcal = settings.defaultLockedDaySurplusKcal,
                 )
             }
@@ -51,6 +52,7 @@ internal class DailyGoalsViewModel(
         basalMetabolicRateProfile: BasalMetabolicRateProfile,
         dietEnergyDeficitKcal: Double?,
         dietEnergyDeficitOverride: DietEnergyDeficitOverride?,
+        maxEnergyDeficitKcal: Double?,
         defaultLockedDaySurplusKcal: Double,
     ) {
         viewModelScope.launch {
@@ -65,6 +67,7 @@ internal class DailyGoalsViewModel(
                 copy(
                     dietEnergyDeficitKcal = sanitizedDeficit,
                     dietEnergyDeficitOverride = sanitizedOverride,
+                    maxEnergyDeficitKcal = maxEnergyDeficitKcal?.takeIf { it.isFinite() && it > 0.0 },
                     defaultLockedDaySurplusKcal =
                         defaultLockedDaySurplusKcal.takeIf { it.isFinite() && it >= 0.0 }
                             ?: 500.0,
@@ -90,5 +93,6 @@ internal data class DailyGoalsSetupState(
     val basalMetabolicRateProfile: BasalMetabolicRateProfile,
     val dietEnergyDeficitKcal: Double?,
     val dietEnergyDeficitOverride: DietEnergyDeficitOverride?,
+    val maxEnergyDeficitKcal: Double?,
     val defaultLockedDaySurplusKcal: Double,
 )

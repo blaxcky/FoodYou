@@ -12,6 +12,7 @@ import com.maksimowiczm.foodyou.common.infrastructure.datastore.AbstractDataStor
 import com.maksimowiczm.foodyou.common.infrastructure.datastore.set
 import com.maksimowiczm.foodyou.settings.domain.entity.AppLaunchInfo
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_LOCKED_DAY_SURPLUS_KCAL
+import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_MAX_ENERGY_DEFICIT_KCAL
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_MARKER_GAP_DEGREES
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_SIZE_PERCENT
 import com.maksimowiczm.foodyou.settings.domain.entity.DEFAULT_GOAL_GAUGE_STROKE_WIDTH_PERCENT
@@ -51,6 +52,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             goalDisplayMode = this.getGoalDisplayMode(),
             dietEnergyDeficitKcal = this[SettingsPreferencesKeys.dietEnergyDeficitKcal],
             dietEnergyDeficitOverride = this.getDietEnergyDeficitOverride(),
+            maxEnergyDeficitKcal = this.getMaxEnergyDeficitKcal(),
             onboardingFinished = this[SettingsPreferencesKeys.onboardingFinished] ?: false,
             energyFormat = this.getEnergyFormat(SettingsPreferencesKeys.energyFormat),
             appLaunchInfo = this.getAppLaunchInfo(),
@@ -140,6 +142,7 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             updated.dietEnergyDeficitKcal?.takeIf { it > 0.0 },
         )
         setDietEnergyDeficitOverride(updated.dietEnergyDeficitOverride)
+        setMaxEnergyDeficitKcal(updated.maxEnergyDeficitKcal)
         this[SettingsPreferencesKeys.onboardingFinished] = updated.onboardingFinished
         setEnergyFormat(SettingsPreferencesKeys.energyFormat, updated.energyFormat)
         setAppLaunchInfo(updated.appLaunchInfo)
@@ -215,6 +218,18 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
         this[SettingsPreferencesKeys.quickCaptureAggregateSameFoods] =
             updated.quickCaptureAggregateSameFoods
     }
+}
+
+// A missing key is the default cap; 0 stores the cap turned off, so it stays apart from the default.
+private fun Preferences.getMaxEnergyDeficitKcal(): Double? =
+    when (val stored = this[SettingsPreferencesKeys.maxEnergyDeficitKcal]) {
+        null -> DEFAULT_MAX_ENERGY_DEFICIT_KCAL
+        else -> stored.takeIf { it.isFinite() && it > 0.0 }
+    }
+
+private fun MutablePreferences.setMaxEnergyDeficitKcal(value: Double?) {
+    this[SettingsPreferencesKeys.maxEnergyDeficitKcal] =
+        value?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
 }
 
 private fun <T> MutablePreferences.setWithNull(key: Preferences.Key<T>, value: T?) {
@@ -505,6 +520,7 @@ private object SettingsPreferencesKeys {
     val dietEnergyDeficitKcal = doublePreferencesKey("settings:dietEnergyDeficitKcal")
     val dietEnergyDeficitOverrideKcal =
         doublePreferencesKey("settings:dietEnergyDeficitOverrideKcal")
+    val maxEnergyDeficitKcal = doublePreferencesKey("settings:maxEnergyDeficitKcal")
     val dietEnergyDeficitOverrideStartEpochDay =
         longPreferencesKey("settings:dietEnergyDeficitOverrideStartEpochDay")
     val dietEnergyDeficitOverrideEndEpochDay =

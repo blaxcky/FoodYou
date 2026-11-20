@@ -515,6 +515,28 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun maxEnergyDeficitDefaultsTo800RoundTripsAndCanBeTurnedOff() = runTest {
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
+
+        assertEquals(800.0, repository.observe().first().maxEnergyDeficitKcal)
+
+        repository.update { copy(maxEnergyDeficitKcal = 950.0) }
+        assertEquals(950.0, repository.observe().first().maxEnergyDeficitKcal)
+
+        repository.update { copy(maxEnergyDeficitKcal = null) }
+        assertNull(repository.observe().first().maxEnergyDeficitKcal)
+    }
+
+    @Test
+    fun invalidStoredMaxEnergyDeficitTurnsTheCapOff() = runTest {
+        val preferences =
+            mutablePreferencesOf(doublePreferencesKey("settings:maxEnergyDeficitKcal") to -5.0)
+        val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore(preferences))
+
+        assertNull(repository.observe().first().maxEnergyDeficitKcal)
+    }
+
+    @Test
     fun dietEnergyDeficitOverrideDefaultsToNull() = runTest {
         val repository = DataStoreSettingsRepository(InMemoryPreferencesDataStore())
 

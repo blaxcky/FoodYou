@@ -1068,5 +1068,11 @@
     <string name="daily_goals_suggested_deficit">Suggestion: %1$d kcal a day</string>
     <string name="daily_goals_matches_your_deficit">Matches your deficit</string>
     <string name="daily_goals_deficit_formula_hint">Based on 7700 kcal per kilogram of body fat.</string>
+    <string name="daily_goals_catch_up_cap_title">Limit catching up</string>
+    <string name="daily_goals_catch_up_cap_enabled">Limit the diet goal</string>
+    <string name="daily_goals_catch_up_cap_description">After a day over the goal, the diet goal of the week's remaining days drops at most this far below the normal goal. What is left is dropped on Monday. The optimized goal always shows the whole balance.</string>
+    <string name="label_max_daily_energy_deficit">Max. deficit per day</string>
+    <string name="daily_goals_catch_up_cap_supporting">Catches up at most %1$d kcal a day on top of your deficit. Guidelines recommend a 500–600 kcal deficit.</string>
+    <string name="goals_uncaught_balance">%1$d kcal won't be caught up this week</string>
     <string name="daily_goals_decimal_separator" translatable="false">.</string>
 </resources>

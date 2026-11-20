@@ -39,6 +39,8 @@ internal data class GoalDisplaySummaryModel(
     val energyGoal: Int,
     val showEnergyGoalValue: Boolean,
     val percentageEnergyGoal: Int = energyGoal,
+    /** The week's balance the capped diet goal no longer catches up; null when nothing is left. */
+    val uncaughtBalanceKcal: Int? = null,
 )
 
 @Immutable
