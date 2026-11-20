@@ -20,12 +20,12 @@ class FddbDiaryParser {
                             ?.groupValues
                             ?.get(1)
                             ?.stripTags()
-                            ?.decodeFddbHtml()
+                            ?.decodeFddbHtmlEntities()
                             ?.parseFddbDiaryDate(referenceDate)
                 }
 
                 token.startsWith("<h4", ignoreCase = true) -> {
-                    currentMeal = token.stripTags().decodeFddbHtml().trim().takeIf { it.isNotBlank() }
+                    currentMeal = token.stripTags().decodeFddbHtmlEntities().trim().takeIf { it.isNotBlank() }
                 }
 
                 token.startsWith("<tr", ignoreCase = true) -> {
@@ -44,7 +44,7 @@ class FddbDiaryParser {
 private fun String.parseDiaryRow(date: LocalDate, meal: String): FddbDiaryEntry? {
     val linkMatch = ProductLinkRegex.find(this) ?: return null
     val productUrl = linkMatch.groupValues[1].toAbsoluteFddbUrl()
-    val linkText = linkMatch.groupValues[2].stripTags().decodeFddbHtml().replace(WhitespaceRegex, " ").trim()
+    val linkText = linkMatch.groupValues[2].stripTags().decodeFddbHtmlEntities().replace(WhitespaceRegex, " ").trim()
     val amountMatch = AmountRegex.find(linkText) ?: return null
     val value = amountMatch.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return null
     val rest = linkText.removePrefix(amountMatch.value).trim()
@@ -101,23 +101,6 @@ private fun String.toAbsoluteFddbUrl(): String =
     }
 
 private fun String.stripTags(): String = replace(Regex("""<[^>]+>"""), " ")
-
-private fun String.decodeFddbHtml(): String =
-    replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&quot;", "\"")
-        .replace("&#34;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&Auml;", "Ä")
-        .replace("&auml;", "ä")
-        .replace("&Ouml;", "Ö")
-        .replace("&ouml;", "ö")
-        .replace("&Uuml;", "Ü")
-        .replace("&uuml;", "ü")
-        .replace("&szlig;", "ß")
 
 private val TokenRegex =
     Regex(

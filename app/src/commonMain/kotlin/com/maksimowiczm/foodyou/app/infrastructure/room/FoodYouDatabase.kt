@@ -25,8 +25,10 @@ import com.maksimowiczm.foodyou.app.infrastructure.room.migration.unlinkDiaryMig
 import com.maksimowiczm.foodyou.common.domain.database.TransactionProvider
 import com.maksimowiczm.foodyou.common.domain.database.TransactionScope as DomainTransactionScope
 import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceTypeConverter
+import com.maksimowiczm.foodyou.common.infrastructure.room.FoodSourceTypeSQLConstants
 import com.maksimowiczm.foodyou.common.infrastructure.room.MeasurementTypeConverter
 import com.maksimowiczm.foodyou.common.infrastructure.room.RoomTransactionScope
+import com.maksimowiczm.foodyou.food.infrastructure.fddb.decodeFddbHtmlEntities
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodDatabase
 import com.maksimowiczm.foodyou.food.infrastructure.room.FoodEventEntity
 import com.maksimowiczm.foodyou.food.infrastructure.room.FddbDiarySyncEntryEntity
@@ -175,7 +177,7 @@ abstract class FoodYouDatabase :
     abstract val trainingImportDao: TrainingImportDao
 
     companion object {
-        const val VERSION = 55
+        const val VERSION = 56
 
         private val migrations: List<Migration> =
             listOf(
@@ -216,6 +218,7 @@ abstract class FoodYouDatabase :
                 QuickCaptureSuggestionFeedbackMigration,
                 ProductStandardPortionVisibilityMigration,
                 ProductPreferredMealMigration,
+                FddbHtmlEntityCleanupMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -669,5 +672,57 @@ internal object QuickCaptureSuggestionFeedbackMigration : Migration(52, 53) {
 internal object ProductPreferredMealMigration : Migration(54, 55) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE `Product` ADD COLUMN `preferredMealId` INTEGER")
+    }
+}
+
+/**
+ * Decodes HTML character references (such as `&#039;`) that older FDDB parsers left in the names
+ * of imported products and in the diary snapshots of those products.
+ */
+internal object FddbHtmlEntityCleanupMigration : Migration(55, 56) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.decodeColumns(table = "Product", columns = listOf("name", "brand"))
+        connection.decodeColumns(table = "DiaryProduct", columns = listOf("name"))
+        // Rebuild the external-content index so that search finds the repaired names.
+        connection.execSQL("INSERT INTO `ProductFts`(`ProductFts`) VALUES('rebuild')")
+    }
+
+    private fun SQLiteConnection.decodeColumns(table: String, columns: List<String>) {
+        val selectColumns = columns.joinToString(", ") { "`$it`" }
+        val hasEntity = columns.joinToString(" OR ") { "`$it` LIKE '%&%;%'" }
+        val changedRows = mutableListOf<Pair<Long, List<String?>>>()
+
+        prepare(
+                "SELECT `id`, $selectColumns FROM `$table` " +
+                    "WHERE `sourceType` = ${FoodSourceTypeSQLConstants.FDDB} AND ($hasEntity)"
+            )
+            .use { statement ->
+                while (statement.step()) {
+                    val original =
+                        columns.indices.map { index ->
+                            if (statement.isNull(index + 1)) null else statement.getText(index + 1)
+                        }
+                    val decoded = original.map { it?.decodeFddbHtmlEntities() }
+                    if (decoded != original) {
+                        changedRows += statement.getLong(0) to decoded
+                    }
+                }
+            }
+
+        if (changedRows.isEmpty()) return
+
+        val assignments = columns.joinToString(", ") { "`$it` = ?" }
+        prepare("UPDATE `$table` SET $assignments WHERE `id` = ?").use { statement ->
+            for ((id, values) in changedRows) {
+                statement.reset()
+                statement.clearBindings()
+                values.forEachIndexed { index, value ->
+                    if (value == null) statement.bindNull(index + 1)
+                    else statement.bindText(index + 1, value)
+                }
+                statement.bindLong(columns.size + 1, id)
+                statement.step()
+            }
+        }
     }
 }

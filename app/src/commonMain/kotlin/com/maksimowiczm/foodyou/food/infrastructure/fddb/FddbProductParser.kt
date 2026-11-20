@@ -76,7 +76,7 @@ private fun String.tagText(tag: String, id: String): String? =
         ?.groupValues
         ?.get(1)
         ?.stripTags()
-        ?.decodeHtml()
+        ?.decodeFddbHtmlEntities()
         ?.trim()
 
 private fun String.toBrand(): String? =
@@ -93,31 +93,13 @@ private fun String.toTextLines(): List<String> =
             "\n",
         )
         .stripTags()
-        .decodeHtml()
+        .decodeFddbHtmlEntities()
         .lineSequence()
         .map { it.replace(Regex("""\s+"""), " ").trim() }
         .filter { it.isNotBlank() }
         .toList()
 
 private fun String.stripTags(): String = replace(Regex("""<[^>]+>"""), "\n")
-
-private fun String.decodeHtml(): String =
-    replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&quot;", "\"")
-        .replace("&#34;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&micro;", "µ")
-        .replace("&Ouml;", "Ö")
-        .replace("&ouml;", "ö")
-        .replace("&Auml;", "Ä")
-        .replace("&auml;", "ä")
-        .replace("&Uuml;", "Ü")
-        .replace("&uuml;", "ü")
-        .replace("&szlig;", "ß")
 
 private fun String.nutrientRows(): List<FddbNutrientRow> =
     (tableNutrientRows() + sidNutrientRows()).sortedBy { it.first }.map { it.second }
@@ -150,7 +132,7 @@ private fun String.sidNutrientRows(): List<Pair<Int, FddbNutrientRow>> =
     }.toList()
 
 private fun String.toNutrientCellText(): String =
-    stripTags().decodeHtml().replace(Regex("""\s+"""), " ").trim()
+    stripTags().decodeFddbHtmlEntities().replace(Regex("""\s+"""), " ").trim()
 
 private fun String.toNutrientLabel(): String = trim().trimEnd(':').trim()
 

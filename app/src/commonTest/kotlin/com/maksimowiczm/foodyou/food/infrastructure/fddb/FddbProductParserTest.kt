@@ -32,6 +32,21 @@ class FddbProductParserTest {
     }
 
     @Test
+    fun decodesHtmlEntitiesInNameAndBrand() {
+        val product =
+            parser.parse(
+                """
+                <h1 id="fddb-headline1">M&amp;M&#039;s</h1>
+                <h2 id="fddb-headline2">Mars, Schokolade</h2>
+                """
+                    .trimIndent()
+            )
+
+        assertEquals("M&M's", product.name)
+        assertEquals("Mars", product.brand)
+    }
+
+    @Test
     fun parsesPackageAndServingPortions() {
         val product = parser.parse(MiniSalamiSticksFixture)
 

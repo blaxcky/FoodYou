@@ -29,6 +29,21 @@ class FddbDiaryParserTest {
     }
 
     @Test
+    fun decodesHtmlEntitiesInProductName() {
+        val html =
+            """
+            <td class="notepaddate"><h3>Montag 25. Mai</h3></td>
+            <h4>Snacks</h4>
+            <tr id="np1"><td><a href="/db/de/lebensmittel/mars_mms/index.html">50 g M&amp;M&#039;s</a></td></tr>
+            """
+                .trimIndent()
+
+        val entry = parser.parse(html, LocalDate(2026, 5, 25)).single()
+
+        assertEquals("M&M's", entry.productName)
+    }
+
+    @Test
     fun resolvesPreviousYearForFutureDayWithoutYear() {
         val html =
             """
