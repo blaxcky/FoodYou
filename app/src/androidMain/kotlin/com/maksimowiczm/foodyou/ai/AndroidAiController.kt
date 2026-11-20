@@ -84,6 +84,8 @@ internal class AndroidAiController(
             backgroundPhotoAnalysisEnabled = props.getProperty("background_photo_analysis") == "true",
             nutritionProvider = runCatching { NutritionProvider.valueOf(props.getProperty("nutrition.provider", "")) }
                 .getOrElse { if (claudeKeyFile.isFile && !openAiKeyFile.isFile) NutritionProvider.Claude else NutritionProvider.OpenAI },
+            promptShareTarget = runCatching { PromptShareTarget.valueOf(props.getProperty("prompt_share.target", "")) }
+                .getOrDefault(PromptShareTarget.ChatGpt),
             claude = ClaudeSettings(
                 ClaudeTask(props.getProperty("claude.photo.model", "claude-sonnet-5-5"), props.getProperty("claude.photo.effort", "low").takeIf { it.isNotEmpty() }),
                 ClaudeTask(props.getProperty("claude.nutrition.model", "claude-sonnet-5-5"), props.getProperty("claude.nutrition.effort", "medium").takeIf { it.isNotEmpty() }),
@@ -212,6 +214,16 @@ internal class AndroidAiController(
             val props = java.util.Properties()
             if (preferences.isFile) preferences.inputStream().use(props::load)
             props.setProperty("nutrition.provider", provider.name)
+            atomicWrite(preferences, java.io.ByteArrayOutputStream().use { props.store(it, null); it.toByteArray() })
+            mutableSettings.value = readSettings()
+        } }
+    }
+
+    override suspend fun savePromptShareTarget(target: PromptShareTarget) {
+        withContext(Dispatchers.IO) { configMutex.withLock {
+            val props = java.util.Properties()
+            if (preferences.isFile) preferences.inputStream().use(props::load)
+            props.setProperty("prompt_share.target", target.name)
             atomicWrite(preferences, java.io.ByteArrayOutputStream().use { props.store(it, null); it.toByteArray() })
             mutableSettings.value = readSettings()
         } }

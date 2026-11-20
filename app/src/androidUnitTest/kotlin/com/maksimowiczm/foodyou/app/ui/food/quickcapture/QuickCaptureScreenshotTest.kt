@@ -801,6 +801,20 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
+    fun shareLabelsNameTheSelectedApp() {
+        var shared = false
+        show {
+            QuickCaptureLog(listOf(direct(1, 1, "Skyr Natur", 200.0)), false,
+                { _, _ -> }, {}, {}, { shared = true }, false, {}, {},
+                timeZone = TimeZone.UTC,
+                shareAppLabel = "Gemini")
+        }
+        compose.onNodeWithText("An ChatGPT").assertDoesNotExist()
+        compose.onNodeWithText("An Gemini").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(shared) }
+    }
+
+    @Test
     @Config(qualifiers = "de-rDE-w320dp-h640dp-mdpi")
     fun openAiNarrowLargeFont() {
         RuntimeEnvironment.setFontScale(1.5f)

@@ -755,7 +755,7 @@
     <string name="headline_quick_capture_items">%1$d Einträge</string>
     <string name="action_quick_capture_add">Zum Log hinzufügen</string>
     <string name="action_quick_capture_open_entry_form">Log-Eintrag hinzufügen</string>
-    <string name="action_quick_capture_share_prompt">An ChatGPT teilen</string>
+    <string name="action_quick_capture_share_prompt">An %1$s teilen</string>
     <string name="action_quick_capture_import_csv">CSV als Schnelleinträge eintragen</string>
     <string name="action_quick_capture_import_csv_confirm">Eintragen</string>
     <string name="action_quick_capture_to_diary">In FoodYou eintragen</string>
@@ -775,9 +775,10 @@
     <string name="neutral_quick_capture_empty_log">Noch keine Schnellerfassungs-Einträge</string>
     <string name="neutral_quick_capture_empty_photos">Keine Fotos zur Nachbearbeitung</string>
     <string name="neutral_quick_capture_empty_library">Verwendete Namen erscheinen hier</string>
-    <string name="neutral_quick_capture_chatgpt_copy_fallback">ChatGPT konnte nicht geöffnet werden. Prompt wurde kopiert.</string>
+    <string name="neutral_quick_capture_chatgpt_copy_fallback">%1$s konnte nicht geöffnet werden. Prompt wurde kopiert.</string>
+    <string name="neutral_quick_capture_share_opened_only">Prompt wurde kopiert. Füge ihn in %1$s ein.</string>
     <string name="headline_quick_capture_csv_import">Schnelleinträge importieren</string>
-    <string name="description_quick_capture_csv_import">Füge die von ChatGPT zurückgegebene CSV mit einer Datenzeile pro Posten im Prompt ein. Jede Zeile wird heute einzeln in die passende Mahlzeit eingetragen und die im Prompt enthaltenen Einträge werden erledigt.</string>
+    <string name="description_quick_capture_csv_import">Füge die von %1$s zurückgegebene CSV mit einer Datenzeile pro Posten im Prompt ein. Jede Zeile wird heute einzeln in die passende Mahlzeit eingetragen und die im Prompt enthaltenen Einträge werden erledigt.</string>
     <string name="neutral_quick_capture_csv_imported">Schnelleinträge erstellt</string>
     <string name="error_quick_capture_csv_no_meal">Für die Schnelleinträge ist keine Mahlzeit verfügbar.</string>
     <string name="error_quick_capture_csv_save">Die Schnelleinträge konnten nicht gespeichert werden. Es wurde nichts geändert.</string>
@@ -809,7 +810,7 @@
     <string name="action_sync_log_collapse">Sync-Details ausblenden</string>
     <string name="error_quick_capture_csv_columns">Jede CSV-Datenzeile muss genau fünf Spalten enthalten: name,energy,proteins,carbohydrates,fats</string>
     <string name="error_quick_capture_csv_row_count">Posten im Prompt: %1$d. Datenzeilen in der CSV: %2$d. Füge eine Zeile pro Posten ohne Summenzeile ein.</string>
-    <string name="error_quick_capture_csv_share_again">Teile die Posten bitte erneut mit ChatGPT, um das neue CSV-Tabellenformat zu verwenden.</string>
+    <string name="error_quick_capture_csv_share_again">Teile die Posten bitte erneut mit %1$s, um das neue CSV-Tabellenformat zu verwenden.</string>
     <string name="openai_saved">Einstellungen gespeichert</string>
     <string name="openai_calculate">Mit OpenAI berechnen</string>
     <string name="openai_running">Berechnung mit Websuche …</string>
@@ -817,7 +818,7 @@
     <string name="openai_retry">Erneut</string>
     <string name="openai_setup">OpenAI einrichten</string>
     <string name="openai_via">%1$s · via OpenAI</string>
-    <string name="action_quick_capture_share_short">An ChatGPT</string>
+    <string name="action_quick_capture_share_short">An %1$s</string>
     <string name="headline_quick_capture_prompt_shared">Prompt geteilt</string>
     <string name="openai_sources">Quellen</string>
     <string name="openai_stale">Die angefragten Einträge wurden verändert. Bitte erneut berechnen.</string>
@@ -855,6 +856,8 @@
     <string name="ai_settings_parallelism">Gleichzeitige Fotoanalysen</string>
     <string name="ai_settings_parallelism_help">Bei 1 werden Fotos nacheinander verarbeitet. Höhere Werte können die Erkennung beschleunigen.</string>
     <string name="ai_settings_nutrition">Nährwerte mit Websuche</string>
+    <string name="ai_settings_prompt_share">Übergabe ohne API</string>
+    <string name="ai_settings_prompt_share_note">Ohne API-Schlüssel kopiert die Schnelleingabe den Prompt und öffnet die gewählte App.</string>
     <string name="ai_settings_nutrition_privacy">Lebensmittelnamen und Gewichte werden an %1$s gesendet. API-Nutzung und Websuche können Kosten verursachen.</string>
     <string name="ai_settings_key_missing">Für %1$s ist noch kein API-Key hinterlegt.</string>
     <string name="ai_settings_keys">API-Keys</string>

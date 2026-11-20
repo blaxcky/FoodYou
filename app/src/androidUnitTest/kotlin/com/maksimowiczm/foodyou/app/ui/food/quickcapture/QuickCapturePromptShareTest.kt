@@ -4,9 +4,9 @@ import android.app.Application
 import android.content.ActivityNotFoundException
 import android.content.ContextWrapper
 import android.content.Intent
+import com.maksimowiczm.foodyou.ai.PromptShareTarget
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -19,32 +19,12 @@ class QuickCapturePromptShareTest {
 
     @Test
     fun copiesFullPromptBeforeSharingDirectlyToChatGpt() {
-        var copied: String? = null
-        val calls = mutableListOf<String>()
-        val context = ShareContext {
-            calls += "start"
-            assertEquals(prompt, copied)
-        }
+        assertSharesDirectly(PromptShareTarget.ChatGpt, "com.openai.chatgpt")
+    }
 
-        assertTrue(
-            copyAndShareQuickCapturePrompt(
-                prompt,
-                share = { shareQuickCapturePromptToChatGpt(context, it) },
-                copy = {
-                    calls += "copy"
-                    copied = it
-                },
-            )
-        )
-
-        val intent = requireNotNull(context.startedIntent)
-        assertEquals(Intent.ACTION_SEND, intent.action)
-        assertEquals("text/plain", intent.type)
-        assertEquals("com.openai.chatgpt", intent.`package`)
-        assertEquals(prompt, intent.getStringExtra(Intent.EXTRA_TEXT))
-        assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, intent.flags)
-        assertEquals(prompt, copied)
-        assertEquals(listOf("copy", "start"), calls)
+    @Test
+    fun copiesFullPromptBeforeSharingDirectlyToGemini() {
+        assertSharesDirectly(PromptShareTarget.Gemini, "com.google.android.apps.bard")
     }
 
     @Test
@@ -60,15 +40,16 @@ class QuickCapturePromptShareTest {
         }
 
         listOf(prompt, updatedPrompt).forEach { currentPrompt ->
-            assertTrue(
+            assertEquals(
+                QuickCapturePromptShareResult.Sent,
                 copyAndShareQuickCapturePrompt(
                     currentPrompt,
-                    share = { shareQuickCapturePromptToChatGpt(context, it) },
+                    share = { shareQuickCapturePrompt(context, it, PromptShareTarget.ChatGpt, noLaunch) },
                     copy = {
                         copies += it
                         copied = it
                     },
-                )
+                ),
             )
         }
 
@@ -78,48 +59,121 @@ class QuickCapturePromptShareTest {
     }
 
     @Test
-    fun copiesFullPromptWhenChatGptCannotReceiveIt() {
+    fun opensAppWithoutPromptWhenItTakesNoTextShare() {
+        assertOpensAppOnly(ActivityNotFoundException())
+    }
+
+    @Test
+    fun opensAppWithoutPromptWhenTextShareIsInaccessible() {
+        assertOpensAppOnly(SecurityException())
+    }
+
+    @Test
+    fun copiesFullPromptWhenAppIsNotInstalled() {
         assertCopyFallback(ActivityNotFoundException())
     }
 
     @Test
-    fun copiesFullPromptWhenChatGptActivityIsInaccessible() {
+    fun copiesFullPromptWhenAppActivityIsInaccessible() {
         assertCopyFallback(SecurityException())
+    }
+
+    private fun assertSharesDirectly(target: PromptShareTarget, packageName: String) {
+        var copied: String? = null
+        val calls = mutableListOf<String>()
+        val context = ShareContext {
+            calls += "start"
+            assertEquals(prompt, copied)
+        }
+
+        assertEquals(
+            QuickCapturePromptShareResult.Sent,
+            copyAndShareQuickCapturePrompt(
+                prompt,
+                share = { shareQuickCapturePrompt(context, it, target, noLaunch) },
+                copy = {
+                    calls += "copy"
+                    copied = it
+                },
+            ),
+        )
+
+        val intent = context.startedIntents.single()
+        assertEquals(Intent.ACTION_SEND, intent.action)
+        assertEquals("text/plain", intent.type)
+        assertEquals(packageName, intent.`package`)
+        assertEquals(prompt, intent.getStringExtra(Intent.EXTRA_TEXT))
+        assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, intent.flags)
+        assertEquals(listOf("copy", "start"), calls)
+    }
+
+    private fun assertOpensAppOnly(failure: RuntimeException) {
+        var copied: String? = null
+        val requestedPackages = mutableListOf<String>()
+        val context = ShareContext(failOn = { it.action == Intent.ACTION_SEND }, failure = failure) {
+            assertEquals(prompt, copied)
+        }
+
+        assertEquals(
+            QuickCapturePromptShareResult.OpenedOnly,
+            copyAndShareQuickCapturePrompt(
+                prompt,
+                share = {
+                    shareQuickCapturePrompt(context, it, PromptShareTarget.Gemini) { packageName ->
+                        requestedPackages += packageName
+                        Intent(Intent.ACTION_MAIN).setPackage(packageName)
+                    }
+                },
+                copy = { copied = it },
+            ),
+        )
+
+        assertEquals(listOf("com.google.android.apps.bard"), requestedPackages)
+        val launch = context.startedIntents.single()
+        assertEquals(Intent.ACTION_MAIN, launch.action)
+        assertEquals("com.google.android.apps.bard", launch.`package`)
+        assertNull(launch.getStringExtra(Intent.EXTRA_TEXT))
+        assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, launch.flags and Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     private fun assertCopyFallback(failure: RuntimeException) {
         var copied: String? = null
         val calls = mutableListOf<String>()
-        val context = ShareContext(failure) {
+        val context = ShareContext(failOn = { true }, failure = failure) {
             calls += "start"
             assertEquals(prompt, copied)
         }
 
-        assertFalse(
+        assertEquals(
+            QuickCapturePromptShareResult.Failed,
             copyAndShareQuickCapturePrompt(
                 prompt,
-                share = { shareQuickCapturePromptToChatGpt(context, it) },
+                share = { shareQuickCapturePrompt(context, it, PromptShareTarget.ChatGpt, noLaunch) },
                 copy = {
                     calls += "copy"
                     copied = it
                 },
-            )
+            ),
         )
 
         assertEquals(prompt, copied)
         assertEquals(listOf("copy", "start"), calls)
+        assertEquals(emptyList(), context.startedIntents)
     }
 
+    private val noLaunch: (String) -> Intent? = { null }
+
     private class ShareContext(
-        private val failure: RuntimeException? = null,
+        private val failOn: (Intent) -> Boolean = { false },
+        private val failure: RuntimeException = ActivityNotFoundException(),
         private val onStart: (Intent) -> Unit = {},
     ) : ContextWrapper(null) {
-        var startedIntent: Intent? = null
+        val startedIntents = mutableListOf<Intent>()
 
         override fun startActivity(intent: Intent) {
             onStart(intent)
-            failure?.let { throw it }
-            startedIntent = intent
+            if (failOn(intent)) throw failure
+            startedIntents += intent
         }
     }
 }

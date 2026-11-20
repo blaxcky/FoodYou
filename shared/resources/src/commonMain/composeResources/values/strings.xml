@@ -881,7 +881,7 @@
     <string name="headline_quick_capture_items">%1$d entries</string>
     <string name="action_quick_capture_add">Add to log</string>
     <string name="action_quick_capture_open_entry_form">Add log entry</string>
-    <string name="action_quick_capture_share_prompt">Share to ChatGPT</string>
+    <string name="action_quick_capture_share_prompt">Share to %1$s</string>
     <string name="action_quick_capture_import_csv">Import CSV as quick adds</string>
     <string name="action_quick_capture_import_csv_confirm">Add</string>
     <string name="action_quick_capture_to_diary">Add to FoodYou</string>
@@ -901,9 +901,10 @@
     <string name="neutral_quick_capture_empty_log">No quick-capture entries yet</string>
     <string name="neutral_quick_capture_empty_photos">No photos waiting to be processed</string>
     <string name="neutral_quick_capture_empty_library">Names you use will appear here</string>
-    <string name="neutral_quick_capture_chatgpt_copy_fallback">Could not open ChatGPT. Prompt copied.</string>
+    <string name="neutral_quick_capture_chatgpt_copy_fallback">Could not open %1$s. Prompt copied.</string>
+    <string name="neutral_quick_capture_share_opened_only">Prompt copied. Paste it into %1$s.</string>
     <string name="headline_quick_capture_csv_import">Import quick adds</string>
-    <string name="description_quick_capture_csv_import">Paste the CSV returned by ChatGPT, with one data row per item in the prompt. Each row will be added separately to today’s matching meal, and the entries included in the prompt will be completed.</string>
+    <string name="description_quick_capture_csv_import">Paste the CSV returned by %1$s, with one data row per item in the prompt. Each row will be added separately to today’s matching meal, and the entries included in the prompt will be completed.</string>
     <string name="neutral_quick_capture_csv_imported">Quick adds created</string>
     <string name="error_quick_capture_csv_no_meal">No meal is available for these quick adds.</string>
     <string name="error_quick_capture_csv_save">The quick adds could not be saved. Nothing was changed.</string>
@@ -935,7 +936,7 @@
     <string name="action_sync_log_collapse">Hide sync details</string>
     <string name="error_quick_capture_csv_columns">Each CSV data row must contain exactly five columns: name,energy,proteins,carbohydrates,fats</string>
     <string name="error_quick_capture_csv_row_count">Items in the prompt: %1$d. CSV data rows: %2$d. Provide one row per item, without a total row.</string>
-    <string name="error_quick_capture_csv_share_again">Please share the items with ChatGPT again to use the new CSV table format.</string>
+    <string name="error_quick_capture_csv_share_again">Please share the items with %1$s again to use the new CSV table format.</string>
     <string name="openai_saved">Settings saved</string>
     <string name="openai_calculate">Calculate with OpenAI</string>
     <string name="openai_running">Calculating with web search…</string>
@@ -943,7 +944,7 @@
     <string name="openai_retry">Retry</string>
     <string name="openai_setup">Set up OpenAI</string>
     <string name="openai_via">%1$s · via OpenAI</string>
-    <string name="action_quick_capture_share_short">To ChatGPT</string>
+    <string name="action_quick_capture_share_short">To %1$s</string>
     <string name="headline_quick_capture_prompt_shared">Prompt shared</string>
     <string name="openai_sources">Sources</string>
     <string name="openai_stale">The requested entries changed. Please calculate again.</string>
@@ -981,6 +982,8 @@
     <string name="ai_settings_parallelism">Parallel photo analyses</string>
     <string name="ai_settings_parallelism_help">With 1, photos are analyzed one at a time. Higher values can speed up recognition.</string>
     <string name="ai_settings_nutrition">Nutrition values with web search</string>
+    <string name="ai_settings_prompt_share">Handoff without API</string>
+    <string name="ai_settings_prompt_share_note">Without an API key, quick capture copies the prompt and opens the selected app.</string>
     <string name="ai_settings_nutrition_privacy">Food names and weights are sent to %1$s. API usage and web search can incur costs.</string>
     <string name="ai_settings_key_missing">No API key saved for %1$s yet.</string>
     <string name="ai_settings_keys">API keys</string>

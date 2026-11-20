@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalUriHandler
+import com.maksimowiczm.foodyou.ai.PromptShareTarget
 import com.maksimowiczm.foodyou.ai.NutritionProvider
 import com.maksimowiczm.foodyou.ai.NutritionEstimate
 import com.maksimowiczm.foodyou.ai.AiSource
@@ -222,8 +223,10 @@ fun QuickCaptureScreen(
     val snackbar = remember { SnackbarHostState() }
     val clipboard = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
-    val sharePrompt = rememberShareQuickCapturePromptAction()
-    val fallbackMessage = stringResource(Res.string.neutral_quick_capture_chatgpt_copy_fallback)
+    val shareTarget = aiSettings.promptShareTarget
+    val sharePrompt = rememberShareQuickCapturePromptAction(shareTarget)
+    val fallbackMessage = stringResource(Res.string.neutral_quick_capture_chatgpt_copy_fallback, shareTarget.label)
+    val openedOnlyMessage = stringResource(Res.string.neutral_quick_capture_share_opened_only, shareTarget.label)
     val importedMessage = stringResource(Res.string.neutral_quick_capture_csv_imported)
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
@@ -265,6 +268,7 @@ fun QuickCaptureScreen(
     if (showCsvImport) {
         QuickCaptureCsvImportDialog(
             csv = csvText,
+            shareAppLabel = shareTarget.label,
             sources = nutritionDraft?.result?.sources.orEmpty(),
             autoFocus = nutritionDraft == null,
             state = csvImportState,
@@ -370,7 +374,7 @@ fun QuickCaptureScreen(
                                 groups.isNotEmpty() &&
                                     csvImportState != QuickCaptureCsvImportState.Submitting && !nutritionRunning && nutritionDraft == null
                             ) {
-                                val shared = copyAndShareQuickCapturePrompt(
+                                val result = copyAndShareQuickCapturePrompt(
                                     prompt = groups.quickCapturePrompt(),
                                     share = sharePrompt,
                                     copy = { clipboard.copy("FoodYou quick capture prompt", it) },
@@ -379,12 +383,18 @@ fun QuickCaptureScreen(
                                     groups.flatMap { group -> group.entries.map { it.id } },
                                     expectedRowCount = groups.size,
                                 )
-                                if (!shared) {
-                                    coroutineScope.launch { snackbar.showSnackbar(fallbackMessage) }
+                                val message = when (result) {
+                                    QuickCapturePromptShareResult.Sent -> null
+                                    QuickCapturePromptShareResult.OpenedOnly -> openedOnlyMessage
+                                    QuickCapturePromptShareResult.Failed -> fallbackMessage
+                                }
+                                if (message != null) {
+                                    coroutineScope.launch { snackbar.showSnackbar(message) }
                                 }
                             }
                         },
                         hasCopiedBatch = copiedEntryIds.isNotEmpty(),
+                        shareAppLabel = shareTarget.label,
                         onQuickAdd = {
                             if (nutritionRunning || nutritionDraft != null) return@QuickCaptureLog
                             viewModel.resetCsvImportError()
@@ -517,6 +527,7 @@ internal fun QuickCaptureLog(
     onTransfer: (QuickCaptureLogGroup) -> Unit,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
     openAi: QuickCaptureCloudState? = null,
+    shareAppLabel: String = PromptShareTarget.ChatGpt.label,
 ) {
     var completed by rememberSaveable { mutableStateOf(false) }
     var afterEntry by remember { mutableStateOf<QuickCaptureLogEntry?>(null) }
@@ -595,6 +606,7 @@ internal fun QuickCaptureLog(
                         onSharePrompt = onSharePrompt,
                         onQuickAdd = onQuickAdd,
                         openAi = openAi,
+                        shareAppLabel = shareAppLabel,
                     )
                 }
             }
@@ -672,6 +684,7 @@ private fun QuickCaptureReadyRow(
     onSharePrompt: () -> Unit,
     onQuickAdd: () -> Unit,
     openAi: QuickCaptureCloudState?,
+    shareAppLabel: String,
     modifier: Modifier = Modifier,
 ) {
     var providerMenu by remember { mutableStateOf(false) }
@@ -680,7 +693,7 @@ private fun QuickCaptureReadyRow(
     val running = openAi?.running == true
     val configured = openAi?.configured == true
     val error = openAi?.error.takeIf { !running }
-    val shareLabel = stringResource(Res.string.action_quick_capture_share_prompt)
+    val shareLabel = stringResource(Res.string.action_quick_capture_share_prompt, shareAppLabel)
     val text: @Composable () -> Unit = {
         Text(
             text =
@@ -764,7 +777,7 @@ private fun QuickCaptureReadyRow(
             }
             else -> QuickCaptureReadyRowAction(
                 Icons.Outlined.Share,
-                stringResource(Res.string.action_quick_capture_share_short),
+                stringResource(Res.string.action_quick_capture_share_short, shareAppLabel),
                 onSharePrompt,
             )
         }
@@ -826,6 +839,7 @@ internal fun QuickCaptureCsvImportDialog(
     onImport: () -> Unit,
     autoFocus: Boolean = true,
     sources: List<AiSource> = emptyList(),
+    shareAppLabel: String = PromptShareTarget.ChatGpt.label,
 ) {
     val focusRequester = remember { FocusRequester() }
     val isSubmitting = state == QuickCaptureCsvImportState.Submitting
@@ -849,6 +863,7 @@ internal fun QuickCaptureCsvImportDialog(
             onImport = onImport,
             focusRequester = focusRequester,
             autoFocus = autoFocus,
+            shareAppLabel = shareAppLabel,
         )
     }
 }
@@ -863,6 +878,7 @@ internal fun QuickCaptureCsvImportDialogCard(
     focusRequester: FocusRequester = remember { FocusRequester() },
     autoFocus: Boolean = true,
     sources: List<AiSource> = emptyList(),
+    shareAppLabel: String = PromptShareTarget.ChatGpt.label,
 ) {
     val isSubmitting = state == QuickCaptureCsvImportState.Submitting
     val error =
@@ -877,7 +893,7 @@ internal fun QuickCaptureCsvImportDialogCard(
                 )
             QuickCaptureCsvImportState.StaleBatch -> stringResource(Res.string.openai_stale)
             QuickCaptureCsvImportState.ShareAgain ->
-                stringResource(Res.string.error_quick_capture_csv_share_again)
+                stringResource(Res.string.error_quick_capture_csv_share_again, shareAppLabel)
             QuickCaptureCsvImportState.NoMeal ->
                 stringResource(Res.string.error_quick_capture_csv_no_meal)
             QuickCaptureCsvImportState.SavingFailed ->
@@ -899,7 +915,7 @@ internal fun QuickCaptureCsvImportDialogCard(
             )
             Spacer(Modifier.height(16.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(if (sources.isEmpty()) Res.string.description_quick_capture_csv_import else Res.string.openai_review))
+                Text(if (sources.isEmpty()) stringResource(Res.string.description_quick_capture_csv_import, shareAppLabel) else stringResource(Res.string.openai_review))
                 OutlinedTextField(
                     value = csv,
                     onValueChange = onCsvChange,

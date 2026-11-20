@@ -63,6 +63,12 @@ enum class GemmaModel(
 
 enum class NutritionProvider(val label: String) { OpenAI("OpenAI"), Claude("Claude") }
 
+/** The chat app that receives the quick capture prompt when no API is used. */
+enum class PromptShareTarget(val label: String, val packageName: String) {
+    ChatGpt("ChatGPT", "com.openai.chatgpt"),
+    Gemini("Gemini", "com.google.android.apps.bard"),
+}
+
 data class AiSettings(
     val provider: AiProvider = AiProvider.Local,
     val model: String = "gemini-3.8-flash",
@@ -73,6 +79,7 @@ data class AiSettings(
     val claude: ClaudeSettings = ClaudeSettings(),
     val nutritionProvider: NutritionProvider = NutritionProvider.OpenAI,
     val backgroundPhotoAnalysisEnabled: Boolean = false,
+    val promptShareTarget: PromptShareTarget = PromptShareTarget.ChatGpt,
 )
 
 /** The model that reads scale photos for the selected provider, e.g. "gpt-6-luna · Reasoning low". */
@@ -278,6 +285,7 @@ interface AiController {
     suspend fun saveBackgroundPhotoAnalysis(enabled: Boolean)
     suspend fun reconcileBackgroundAnalysis()
     suspend fun saveNutritionProvider(provider: NutritionProvider)
+    suspend fun savePromptShareTarget(target: PromptShareTarget)
     suspend fun estimateNutrition(prompt: String, provider: NutritionProvider = NutritionProvider.OpenAI): NutritionEstimate
     suspend fun diagnosticReport(): String
     suspend fun testConnection(): String

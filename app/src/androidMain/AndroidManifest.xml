@@ -11,6 +11,9 @@
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- Quick capture prompt handoff targets (PromptShareTarget). -->
+        <package android:name="com.openai.chatgpt" />
+        <package android:name="com.google.android.apps.bard" />
 
         <intent>
             <action android:name="android.settings.APP_LOCALE_SETTINGS" />

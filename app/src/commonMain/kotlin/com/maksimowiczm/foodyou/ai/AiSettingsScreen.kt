@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Key
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Timer
@@ -57,6 +59,7 @@ internal data class AiSettingsDraft(
     val claude: ClaudeSettings,
     val nutritionProvider: NutritionProvider,
     val backgroundPhotoAnalysisEnabled: Boolean = false,
+    val promptShareTarget: PromptShareTarget = PromptShareTarget.ChatGpt,
     val geminiKey: String? = null,
     val openAiKey: String? = null,
     val claudeKey: String? = null,
@@ -68,7 +71,7 @@ private val AiSettingsDraftSaver = listSaver<AiSettingsDraft, Any?>(
         listOf(it.provider.name, it.geminiModel, it.visionOnCpu, it.nutritionProvider.name,
             it.openAi.photo.model, it.openAi.photo.effort, it.openAi.nutrition.model, it.openAi.nutrition.effort,
             it.openAi.photoParallelism, it.claude.photo.model, it.claude.photo.effort, it.claude.nutrition.model,
-            it.claude.nutrition.effort, it.claude.photoParallelism, it.backgroundPhotoAnalysisEnabled)
+            it.claude.nutrition.effort, it.claude.photoParallelism, it.backgroundPhotoAnalysisEnabled, it.promptShareTarget.name)
     },
     restore = { v ->
         AiSettingsDraft(
@@ -81,12 +84,15 @@ private val AiSettingsDraftSaver = listSaver<AiSettingsDraft, Any?>(
                 photoParallelism = v[13] as Int),
             nutritionProvider = NutritionProvider.valueOf(v[3] as String),
             backgroundPhotoAnalysisEnabled = v.getOrNull(14) as? Boolean ?: false,
+            promptShareTarget = (v.getOrNull(15) as? String)
+                ?.let { name -> PromptShareTarget.entries.firstOrNull { it.name == name } } ?: PromptShareTarget.ChatGpt,
         )
     },
 )
 
 internal fun AiSettings.toDraft() = AiSettingsDraft(
     provider, model, visionOnCpu, openAi.copy(hasApiKey = false), claude.copy(hasApiKey = false), nutritionProvider, backgroundPhotoAnalysisEnabled,
+    promptShareTarget,
 )
 
 /** Keeps the user's edits and takes every untouched field from the newly saved settings. */
@@ -100,6 +106,7 @@ private fun AiSettingsDraft.rebase(old: AiSettingsDraft, new: AiSettingsDraft): 
         openAi = pick(openAi, old.openAi, new.openAi),
         claude = pick(claude, old.claude, new.claude),
         nutritionProvider = pick(nutritionProvider, old.nutritionProvider, new.nutritionProvider),
+        promptShareTarget = pick(promptShareTarget, old.promptShareTarget, new.promptShareTarget),
     )
 }
 
@@ -169,6 +176,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
                 if (draft.claude != saved.claude.copy(hasApiKey = false) || draft.claudeKey != null)
                     controller.saveClaude(draft.claude, draft.claudeKey)
                 if (draft.nutritionProvider != saved.nutritionProvider) controller.saveNutritionProvider(draft.nutritionProvider)
+                if (draft.promptShareTarget != saved.promptShareTarget) controller.savePromptShareTarget(draft.promptShareTarget)
                 if (draft.backgroundPhotoAnalysisEnabled != saved.backgroundPhotoAnalysisEnabled)
                     controller.saveBackgroundPhotoAnalysis(draft.backgroundPhotoAnalysisEnabled)
                 controller.reconcileBackgroundAnalysis()
@@ -423,6 +431,19 @@ internal fun AiSettingsContent(
                     }
                 }
             }
+
+            AiSettingsSection(stringResource(Res.string.ai_settings_prompt_share), Icons.Outlined.Share)
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                PromptShareTarget.entries.forEachIndexed { index, value ->
+                    SegmentedButton(
+                        selected = draft.promptShareTarget == value,
+                        onClick = { draft = draft.copy(promptShareTarget = value) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = PromptShareTarget.entries.size),
+                        enabled = !busy,
+                    ) { Text(value.label) }
+                }
+            }
+            AiNote(stringResource(Res.string.ai_settings_prompt_share_note), Icons.Outlined.ContentPaste)
 
             AiSettingsSection(stringResource(Res.string.ai_settings_keys), Icons.Outlined.Key)
             AiSettingsGroup {
