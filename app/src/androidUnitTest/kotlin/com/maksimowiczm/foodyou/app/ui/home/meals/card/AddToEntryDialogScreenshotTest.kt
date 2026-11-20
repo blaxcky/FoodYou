@@ -54,11 +54,7 @@ class AddToEntryDialogScreenshotTest {
     private fun input() = compose.onNode(hasSetTextAction())
     private fun capture(name: String) = compose.onNode(isDialog())
         .captureRoboImage("AddToEntryDialogScreenshotTest.$name.png")
-    private fun openUnits() {
-        compose.onNode(hasClickAction() and hasText("g", substring = false)).performClick()
-        compose.mainClock.advanceTimeBy(500)
-        compose.waitForIdle()
-    }
+    private fun unit(name: String) = compose.onNode(isSelectable() and hasText(name))
 
     @Test
     fun gramsPreselectedAndSelectedForReplacement() {
@@ -73,9 +69,10 @@ class AddToEntryDialogScreenshotTest {
     @Test
     fun piecesConvertAndAcceptDecimalComma() {
         show()
-        openUnits()
-        compose.onNodeWithText("Stück (25 g)").performClick()
+        unit("Stück").performClick()
+        unit("Stück").assertIsSelected()
         input().assertTextContains("4")
+        compose.onNodeWithText("= 100 g · +100 kcal").assertExists()
         input().performTextReplacement("1,5")
         capture("pieces")
         compose.onNodeWithText("Hinzufügen").performClick()
@@ -83,11 +80,11 @@ class AddToEntryDialogScreenshotTest {
     }
 
     @Test
-    fun portionMenu() {
+    fun namedPortionChip() {
         show()
-        openUnits()
-        compose.onNode(isPopup()).captureRoboImage("AddToEntryDialogScreenshotTest.portion-menu.png")
-        compose.onNodeWithText("1 Scheibe (30 g)").performClick()
+        unit("Scheibe").assertExists()
+        compose.onNodeWithText("30 g").assertExists()
+        unit("Scheibe").performClick()
         input().performTextReplacement("2")
         compose.onNodeWithText("Hinzufügen").performClick()
         assertEquals(EntryAddition.Food(Measurement.Gram(60.0)), addition)
@@ -96,10 +93,9 @@ class AddToEntryDialogScreenshotTest {
     @Test
     fun noPieceWeightKeepsNamedPortions() {
         show(food().copy(servingWeight = null))
-        openUnits()
-        compose.onNodeWithText("Stück", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("1 Scheibe (30 g)").assertExists()
-        compose.onNode(isPopup()).captureRoboImage("AddToEntryDialogScreenshotTest.no-piece-weight.png")
+        unit("Stück").assertDoesNotExist()
+        unit("Scheibe").assertExists()
+        capture("no-piece-weight")
     }
 
     @Test
@@ -132,15 +128,22 @@ class AddToEntryDialogScreenshotTest {
     fun existingPiecesArePreselected() {
         show(food().copy(measurement = Measurement.Serving(2.0)))
         input().assertTextContains("2")
-        compose.onNodeWithText("Stück (25 g)").assertExists()
+        unit("Stück").assertIsSelected()
+    }
+
+    @Test
+    fun portionWithPackageWeightReplacesPackageChip() {
+        show(food().copy(portions = listOf(ProductPortion(label = "Packung", amount = 250.0, unit = ProductPortion.Unit.Gram))))
+        compose.onAllNodes(isSelectable() and hasText("Packung")).assertCountEquals(1)
+        unit("Packung").performClick()
+        input().assertTextContains("0.4")
     }
 
     @Test
     fun commaInputIsConvertedOnUnitChange() {
         show()
         input().performTextReplacement("37,5")
-        openUnits()
-        compose.onNodeWithText("Stück (25 g)").performClick()
+        unit("Stück").performClick()
         input().assertTextContains("1.5")
     }
 

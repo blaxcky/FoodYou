@@ -10,6 +10,7 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.common.domain.food.NutrientValue
 import com.maksimowiczm.foodyou.common.domain.food.NutritionFacts
 import com.maksimowiczm.foodyou.common.domain.measurement.Measurement
+import com.maksimowiczm.foodyou.common.domain.measurement.MeasurementType
 import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRepository
 import com.maksimowiczm.foodyou.common.log.Logger
 import com.maksimowiczm.foodyou.food.domain.entity.FoodId
@@ -369,6 +370,19 @@ class MealsCardsViewModelTest {
             assertEquals(2, options.size)
             assertEquals(Measurement.Gram(45.0), options.last().measurementForInput(1.5))
         }
+    }
+
+    @Test
+    fun namedPortionReplacesPackageOfSameWeightUnlessPackageIsTheDiaryUnit() {
+        val portion = ProductPortion(label = "Packung", amount = 185.0, unit = ProductPortion.Unit.Gram)
+        val model = foodModel(1).copy(servingWeight = 30.0, totalWeight = 185.0, portions = listOf(portion))
+        val types = model.additionOptions().map { it::class.simpleName to it.type }
+        assertEquals(
+            listOf("Standard" to MeasurementType.Gram, "Standard" to MeasurementType.Serving, "Portion" to MeasurementType.Gram),
+            types,
+        )
+        val packageEntry = model.copy(measurement = Measurement.Package(1.0)).additionOptions()
+        assertEquals(listOf(MeasurementType.Package, MeasurementType.Gram, MeasurementType.Serving), packageEntry.map { it.type })
     }
 
     @Test

@@ -415,7 +415,31 @@ internal fun measurementPickerInputForSelection(
 private fun MeasurementPickerOption.defaultInput(currentInput: String): String =
     if (selectsUnitQuantity) "1" else currentInput
 
-private val MeasurementPickerOption.metricWeightPerUnit: Double?
+/** The unit name alone, without its weight, e.g. "Stück" or "Scheibe". */
+@Composable
+internal fun MeasurementPickerOption.unitName(servingUnit: ServingUnit): String =
+    when (this) {
+        is MeasurementPickerOption.Standard -> type.stringResource(servingUnit)
+        is MeasurementPickerOption.Portion -> portion?.label ?: displayLabel
+    }
+
+/** The weight of one unit, e.g. "30 g", or null when the unit name already is a weight. */
+internal fun MeasurementPickerOption.unitWeightLabel(): String? =
+    when (this) {
+        is MeasurementPickerOption.Standard -> {
+            val weight =
+                when (type) {
+                    MeasurementType.Package -> totalWeight
+                    MeasurementType.Serving -> servingWeight
+                    else -> null
+                }
+            weight?.let { "${it.formatClipZeros()} ${if (isLiquid) "ml" else "g"}" }
+        }
+        is MeasurementPickerOption.Portion ->
+            portion?.let { "${it.amount.formatClipZeros()} ${it.unit.label}" }
+    }
+
+internal val MeasurementPickerOption.metricWeightPerUnit: Double?
     get() =
         when (this) {
             is MeasurementPickerOption.Portion -> unitMeasurement.metric

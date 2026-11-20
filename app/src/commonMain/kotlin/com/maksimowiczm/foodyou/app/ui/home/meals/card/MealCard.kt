@@ -9,15 +9,17 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -25,21 +27,24 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -65,8 +70,12 @@ import androidx.compose.ui.unit.dp
 import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
 import com.maksimowiczm.foodyou.app.ui.common.utility.LocalEnergyFormatter
 import com.maksimowiczm.foodyou.app.ui.common.utility.ServingUnit
+import com.maksimowiczm.foodyou.app.ui.common.utility.stringResourceWithWeight
 import com.maksimowiczm.foodyou.app.ui.food.component.MeasurementPickerOption
 import com.maksimowiczm.foodyou.app.ui.food.component.measurementPickerInputForSelection
+import com.maksimowiczm.foodyou.app.ui.food.component.metricWeightPerUnit
+import com.maksimowiczm.foodyou.app.ui.food.component.unitName
+import com.maksimowiczm.foodyou.app.ui.food.component.unitWeightLabel
 import com.maksimowiczm.foodyou.app.ui.food.component.toMeasurementPickerOptions
 import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
@@ -78,6 +87,9 @@ import com.maksimowiczm.foodyou.food.domain.entity.FoodId
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacro
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealCardMacroStyle
 import foodyou.app.generated.resources.*
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -627,7 +639,6 @@ internal fun AddToEntryDialog(
     val options = remember(entry) { (entry as? FoodMealEntryModel)?.additionOptions().orEmpty() }
     var selectedIndex by rememberSaveable(entry) { mutableStateOf(0) }
     val selectedOption = options.getOrNull(selectedIndex)
-    var expanded by rememberSaveable { mutableStateOf(false) }
     val servingUnit =
         if ((entry as? FoodMealEntryModel)?.isRecipe == true) ServingUnit.Serving else ServingUnit.Piece
     val amount = remember(amountText.text) { amountText.text.toString().replace(',', '.').toDoubleOrNull() }
@@ -645,12 +656,39 @@ internal fun AddToEntryDialog(
             } else EntryAddition.Manual(value)
         }
 
+    val energyFormatter = LocalEnergyFormatter.current
+    val currentAmount =
+        (entry as? FoodMealEntryModel)?.let {
+            it.measurement.stringResourceWithWeight(
+                totalWeight = it.totalWeight,
+                servingWeight = it.servingWeight,
+                isLiquid = it.isLiquid,
+                servingUnit = servingUnit,
+            )
+        }
+    val currentEnergy = entry.energy?.let { energyFormatter.formatEnergy(it, withSuffix = true) }
+    val subtitle = listOfNotNull(entry.name, currentAmount, currentEnergy).joinToString(" · ")
+    val additionHint =
+        amount
+            ?.takeIf { it.isFinite() && it > 0.0 }
+            ?.let { value -> entry.additionHint(selectedOption, value) }
+            ?.let { (weight, energy) ->
+                val energyText =
+                    energy?.let { "+" + energyFormatter.formatEnergy(it.roundToInt(), withSuffix = true) }
+                val weightText =
+                    weight?.let {
+                        val unit = if ((entry as? FoodMealEntryModel)?.isLiquid == true) "ml" else "g"
+                        "= ${it.formatClipZeros()} $unit"
+                    }
+                listOfNotNull(weightText, energyText).joinToString(" · ").ifEmpty { null }
+            }
+
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = addition != null,
-                onClick = { onAddToEntry(addition ?: return@TextButton) },
+                onClick = { onAddToEntry(addition ?: return@Button) },
             ) {
                 Text(stringResource(Res.string.action_add))
             }
@@ -660,51 +698,135 @@ internal fun AddToEntryDialog(
                 Text(stringResource(Res.string.action_cancel))
             }
         },
-        title = { Text(stringResource(Res.string.action_add_to_entry)) },
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(Res.string.action_add_to_entry))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (selectedOption != null && options.size > 1) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.selectableGroup(),
+                    ) {
+                        options.forEachIndexed { index, option ->
+                            AdditionUnitChip(
+                                name = option.unitName(servingUnit),
+                                weight = option.unitWeightLabel(),
+                                selected = index == selectedIndex,
+                                onClick = {
+                                    if (index == selectedIndex) return@AdditionUnitChip
+                                    val text =
+                                        measurementPickerInputForSelection(
+                                            selectedOption, option, amountText.text.toString(),
+                                        )
+                                    amountText.edit {
+                                        replace(0, length, text)
+                                        selectAll()
+                                    }
+                                    selectedIndex = index
+                                },
+                            )
+                        }
+                    }
+                }
                 OutlinedTextField(
                     state = amountText,
                     label = { Text(stringResource(Res.string.label_additional_amount)) },
+                    suffix = selectedOption?.let { option -> { Text(option.unitName(servingUnit)) } },
                     isError = isError,
-                    supportingText = if (isError) {
-                        { Text(stringResource(Res.string.error_invalid_number)) }
-                    } else null,
+                    supportingText =
+                        when {
+                            isError -> {
+                                { Text(stringResource(Res.string.error_invalid_number)) }
+                            }
+                            additionHint != null -> {
+                                { Text(additionHint) }
+                            }
+                            else -> null
+                        },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     lineLimits = TextFieldLineLimits.SingleLine,
                     modifier = Modifier.fillMaxWidth().focusRequester(amountFocusRequester),
                 )
-                if (selectedOption != null) {
-                    Box {
-                        TextButton(onClick = { expanded = true }) {
-                            Text(selectedOption.label(servingUnit), modifier = Modifier.weight(1f))
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                        }
-                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                            options.forEachIndexed { index, option ->
-                                DropdownMenuItem(
-                                    text = { Text(option.label(servingUnit)) },
-                                    onClick = {
-                                        val text =
-                                            measurementPickerInputForSelection(
-                                                selectedOption, option, amountText.text.toString(),
-                                            )
-                                        amountText.edit {
-                                            replace(0, length, text)
-                                            selectAll()
-                                        }
-                                        selectedIndex = index
-                                        expanded = false
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
             }
         },
     )
 }
+
+@Composable
+private fun AdditionUnitChip(
+    name: String,
+    weight: String?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = {
+            // Equal height for chips with and without a weight line, and a 48 dp touch target.
+            Column(
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.heightIn(min = 36.dp).padding(vertical = 6.dp),
+            ) {
+                Text(text = name, style = MaterialTheme.typography.labelLarge)
+                if (weight != null) {
+                    Text(
+                        text = weight,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = LocalContentColor.current.copy(alpha = 0.8f),
+                    )
+                }
+            }
+        },
+        leadingIcon =
+            if (selected) {
+                {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(FilterChipDefaults.IconSize),
+                    )
+                }
+            } else null,
+    )
+}
+
+/**
+ * The metric weight and energy that adding [value] of [option] contributes, each null when it cannot
+ * be derived. The weight is null for gram and millilitre input, where it would only repeat the input.
+ */
+private fun MealEntryModel.additionHint(
+    option: MeasurementPickerOption?,
+    value: Double,
+): Pair<Double?, Double?>? =
+    when (this) {
+        is ManualMealEntryModel -> null to energy?.let { it * value }
+        is FoodMealEntryModel -> {
+            val unitWeight = option?.metricWeightPerUnit?.takeIf { it.isFinite() && it > 0.0 }
+            val addedWeight = unitWeight?.let { it * value }?.takeIf { it.isFinite() }
+            val energyPerUnitWeight =
+                if (energy != null && weight != null && weight.isFinite() && weight > 0.0) {
+                    energy / weight
+                } else null
+            val isWeightInput =
+                option is MeasurementPickerOption.Standard &&
+                    (option.type == MeasurementType.Gram || option.type == MeasurementType.Milliliter)
+            val shownWeight = addedWeight.takeUnless { isWeightInput }
+            val addedEnergy = addedWeight?.let { w -> energyPerUnitWeight?.let { it * w } }
+            if (shownWeight == null && addedEnergy == null) null else shownWeight to addedEnergy
+        }
+    }
 
 internal fun FoodMealEntryModel.additionOptions(): List<MeasurementPickerOption> {
     fun valid(weight: Double?) = weight != null && weight.isFinite() && weight > 0.0
@@ -717,5 +839,34 @@ internal fun FoodMealEntryModel.additionOptions(): List<MeasurementPickerOption>
         if (valid(servingWeight)) add(standard(MeasurementType.Serving))
         if (valid(totalWeight)) add(standard(MeasurementType.Package))
         addAll(portions.toMeasurementPickerOptions(isLiquid).filter { valid(it.unitMeasurement.metric) })
-    }.distinct()
+    }.distinct().withoutSameWeightUnits()
+}
+
+/**
+ * Drops a piece or package option when a named portion has the same unit weight, since both
+ * describe the same unit (e.g. "Packung (185 g)" and "1 Packung (185 g)"). The named portion wins,
+ * except over the diary unit in first place, which always stays.
+ */
+private fun List<MeasurementPickerOption>.withoutSameWeightUnits(): List<MeasurementPickerOption> {
+    fun MeasurementPickerOption.isCountUnit() =
+        this is MeasurementPickerOption.Standard &&
+            (type == MeasurementType.Serving || type == MeasurementType.Package)
+
+    fun sameWeight(a: MeasurementPickerOption, b: MeasurementPickerOption): Boolean {
+        val first = a.metricWeightPerUnit ?: return false
+        val second = b.metricWeightPerUnit ?: return false
+        return abs(first - second) <= 1e-9 * max(abs(first), abs(second))
+    }
+
+    val diaryOption = firstOrNull() ?: return this
+    val portions = filterIsInstance<MeasurementPickerOption.Portion>()
+    return filterIndexed { index, option ->
+        when {
+            index == 0 -> true
+            option.isCountUnit() -> portions.none { sameWeight(it, option) }
+            option is MeasurementPickerOption.Portion ->
+                !(diaryOption.isCountUnit() && sameWeight(diaryOption, option))
+            else -> true
+        }
+    }
 }
