@@ -46,6 +46,7 @@ fun Module.food() {
             observe = get(),
             processPhoto = get(),
             deleteEntries = get(),
+            setAiSuggestionRejected = get(),
         )
     }
     viewModel { (excluded: FoodId.Recipe?) ->

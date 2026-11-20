@@ -6,14 +6,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.RotateLeft
 import androidx.compose.material.icons.automirrored.outlined.RotateRight
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,6 +36,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -45,6 +55,7 @@ import com.maksimowiczm.foodyou.food.domain.entity.QuickCaptureLogEntry
 import com.maksimowiczm.foodyou.food.domain.usecase.DeleteQuickCaptureEntriesUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ObserveQuickCaptureUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.ProcessQuickCapturePhotoUseCase
+import com.maksimowiczm.foodyou.food.domain.usecase.SetQuickCaptureAiSuggestionRejectedUseCase
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.action_delete
 import foodyou.app.generated.resources.action_rotate_photo_left
@@ -74,6 +85,12 @@ fun QuickCapturePhotoScreen(
     val names by viewModel.names.collectAsStateWithLifecycle()
     var rotation by rememberSaveable(entryId) { mutableIntStateOf(0) }
     var confirmDelete by rememberSaveable(entryId) { mutableStateOf(false) }
+    // Updated immediately on a chip tap so that confirming the name right afterwards already
+    // follows the new choice, before the database round trip arrives.
+    var suggestionRejected by
+        remember(entryId, entry?.aiSuggestionRejected) {
+            mutableStateOf(entry?.aiSuggestionRejected ?: false)
+        }
 
     LaunchedCollectWithLifecycle(viewModel.events) { event ->
         when (event) {
@@ -97,14 +114,26 @@ fun QuickCapturePhotoScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(Res.string.headline_quick_capture_photos)) },
+                title = {
+                    Text(
+                        stringResource(Res.string.headline_quick_capture_photos),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 navigationIcon = { ArrowBackIconButton(onBack) },
                 actions = {
-                    if (entry != null) {
+                    entry?.let { current ->
                         QuickCapturePhotoActions(
                             onRotateLeft = { rotation = (rotation + 270) % 360 },
                             onRotateRight = { rotation = (rotation + 90) % 360 },
                             onDelete = { confirmDelete = true },
+                            suggestedWeight = current.suggestedWeightInGrams,
+                            suggestionRejected = suggestionRejected,
+                            onSuggestionRejectedChange = { rejected ->
+                                suggestionRejected = rejected
+                                viewModel.setSuggestionRejected(rejected)
+                            },
                         )
                     }
                 },
@@ -124,7 +153,7 @@ fun QuickCapturePhotoScreen(
             QuickCapturePhotoEditor(
                 entryId = current.id,
                 suggestedWeight = current.suggestedWeightInGrams,
-                suggestionRejected = current.aiSuggestionRejected,
+                suggestionRejected = suggestionRejected,
                 analysisStatus = current.aiAnalysisStatus,
                 names = names,
                 onProcess = viewModel::process,
@@ -187,20 +216,21 @@ internal fun QuickCapturePhotoEditor(
         }
     }
 
-    if (suggestedWeight != null || analysisStatus != null) {
+    // A recognized weight is shown as a chip in the top bar, so only explain missing suggestions.
+    val analysisHint =
+        when {
+            suggestedWeight != null || analysisStatus == null -> null
+            analysisStatus == "error_whole_grams" -> "Kein gültiger Vorschlag in ganzen Gramm"
+            analysisStatus == "error_format" -> "Ungültiges KI-Antwortformat – bitte erneut analysieren"
+            analysisStatus == "error_truncated" -> "KI-Antwort wurde abgeschnitten – bitte erneut analysieren"
+            analysisStatus == "unreadable" -> "Keine eindeutig lesbare Waagenanzeige erkannt"
+            else -> "KI-Analyse fehlgeschlagen · Gewicht manuell eingeben"
+        }
+    if (analysisHint != null) {
         Text(
-            when {
-                suggestedWeight != null && suggestionRejected -> "KI-Vorschlag als falsch markiert · Gewicht manuell eingeben"
-                suggestedWeight != null && !weightEdited -> "KI-Vorschlag wird nach dem Namen übernommen"
-                suggestedWeight != null -> "Gewicht manuell geändert"
-                analysisStatus == "error_whole_grams" -> "Kein gültiger Vorschlag in ganzen Gramm"
-                analysisStatus == "error_format" -> "Ungültiges KI-Antwortformat – bitte erneut analysieren"
-                analysisStatus == "error_truncated" -> "KI-Antwort wurde abgeschnitten – bitte erneut analysieren"
-                analysisStatus == "unreadable" -> "Keine eindeutig lesbare Waagenanzeige erkannt"
-                else -> "KI-Analyse fehlgeschlagen · Gewicht manuell eingeben"
-            },
+            analysisHint,
             modifier = Modifier.padding(horizontal = 16.dp),
-            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall,
         )
     }
     QuickCapturePhotoForm(
@@ -295,7 +325,17 @@ internal fun QuickCapturePhotoActions(
     onRotateLeft: () -> Unit,
     onRotateRight: () -> Unit,
     onDelete: () -> Unit,
+    suggestedWeight: Double? = null,
+    suggestionRejected: Boolean = false,
+    onSuggestionRejectedChange: (Boolean) -> Unit = {},
 ) {
+    if (suggestedWeight != null) {
+        QuickCaptureSuggestionChip(
+            weight = suggestedWeight,
+            rejected = suggestionRejected,
+            onRejectedChange = onSuggestionRejectedChange,
+        )
+    }
     IconButton(onClick = onRotateLeft) {
         Icon(
             Icons.AutoMirrored.Outlined.RotateLeft,
@@ -316,6 +356,46 @@ internal fun QuickCapturePhotoActions(
     }
 }
 
+@Composable
+private fun QuickCaptureSuggestionChip(
+    weight: Double,
+    rejected: Boolean,
+    onRejectedChange: (Boolean) -> Unit,
+) {
+    FilterChip(
+        selected = !rejected,
+        onClick = { onRejectedChange(!rejected) },
+        label = {
+            Text(
+                "${weight.formatQuickCaptureWeight()} g",
+                maxLines = 1,
+                textDecoration = if (rejected) TextDecoration.LineThrough else null,
+            )
+        },
+        leadingIcon = {
+            if (rejected) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(FilterChipDefaults.IconSize),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                Icon(
+                    Icons.Outlined.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(FilterChipDefaults.IconSize),
+                )
+            }
+        },
+        modifier =
+            Modifier.semantics {
+                stateDescription =
+                    if (rejected) "KI-Vorschlag als falsch markiert" else "KI-Vorschlag wird verwendet"
+            },
+    )
+}
+
 internal sealed interface QuickCapturePhotoEvent {
     data class Processed(val nextEntryId: Long?) : QuickCapturePhotoEvent
     data object Deleted : QuickCapturePhotoEvent
@@ -326,6 +406,7 @@ internal class QuickCapturePhotoViewModel(
     observe: ObserveQuickCaptureUseCase,
     private val processPhoto: ProcessQuickCapturePhotoUseCase,
     private val deleteEntries: DeleteQuickCaptureEntriesUseCase,
+    private val setAiSuggestionRejected: SetQuickCaptureAiSuggestionRejectedUseCase,
 ) : ViewModel() {
     private val allEntries =
         observe.entries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -349,6 +430,10 @@ internal class QuickCapturePhotoViewModel(
                 eventChannel.send(QuickCapturePhotoEvent.Processed(next))
             }
         }
+    }
+
+    fun setSuggestionRejected(rejected: Boolean) {
+        viewModelScope.launch { setAiSuggestionRejected.set(entryId, rejected) }
     }
 
     fun delete() {

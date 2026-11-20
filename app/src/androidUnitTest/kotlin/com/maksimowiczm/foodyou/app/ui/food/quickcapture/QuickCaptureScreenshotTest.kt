@@ -22,6 +22,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.maksimowiczm.foodyou.app.ui.common.component.ArrowBackIconButton
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
@@ -377,6 +378,47 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
+    @Config(qualifiers = "de-rDE-w360dp-h640dp-mdpi")
+    fun photoActionsWithSuggestionFitNarrowPhone() {
+        var rejected by mutableStateOf(false)
+        show {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Fotos",
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                },
+                navigationIcon = { ArrowBackIconButton({}) },
+                actions = {
+                    QuickCapturePhotoActions(
+                        onRotateLeft = {},
+                        onRotateRight = {},
+                        onDelete = {},
+                        suggestedWeight = 1250.0,
+                        suggestionRejected = rejected,
+                        onSuggestionRejectedChange = { rejected = it },
+                    )
+                },
+            )
+        }
+
+        compose.onNodeWithText("Fotos").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Löschen").assertIsDisplayed()
+        compose.onNodeWithText("1250 g").assertIsDisplayed().assertIsSelected()
+        capture("photo-actions-suggestion")
+
+        compose.onNodeWithText("1250 g").performClick()
+        compose.runOnIdle { kotlin.test.assertTrue(rejected) }
+        compose.onNodeWithText("1250 g").assertIsNotSelected()
+        capture("photo-actions-suggestion-rejected")
+
+        compose.onNodeWithText("1250 g").performClick()
+        compose.runOnIdle { kotlin.test.assertFalse(rejected) }
+    }
+
+    @Test
     fun deleteConfirmation() {
         show {
             QuickCaptureDeleteConfirmationDialog(
@@ -614,6 +656,19 @@ class QuickCaptureScreenshotTest {
     }
 
     @Test
+    fun recognizedAiSuggestionShowsNoHintBelowPhoto() {
+        show {
+            androidx.compose.foundation.layout.Column {
+                QuickCapturePhotoEditor(entryId = 6, names = names,
+                    suggestedWeight = 125.0, analysisStatus = "recognized",
+                    onProcess = { _, _ -> })
+            }
+        }
+        compose.onNodeWithText("KI-Vorschlag", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Name").assertIsFocused()
+    }
+
+    @Test
     fun rejectedAiSuggestionRequiresManualWeight() {
         var submitted: Double? = null
         show {
@@ -632,8 +687,7 @@ class QuickCaptureScreenshotTest {
             performTextInput("Test")
             performImeAction()
         }
-        compose.onNodeWithText("KI-Vorschlag als falsch markiert · Gewicht manuell eingeben")
-            .assertExists()
+        compose.onNodeWithText("KI-Vorschlag", substring = true).assertDoesNotExist()
         val weight = compose.onAllNodes(hasSetTextAction())[0]
         weight.assert(
             SemanticsMatcher.expectValue(
