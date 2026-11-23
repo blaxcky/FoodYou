@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.workout
 
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -103,7 +105,7 @@ fun WorkoutExerciseEditorScreen(
             onUpdate = viewModel::update,
             onArchive = { viewModel.setArchived(true, onBack) },
             onRestore = { viewModel.setArchived(false, onBack) },
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),
         )
     }
 }

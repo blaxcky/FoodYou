@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.settings
 
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
@@ -172,7 +174,11 @@ internal fun SynchronizationSettingsContent(
         },
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier =
+                Modifier.fillMaxSize()
+                    .consumeWindowInsets(paddingValues)
+                    .imePadding()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = paddingValues,
         ) {
             item {

@@ -94,6 +94,23 @@ Do not run the complete screenshot suite for a local, isolated change. Update re
 when the visual change is intentional and updating them is part of the task; never blindly replace
 a reference image after a failed comparison.
 
+### Text Fields and the Soft Keyboard
+
+The activity calls `enableEdgeToEdge()`, so `adjustResize` no longer shrinks the content when the
+keyboard opens, and `Scaffold` content padding does not include the IME. Every screen with a text
+field must opt in itself, or the keyboard covers the end of the form and it cannot be scrolled
+there. Apply the insets outside the scroll container:
+
+```kotlin
+Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()
+    .verticalScroll(rememberScrollState())
+```
+
+`consumeWindowInsets(padding)` prevents a gap of the navigation-bar height above the keyboard.
+`ModalBottomSheet` and `AlertDialog` handle the IME themselves. Neither compilation nor Roborazzi
+catches a missing `imePadding`; check new forms on the emulator with the soft keyboard visible
+(`adb shell settings put secure show_ime_with_hard_keyboard 1`), scrolled to the last field.
+
 ## Formatting
 
 This project does not currently configure a Gradle formatter task such as `ktfmtFormat`.

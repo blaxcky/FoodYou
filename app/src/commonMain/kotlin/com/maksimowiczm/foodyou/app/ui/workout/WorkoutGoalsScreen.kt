@@ -1,5 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.workout
 
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,7 +74,7 @@ fun WorkoutGoalsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             onGoals = viewModel::updateGoals,
             onEditMilestone = { editing = it },
             onAddMilestone = { adding = true },
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),
         )
     }
 
