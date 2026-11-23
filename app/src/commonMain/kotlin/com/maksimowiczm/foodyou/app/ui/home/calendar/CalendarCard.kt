@@ -23,6 +23,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
@@ -30,6 +31,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -66,6 +69,7 @@ import com.maksimowiczm.foodyou.common.compose.utility.LocalDateFormatter
 import com.maksimowiczm.foodyou.common.domain.date.DateProvider
 import com.maksimowiczm.foodyou.common.extension.now
 import foodyou.app.generated.resources.*
+import kotlin.math.abs
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -498,12 +502,13 @@ internal fun LockedDayDialog(
 ) {
     val energyFormatter = LocalEnergyFormatter.current
     val initialKcal = currentSurplusKcal ?: defaultSurplusKcal
+    val formatInput: (Double) -> String = { kcal ->
+        energyFormatter.fromKcal(kcal).let {
+            if (it % 1.0 == 0.0) it.toLong().toString() else it.toString()
+        }
+    }
     var input by remember(date, currentSurplusKcal, defaultSurplusKcal) {
-        mutableStateOf(
-            energyFormatter.fromKcal(initialKcal).let {
-                if (it % 1.0 == 0.0) it.toLong().toString() else it.toString()
-            }
-        )
+        mutableStateOf(formatInput(initialKcal))
     }
     val surplusKcal = validatedNonNegativeEnergyKcal(input, energyFormatter::toKcal)
     val showError = input.isNotBlank() && surplusKcal == null
@@ -524,6 +529,40 @@ internal fun LockedDayDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(LocalDateFormatter.current.formatDate(date))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    LockedDaySurplusPresetsKcal.forEach { presetKcal ->
+                        val selected =
+                            surplusKcal != null && abs(surplusKcal - presetKcal) < 0.5
+                        FilterChip(
+                            selected = selected,
+                            onClick = { input = formatInput(presetKcal) },
+                            label = {
+                                Text(
+                                    text = formatInput(presetKcal),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                )
+                            },
+                            leadingIcon =
+                                if (selected) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Filled.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
@@ -566,6 +605,9 @@ internal fun LockedDayDialog(
         },
     )
 }
+
+/** Quick picks for the fixed surplus of a locked day; any other value can still be typed. */
+private val LockedDaySurplusPresetsKcal = listOf(1000.0, 1500.0, 2000.0)
 
 @Composable
 private fun WeeklyGoalBalancingDialog(

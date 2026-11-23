@@ -157,7 +157,7 @@ class CalendarCardScreenshotTest {
             GoldenSurface(height = 480) {
                 LockedDayDialog(
                     date = LocalDate(2026, 7, 30),
-                    currentSurplusKcal = 500.0,
+                    currentSurplusKcal = 1500.0,
                     defaultSurplusKcal = 500.0,
                     onDismiss = {},
                     onSave = {},
