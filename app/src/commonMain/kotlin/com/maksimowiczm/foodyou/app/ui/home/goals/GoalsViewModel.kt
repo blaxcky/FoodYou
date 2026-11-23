@@ -572,37 +572,6 @@ internal fun todayEnergyGoalValues(
  * A day reaches the diet when its consumed energy stays at least the daily diet deficit below the
  * goal. Days without any logged energy never count as reached.
  */
-/**
- * The week's best case when the capped diet goal no longer reaches the diet target, computed like
- * today's capped diet goal on the goals card; null while the target is still reachable.
- *
- * @param weekDays The days of the week from Monday up to and including [today].
- * @param plannedFutureDays The days of the week after [today].
- */
-internal fun weekDietOutlook(
-    today: LocalDate,
-    weekDays: List<GoalEnergyOptimizationDay>,
-    plannedFutureDays: List<GoalEnergyOptimizationDay>,
-    dietEnergyDeficitKcal: Double,
-    maxEnergyDeficitKcal: Double?,
-): WeekDietOutlook? {
-    val todayDay = weekDays.lastOrNull { it.date == today } ?: return null
-    val adjusted =
-        adjustedEnergyGoal(
-            selectedDate = today,
-            calculationDate = today,
-            baseEnergyGoalKcal = todayDay.baseEnergyGoalKcal,
-            dailyEnergyDeficitKcal = dietEnergyDeficitKcal,
-            previousDays = weekDays.filter { day -> day.date != null && day.date < today },
-            plannedFutureDays = plannedFutureDays,
-            maxEnergyDeficitKcal = maxEnergyDeficitKcal,
-        )
-    val overDietGoal = roundedEnergyKcal(adjusted.uncaughtBalanceKcal).takeIf { it > 0 }
-    val bestCase = adjusted.bestCaseWeekBalanceKcal
-    if (overDietGoal == null || bestCase == null) return null
-    return WeekDietOutlook(bestCaseKcal = roundedEnergyKcal(bestCase), overDietGoalKcal = overDietGoal)
-}
-
 internal fun weekDayDietGoalReached(energy: Int, goal: Int, dietEnergyDeficitKcal: Double?): Boolean {
     val deficit = dietEnergyDeficitKcal?.let(::roundedEnergyKcal) ?: return false
     return deficit > 0 && energy > 0 && goal > 0 && energy - goal <= -deficit

@@ -60,6 +60,42 @@ class WeekDietOutlookTest {
     }
 
     @Test
+    fun todayAboveTheCappedGoalCountsWithItsIntake() {
+        val outlook =
+            weekDietOutlook(
+                today = thursday,
+                weekDays = weekUntilThursday.dropLast(1) + day(thursday, 3_000.0),
+                plannedFutureDays = emptyList(),
+                dietEnergyDeficitKcal = 550.0,
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        // +1500 so far, today +700 as eaten, Fri to Sun at most 800 below normal: -200.
+        assertEquals(WeekDietOutlook(bestCaseKcal = -200, overDietGoalKcal = 3_650), outlook)
+    }
+
+    @Test
+    fun overeatingTodayCanPutAReachableTargetOutOfReach() {
+        val outlook =
+            weekDietOutlook(
+                today = thursday,
+                weekDays =
+                    listOf(
+                        day(LocalDate(2026, 11, 16), 1_750.0),
+                        day(LocalDate(2026, 11, 17), 2_300.0),
+                        day(LocalDate(2026, 11, 18), 1_750.0),
+                        day(thursday, 3_500.0),
+                    ),
+                plannedFutureDays = emptyList(),
+                dietEnergyDeficitKcal = 550.0,
+                maxEnergyDeficitKcal = 800.0,
+            )
+
+        // -1100 so far, today +1200, Fri to Sun at most 800 below normal: -2300.
+        assertEquals(WeekDietOutlook(bestCaseKcal = -2_300, overDietGoalKcal = 1_550), outlook)
+    }
+
+    @Test
     fun noOutlookWhileTheDietTargetIsStillReachable() {
         val outlook =
             weekDietOutlook(

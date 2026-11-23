@@ -41,15 +41,8 @@ internal fun optimizedEnergyGoalKcal(
  *
  * @param uncaughtBalanceKcal The energy the remaining open days of the week leave unbalanced because
  *   the diet goal is capped at the maximum daily energy deficit; 0 when the cap does not apply.
- * @param bestCaseWeekBalanceKcal When the cap applies, the week's energy against its normal goals
- *   (burned energy included) if every remaining open day ends exactly on the capped diet goal:
- *   negative for a deficit, positive for a surplus. Null when the cap does not apply.
  */
-internal data class AdjustedEnergyGoal(
-    val energyGoalKcal: Double,
-    val uncaughtBalanceKcal: Double,
-    val bestCaseWeekBalanceKcal: Double? = null,
-)
+internal data class AdjustedEnergyGoal(val energyGoalKcal: Double, val uncaughtBalanceKcal: Double)
 
 internal fun adjustedEnergyGoalKcal(
     selectedDate: LocalDate,
@@ -184,21 +177,9 @@ private fun balancedEnergyGoal(
         maxDeficit?.let { baseEnergyGoalKcal - maxOf(it, dailyEnergyDeficitKcal) }
             ?: return AdjustedEnergyGoal(energyGoalKcal = balancedGoal, uncaughtBalanceKcal = 0.0)
     return if (balancedGoal < floor) {
-        val overplannedDays =
-            plannedFutureDays.filter { day ->
-                val dayDeficit = day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal
-                day.lockedSurplusKcal != null ||
-                    day.consumedEnergyKcal >
-                        day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit
-            }
-        val bestCaseWeekBalance =
-            (previousDays + overplannedDays).sumOf { day ->
-                day.simulatedConsumedEnergyKcal() - (day.baseEnergyGoalKcal + day.burnedEnergyKcal)
-            } + (floor - baseEnergyGoalKcal) * unplannedOpenDays
         AdjustedEnergyGoal(
             energyGoalKcal = floor,
             uncaughtBalanceKcal = (floor - balancedGoal) * unplannedOpenDays,
-            bestCaseWeekBalanceKcal = bestCaseWeekBalance,
         )
     } else {
         AdjustedEnergyGoal(energyGoalKcal = balancedGoal, uncaughtBalanceKcal = 0.0)
@@ -208,6 +189,61 @@ private fun balancedEnergyGoal(
 private fun GoalEnergyOptimizationDay.simulatedConsumedEnergyKcal(): Double =
     lockedSurplusKcal?.let { baseEnergyGoalKcal + burnedEnergyKcal + it }
         ?: consumedEnergyKcal
+
+/** The day's energy against its normal goal, burned energy included; negative below it. */
+private fun GoalEnergyOptimizationDay.normalBalanceKcal(): Double =
+    simulatedConsumedEnergyKcal() - (baseEnergyGoalKcal + burnedEnergyKcal)
+
+/**
+ * How the running week ends at best once the capped diet goal can no longer reach the week's diet
+ * target; null while it still can.
+ *
+ * The best case keeps the days before [today] and every planned surplus day (locked, or already
+ * logged above its diet target) as they are and lets every other remaining day end at most
+ * [maxEnergyDeficitKcal] below its normal goal, like the capped diet goal. [today] counts the same
+ * way, unless its intake is already above that, in which case it counts as it is. Until today
+ * passes the capped goal, the amount above the diet target equals the goals card's uncaught
+ * balance.
+ *
+ * @param weekDays The days of the week from Monday up to and including [today].
+ * @param plannedFutureDays The days of the week after [today].
+ */
+internal fun weekDietOutlook(
+    today: LocalDate,
+    weekDays: List<GoalEnergyOptimizationDay>,
+    plannedFutureDays: List<GoalEnergyOptimizationDay>,
+    dietEnergyDeficitKcal: Double,
+    maxEnergyDeficitKcal: Double?,
+): WeekDietOutlook? {
+    val cap = maxEnergyDeficitKcal?.takeIf { it > 0.0 } ?: return null
+    if (dietEnergyDeficitKcal <= 0.0) return null
+    val todayDay = weekDays.lastOrNull { it.date == today } ?: return null
+    val previousDays = weekDays.filter { day -> day.date != null && day.date < today }
+    fun GoalEnergyOptimizationDay.deficitKcal() =
+        this.dietEnergyDeficitKcal ?: dietEnergyDeficitKcal
+
+    val plannedSurplusDays =
+        plannedFutureDays.filter { day ->
+            day.lockedSurplusKcal != null || day.normalBalanceKcal() > -day.deficitKcal()
+        }
+    // Days after today without data count like open days with today's deficit.
+    val remainingDays = 7 - today.dayOfWeek.isoDayNumber
+    val openDays = (remainingDays - plannedSurplusDays.size).coerceAtLeast(0)
+    val unlistedDays = (remainingDays - plannedFutureDays.size).coerceAtLeast(0)
+    val maxDailyDeficit = maxOf(cap, dietEnergyDeficitKcal)
+    val bestCase =
+        previousDays.sumOf { it.normalBalanceKcal() } +
+            plannedSurplusDays.sumOf { it.normalBalanceKcal() } +
+            maxOf(todayDay.normalBalanceKcal(), -maxDailyDeficit) -
+            openDays * maxDailyDeficit
+    val dietTarget =
+        -(previousDays.sumOf { it.deficitKcal() } +
+            plannedFutureDays.sumOf { it.deficitKcal() } +
+            unlistedDays * dietEnergyDeficitKcal +
+            todayDay.deficitKcal())
+    val overDietGoal = roundedEnergyKcal(bestCase - dietTarget).takeIf { it > 0 } ?: return null
+    return WeekDietOutlook(bestCaseKcal = roundedEnergyKcal(bestCase), overDietGoalKcal = overDietGoal)
+}
 
 internal fun LocalDate.startOfWeek(): LocalDate =
     minus(dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY)
