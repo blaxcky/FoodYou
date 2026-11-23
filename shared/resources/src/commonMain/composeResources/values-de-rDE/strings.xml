@@ -982,8 +982,8 @@
     <string name="workout_add_exercise">Weitere Übung anlegen</string>
     <string name="workout_strength_days">Tage mit irgendwas Kraft</string>
     <string name="workout_days_of">%1$d von %2$d</string>
-    <string name="workout_goal_reached">Ziel „%1$d Tage pro Woche“ erreicht. Alles Weitere ist Bonus.</string>
-    <string name="workout_goal_open">Ziel: %1$d Tage pro Woche</string>
+    <string name="workout_goal_reached">Ziel „%1$s pro Woche“ erreicht. Alles Weitere ist Bonus.</string>
+    <string name="workout_goal_open">Ziel: %1$s pro Woche</string>
     <string name="workout_change_goal">Ziel ändern</string>
     <string name="workout_cardio_days">Cardio-Tage mit %1$d min: %2$d von %3$d</string>
     <string name="workout_section_strength">Kraft</string>
@@ -1053,7 +1053,6 @@
     <string name="workout_save_kcal">Speichern · %1$s</string>
     <string name="workout_new_exercise">Neue Übung</string>
     <string name="workout_edit_exercise">Übung bearbeiten</string>
-    <string name="workout_kind">Art der Übung</string>
     <string name="workout_kind_strength">Kraft</string>
     <string name="workout_kind_cardio">Cardio-Gerät</string>
     <string name="workout_name">Name</string>
@@ -1075,7 +1074,7 @@
     <string name="workout_helps_with">Hilft bei (optional)</string>
     <string name="workout_helps_with_value">hilft bei %1$s</string>
     <string name="workout_reminder_days">Vorschlagen nach so vielen Tagen ohne (optional)</string>
-    <string name="workout_cardio_input_hint">Beim Eintragen fragst du Minuten und die kcal laut Gerät ab.</string>
+    <string name="workout_cardio_input_hint">Beim Eintragen gibst du die Minuten und die kcal laut Gerät ein.</string>
     <string name="workout_ask_distance">Distanz zusätzlich abfragen</string>
     <string name="workout_conversion_title">Umrechnung der Geräte-kcal</string>
     <string name="workout_conversion_concept2">Concept2-Formel</string>

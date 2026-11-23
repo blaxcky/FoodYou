@@ -32,6 +32,7 @@ import com.maksimowiczm.foodyou.workout.domain.WorkoutEntry
 import com.maksimowiczm.foodyou.workout.domain.WorkoutKind
 import foodyou.app.generated.resources.*
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -66,7 +67,10 @@ internal fun TrainingHistoryContent(
                     TextButton(onClick = onPickDay, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = dayLabel(date, today).let { if (date < today.minusDays(1)) it else "$it · ${shortDate(date)}" },
+                                text =
+                                    dayLabel(date, today).let {
+                                        if (date.daysUntil(today) > 1) it else "$it · ${shortDate(date)}"
+                                    },
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
@@ -133,9 +137,6 @@ internal fun TrainingHistoryContent(
     }
 }
 
-private fun LocalDate.minusDays(days: Int): LocalDate =
-    LocalDate.fromEpochDays(toEpochDays() - days)
-
 @Composable
 private fun HistoryRow(row: TrainingHistoryRow, onEdit: () -> Unit, onDelete: () -> Unit) {
     val name = row.exercise?.name ?: stringResource(Res.string.workout_unknown_exercise)
@@ -172,8 +173,8 @@ private fun historyDetail(entry: WorkoutEntry, row: TrainingHistoryRow): String 
     val parts = mutableListOf<String>()
     entryValues(entry, row.exercise).takeIf { it.isNotBlank() }?.let { parts += it }
     if (row.exercise?.kind == WorkoutKind.Cardio && entry.deviceKcal != null) {
-        parts += stringResource(Res.string.workout_device_line) + " " +
-            kotlin.math.round(entry.deviceKcal).toInt() + " → " + kcalLabel(entry.energyKcal)
+        parts += stringResource(Res.string.workout_device_line) + " " + kcalLabel(entry.deviceKcal, withSuffix = false) +
+            " → " + kcalLabel(entry.energyKcal)
     } else {
         parts += kcalLabel(entry.energyKcal)
     }

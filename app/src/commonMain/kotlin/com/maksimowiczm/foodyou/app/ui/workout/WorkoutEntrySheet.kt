@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,7 +77,6 @@ internal fun WorkoutEntrySheetContent(
     today: LocalDate,
     nowMinuteOfDay: Int,
     lastEntry: WorkoutEntry?,
-    entriesTodayCount: Int,
     bodyWeightKg: Double?,
     onSave: (draft: WorkoutEntryDraft, another: Boolean) -> Unit,
     onCancel: () -> Unit,
@@ -95,7 +96,7 @@ internal fun WorkoutEntrySheetContent(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(exercise.name, style = MaterialTheme.typography.headlineSmall)
-            val subtitle = sheetSubtitle(exercise, isNew, lastEntry, entriesTodayCount)
+            val subtitle = sheetSubtitle(exercise, isNew, lastEntry)
             if (subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,
@@ -123,6 +124,7 @@ internal fun WorkoutEntrySheetContent(
         val needsStartTime =
             exercise.kind == WorkoutKind.Cardio && exercise.excludeSteps &&
                 draft.date != today && draft.minuteOfDay == null
+        val canSave = draft.date <= today && !needsStartTime
         if (needsStartTime) {
             Text(
                 text = stringResource(Res.string.workout_pick_time_hint),
@@ -138,6 +140,7 @@ internal fun WorkoutEntrySheetContent(
                 if (isNew) {
                     OutlinedButton(
                         onClick = { onSave(draft, true) },
+                        enabled = canSave,
                         modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                     ) {
                         Text(stringResource(Res.string.workout_save_and_next))
@@ -149,6 +152,7 @@ internal fun WorkoutEntrySheetContent(
                 }
                 Button(
                     onClick = { onSave(draft, false) },
+                    enabled = canSave,
                     modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                 ) {
                     Text(stringResource(Res.string.action_save))
@@ -172,7 +176,7 @@ internal fun WorkoutEntrySheetContent(
                 }
                 Button(
                     onClick = { onSave(draft, false) },
-                    enabled = draft.durationMinutes > 0 && !needsStartTime,
+                    enabled = draft.durationMinutes > 0 && canSave,
                     modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                 ) {
                     Text(stringResource(Res.string.workout_save_kcal, kcalLabel(kcal)))
@@ -187,7 +191,6 @@ private fun sheetSubtitle(
     exercise: WorkoutExercise,
     isNew: Boolean,
     lastEntry: WorkoutEntry?,
-    entriesTodayCount: Int,
 ): String {
     if (exercise.kind == WorkoutKind.Cardio) {
         return when (exercise.cardioConversion) {
@@ -234,7 +237,8 @@ private fun WhenButton(
     if (showDate) {
         val state =
             rememberDatePickerState(
-                initialSelectedDateMillis = date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+                initialSelectedDateMillis = date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
+                selectableDates = PastAndTodayDates(today),
             )
         DatePickerDialog(
             onDismissRequest = { showDate = false },
@@ -291,7 +295,11 @@ private fun WhenButton(
                         onChange(pickedDate, if (pickedDate == today) null else minuteOfDay)
                     }
                 ) {
-                    Text(stringResource(Res.string.workout_time_now))
+                    Text(
+                        stringResource(
+                            if (pickedDate == today) Res.string.workout_time_now else Res.string.action_cancel
+                        )
+                    )
                 }
             },
         ) {
@@ -441,13 +449,13 @@ private fun CardioFields(
         IntField(
             label = stringResource(Res.string.workout_duration_minutes),
             value = draft.durationMinutes,
-            onValue = { onChange(draft.copy(durationMinutes = it)) },
+            onValue = { onChange(draft.copy(durationMinutes = it, kcalOverride = null)) },
             modifier = Modifier.weight(1f),
         )
         DecimalField(
             label = stringResource(Res.string.workout_device_kcal),
             value = draft.deviceKcal,
-            onValue = { onChange(draft.copy(deviceKcal = it ?: 0.0)) },
+            onValue = { onChange(draft.copy(deviceKcal = it ?: 0.0, kcalOverride = null)) },
             modifier = Modifier.weight(1f),
         )
     }
@@ -466,7 +474,7 @@ private fun CardioFields(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (exercise.cardioConversion == CardioConversion.Concept2) {
+            if (draft.kcalOverride == null && exercise.cardioConversion == CardioConversion.Concept2) {
                 Text(
                     text =
                         if (bodyWeightKg != null)
@@ -480,10 +488,12 @@ private fun CardioFields(
                 )
             }
             BreakdownLine(stringResource(Res.string.workout_device_line), kcalLabel(energy.deviceKcal))
-            if (exercise.cardioConversion != CardioConversion.Device) {
+            // An edited session keeps its stored kcal; the breakdown would show today's settings.
+            val recalculated = draft.kcalOverride == null
+            if (recalculated && exercise.cardioConversion != CardioConversion.Device) {
                 BreakdownLine(stringResource(Res.string.workout_converted), kcalLabel(energy.convertedKcal))
             }
-            if (exercise.cardioDiscountPercent > 0.0) {
+            if (recalculated && exercise.cardioDiscountPercent > 0.0) {
                 BreakdownLine(
                     stringResource(
                         Res.string.workout_discount_line,
@@ -500,7 +510,7 @@ private fun CardioFields(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    kcalLabel(energy.finalKcal),
+                    kcalLabel(draft.kcalOverride ?: energy.finalKcal),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -632,4 +642,14 @@ internal fun DecimalField(
 @Composable
 private fun CenteredLabel(text: String) {
     Text(text, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+}
+
+/** Entries can be logged for today and earlier, never for a future day. */
+@OptIn(ExperimentalMaterial3Api::class)
+internal class PastAndTodayDates(today: LocalDate) : SelectableDates {
+    private val lastMillis = today.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis <= lastMillis
+
+    override fun isSelectableYear(year: Int): Boolean = true
 }

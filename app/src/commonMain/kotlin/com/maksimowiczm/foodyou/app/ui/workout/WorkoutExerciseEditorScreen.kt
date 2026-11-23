@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.app.ui.workout
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -40,6 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,7 +88,7 @@ fun WorkoutExerciseEditorScreen(
                 actions = {
                     Button(
                         onClick = { viewModel.save(onBack) },
-                        enabled = form.canSave && !form.isLoading,
+                        enabled = form.canSave,
                         modifier = Modifier.padding(end = 8.dp),
                     ) {
                         Text(stringResource(Res.string.action_save))
@@ -122,15 +125,18 @@ internal fun WorkoutExerciseEditorContent(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Segments(
-            options =
-                listOf(
-                    WorkoutKind.Strength to Res.string.workout_kind_strength,
-                    WorkoutKind.Cardio to Res.string.workout_kind_cardio,
-                ),
-            selected = form.kind,
-            onSelect = { kind -> onUpdate { copy(kind = kind) } },
-        )
+        // The kind of an existing exercise is fixed; its entries were logged for that kind.
+        if (form.id == null) {
+            Segments(
+                options =
+                    listOf(
+                        WorkoutKind.Strength to Res.string.workout_kind_strength,
+                        WorkoutKind.Cardio to Res.string.workout_kind_cardio,
+                    ),
+                selected = form.kind,
+                onSelect = { kind -> onUpdate { copy(kind = kind) } },
+            )
+        }
 
         EditorCard {
             OutlinedTextField(
@@ -166,11 +172,15 @@ internal fun WorkoutExerciseEditorContent(
                     ) {
                         form.weightOptionsKg.forEach { kg ->
                             val label = kg.formatAmount(separator)
+                            val removeLabel = stringResource(Res.string.workout_remove_weight, label)
                             InputChip(
                                 selected = false,
                                 onClick = { onUpdate { copy(weightOptionsKg = weightOptionsKg - kg) } },
                                 label = { Text("$label kg ×") },
-                                modifier = Modifier.heightIn(min = 48.dp),
+                                modifier =
+                                    Modifier.heightIn(min = 48.dp).semantics {
+                                        contentDescription = removeLabel
+                                    },
                             )
                         }
                         FilterChip(
@@ -405,7 +415,7 @@ internal fun CheckRow(title: String, checked: Boolean, onChange: (Boolean) -> Un
         modifier =
             Modifier.fillMaxWidth()
                 .heightIn(min = 48.dp)
-                .clickable(role = Role.Checkbox) { onChange(!checked) },
+                .toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -426,7 +436,9 @@ internal fun CheckRow(title: String, checked: Boolean, onChange: (Boolean) -> Un
 private fun RadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null) {
     Row(
         modifier =
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.RadioButton, onClick = onSelect),
+            Modifier.fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null)

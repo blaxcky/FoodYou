@@ -40,16 +40,27 @@ internal data class WorkoutExerciseForm(
     val excludeSteps: Boolean = true,
     val archived: Boolean = false,
     val isLoading: Boolean = false,
+    val isSaving: Boolean = false,
 ) {
+    /** Only the fields visible for the chosen kind and conversion are checked. */
     val canSave: Boolean
-        get() =
-            name.isNotBlank() &&
-                kcalValue.parseDecimal().let { it == null || it >= 0.0 } &&
-                cardioFactor.parseDecimal().let { it != null && it >= 0.0 } &&
-                cardioDiscountPercent.parseDecimal().let { it != null && it in 0.0..100.0 }
+        get() {
+            if (name.isBlank() || isLoading || isSaving) return false
+            return when (kind) {
+                WorkoutKind.Strength ->
+                    kcalValue.isBlank() || kcalValue.parseDecimal().let { it != null && it >= 0.0 }
+                WorkoutKind.Cardio ->
+                    (cardioConversion != CardioConversion.Factor ||
+                        cardioFactor.parseDecimal().let { it != null && it >= 0.0 }) &&
+                        (cardioDiscountPercent.isBlank() ||
+                            cardioDiscountPercent.parseDecimal().let { it != null && it in 0.0..100.0 })
+            }
+        }
 }
 
-internal fun String.parseDecimal(): Double? = trim().replace(',', '.').toDoubleOrNull()
+/** Parses "1,5" or "1.5"; infinite or NaN values count as invalid. */
+internal fun String.parseDecimal(): Double? =
+    trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
 
 internal fun Double.formatDecimal(): String =
     if (this % 1.0 == 0.0) toLong().toString() else toString().replace('.', ',')
@@ -91,11 +102,13 @@ internal class WorkoutExerciseEditorViewModel(
     fun save(onDone: () -> Unit) {
         val form = mutableForm.value
         if (!form.canSave) return
+        // Blocks a second tap until the first save has finished.
+        mutableForm.value = form.copy(isSaving = true)
         viewModelScope.launch {
             val existing = form.id?.let { repository.observeExercise(it).first() }
             val exercise = form.toExercise(existing?.createdAt ?: dateProvider.nowInstant())
             if (existing == null) repository.createExercise(exercise)
-            else repository.updateExercise(exercise)
+            else repository.updateExercise(exercise.copy(kind = existing.kind))
             onDone()
         }
     }

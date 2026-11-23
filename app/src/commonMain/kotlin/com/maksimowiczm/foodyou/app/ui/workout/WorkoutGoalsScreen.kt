@@ -239,7 +239,7 @@ private fun StepperRow(
             }
         }
         OutlinedIconButton(
-            onClick = { onValue((value - step).coerceIn(range)) },
+            onClick = { onValue((((value - 1) / step) * step).coerceIn(range)) },
             enabled = value > range.first,
             modifier = Modifier.size(48.dp),
         ) {
@@ -252,7 +252,7 @@ private fun StepperRow(
             modifier = Modifier.width(40.dp),
         )
         OutlinedIconButton(
-            onClick = { onValue((value + step).coerceIn(range)) },
+            onClick = { onValue(((value / step + 1) * step).coerceIn(range)) },
             enabled = value < range.last,
             modifier = Modifier.size(48.dp),
         ) {

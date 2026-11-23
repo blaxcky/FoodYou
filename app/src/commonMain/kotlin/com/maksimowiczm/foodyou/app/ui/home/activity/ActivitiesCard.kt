@@ -41,6 +41,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.training.ImportedActivity
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.pluralStringResource
+import com.maksimowiczm.foodyou.app.ui.workout.minuteLabel
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -383,18 +384,17 @@ private fun String.groupDigits(): String {
 private fun workoutRowDetail(row: WorkoutCardRow): String {
     if (row.isStrengthSummary) {
         val time =
-            if (row.firstMinute == row.lastMinute) workoutMinuteLabel(row.firstMinute)
-            else workoutMinuteLabel(row.firstMinute) + "–" + workoutMinuteLabel(row.lastMinute)
+            if (row.firstMinute == row.lastMinute) minuteLabel(row.firstMinute)
+            else minuteLabel(row.firstMinute) + "–" + minuteLabel(row.lastMinute)
         return pluralStringResource(Res.plurals.workout_exercises, row.exerciseCount, row.exerciseCount) +
             " · " + pluralStringResource(Res.plurals.workout_sets, row.setCount, row.setCount) + " · " + time
     }
     val parts = mutableListOf<String>()
     row.durationMinutes?.let { parts += stringResource(Res.string.workout_value_minutes, it) }
     row.deviceKcal?.takeIf { it != row.energyKcal }?.let {
-        parts += stringResource(Res.string.workout_device_line) + " " + it + " → " + row.energyKcal
+        val formatter = LocalEnergyFormatter.current
+        parts += stringResource(Res.string.workout_device_line) + " " + formatter.formatEnergy(it, withSuffix = false) + " → " +
+            formatter.formatEnergy(row.energyKcal)
     }
     return parts.joinToString(" · ")
 }
-
-private fun workoutMinuteLabel(minute: Int): String =
-    "${(minute / 60).toString().padStart(2, '0')}:${(minute % 60).toString().padStart(2, '0')}"

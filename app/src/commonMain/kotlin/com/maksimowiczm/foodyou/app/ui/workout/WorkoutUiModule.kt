@@ -1,5 +1,6 @@
 package com.maksimowiczm.foodyou.app.ui.workout
 
+import com.maksimowiczm.foodyou.common.infrastructure.koin.applicationCoroutineScope
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
@@ -12,6 +13,7 @@ fun Module.workoutUi() {
             weightRepository = get(),
             healthConnectActivitySync = get(),
             dateProvider = get(),
+            backgroundScope = applicationCoroutineScope(),
         )
     }
     viewModel {

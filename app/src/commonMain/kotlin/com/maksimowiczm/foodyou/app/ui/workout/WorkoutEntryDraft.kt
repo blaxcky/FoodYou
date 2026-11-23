@@ -24,7 +24,10 @@ data class WorkoutEntryDraft(
     val durationMinutes: Int = 10,
     val deviceKcal: Double = 0.0,
     val distanceMeters: Int? = null,
-    /** kcal typed for this set; null keeps the exercise default. */
+    /**
+     * Strength: kcal typed for this set; null keeps the exercise default. Cardio: the stored kcal of
+     * an edited session, kept until its duration or device kcal change.
+     */
     val kcalOverride: Double? = null,
     val feel: WorkoutFeel? = null,
 )
@@ -72,7 +75,7 @@ fun WorkoutEntryDraft.energyKcal(exercise: WorkoutExercise, bodyWeightKg: Double
     when (exercise.kind) {
         WorkoutKind.Strength -> kcalOverride ?: strengthSetKcal(exercise, reps)
         WorkoutKind.Cardio ->
-            cardioEnergy(exercise, deviceKcal, durationMinutes, bodyWeightKg).finalKcal
+            kcalOverride ?: cardioEnergy(exercise, deviceKcal, durationMinutes, bodyWeightKg).finalKcal
     }
 
 fun buildWorkoutEntry(

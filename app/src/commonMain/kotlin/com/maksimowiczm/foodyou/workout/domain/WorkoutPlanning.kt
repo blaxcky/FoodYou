@@ -53,7 +53,7 @@ fun planWorkoutToday(
         active.map { exercise ->
             val own = byExercise[exercise.id].orEmpty()
             val todays = own.filter { it.date == today }.sortedBy { it.minuteOfDay }
-            val last = own.maxWithOrNull(compareBy({ it.date }, { it.minuteOfDay }))
+            val last = own.maxWithOrNull(compareBy({ it.date }, { it.minuteOfDay }, { it.id.value }))
             WorkoutTodayItem(
                 exercise = exercise,
                 lastEntry = last,
@@ -69,13 +69,15 @@ fun planWorkoutToday(
             )
     val done = all.filter { it.doneToday }.sortedBy { it.entriesToday.first().minuteOfDay }
     val ordered = open + done
-    val normalizedQuery = query.trim().lowercase()
+    // Below the threshold there is no search field, so a leftover query must not filter.
+    val normalizedQuery =
+        if (active.size < WORKOUT_SEARCH_MIN_EXERCISES) "" else query.trim().lowercase()
     val matching =
         if (normalizedQuery.isEmpty()) ordered
         else ordered.filter { it.exercise.name.lowercase().contains(normalizedQuery) }
     // Exercises past their own reminder come first; otherwise the longest ago wins.
     val suggestions =
-        if (active.size < WORKOUT_SUGGESTIONS_MIN_EXERCISES) emptyList()
+        if (active.size < WORKOUT_SUGGESTIONS_MIN_EXERCISES || normalizedQuery.isNotEmpty()) emptyList()
         else
             matching
                 .filterNot { it.doneToday }

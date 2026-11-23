@@ -9,9 +9,7 @@ import com.maksimowiczm.foodyou.common.domain.userpreferences.UserPreferencesRep
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
 import com.maksimowiczm.foodyou.weight.domain.repository.WeightRepository
 import com.maksimowiczm.foodyou.workout.domain.WorkoutEntry
-import com.maksimowiczm.foodyou.workout.domain.WorkoutEntryId
 import com.maksimowiczm.foodyou.workout.domain.WorkoutExercise
-import com.maksimowiczm.foodyou.workout.domain.WorkoutExerciseId
 import com.maksimowiczm.foodyou.workout.domain.WorkoutGoals
 import com.maksimowiczm.foodyou.workout.domain.WorkoutKind
 import com.maksimowiczm.foodyou.workout.domain.WorkoutRepository
@@ -22,6 +20,7 @@ import com.maksimowiczm.foodyou.workout.domain.planWorkoutWeek
 import com.maksimowiczm.foodyou.workout.domain.weekStart
 import com.maksimowiczm.foodyou.workout.workoutGoals
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -72,6 +71,8 @@ internal class TrainingViewModel(
     private val weightRepository: WeightRepository,
     private val healthConnectActivitySync: HealthConnectActivitySync,
     private val dateProvider: DateProvider,
+    /** Outlives the screen, so leaving right after saving neither loses the write nor the step sync. */
+    private val backgroundScope: CoroutineScope,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
     private val historyDate = MutableStateFlow<LocalDate?>(null)
@@ -143,6 +144,15 @@ internal class TrainingViewModel(
         historyDate.value = date
     }
 
+    private var initialDateApplied = false
+
+    /** Applies the day a screen was opened for once per ViewModel, also after recreation. */
+    fun applyInitialDate(date: LocalDate?) {
+        if (initialDateApplied) return
+        initialDateApplied = true
+        if (date != null) historyDate.value = date
+    }
+
     fun shiftHistoryDay(days: Int) {
         val current = historyDate.value ?: state.value?.today ?: return
         historyDate.value = current.plus(days, DateTimeUnit.DAY)
@@ -157,7 +167,7 @@ internal class TrainingViewModel(
 
     /** Saves a new or edited entry built by [buildWorkoutEntry]. */
     fun saveEntry(exercise: WorkoutExercise, draft: WorkoutEntryDraft) {
-        viewModelScope.launch {
+        backgroundScope.launch {
             val weight = latestWeight.first()
             val now = dateProvider.nowInstant()
             val existing = draft.entryId?.let { repository.observeEntry(it).first() }
@@ -176,7 +186,7 @@ internal class TrainingViewModel(
     }
 
     fun deleteEntry(entry: WorkoutEntry) {
-        viewModelScope.launch {
+        backgroundScope.launch {
             repository.deleteEntry(entry.id)
             val exercise = repository.observeExercise(entry.exerciseId).first()
             afterChange(exercise, listOf(entry.date))
@@ -184,18 +194,12 @@ internal class TrainingViewModel(
     }
 
     fun restoreEntry(entry: WorkoutEntry) {
-        viewModelScope.launch {
+        backgroundScope.launch {
             repository.createEntry(entry)
             val exercise = repository.observeExercise(entry.exerciseId).first()
             afterChange(exercise, listOf(entry.date))
         }
     }
-
-    fun exercise(id: WorkoutExerciseId): WorkoutExercise? =
-        state.value?.exercises?.firstOrNull { it.id == id }
-
-    fun entry(id: WorkoutEntryId): WorkoutEntry? =
-        state.value?.history?.firstOrNull { it.entry.id == id }?.entry
 
     private suspend fun afterChange(exercise: WorkoutExercise?, dates: List<LocalDate>) {
         runCatching { updateCalorieWidgetValues() }

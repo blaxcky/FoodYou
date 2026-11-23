@@ -21,7 +21,7 @@ internal fun minuteLabel(minuteOfDay: Int): String {
 }
 
 internal fun Double.formatAmount(separator: String): String {
-    val rounded = (this * 10).roundToInt() / 10.0
+    val rounded = (this * 100).roundToInt() / 100.0
     return if (rounded % 1.0 == 0.0) rounded.toLong().toString()
     else rounded.toString().replace(".", separator)
 }
@@ -30,8 +30,8 @@ internal fun Double.formatAmount(separator: String): String {
 internal fun decimalSeparator(): String = stringResource(Res.string.daily_goals_decimal_separator)
 
 @Composable
-internal fun kcalLabel(kcal: Double): String =
-    LocalEnergyFormatter.current.formatEnergy(kcal.roundToInt())
+internal fun kcalLabel(kcal: Double, withSuffix: Boolean = true): String =
+    LocalEnergyFormatter.current.formatEnergy(kcal.roundToInt(), withSuffix)
 
 @Composable
 internal fun weekdayLabels(): List<String> =

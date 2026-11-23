@@ -94,12 +94,13 @@ internal fun TrainingWeekContent(
             }
         }
         item(key = "summary") { WeekSummary(week, goals, isCurrentWeek, onChangeGoal) }
-        item(key = "grid") { WeekGrid(week) }
+        item(key = "grid") { WeekGrid(week, isCurrentWeek) }
     }
 }
 
 @Composable
 private fun WeekSummary(week: WorkoutWeek, goals: WorkoutGoals, isCurrentWeek: Boolean, onChangeGoal: () -> Unit) {
+    val goalDays = pluralStringResource(Res.plurals.workout_days, goals.strengthDaysPerWeek, goals.strengthDaysPerWeek)
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.primary,
@@ -133,8 +134,8 @@ private fun WeekSummary(week: WorkoutWeek, goals: WorkoutGoals, isCurrentWeek: B
                 Text(
                     text =
                         if (week.strengthDays >= goals.strengthDaysPerWeek)
-                            stringResource(Res.string.workout_goal_reached, goals.strengthDaysPerWeek)
-                        else stringResource(Res.string.workout_goal_open, goals.strengthDaysPerWeek),
+                            stringResource(Res.string.workout_goal_reached, goalDays)
+                        else stringResource(Res.string.workout_goal_open, goalDays),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -154,7 +155,7 @@ private fun WeekSummary(week: WorkoutWeek, goals: WorkoutGoals, isCurrentWeek: B
 }
 
 @Composable
-private fun WeekGrid(week: WorkoutWeek) {
+private fun WeekGrid(week: WorkoutWeek, isCurrentWeek: Boolean) {
     val labels = weekdayLabels()
     Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surface) {
         Column(
@@ -174,7 +175,7 @@ private fun WeekGrid(week: WorkoutWeek) {
                             text = label,
                             style = MaterialTheme.typography.labelMedium,
                             textAlign = TextAlign.Center,
-                            fontWeight = if (index == week.elapsedDays - 1) FontWeight.Bold else null,
+                            fontWeight = if (isCurrentWeek && index == week.elapsedDays - 1) FontWeight.Bold else null,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
@@ -213,7 +214,8 @@ private fun WeekGrid(week: WorkoutWeek) {
 @Composable
 private fun WeekRow(row: WorkoutWeekRow, elapsedDays: Int, labels: List<String>) {
     val cardio = row.exercise.kind == WorkoutKind.Cardio
-    val doneColor = if (cardio) Color(0xFFB5560F) else MaterialTheme.colorScheme.primary
+    val doneColor = if (cardio) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+    val onDoneColor = if (cardio) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onPrimary
     val description =
         row.exercise.name + ": " +
             row.doneOnDay.mapIndexedNotNull { index, done -> labels.getOrNull(index)?.takeIf { done } }.joinToString(", ")
@@ -239,7 +241,7 @@ private fun WeekRow(row: WorkoutWeekRow, elapsedDays: Int, labels: List<String>)
                             modifier = cell.then(Modifier.padding(0.dp)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Surface(color = doneColor, contentColor = Color.White, modifier = Modifier.fillMaxWidth().height(22.dp)) {
+                            Surface(color = doneColor, contentColor = onDoneColor, modifier = Modifier.fillMaxWidth().height(22.dp)) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(14.dp))
                                 }

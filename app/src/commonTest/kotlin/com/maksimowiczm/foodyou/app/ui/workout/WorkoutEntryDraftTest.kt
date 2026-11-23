@@ -107,6 +107,18 @@ class WorkoutEntryDraftTest {
     }
 
     @Test
+    fun editingCardioKeepsTheStoredKcalUntilDurationOrDeviceKcalChange() {
+        val stored = entry(rowing, 965, 250.0, duration = 20, reps = null)
+        val moved =
+            buildWorkoutEntry(rowing, stored.toDraft().copy(minuteOfDay = 900), 985, bodyWeightKg = 60.0, now = now)
+        assertEquals(250.0, moved.energyKcal)
+
+        val longer = stored.toDraft().copy(durationMinutes = 25, kcalOverride = null)
+        val rebuilt = buildWorkoutEntry(rowing, longer, 985, bodyWeightKg = 82.4, now = now)
+        assertTrue(rebuilt.energyKcal != 250.0)
+    }
+
+    @Test
     fun editingKeepsTheIdAndCreationTime() {
         val existing = entry(rows, 460, 4.0)
         val built =
@@ -158,7 +170,29 @@ class WorkoutEntryDraftTest {
         assertEquals(12.5, exercise.cardioDiscountPercent)
         assertEquals(4, exercise.reminderDays)
         assertFalse(exercise.usesWeight)
-        assertFalse(WorkoutExerciseForm(name = "x", cardioDiscountPercent = "120").canSave)
+        assertFalse(WorkoutExerciseForm(name = "x", kind = WorkoutKind.Cardio, cardioDiscountPercent = "120").canSave)
         assertFalse(WorkoutExerciseForm(name = " ").canSave)
+        assertFalse(WorkoutExerciseForm(name = "x", kcalValue = "1e309").canSave)
+        assertFalse(WorkoutExerciseForm(name = "x", kcalValue = "abc").canSave)
+        // Hidden cardio fields do not block a strength exercise.
+        assertTrue(WorkoutExerciseForm(name = "x", cardioFactor = "", cardioDiscountPercent = "").canSave)
+        assertTrue(
+            WorkoutExerciseForm(
+                    name = "x",
+                    kind = WorkoutKind.Cardio,
+                    cardioConversion = CardioConversion.Concept2,
+                    cardioFactor = "",
+                )
+                .canSave
+        )
+        assertFalse(
+            WorkoutExerciseForm(
+                    name = "x",
+                    kind = WorkoutKind.Cardio,
+                    cardioConversion = CardioConversion.Factor,
+                    cardioFactor = "1e309",
+                )
+                .canSave
+        )
     }
 }

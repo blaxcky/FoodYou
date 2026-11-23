@@ -40,11 +40,16 @@ import com.maksimowiczm.foodyou.workout.domain.WorkoutTodayItem
 import foodyou.app.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
-/** Cardio is told apart from strength by an orange tone. */
+/** Cardio is told apart from strength by the theme's tertiary colors, readable in light and dark. */
 internal object WorkoutColors {
-    val cardioContainer = Color(0xFFFCE3CF)
-    val onCardioContainer = Color(0xFF5A2A00)
-    val cardioAccent = Color(0xFF9A4A0C)
+    val cardioContainer: Color
+        @Composable get() = MaterialTheme.colorScheme.tertiaryContainer
+
+    val onCardioContainer: Color
+        @Composable get() = MaterialTheme.colorScheme.onTertiaryContainer
+
+    val cardioAccent: Color
+        @Composable get() = MaterialTheme.colorScheme.tertiary
 }
 
 @Composable
@@ -100,6 +105,7 @@ internal fun TrainingTodayContent(
                             item = item,
                             highlighted = index == 0,
                             onLog = { onLog(item) },
+                            onEdit = { onEditExercise(item) },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -180,33 +186,30 @@ private fun SuggestionCard(
     item: WorkoutTodayItem,
     highlighted: Boolean,
     onLog: () -> Unit,
+    onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cardio = item.exercise.kind == WorkoutKind.Cardio
     val container =
-        when {
-            highlighted -> WorkoutColors.cardioContainer
-            else -> MaterialTheme.colorScheme.surface
-        }
-    val content = if (highlighted) WorkoutColors.onCardioContainer else MaterialTheme.colorScheme.onSurface
+        if (highlighted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+    val content =
+        if (highlighted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     Surface(shape = MaterialTheme.shapes.extraLarge, color = container, contentColor = content, modifier = modifier) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(item.exercise.name, style = MaterialTheme.typography.titleMedium, maxLines = 2)
-            Text(
-                text = suggestionReason(item),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (highlighted) content else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onEdit),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(item.exercise.name, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+                Text(
+                    text = suggestionReason(item),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (highlighted) content else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                )
+            }
             Button(
                 onClick = onLog,
-                colors =
-                    if (highlighted)
-                        ButtonDefaults.buttonColors(
-                            containerColor = WorkoutColors.onCardioContainer,
-                            contentColor = Color.White,
-                        )
-                    else ButtonDefaults.buttonColors(),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp),
             ) {
                 Text(
@@ -247,7 +250,7 @@ private fun ExerciseRow(item: WorkoutTodayItem, large: Boolean, onLog: () -> Uni
         ) {
             Text(
                 text = item.exercise.name,
-                style = if (large) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge,
                 color =
                     if (item.doneToday) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onSurface,

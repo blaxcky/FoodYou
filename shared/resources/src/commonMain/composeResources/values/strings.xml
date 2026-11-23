@@ -1108,8 +1108,8 @@
     <string name="workout_add_exercise">Add exercise</string>
     <string name="workout_strength_days">Days with any strength</string>
     <string name="workout_days_of">%1$d of %2$d</string>
-    <string name="workout_goal_reached">Goal of %1$d days per week reached. Anything more is a bonus.</string>
-    <string name="workout_goal_open">Goal: %1$d days per week</string>
+    <string name="workout_goal_reached">Goal of %1$s per week reached. Anything more is a bonus.</string>
+    <string name="workout_goal_open">Goal: %1$s per week</string>
     <string name="workout_change_goal">Change goal</string>
     <string name="workout_cardio_days">Cardio days with %1$d min: %2$d of %3$d</string>
     <string name="workout_section_strength">Strength</string>
@@ -1179,7 +1179,6 @@
     <string name="workout_save_kcal">Save · %1$s</string>
     <string name="workout_new_exercise">New exercise</string>
     <string name="workout_edit_exercise">Edit exercise</string>
-    <string name="workout_kind">Kind of exercise</string>
     <string name="workout_kind_strength">Strength</string>
     <string name="workout_kind_cardio">Cardio device</string>
     <string name="workout_name">Name</string>

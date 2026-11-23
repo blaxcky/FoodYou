@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +62,6 @@ private data class EntrySheetTarget(
     val exercise: WorkoutExercise,
     val draft: WorkoutEntryDraft,
     val lastEntry: WorkoutEntry?,
-    val entriesTodayCount: Int,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,11 +78,7 @@ fun TrainingScreen(
     val viewModel: TrainingViewModel = koinViewModel()
     val state = viewModel.state.collectAsStateWithLifecycle().value
     var tab by rememberSaveable { mutableStateOf(initialTab) }
-    var initialDateApplied by rememberSaveable { mutableStateOf(false) }
-    if (!initialDateApplied && initialDate != null) {
-        viewModel.setHistoryDate(initialDate)
-        initialDateApplied = true
-    }
+    LaunchedEffect(viewModel) { viewModel.applyInitialDate(initialDate) }
     var sheet by remember { mutableStateOf<EntrySheetTarget?>(null) }
     var pickExerciseForDate by remember { mutableStateOf<LocalDate?>(null) }
     var showHistoryDatePicker by remember { mutableStateOf(false) }
@@ -93,7 +89,7 @@ fun TrainingScreen(
     fun openNew(exercise: WorkoutExercise, date: LocalDate) {
         val current = state ?: return
         val own = current.recentEntries.filter { it.exerciseId == exercise.id }
-        val last = own.maxWithOrNull(compareBy({ it.date }, { it.minuteOfDay }))
+        val last = own.maxWithOrNull(compareBy({ it.date }, { it.minuteOfDay }, { it.id.value }))
         sheet =
             EntrySheetTarget(
                 exercise = exercise,
@@ -105,7 +101,6 @@ fun TrainingScreen(
                         minuteOfDay = null,
                     ),
                 lastEntry = last,
-                entriesTodayCount = own.count { it.date == date },
             )
     }
 
@@ -197,7 +192,7 @@ fun TrainingScreen(
                         onPickDay = { showHistoryDatePicker = true },
                         onEdit = { row ->
                             val exercise = row.exercise ?: return@TrainingHistoryContent
-                            sheet = EntrySheetTarget(exercise, row.entry.toDraft(), null, 0)
+                            sheet = EntrySheetTarget(exercise, row.entry.toDraft(), null)
                         },
                         onDelete = { row ->
                             viewModel.deleteEntry(row.entry)
@@ -212,7 +207,10 @@ fun TrainingScreen(
                                 if (result == SnackbarResult.ActionPerformed) viewModel.restoreEntry(row.entry)
                             }
                         },
-                        onAdd = { pickExerciseForDate = state.historyDate },
+                        onAdd = {
+                            if (state.exercises.any { !it.archived }) pickExerciseForDate = state.historyDate
+                            else onNewExercise(false)
+                        },
                         contentPadding = contentPadding,
                     )
             }
@@ -229,7 +227,6 @@ fun TrainingScreen(
                 today = state.today,
                 nowMinuteOfDay = viewModel.nowMinuteOfDay(),
                 lastEntry = current.lastEntry,
-                entriesTodayCount = current.entriesTodayCount,
                 bodyWeightKg = state.latestWeightKg,
                 onSave = { draft, another ->
                     viewModel.saveEntry(current.exercise, draft)
@@ -308,7 +305,8 @@ fun TrainingScreen(
     if (showHistoryDatePicker && state != null) {
         val pickerState =
             rememberDatePickerState(
-                initialSelectedDateMillis = state.historyDate.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+                initialSelectedDateMillis = state.historyDate.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
+                selectableDates = PastAndTodayDates(state.today),
             )
         DatePickerDialog(
             onDismissRequest = { showHistoryDatePicker = false },

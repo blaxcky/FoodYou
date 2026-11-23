@@ -90,7 +90,12 @@ class WorkoutPlanningTest {
         val exercises = (1L..12L).map { exercise(it, if (it == 7L) "Toter Hang" else "Übung $it") }
         val plan = planWorkoutToday(exercises, emptyList(), today, query = "hang")
         assertTrue(plan.showSearch)
-        assertEquals(listOf("Toter Hang"), (plan.suggestions + plan.items).map { it.exercise.name })
+        assertTrue(plan.suggestions.isEmpty())
+        assertEquals(listOf("Toter Hang"), plan.items.map { it.exercise.name })
+
+        val fewer = planWorkoutToday(exercises.take(11), emptyList(), today, query = "hang")
+        assertFalse(fewer.showSearch)
+        assertEquals(11, (fewer.suggestions + fewer.items).size)
     }
 
     @Test
