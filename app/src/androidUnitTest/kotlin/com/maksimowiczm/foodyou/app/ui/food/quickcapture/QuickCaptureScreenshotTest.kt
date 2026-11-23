@@ -438,18 +438,63 @@ class QuickCaptureScreenshotTest {
                 contentAlignment = Alignment.Center,
             ) {
                 QuickCaptureCsvImportDialogCard(
-                    csv =
-                        "name,energy,proteins,carbohydrates,fats\n" +
-                            "Skyr Natur,126,22,8,0.4\nApfel,80,0.4,18,0.2",
+                    csv = TwoRowCsv,
                     state = QuickCaptureCsvImportState.Idle,
                     onCsvChange = {},
                     onDismiss = {},
                     onImport = {},
-                    autoFocus = false,
+                    preview = QuickCaptureCsvPreview(TwoRowCsv, TwoRows, 2, "Abendessen"),
                 )
             }
         }
+        compose.onNodeWithText("Krapfen").assertIsDisplayed()
+        compose.onNodeWithText("131 g").assertIsDisplayed()
+        compose.onNodeWithText("Gesamt").assertIsDisplayed()
+        compose.onNodeWithText("2 Posten für Abendessen · heute").assertIsDisplayed()
         capture("csv-import")
+    }
+
+    @Test
+    fun csvImportEmptyOffersPaste() {
+        show {
+            Box(
+                Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                QuickCaptureCsvImportDialogCard(
+                    csv = "",
+                    state = QuickCaptureCsvImportState.Idle,
+                    onCsvChange = {},
+                    onDismiss = {},
+                    onImport = {},
+                )
+            }
+        }
+        compose.onNodeWithText("Aus Zwischenablage einfügen").assertIsDisplayed()
+        compose.onNodeWithText("Eintragen").assertIsNotEnabled()
+        capture("csv-import-empty")
+    }
+
+    @Test
+    fun csvImportShowsRawCsvOnRequest() {
+        show {
+            Box(
+                Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                QuickCaptureCsvImportDialogCard(
+                    csv = TwoRowCsv,
+                    state = QuickCaptureCsvImportState.Idle,
+                    onCsvChange = {},
+                    onDismiss = {},
+                    onImport = {},
+                    preview = QuickCaptureCsvPreview(TwoRowCsv, TwoRows, 2, "Abendessen"),
+                    initiallyShowCsv = true,
+                )
+            }
+        }
+        compose.onNodeWithText("CSV ausblenden").assertIsDisplayed()
+        capture("csv-import-raw")
     }
 
     @Test
@@ -459,18 +504,21 @@ class QuickCaptureScreenshotTest {
                 Modifier.fillMaxSize().padding(horizontal = 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
+                val csv = "name,energy,proteins,carbohydrates,fats\n\"131g Krapfen\",480.8,7.3,62.9,21.0"
                 QuickCaptureCsvImportDialogCard(
-                    csv = "name,energy,proteins,carbohydrates,fats\nMittagessen,640,42,71,19",
+                    csv = csv,
                     state = QuickCaptureCsvImportState.RowCountMismatch(2, 1),
                     onCsvChange = {},
                     onDismiss = {},
                     onImport = {},
-                    autoFocus = false,
+                    preview = QuickCaptureCsvPreview(csv, TwoRows.take(1), 2, "Abendessen"),
                 )
             }
         }
         compose.onNodeWithText("Posten im Prompt: 2. Datenzeilen in der CSV: 1.", substring = true)
             .assertIsDisplayed()
+        compose.onNodeWithText("1 Posten fehlt").assertIsDisplayed()
+        compose.onNodeWithText("Eintragen").assertIsNotEnabled()
         capture("csv-import-row-count-error")
     }
 
@@ -858,12 +906,20 @@ class QuickCaptureScreenshotTest {
         show {
             Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                 QuickCaptureCsvImportDialogCard(
-                    "name,energy,proteins,carbohydrates,fats\nSkyr Natur,126,22,8,0.4",
-                    QuickCaptureCsvImportState.Idle, {}, {}, {}, autoFocus = false,
-                    sources = listOf(com.maksimowiczm.foodyou.ai.AiSource("Nährwertangaben", "https://example.org")))
+                    TwoRowCsv,
+                    QuickCaptureCsvImportState.Idle, {}, {}, {},
+                    preview = QuickCaptureCsvPreview(TwoRowCsv, TwoRows, 2, "Abendessen"),
+                    sources = listOf(
+                        com.maksimowiczm.foodyou.ai.AiSource(
+                            "https://www.heissundsuess.at/wp-content/uploads/2026/01/Sachertorte_Classic_SPEZIFIKATION.pdf",
+                            "https://www.heissundsuess.at/wp-content/uploads/2026/01/Sachertorte_Classic_SPEZIFIKATION.pdf",
+                        ),
+                        com.maksimowiczm.foodyou.ai.AiSource("Nährwertangaben", "https://www.erlenbacher.de/docs/krapfen.pdf"),
+                    ))
             }
         }
-        compose.onNodeWithText("Nährwertangaben").assertIsDisplayed()
+        compose.onNodeWithText("heissundsuess.at").assertIsDisplayed()
+        compose.onNodeWithText("erlenbacher.de").assertIsDisplayed()
         capture("openai-csv-sources")
     }
 
@@ -893,6 +949,17 @@ class QuickCaptureScreenshotTest {
         compose.onNodeWithText("Claude · Berechnung mit Websuche …").assertIsDisplayed()
         compose.onNodeWithText("Abbrechen").assertIsDisplayed()
         capture("claude-narrow-running")
+    }
+
+    private companion object {
+        const val TwoRowCsv =
+            "name,energy,proteins,carbohydrates,fats\n" +
+                "\"131g Krapfen\",480.8,7.3,62.9,21.0\n\"269g Sachertorte\",1076.0,16.1,129.1,55.0"
+        val TwoRows =
+            listOf(
+                com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvData("131g Krapfen", 480.8, 7.3, 62.9, 21.0),
+                com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvData("269g Sachertorte", 1076.0, 16.1, 129.1, 55.0),
+            )
     }
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {

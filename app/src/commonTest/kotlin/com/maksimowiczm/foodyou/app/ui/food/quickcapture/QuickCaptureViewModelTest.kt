@@ -34,6 +34,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertNull
+import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
@@ -360,6 +362,34 @@ class QuickCaptureViewModelTest {
         } finally { vm.viewModelScope.cancel(); Dispatchers.resetMain() }
     }
 
+    @Test
+    fun previewShowsParsedRowsMealAndMissingRowsWithoutImporting() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var imported = false
+        val viewModel = viewModel(importer = { _, _ -> imported = true; QuickCaptureCsvImportResult.Success }, mealName = "Abendessen")
+        try {
+            viewModel.rememberCopiedBatch(listOf(1, 2, 3), expectedRowCount = 3)
+            viewModel.previewCsv(TwoRowCsv)
+            val preview = assertNotNull(viewModel.csvPreview.value)
+            assertEquals(TwoRowCsv, preview.csv)
+            assertEquals(listOf("Meal", "Apple"), preview.rows?.map { it.name })
+            assertEquals("Abendessen", preview.mealName)
+            assertEquals(1, preview.missingRowCount)
+            assertTrue(preview.hasRowCountMismatch)
+
+            viewModel.previewCsv("not a csv")
+            assertNull(viewModel.csvPreview.value?.rows)
+            assertNotNull(viewModel.csvPreview.value?.parseError)
+
+            viewModel.previewCsv(" ")
+            assertNull(viewModel.csvPreview.value)
+            assertFalse(imported)
+        } finally {
+            viewModel.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
     private fun TestScope.viewModel(
         estimator: suspend (String) -> com.maksimowiczm.foodyou.ai.NutritionEstimate = { error("unused") },
         providerEstimator: suspend (String, NutritionProvider) -> com.maksimowiczm.foodyou.ai.NutritionEstimate = { prompt, _ -> estimator(prompt) },
@@ -372,6 +402,7 @@ class QuickCaptureViewModelTest {
         importer: suspend (List<QuickAddCsvData>, List<Long>) -> QuickCaptureCsvImportResult = { _, _ ->
             QuickCaptureCsvImportResult.Success
         },
+        mealName: String? = null,
     ): QuickCaptureViewModel {
         return QuickCaptureViewModel(
             observe = ObserveQuickCaptureUseCase(repository),
@@ -393,6 +424,7 @@ class QuickCaptureViewModelTest {
             csvImporter = object : QuickCaptureCsvImporter {
                 override suspend fun import(data: List<QuickAddCsvData>, entryIds: List<Long>) = importer(data, entryIds)
                 override suspend fun importSnapshot(data: List<QuickAddCsvData>, entries: List<QuickCaptureLogEntry>) = importer(data, entries.map { it.id })
+                override suspend fun targetMealName() = mealName
             },
             nutritionEstimator = providerEstimator,
             savedStateHandle = savedStateHandle,

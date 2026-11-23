@@ -140,6 +140,22 @@ import com.maksimowiczm.foodyou.food.domain.usecase.SaveQuickCaptureEntryUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.SetQuickCaptureAiSuggestionRejectedUseCase
 import com.maksimowiczm.foodyou.food.domain.usecase.UpdateQuickCaptureLibraryUseCase
 import com.maksimowiczm.foodyou.settings.domain.entity.Settings
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.text.font.FontFamily
+import com.maksimowiczm.foodyou.app.ui.common.theme.LocalNutrientsPalette
+import com.maksimowiczm.foodyou.app.ui.food.diary.quickadd.QuickAddCsvData
+import com.maksimowiczm.foodyou.common.compose.utility.formatLocalized
+import org.jetbrains.compose.resources.StringResource
 import foodyou.app.generated.resources.Res
 import foodyou.app.generated.resources.*
 import kotlinx.coroutines.CancellationException
@@ -209,6 +225,7 @@ fun QuickCaptureScreen(
     val cameraOpen by viewModel.cameraOpen.collectAsStateWithLifecycle()
     val copiedEntryIds by viewModel.copiedEntryIds.collectAsStateWithLifecycle()
     val csvImportState by viewModel.csvImportState.collectAsStateWithLifecycle()
+    val csvPreview by viewModel.csvPreview.collectAsStateWithLifecycle()
     val nutritionRunning by viewModel.nutritionRunning.collectAsStateWithLifecycle()
     val nutritionRequestProvider by viewModel.nutritionRequestProvider.collectAsStateWithLifecycle()
     val nutritionDraft by viewModel.nutritionDraft.collectAsStateWithLifecycle()
@@ -265,12 +282,13 @@ fun QuickCaptureScreen(
             onSave = viewModel::save,
         )
     }
+    LaunchedEffect(showCsvImport, csvText) { viewModel.previewCsv(if (showCsvImport) csvText else "") }
     if (showCsvImport) {
         QuickCaptureCsvImportDialog(
             csv = csvText,
+            preview = csvPreview,
             shareAppLabel = shareTarget.label,
             sources = nutritionDraft?.result?.sources.orEmpty(),
-            autoFocus = nutritionDraft == null,
             state = csvImportState,
             onCsvChange = {
                 csvText = it
@@ -837,19 +855,11 @@ internal fun QuickCaptureCsvImportDialog(
     onCsvChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onImport: () -> Unit,
-    autoFocus: Boolean = true,
+    preview: QuickCaptureCsvPreview? = null,
     sources: List<AiSource> = emptyList(),
     shareAppLabel: String = PromptShareTarget.ChatGpt.label,
 ) {
-    val focusRequester = remember { FocusRequester() }
     val isSubmitting = state == QuickCaptureCsvImportState.Submitting
-
-    LaunchedEffect(autoFocus) {
-        if (autoFocus) {
-            delay(100)
-            val _ = runCatching { focusRequester.requestFocus() }
-        }
-    }
 
     BasicAlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
@@ -858,16 +868,19 @@ internal fun QuickCaptureCsvImportDialog(
             csv = csv,
             state = state,
             onCsvChange = onCsvChange,
-            sources = sources,
             onDismiss = onDismiss,
             onImport = onImport,
-            focusRequester = focusRequester,
-            autoFocus = autoFocus,
+            preview = preview,
+            sources = sources,
             shareAppLabel = shareAppLabel,
         )
     }
 }
 
+/**
+ * Shows the CSV as a readable list of rows with calories and macros. The raw CSV stays editable
+ * behind a toggle and opens by itself when the text cannot be read.
+ */
 @Composable
 internal fun QuickCaptureCsvImportDialogCard(
     csv: String,
@@ -875,18 +888,36 @@ internal fun QuickCaptureCsvImportDialogCard(
     onCsvChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onImport: () -> Unit,
-    focusRequester: FocusRequester = remember { FocusRequester() },
-    autoFocus: Boolean = true,
+    preview: QuickCaptureCsvPreview? = null,
     sources: List<AiSource> = emptyList(),
     shareAppLabel: String = PromptShareTarget.ChatGpt.label,
+    initiallyShowCsv: Boolean = false,
 ) {
     val isSubmitting = state == QuickCaptureCsvImportState.Submitting
+    val current = preview?.takeIf { it.csv == csv }
+    val rows = current?.rows?.takeIf { it.isNotEmpty() }
+    val parseError = current?.parseError?.takeIf { csv.isNotBlank() }
+    val rowCountMismatch = current?.takeIf { it.hasRowCountMismatch }
+    val canImport = !isSubmitting && csv.isNotBlank() && parseError == null && rowCountMismatch == null
+
+    var showCsv by rememberSaveable { mutableStateOf(initiallyShowCsv) }
+    var focusCsv by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val clipboard = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
+
+    LaunchedEffect(parseError) { if (parseError != null) showCsv = true }
+    LaunchedEffect(showCsv, focusCsv) {
+        if (showCsv && focusCsv) {
+            delay(100)
+            val _ = runCatching { focusRequester.requestFocus() }
+            focusCsv = false
+        }
+    }
+
     val error =
         when (state) {
-            is QuickCaptureCsvImportState.InvalidCsv ->
-                if (state.error == QuickAddCsvError.InvalidDataRowCount) {
-                    stringResource(Res.string.error_quick_capture_csv_columns)
-                } else state.error.stringResource()
+            is QuickCaptureCsvImportState.InvalidCsv -> state.error.quickCaptureCsvErrorText()
             is QuickCaptureCsvImportState.RowCountMismatch ->
                 stringResource(
                     Res.string.error_quick_capture_csv_row_count, state.expected, state.actual,
@@ -899,7 +930,33 @@ internal fun QuickCaptureCsvImportDialogCard(
             QuickCaptureCsvImportState.SavingFailed ->
                 stringResource(Res.string.error_quick_capture_csv_save)
             QuickCaptureCsvImportState.Idle,
-            QuickCaptureCsvImportState.Submitting -> null
+            QuickCaptureCsvImportState.Submitting ->
+                when {
+                    parseError != null -> parseError.quickCaptureCsvErrorText()
+                    rowCountMismatch != null ->
+                        stringResource(
+                            Res.string.error_quick_capture_csv_row_count,
+                            rowCountMismatch.expectedRowCount ?: 0,
+                            rowCountMismatch.rows?.size ?: 0,
+                        )
+                    else -> null
+                }
+        }
+
+    val subtitle =
+        when {
+            rows != null ->
+                if (current?.mealName != null) {
+                    pluralStringResource(
+                        Res.plurals.description_quick_capture_csv_preview, rows.size, rows.size, current.mealName,
+                    )
+                } else {
+                    pluralStringResource(
+                        Res.plurals.description_quick_capture_csv_preview_no_meal, rows.size, rows.size,
+                    )
+                }
+            csv.isBlank() -> stringResource(Res.string.description_quick_capture_csv_paste, shareAppLabel)
+            else -> null
         }
 
     Surface(
@@ -908,52 +965,327 @@ internal fun QuickCaptureCsvImportDialogCard(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 6.dp,
     ) {
-        Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-            Text(
-                stringResource(Res.string.headline_quick_capture_csv_import),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Spacer(Modifier.height(16.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(if (sources.isEmpty()) stringResource(Res.string.description_quick_capture_csv_import, shareAppLabel) else stringResource(Res.string.openai_review))
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    stringResource(Res.string.headline_quick_capture_csv_import),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            if (error != null) {
+                QuickCaptureCsvImportError(error, Modifier.padding(horizontal = 16.dp))
+            }
+
+            if (rows != null) {
+                QuickCaptureCsvPreviewTable(
+                    rows = rows,
+                    missingRowCount = current?.missingRowCount ?: 0,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+
+            if (csv.isBlank() && !showCsv) {
+                Column(
+                    modifier =
+                        Modifier.padding(horizontal = 16.dp)
+                            .fillMaxWidth()
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outlineVariant,
+                                MaterialTheme.shapes.large,
+                            )
+                            .padding(horizontal = 16.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    FilledTonalButton(
+                        onClick = {
+                            val pasted = clipboard.paste()
+                            if (pasted.isNullOrBlank()) {
+                                showCsv = true
+                                focusCsv = true
+                            } else {
+                                onCsvChange(pasted)
+                            }
+                        },
+                        enabled = !isSubmitting,
+                    ) {
+                        Icon(
+                            Icons.Outlined.ContentPaste,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(stringResource(Res.string.action_quick_capture_csv_paste_clipboard))
+                    }
+                    TextButton(
+                        onClick = {
+                            showCsv = true
+                            focusCsv = true
+                        },
+                        enabled = !isSubmitting,
+                    ) {
+                        Text(stringResource(Res.string.action_quick_capture_csv_type))
+                    }
+                }
+            }
+
+            if (showCsv) {
                 OutlinedTextField(
                     value = csv,
                     onValueChange = onCsvChange,
                     modifier =
-                        Modifier.fillMaxWidth()
+                        Modifier.padding(horizontal = 24.dp)
+                            .fillMaxWidth()
                             .focusRequester(focusRequester),
                     label = { Text(stringResource(Res.string.headline_quick_add_csv)) },
-                    supportingText = error?.let { { Text(it) } },
-                    isError = error != null,
+                    textStyle =
+                        MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    isError = parseError != null,
+                    enabled = !isSubmitting,
                     minLines = 3,
-                    maxLines = 6,
+                    maxLines = 8,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { if (!isSubmitting) onImport() }),
+                    keyboardActions = KeyboardActions(onDone = { if (canImport) onImport() }),
                 )
             }
-            val uriHandler = LocalUriHandler.current
+
             if (sources.isNotEmpty()) {
-                Text(stringResource(Res.string.openai_sources), style = MaterialTheme.typography.labelLarge)
-                Column(Modifier.heightIn(max = 120.dp).verticalScroll(rememberScrollState())) {
-                    sources.forEach { source ->
-                        TextButton(onClick = { uriHandler.openUri(source.url) }) { Text(source.title) }
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        stringResource(Res.string.openai_sources),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        sources.distinctBy { it.host }.forEach { source ->
+                            AssistChip(
+                                onClick = { uriHandler.openUri(source.url) },
+                                label = {
+                                    Text(
+                                        source.host,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.AutoMirrored.Outlined.OpenInNew,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(AssistChipDefaults.IconSize),
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onDismiss, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_cancel))
+
+            Column(Modifier.padding(horizontal = 12.dp)) {
+                if (csv.isNotBlank()) {
+                    TextButton(onClick = { showCsv = !showCsv }) {
+                        Icon(
+                            if (showCsv) Icons.Outlined.KeyboardArrowUp
+                            else Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(
+                            stringResource(
+                                if (showCsv) Res.string.action_quick_capture_csv_hide
+                                else Res.string.action_quick_capture_csv_show
+                            )
+                        )
+                    }
                 }
-                TextButton(onClick = onImport, enabled = !isSubmitting) {
-                    Text(stringResource(Res.string.action_quick_capture_import_csv_confirm))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                ) {
+                    TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                        Text(stringResource(Res.string.action_cancel))
+                    }
+                    Button(onClick = onImport, enabled = canImport) {
+                        Text(stringResource(Res.string.action_quick_capture_import_csv_confirm))
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun QuickAddCsvError.quickCaptureCsvErrorText(): String =
+    if (this == QuickAddCsvError.InvalidDataRowCount) {
+        stringResource(Res.string.error_quick_capture_csv_columns)
+    } else {
+        stringResource()
+    }
+
+@Composable
+private fun QuickCaptureCsvImportError(text: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.errorContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(text, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun QuickCaptureCsvPreviewTable(
+    rows: List<QuickAddCsvData>,
+    missingRowCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    ) {
+        Column {
+            rows.forEachIndexed { index, row ->
+                if (index > 0) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                }
+                val name = row.name.toQuickCaptureCsvRowName()
+                QuickCaptureCsvPreviewRow(
+                    name = name.name,
+                    weightInGrams = name.weightInGrams,
+                    energyKcal = row.energyKcal,
+                    proteins = row.proteins,
+                    carbohydrates = row.carbohydrates,
+                    fats = row.fats,
+                )
+            }
+            if (missingRowCount > 0) {
+                Text(
+                    pluralStringResource(
+                        Res.plurals.error_quick_capture_csv_missing_rows, missingRowCount, missingRowCount,
+                    ),
+                    modifier =
+                        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.error, MaterialTheme.shapes.medium)
+                            .padding(12.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (rows.size > 1) {
+                Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                    QuickCaptureCsvPreviewRow(
+                        name = stringResource(Res.string.headline_quick_capture_csv_total),
+                        weightInGrams = null,
+                        energyKcal = rows.sumOf { it.energyKcal },
+                        proteins = rows.sumOf { it.proteins },
+                        carbohydrates = rows.sumOf { it.carbohydrates },
+                        fats = rows.sumOf { it.fats },
+                        total = true,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickCaptureCsvPreviewRow(
+    name: String,
+    weightInGrams: Double?,
+    energyKcal: Double,
+    proteins: Double,
+    carbohydrates: Double,
+    fats: Double,
+    total: Boolean = false,
+) {
+    val palette = LocalNutrientsPalette.current
+    val gram = stringResource(Res.string.unit_gram_short)
+    val kcal = stringResource(Res.string.unit_kcal)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    name,
+                    modifier = Modifier.weight(1f, fill = false).alignByBaseline(),
+                    style =
+                        if (total) MaterialTheme.typography.labelLarge
+                        else MaterialTheme.typography.titleMedium,
+                    color =
+                        if (total) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurface,
+                )
+                if (weightInGrams != null) {
+                    Text(
+                        "${weightInGrams.formatLocalized()} $gram",
+                        modifier = Modifier.alignByBaseline(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Text(
+                "${energyKcal.formatLocalized(maxFractionDigits = 0)} $kcal",
+                style =
+                    if (total) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    else MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickCaptureCsvMacro(Res.string.nutriment_proteins_short, proteins, gram, palette.proteinsOnSurfaceContainer)
+            QuickCaptureCsvMacro(Res.string.nutriment_carbohydrates_short, carbohydrates, gram, palette.carbohydratesOnSurfaceContainer)
+            QuickCaptureCsvMacro(Res.string.nutriment_fats_short, fats, gram, palette.fatsOnSurfaceContainer)
+        }
+    }
+}
+
+@Composable
+private fun QuickCaptureCsvMacro(label: StringResource, value: Double, unit: String, color: Color) {
+    Text(
+        "${stringResource(label)} ${value.formatLocalized()} $unit",
+        style = MaterialTheme.typography.bodySmall,
+        color = color.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant },
+    )
 }
 
 @Composable
@@ -1744,6 +2076,36 @@ internal class QuickCaptureViewModel(
     fun resetCsvImportError() {
         if (csvImportState.value != QuickCaptureCsvImportState.Submitting) {
             csvImportState.value = QuickCaptureCsvImportState.Idle
+        }
+    }
+
+    val csvPreview = MutableStateFlow<QuickCaptureCsvPreview?>(null)
+    private var csvPreviewJob: Job? = null
+
+    /** Parses [csv] for the dialog's readable preview; nothing is saved. */
+    fun previewCsv(csv: String) {
+        csvPreviewJob?.cancel()
+        if (csv.isBlank()) {
+            csvPreview.value = null
+            return
+        }
+        csvPreviewJob = viewModelScope.launch {
+            val parsed = csvParser.parse(csv)
+            val expected = nutritionDraft.value?.rowCount ?: savedStateHandle.get<Int>(CopiedGroupCountKey)
+            val mealName = try {
+                csvImporter.targetMealName()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            csvPreview.value =
+                when (parsed) {
+                    is QuickAddCsvTableParseResult.Success ->
+                        QuickCaptureCsvPreview(csv, parsed.data, expected, mealName)
+                    is QuickAddCsvTableParseResult.Failure ->
+                        QuickCaptureCsvPreview(csv, null, expected, mealName, parsed.error)
+                }
         }
     }
 

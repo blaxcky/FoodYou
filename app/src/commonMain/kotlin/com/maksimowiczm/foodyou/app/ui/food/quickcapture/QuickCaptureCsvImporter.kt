@@ -12,6 +12,8 @@ import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepo
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.MealRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.selectMealForBarcodeShortcut
 import kotlinx.coroutines.flow.first
+import com.maksimowiczm.foodyou.fooddiary.domain.entity.Meal
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -31,6 +33,9 @@ internal fun interface QuickCaptureCsvImporter {
 
     suspend fun importSnapshot(data: List<QuickAddCsvData>, entries: List<QuickCaptureLogEntry>): QuickCaptureCsvImportResult =
         error("Snapshot import not supported")
+
+    /** Name of the meal an import started now would use, shown before the user confirms. */
+    suspend fun targetMealName(): String? = null
 }
 
 internal class QuickCaptureCsvImporterImpl(
@@ -48,16 +53,20 @@ internal class QuickCaptureCsvImporterImpl(
     override suspend fun importSnapshot(data: List<QuickAddCsvData>, entries: List<QuickCaptureLogEntry>): QuickCaptureCsvImportResult =
         importValidated(data, entries.map { it.id }, entries)
 
+    override suspend fun targetMealName(): String? =
+        targetMeal(dateProvider.nowInstant().toLocalDateTime(TimeZone.currentSystemDefault()).time)?.name
+
+    private suspend fun targetMeal(time: LocalTime): Meal? {
+        val meals = mealRepository.observeMeals().first().sortedBy { it.rank }
+        return selectMealForBarcodeShortcut(meals, time) ?: meals.firstOrNull()
+    }
+
     private suspend fun importValidated(data: List<QuickAddCsvData>, entryIds: List<Long>, snapshot: List<QuickCaptureLogEntry>?): QuickCaptureCsvImportResult {
         if (entryIds.isEmpty() || data.isEmpty()) return QuickCaptureCsvImportResult.NoMeal
 
         val nowInstant = dateProvider.nowInstant()
         val now = nowInstant.toLocalDateTime(TimeZone.currentSystemDefault())
-        val meals = mealRepository.observeMeals().first().sortedBy { it.rank }
-        val meal =
-            selectMealForBarcodeShortcut(meals, now.time)
-                ?: meals.firstOrNull()
-                ?: return QuickCaptureCsvImportResult.NoMeal
+        val meal = targetMeal(now.time) ?: return QuickCaptureCsvImportResult.NoMeal
 
         val result = transactionProvider.withTransaction {
             if (snapshot != null) {

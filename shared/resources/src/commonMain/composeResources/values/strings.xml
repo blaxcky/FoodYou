@@ -904,7 +904,6 @@
     <string name="neutral_quick_capture_chatgpt_copy_fallback">Could not open %1$s. Prompt copied.</string>
     <string name="neutral_quick_capture_share_opened_only">Prompt copied. Paste it into %1$s.</string>
     <string name="headline_quick_capture_csv_import">Import quick adds</string>
-    <string name="description_quick_capture_csv_import">Paste the CSV returned by %1$s, with one data row per item in the prompt. Each row will be added separately to today’s matching meal, and the entries included in the prompt will be completed.</string>
     <string name="neutral_quick_capture_csv_imported">Quick adds created</string>
     <string name="error_quick_capture_csv_no_meal">No meal is available for these quick adds.</string>
     <string name="error_quick_capture_csv_save">The quick adds could not be saved. Nothing was changed.</string>
@@ -947,12 +946,29 @@
     <string name="action_quick_capture_share_short">To %1$s</string>
     <string name="headline_quick_capture_prompt_shared">Prompt shared</string>
     <string name="openai_sources">Sources</string>
+    <string name="description_quick_capture_csv_paste">Paste the answer from %1$s</string>
+    <plurals name="description_quick_capture_csv_preview">
+        <item quantity="one">%1$d item for %2$s · today</item>
+        <item quantity="other">%1$d items for %2$s · today</item>
+    </plurals>
+    <plurals name="description_quick_capture_csv_preview_no_meal">
+        <item quantity="one">%1$d item · today</item>
+        <item quantity="other">%1$d items · today</item>
+    </plurals>
+    <plurals name="error_quick_capture_csv_missing_rows">
+        <item quantity="one">%1$d item missing</item>
+        <item quantity="other">%1$d items missing</item>
+    </plurals>
+    <string name="action_quick_capture_csv_paste_clipboard">Paste from clipboard</string>
+    <string name="action_quick_capture_csv_type">Type it in</string>
+    <string name="action_quick_capture_csv_show">Show CSV</string>
+    <string name="action_quick_capture_csv_hide">Hide CSV</string>
+    <string name="headline_quick_capture_csv_total">Total</string>
     <string name="openai_stale">The requested entries changed. Please calculate again.</string>
     <string name="openai_luna">Fast and economical</string>
     <string name="openai_terra">Fast, efficient visual reasoning</string>
     <string name="openai_sol">For complex tasks</string>
     <string name="openai_astra">For demanding tasks</string>
-    <string name="openai_review">Review the calculated CSV and sources. Confirm to add the values to today’s matching meal and complete the requested entries.</string>
     <string name="claude_astra">For demanding tasks</string>
     <string name="claude_luna">Balanced speed and quality</string>
     <string name="claude_sol">Fast and economical</string>
