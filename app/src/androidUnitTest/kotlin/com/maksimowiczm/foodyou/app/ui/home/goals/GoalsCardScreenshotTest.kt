@@ -431,6 +431,47 @@ class GoalsCardScreenshotTest {
     }
 
     @Test
+    fun weeklyDietOutlookNarrowPhone() {
+        val model =
+            WeekSummaryModel(
+                days =
+                    listOf(
+                        WeekDaySummaryModel(date = LocalDate(2026, 11, 16), energy = 3_200, goal = 2_300),
+                        WeekDaySummaryModel(date = LocalDate(2026, 11, 17), energy = 1_900, goal = 2_300),
+                        WeekDaySummaryModel(date = LocalDate(2026, 11, 18), energy = 3_300, goal = 2_300),
+                        WeekDaySummaryModel(date = LocalDate(2026, 11, 19), energy = 1_500, goal = 2_300),
+                    ),
+                totalEnergy = 9_900,
+                totalGoal = 9_200,
+                today = LocalDate(2026, 11, 19),
+                dietOutlook = WeekDietOutlook(bestCaseKcal = -1_700, overDietGoalKcal = 2_150),
+            )
+        captureRoboImage(
+            filePath = "GoalsCardScreenshotTest.weekly-diet-outlook-narrow-phone.png",
+            roborazziComposeOptions = goalsCardOptions(width = 320, height = 150),
+        ) {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    Column(
+                        modifier =
+                            Modifier.requiredSize(320.dp, 150.dp).background(Color.White).padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        WeeklySummaryFooter(
+                            model = model,
+                            weightStatus = WeeklyWeightStatus.Recent(weightKg = 84.6, daysAgo = 2),
+                            onWeightClick = {},
+                            onWeightEntryClick = {},
+                        )
+                        androidx.compose.material3.HorizontalDivider(color = Color(0xFFEDF1F4))
+                        WeeklyDietOutlook(requireNotNull(model.dietOutlook))
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun weeklySummaryFooterWeightNarrowPhone() {
         val model =
             WeekSummaryModel(

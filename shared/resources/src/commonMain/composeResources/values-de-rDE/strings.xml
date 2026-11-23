@@ -967,6 +967,9 @@
     <string name="label_max_daily_energy_deficit">Max. Defizit pro Tag</string>
     <string name="daily_goals_catch_up_cap_supporting">Holt zusätzlich zu deinem Defizit höchstens %1$d kcal am Tag auf. Leitlinien empfehlen 500–600 kcal Defizit.</string>
     <string name="goals_uncaught_balance">%1$d kcal werden diese Woche nicht mehr aufgeholt</string>
+    <string name="weekly_diet_outlook_best_case">bestenfalls</string>
+    <string name="weekly_diet_outlook_over_diet_goal">kcal über Diät-Ziel</string>
+    <string name="weekly_diet_outlook_description">Diese Woche bestenfalls %1$s kg, %2$s kcal über dem Diät-Ziel</string>
     <string name="daily_goals_decimal_separator" translatable="false">,</string>
     <string name="workout_title">Training</string>
     <string name="workout_open">Training öffnen</string>

@@ -41,8 +41,15 @@ internal fun optimizedEnergyGoalKcal(
  *
  * @param uncaughtBalanceKcal The energy the remaining open days of the week leave unbalanced because
  *   the diet goal is capped at the maximum daily energy deficit; 0 when the cap does not apply.
+ * @param bestCaseWeekBalanceKcal When the cap applies, the week's energy against its normal goals
+ *   (burned energy included) if every remaining open day ends exactly on the capped diet goal:
+ *   negative for a deficit, positive for a surplus. Null when the cap does not apply.
  */
-internal data class AdjustedEnergyGoal(val energyGoalKcal: Double, val uncaughtBalanceKcal: Double)
+internal data class AdjustedEnergyGoal(
+    val energyGoalKcal: Double,
+    val uncaughtBalanceKcal: Double,
+    val bestCaseWeekBalanceKcal: Double? = null,
+)
 
 internal fun adjustedEnergyGoalKcal(
     selectedDate: LocalDate,
@@ -177,9 +184,21 @@ private fun balancedEnergyGoal(
         maxDeficit?.let { baseEnergyGoalKcal - maxOf(it, dailyEnergyDeficitKcal) }
             ?: return AdjustedEnergyGoal(energyGoalKcal = balancedGoal, uncaughtBalanceKcal = 0.0)
     return if (balancedGoal < floor) {
+        val overplannedDays =
+            plannedFutureDays.filter { day ->
+                val dayDeficit = day.dietEnergyDeficitKcal ?: dailyEnergyDeficitKcal
+                day.lockedSurplusKcal != null ||
+                    day.consumedEnergyKcal >
+                        day.baseEnergyGoalKcal + day.burnedEnergyKcal - dayDeficit
+            }
+        val bestCaseWeekBalance =
+            (previousDays + overplannedDays).sumOf { day ->
+                day.simulatedConsumedEnergyKcal() - (day.baseEnergyGoalKcal + day.burnedEnergyKcal)
+            } + (floor - baseEnergyGoalKcal) * unplannedOpenDays
         AdjustedEnergyGoal(
             energyGoalKcal = floor,
             uncaughtBalanceKcal = (floor - balancedGoal) * unplannedOpenDays,
+            bestCaseWeekBalanceKcal = bestCaseWeekBalance,
         )
     } else {
         AdjustedEnergyGoal(energyGoalKcal = balancedGoal, uncaughtBalanceKcal = 0.0)

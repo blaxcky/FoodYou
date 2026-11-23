@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -110,6 +111,9 @@ import foodyou.app.generated.resources.neutral_today_short
 import foodyou.app.generated.resources.unit_gram_short
 import foodyou.app.generated.resources.unit_kcal
 import foodyou.app.generated.resources.weekly_diet_goal_reached
+import foodyou.app.generated.resources.weekly_diet_outlook_best_case
+import foodyou.app.generated.resources.weekly_diet_outlook_description
+import foodyou.app.generated.resources.weekly_diet_outlook_over_diet_goal
 import foodyou.app.generated.resources.weekly_difference
 import foodyou.app.generated.resources.weekly_sum_on_goal_so_far
 import foodyou.app.generated.resources.weekly_sum_over_goal_so_far
@@ -168,6 +172,8 @@ private val WeeklyColumnOverHeight = 84.dp
 private val WeeklyColumnLineHeight = 8.dp
 private val WeeklyColumnUnderHeight = 76.dp
 private val WeeklyColumnValueTextSize = 11.sp
+private val WeeklyDietOutlookDividerColor = Color(0xFFEDF1F4)
+private val WeeklyDietOutlookValueColor = Color(0xFF3C4043)
 private val WeeklyRingSize = 56.dp
 private val WeeklyRingStroke = 7.dp
 private val FatTrackColor = Color(0xFFFFCFCF)
@@ -574,12 +580,18 @@ private fun WeeklyGoalsContent(
                                 WeeklyDifferenceBars(days = model.days, today = model.today)
                         }
                         HorizontalDivider(color = GoalsTrackColor)
-                        WeeklySummaryFooter(
-                            model = model,
-                            weightStatus = weeklyWeightStatus(latestWeight, model.today),
-                            onWeightClick = onWeightClick,
-                            onWeightEntryClick = onWeightEntryClick,
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            WeeklySummaryFooter(
+                                model = model,
+                                weightStatus = weeklyWeightStatus(latestWeight, model.today),
+                                onWeightClick = onWeightClick,
+                                onWeightEntryClick = onWeightEntryClick,
+                            )
+                            model.dietOutlook?.let { outlook ->
+                                HorizontalDivider(color = WeeklyDietOutlookDividerColor)
+                                WeeklyDietOutlook(outlook)
+                            }
+                        }
                     }
                 }
             }
@@ -1138,6 +1150,72 @@ private fun Int.signedGroupedDigits(): String =
 private fun LocalDate.weekDayLabel(weekDayNamesShort: List<String>): String {
     val index = (dayOfWeek.isoDayNumber - 1).coerceIn(0, weekDayNamesShort.lastIndex)
     return weekDayNamesShort[index].trimEnd('.')
+}
+
+/**
+ * A quiet note under the weekly weight estimate once the capped diet goal can no longer reach the
+ * week's diet target: the week's best case in kg and how far it stays above the target.
+ */
+@Composable
+internal fun WeeklyDietOutlook(outlook: WeekDietOutlook, modifier: Modifier = Modifier) {
+    val bestCaseKg = outlook.bestCaseKcal.signedKgEstimate()
+    val overDietGoal = outlook.overDietGoalKcal.signedGroupedDigits()
+    val description =
+        stringResource(Res.string.weekly_diet_outlook_description, bestCaseKg, overDietGoal)
+    Row(
+        modifier =
+            modifier.fillMaxWidth().height(IntrinsicSize.Min).clearAndSetSemantics {
+                contentDescription = description
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WeeklyDietOutlookValue(
+            value = "$bestCaseKg kg",
+            label = stringResource(Res.string.weekly_diet_outlook_best_case),
+            modifier = Modifier.weight(1f),
+        )
+        Box(Modifier.width(1.dp).fillMaxHeight().background(WeeklyDietOutlookDividerColor))
+        WeeklyDietOutlookValue(
+            value = overDietGoal,
+            label = stringResource(Res.string.weekly_diet_outlook_over_diet_goal),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun WeeklyDietOutlookValue(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = value,
+            color = WeeklyDietOutlookValueColor,
+            style =
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = interNumberFontFamily(),
+                    fontWeight = FontWeight.Normal,
+                ),
+            maxLines = 1,
+        )
+        Text(
+            text = label,
+            color = GoalsMutedTextColor,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** The kg estimate of [this] kcal with its sign, e.g. "−0.22" or "+0.05". */
+private fun Int.signedKgEstimate(): String {
+    val kg = (abs(this) / 7700.0).formatKgEstimate()
+    return when {
+        kg == "0.00" -> kg
+        this < 0 -> "−$kg"
+        else -> "+$kg"
+    }
 }
 
 @Composable

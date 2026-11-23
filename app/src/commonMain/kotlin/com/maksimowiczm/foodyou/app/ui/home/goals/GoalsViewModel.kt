@@ -429,31 +429,101 @@ internal class GoalsViewModel(
                             val energy =
                                 lockedSurplus?.let { goalWithActivity + roundedEnergyKcal(it) }
                                     ?: roundedEnergyKcal(consumedEnergy)
-                            WeekDaySummaryModel(
-                                date = date,
-                                energy = energy,
-                                goal = goalWithActivity,
-                                locked = lockedSurplus != null,
-                                dietGoalReached =
-                                    lockedSurplus == null &&
-                                        date < today &&
-                                        weekDayDietGoalReached(
-                                            energy = energy,
-                                            goal = goalWithActivity,
-                                            dietEnergyDeficitKcal =
-                                                settings.effectiveDietEnergyDeficitKcal(date),
-                                        ),
-                            )
+                            val summary =
+                                WeekDaySummaryModel(
+                                    date = date,
+                                    energy = energy,
+                                    goal = goalWithActivity,
+                                    locked = lockedSurplus != null,
+                                    dietGoalReached =
+                                        lockedSurplus == null &&
+                                            date < today &&
+                                            weekDayDietGoalReached(
+                                                energy = energy,
+                                                goal = goalWithActivity,
+                                                dietEnergyDeficitKcal =
+                                                    settings.effectiveDietEnergyDeficitKcal(date),
+                                            ),
+                                )
+                            summary to
+                                GoalEnergyOptimizationDay(
+                                    date = date,
+                                    consumedEnergyKcal = consumedEnergy,
+                                    baseEnergyGoalKcal = baseGoal,
+                                    burnedEnergyKcal = burnedEnergy,
+                                    dietEnergyDeficitKcal =
+                                        settings.effectiveDietEnergyDeficitKcal(date) ?: 0.0,
+                                    lockedSurplusKcal = lockedSurplus,
+                                )
                         }
                     }
 
-                combine(dayFlows) { days ->
-                    val summaries = days.toList()
+                // The diet outlook only exists for the running week, like the goal it explains.
+                val dietOutlookEnabled =
+                    dates.last() == today &&
+                        (settings.effectiveDietEnergyDeficitKcal(today) ?: 0.0) > 0.0 &&
+                        settings.weeklyGoalBalancingEnabled(today) &&
+                        settings.maxEnergyDeficitKcal != null
+                val plannedFutureDates =
+                    if (dietOutlookEnabled) {
+                        List(7 - today.dayOfWeek.isoDayNumber) {
+                            today.plus(it + 1, DateTimeUnit.DAY)
+                        }
+                    } else {
+                        emptyList()
+                    }
+                val plannedFutureDays =
+                    if (plannedFutureDates.isEmpty()) {
+                        flowOf(emptyList())
+                    } else {
+                        combine(
+                            plannedFutureDates.map { futureDate ->
+                                combine(
+                                    observeDiaryMealsUseCase.observeNutritionFacts(futureDate),
+                                    goalsRepository.observeDailyGoals(futureDate),
+                                    activityRepository.observeDailySummary(
+                                        futureDate,
+                                        settings.stepsCaloriesPerStepKcal,
+                                    ),
+                                ) { facts, goal, activity ->
+                                    GoalEnergyOptimizationDay(
+                                        date = futureDate,
+                                        consumedEnergyKcal = facts.energy.value ?: 0.0,
+                                        baseEnergyGoalKcal = goal[NutritionFactsField.Energy],
+                                        burnedEnergyKcal = activity.totalEnergyKcal,
+                                        dietEnergyDeficitKcal =
+                                            settings.effectiveDietEnergyDeficitKcal(futureDate)
+                                                ?: 0.0,
+                                        lockedSurplusKcal =
+                                            settings.lockedDaySurplus(futureDate)?.surplusKcal,
+                                    )
+                                }
+                            }
+                        ) {
+                            it.toList()
+                        }
+                    }
+
+                combine(combine(dayFlows) { it.toList() }, plannedFutureDays) { days, plannedFuture ->
+                    val summaries = days.map { it.first }
                     WeekSummaryModel(
                         days = summaries,
                         totalEnergy = summaries.sumOf { it.energy },
                         totalGoal = summaries.sumOf { it.goal },
                         today = today,
+                        dietOutlook =
+                            if (dietOutlookEnabled) {
+                                weekDietOutlook(
+                                    today = today,
+                                    weekDays = days.map { it.second },
+                                    plannedFutureDays = plannedFuture,
+                                    dietEnergyDeficitKcal =
+                                        settings.effectiveDietEnergyDeficitKcal(today) ?: 0.0,
+                                    maxEnergyDeficitKcal = settings.maxEnergyDeficitKcal,
+                                )
+                            } else {
+                                null
+                            },
                     )
                 }
             }
@@ -502,6 +572,37 @@ internal fun todayEnergyGoalValues(
  * A day reaches the diet when its consumed energy stays at least the daily diet deficit below the
  * goal. Days without any logged energy never count as reached.
  */
+/**
+ * The week's best case when the capped diet goal no longer reaches the diet target, computed like
+ * today's capped diet goal on the goals card; null while the target is still reachable.
+ *
+ * @param weekDays The days of the week from Monday up to and including [today].
+ * @param plannedFutureDays The days of the week after [today].
+ */
+internal fun weekDietOutlook(
+    today: LocalDate,
+    weekDays: List<GoalEnergyOptimizationDay>,
+    plannedFutureDays: List<GoalEnergyOptimizationDay>,
+    dietEnergyDeficitKcal: Double,
+    maxEnergyDeficitKcal: Double?,
+): WeekDietOutlook? {
+    val todayDay = weekDays.lastOrNull { it.date == today } ?: return null
+    val adjusted =
+        adjustedEnergyGoal(
+            selectedDate = today,
+            calculationDate = today,
+            baseEnergyGoalKcal = todayDay.baseEnergyGoalKcal,
+            dailyEnergyDeficitKcal = dietEnergyDeficitKcal,
+            previousDays = weekDays.filter { day -> day.date != null && day.date < today },
+            plannedFutureDays = plannedFutureDays,
+            maxEnergyDeficitKcal = maxEnergyDeficitKcal,
+        )
+    val overDietGoal = roundedEnergyKcal(adjusted.uncaughtBalanceKcal).takeIf { it > 0 }
+    val bestCase = adjusted.bestCaseWeekBalanceKcal
+    if (overDietGoal == null || bestCase == null) return null
+    return WeekDietOutlook(bestCaseKcal = roundedEnergyKcal(bestCase), overDietGoalKcal = overDietGoal)
+}
+
 internal fun weekDayDietGoalReached(energy: Int, goal: Int, dietEnergyDeficitKcal: Double?): Boolean {
     val deficit = dietEnergyDeficitKcal?.let(::roundedEnergyKcal) ?: return false
     return deficit > 0 && energy > 0 && goal > 0 && energy - goal <= -deficit

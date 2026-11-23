@@ -956,6 +956,8 @@ class GoalEnergyOptimizationTest {
 
         assertEquals(1_400.0, result.energyGoalKcal)
         assertEquals(1_050.0, result.uncaughtBalanceKcal)
+        // Monday +2000 over normal, then six open days at most 800 below it.
+        assertEquals(-2_800.0, result.bestCaseWeekBalanceKcal)
     }
 
     @Test
@@ -972,6 +974,7 @@ class GoalEnergyOptimizationTest {
 
         assertEquals(1_225.0, result.energyGoalKcal)
         assertEquals(0.0, result.uncaughtBalanceKcal)
+        assertEquals(null, result.bestCaseWeekBalanceKcal)
     }
 
     @Test

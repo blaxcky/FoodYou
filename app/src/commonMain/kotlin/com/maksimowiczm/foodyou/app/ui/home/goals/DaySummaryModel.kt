@@ -49,7 +49,19 @@ internal data class WeekSummaryModel(
     val totalEnergy: Int,
     val totalGoal: Int,
     val today: kotlinx.datetime.LocalDate,
+    val dietOutlook: WeekDietOutlook? = null,
 )
+
+/**
+ * How the current week ends at best when the capped diet goal can no longer reach the week's diet
+ * target.
+ *
+ * @param bestCaseKcal The week's energy against its normal goals if every remaining day ends on the
+ *   capped diet goal; negative for a deficit.
+ * @param overDietGoalKcal How far that best case stays above the week's diet target.
+ */
+@Immutable
+internal data class WeekDietOutlook(val bestCaseKcal: Int, val overDietGoalKcal: Int)
 
 @Immutable
 internal data class WeekDaySummaryModel(

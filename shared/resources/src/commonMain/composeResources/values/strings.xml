@@ -1093,6 +1093,9 @@
     <string name="label_max_daily_energy_deficit">Max. deficit per day</string>
     <string name="daily_goals_catch_up_cap_supporting">Catches up at most %1$d kcal a day on top of your deficit. Guidelines recommend a 500–600 kcal deficit.</string>
     <string name="goals_uncaught_balance">%1$d kcal won't be caught up this week</string>
+    <string name="weekly_diet_outlook_best_case">best case</string>
+    <string name="weekly_diet_outlook_over_diet_goal">kcal over diet goal</string>
+    <string name="weekly_diet_outlook_description">Best case this week %1$s kg, %2$s kcal over the diet goal</string>
     <string name="daily_goals_decimal_separator" translatable="false">.</string>
     <string name="workout_title">Training</string>
     <string name="workout_open">Open training</string>
