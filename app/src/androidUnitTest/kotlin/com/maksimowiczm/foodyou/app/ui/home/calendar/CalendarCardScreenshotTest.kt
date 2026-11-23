@@ -32,6 +32,12 @@ import com.maksimowiczm.foodyou.common.compose.utility.DateFormatterProvider
 import java.util.Locale
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -165,6 +171,40 @@ class CalendarCardScreenshotTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun lockedDaySurplusFieldSelectsWholeNumberOnTapAndChipsFillIt() {
+        val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup()
+        activity = controller
+        controller.get().setContent {
+            EnergyFormatterProvider(EnergyFormatter.kilocalories) {
+                MaterialTheme {
+                    LockedDayDialog(
+                        date = today,
+                        currentSurplusKcal = 1500.0,
+                        defaultSurplusKcal = 500.0,
+                        onDismiss = {},
+                        onSave = {},
+                        onUnlock = {},
+                    )
+                }
+            }
+        }
+        val field = compose.onNode(hasSetTextAction())
+        compose.waitForIdle()
+        // The focused field's blinking cursor never lets an auto-advancing clock settle.
+        compose.mainClock.autoAdvance = false
+
+        field.performTouchInput { click(center) }
+        compose.mainClock.advanceTimeBy(100)
+        field.assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.TextSelectionRange, TextRange(0, 4))
+        )
+
+        compose.onNodeWithText("2000").performTouchInput { click() }
+        compose.mainClock.advanceTimeBy(100)
+        field.assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("2000")))
     }
 
     @Composable

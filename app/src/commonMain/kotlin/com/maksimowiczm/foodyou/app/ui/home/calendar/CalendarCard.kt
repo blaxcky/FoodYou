@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +14,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.selectAll
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -25,8 +32,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -54,6 +65,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -501,17 +513,27 @@ internal fun LockedDayDialog(
     onUnlock: () -> Unit,
 ) {
     val energyFormatter = LocalEnergyFormatter.current
-    val initialKcal = currentSurplusKcal ?: defaultSurplusKcal
     val formatInput: (Double) -> String = { kcal ->
         energyFormatter.fromKcal(kcal).let {
             if (it % 1.0 == 0.0) it.toLong().toString() else it.toString()
         }
     }
-    var input by remember(date, currentSurplusKcal, defaultSurplusKcal) {
-        mutableStateOf(formatInput(initialKcal))
+    val initialKcal = currentSurplusKcal ?: defaultSurplusKcal
+    val input =
+        remember(date, currentSurplusKcal, defaultSurplusKcal) {
+            formatInput(initialKcal).let { TextFieldState(it, TextRange(it.length)) }
+        }
+    val inputText = input.text.toString()
+    val surplusKcal = validatedNonNegativeEnergyKcal(inputText, energyFormatter::toKcal)
+    val showError = inputText.isNotBlank() && surplusKcal == null
+
+    // Tapping into the field selects the whole number so it can be overwritten at once. The
+    // effect runs after the tap has placed the cursor, so the selection is not undone by it.
+    val fieldInteractions = remember { MutableInteractionSource() }
+    val fieldFocused by fieldInteractions.collectIsFocusedAsState()
+    LaunchedEffect(fieldFocused) {
+        if (fieldFocused) input.edit { selectAll() }
     }
-    val surplusKcal = validatedNonNegativeEnergyKcal(input, energyFormatter::toKcal)
-    val showError = input.isNotBlank() && surplusKcal == null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -538,7 +560,7 @@ internal fun LockedDayDialog(
                             surplusKcal != null && abs(surplusKcal - presetKcal) < 0.5
                         FilterChip(
                             selected = selected,
-                            onClick = { input = formatInput(presetKcal) },
+                            onClick = { input.setTextAndPlaceCursorAtEnd(formatInput(presetKcal)) },
                             label = {
                                 Text(
                                     text = formatInput(presetKcal),
@@ -564,44 +586,67 @@ internal fun LockedDayDialog(
                     }
                 }
                 OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
+                    state = input,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(Res.string.locked_day_surplus_label)) },
                     suffix = { Text(energyFormatter.suffix()) },
-                    supportingText = {
-                        Text(
-                            stringResource(
-                                if (showError) Res.string.locked_day_surplus_error
-                                else Res.string.locked_day_surplus_supporting_text
-                            )
-                        )
-                    },
+                    supportingText =
+                        if (showError) {
+                            { Text(stringResource(Res.string.locked_day_surplus_error)) }
+                        } else {
+                            null
+                        },
                     isError = showError,
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    interactionSource = fieldInteractions,
                 )
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        modifier = Modifier.padding(top = 1.dp).size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(Res.string.locked_day_surplus_supporting_text),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (currentSurplusKcal != null) {
+                    // Unlocking is a different decision than saving, so it sits apart from the
+                    // dialog's Cancel/Save pair instead of crowding the button row.
+                    TextButton(
+                        onClick = onUnlock,
+                        colors =
+                            ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                        contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                        modifier = Modifier.offset(x = (-12).dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.LockOpen,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(stringResource(Res.string.locked_day_unlock))
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(
-                enabled = surplusKcal != null,
-                onClick = { surplusKcal?.let(onSave) },
-            ) {
+            Button(enabled = surplusKcal != null, onClick = { surplusKcal?.let(onSave) }) {
                 Text(stringResource(Res.string.action_save))
             }
         },
         dismissButton = {
-            Row {
-                if (currentSurplusKcal != null) {
-                    TextButton(onClick = onUnlock) {
-                        Text(stringResource(Res.string.locked_day_unlock))
-                    }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
-            }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
