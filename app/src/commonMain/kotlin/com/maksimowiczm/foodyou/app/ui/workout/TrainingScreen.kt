@@ -306,13 +306,18 @@ fun TrainingScreen(
 }
 
 @Composable
-private fun todaySummary(state: TrainingUiState): String =
-    if (state.todayStrengthSets == 0 && state.todayCardioMinutes == 0)
-        stringResource(Res.string.workout_today_nothing)
-    else
-        stringResource(
-            Res.string.workout_today_summary,
-            pluralStringResource(Res.plurals.workout_sets, state.todayStrengthSets, state.todayStrengthSets),
-            state.todayCardioMinutes,
-            kcalLabel(state.todayKcal),
-        )
+private fun todaySummary(state: TrainingUiState): String {
+    if (state.todayStrengthSets == 0 && state.todayCardioMinutes == 0) {
+        return stringResource(Res.string.workout_today_nothing)
+    }
+    val parts = mutableListOf<String>()
+    if (state.todayStrengthSets > 0) {
+        parts += pluralStringResource(Res.plurals.workout_sets, state.todayStrengthSets, state.todayStrengthSets)
+    }
+    if (state.todayCardioMinutes > 0) {
+        parts += stringResource(Res.string.workout_value_minutes, state.todayCardioMinutes) + " " +
+            stringResource(Res.string.workout_cardio)
+    }
+    parts += kcalLabel(state.todayKcal)
+    return stringResource(Res.string.workout_today_summary, parts.joinToString(" · "))
+}

@@ -1083,7 +1083,7 @@
     <string name="workout_tab_today">Today</string>
     <string name="workout_tab_week">Week</string>
     <string name="workout_tab_history">History</string>
-    <string name="workout_today_summary">Today %1$s · %2$d min cardio · %3$s</string>
+    <string name="workout_today_summary">Today %1$s</string>
     <string name="workout_today_nothing">Nothing logged today</string>
     <string name="workout_next_up">Next up</string>
     <string name="workout_all_exercises">All exercises · %1$d</string>
