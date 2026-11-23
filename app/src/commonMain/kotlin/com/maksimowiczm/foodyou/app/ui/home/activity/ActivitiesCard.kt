@@ -40,6 +40,7 @@ import com.maksimowiczm.foodyou.app.ui.home.shared.FoodYouHomeCard
 import com.maksimowiczm.foodyou.app.ui.home.shared.HomeState
 import com.maksimowiczm.foodyou.training.ImportedActivity
 import foodyou.app.generated.resources.*
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -52,6 +53,7 @@ internal fun ActivitiesCard(
     onStepExclusions: (epochDay: Long) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onTrainingDay: (epochDay: Long) -> Unit = {},
     viewModel: ActivitiesCardViewModel = koinViewModel(),
 ) {
     LaunchedEffect(homeState.selectedDate) { viewModel.setDate(homeState.selectedDate) }
@@ -63,6 +65,7 @@ internal fun ActivitiesCard(
         onEditImported = onEditImported,
         onStepExclusions = { onStepExclusions(homeState.selectedDate.toEpochDays()) },
         onLongClick = onLongClick,
+        onTrainingDay = { onTrainingDay(homeState.selectedDate.toEpochDays()) },
         modifier = modifier,
     )
 }
@@ -76,6 +79,7 @@ internal fun ActivitiesCardContent(
     onStepExclusions: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onTrainingDay: () -> Unit = {},
 ) {
     val energyFormatter = LocalEnergyFormatter.current
     FoodYouHomeCard(
@@ -166,6 +170,31 @@ internal fun ActivitiesCardContent(
                             label = entry.name,
                             energy = energyFormatter.formatEnergy(-entry.energyKcal.toDouble()),
                             onClick = { onEditImported(entry.id.value) },
+                        )
+                    }
+                }
+
+                if (cardModel.workoutRows.isNotEmpty()) {
+                    SectionDivider()
+                    ActivitySectionHeader(
+                        text = stringResource(Res.string.workout_card_section),
+                        icon = Icons.Filled.FitnessCenter,
+                    )
+                    cardModel.workoutRows.forEach { row ->
+                        ActivityRow(
+                            leadingIcon = {
+                                Icon(
+                                    imageVector =
+                                        if (row.isStrengthSummary) Icons.Filled.FitnessCenter
+                                        else Icons.Filled.MonitorHeart,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            label = row.name ?: stringResource(Res.string.workout_card_strength),
+                            supportingText = workoutRowDetail(row),
+                            energy = energyFormatter.formatEnergy(-row.energyKcal),
+                            onClick = onTrainingDay,
                         )
                     }
                 }
@@ -349,3 +378,23 @@ private fun String.groupDigits(): String {
 
     return sign + digits.reversed().chunked(3).joinToString(" ").reversed()
 }
+
+@Composable
+private fun workoutRowDetail(row: WorkoutCardRow): String {
+    if (row.isStrengthSummary) {
+        val time =
+            if (row.firstMinute == row.lastMinute) workoutMinuteLabel(row.firstMinute)
+            else workoutMinuteLabel(row.firstMinute) + "–" + workoutMinuteLabel(row.lastMinute)
+        return pluralStringResource(Res.plurals.workout_exercises, row.exerciseCount, row.exerciseCount) +
+            " · " + pluralStringResource(Res.plurals.workout_sets, row.setCount, row.setCount) + " · " + time
+    }
+    val parts = mutableListOf<String>()
+    row.durationMinutes?.let { parts += stringResource(Res.string.workout_value_minutes, it) }
+    row.deviceKcal?.takeIf { it != row.energyKcal }?.let {
+        parts += stringResource(Res.string.workout_device_line) + " " + it + " → " + row.energyKcal
+    }
+    return parts.joinToString(" · ")
+}
+
+private fun workoutMinuteLabel(minute: Int): String =
+    "${(minute / 60).toString().padStart(2, '0')}:${(minute % 60).toString().padStart(2, '0')}"

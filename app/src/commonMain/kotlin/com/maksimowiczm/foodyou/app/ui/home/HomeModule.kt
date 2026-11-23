@@ -59,6 +59,7 @@ fun Module.home() {
             activityRepository = get(),
             settingsRepository = userPreferencesRepository(),
             dateProvider = get(),
+            workoutRepository = get(),
         )
     }
 

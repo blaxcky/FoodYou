@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -93,6 +94,8 @@ fun HomeScreen(
     onEditActivityClick: (id: Long) -> Unit,
     onEditImportedActivityClick: (id: Long) -> Unit,
     onStepExclusionsClick: (epochDay: Long) -> Unit,
+    onTrainingClick: () -> Unit,
+    onTrainingDayClick: (epochDay: Long) -> Unit,
     onEditDiaryEntryClick: (foodEntryId: Long?, manualEntryId: Long?) -> Unit,
     onEditFoodClick: (FoodId.Product) -> Unit,
     onWeightReportClick: () -> Unit,
@@ -202,6 +205,12 @@ fun HomeScreen(
                 },
                 actions = {
                     HomeSyncButton(state = homeSyncState, onClick = onHomeSyncClick)
+                    IconButton(onClick = onTrainingClick) {
+                        Icon(
+                            imageVector = Icons.Filled.FitnessCenter,
+                            contentDescription = stringResource(Res.string.workout_open),
+                        )
+                    }
                     IconButton(onClick = onQuickCapture) {
                         Icon(
                             imageVector = Icons.Outlined.AddAPhoto,
@@ -343,6 +352,7 @@ fun HomeScreen(
                                     onEdit = onEditActivityClick,
                                     onEditImported = onEditImportedActivityClick,
                                     onStepExclusions = onStepExclusionsClick,
+                                    onTrainingDay = onTrainingDayClick,
                                     onLongClick = onActivityCardLongClick,
                                     modifier =
                                         Modifier.padding(horizontal = 8.dp)

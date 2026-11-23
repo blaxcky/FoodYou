@@ -18,6 +18,7 @@ import com.maksimowiczm.foodyou.app.ui.theme.theme
 import com.maksimowiczm.foodyou.app.ui.weight.weightReport
 import com.maksimowiczm.foodyou.common.infrastructure.koin.userPreferencesRepository
 import com.maksimowiczm.foodyou.food.domain.repository.FddbCredentialsRepository
+import com.maksimowiczm.foodyou.app.ui.workout.workoutUi
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -57,4 +58,5 @@ val uiModule = module {
     sponsor()
     theme()
     weightReport()
+    workoutUi()
 }

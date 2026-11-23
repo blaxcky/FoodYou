@@ -11,6 +11,10 @@ import com.maksimowiczm.foodyou.common.domain.food.FoodSource
 import com.maksimowiczm.foodyou.app.ui.activity.ActivitySettingsScreen
 import com.maksimowiczm.foodyou.app.ui.activity.ManualActivityScreen
 import com.maksimowiczm.foodyou.app.ui.activity.StepExclusionsScreen
+import com.maksimowiczm.foodyou.app.ui.workout.TrainingScreen
+import com.maksimowiczm.foodyou.app.ui.workout.TrainingTab
+import com.maksimowiczm.foodyou.app.ui.workout.WorkoutExerciseEditorScreen
+import com.maksimowiczm.foodyou.app.ui.workout.WorkoutGoalsScreen
 import com.maksimowiczm.foodyou.app.ui.about.AboutScreen
 import com.maksimowiczm.foodyou.app.ui.database.exportcsvproducts.ExportCsvProductsScreen
 import com.maksimowiczm.foodyou.app.ui.database.externaldatabases.ExternalDatabasesScreen
@@ -143,6 +147,12 @@ fun FoodYouAppNavHost(
                 },
                 onStepExclusionsClick = { epochDay ->
                     navController.navigateSingleTop(StepExclusions(epochDay))
+                },
+                onTrainingClick = { navController.navigateSingleTop(Training()) },
+                onTrainingDayClick = { epochDay ->
+                    navController.navigateSingleTop(
+                        Training(epochDay = epochDay, tab = TrainingTab.History.name)
+                    )
                 },
                 onEditDiaryEntryClick = { foodEntryId, manualEntryId ->
                     when {
@@ -320,6 +330,31 @@ fun FoodYouAppNavHost(
                 onSave = { navController.popBackStackInclusive<ManualActivity>() },
                 onTrainingSettings = { navController.navigateSingleTop(SynchronizationSettings) },
             )
+        }
+        forwardBackwardComposable<Training> {
+            val route = it.toRoute<Training>()
+            TrainingScreen(
+                initialDate = route.epochDay?.let(LocalDate::fromEpochDays),
+                initialTab = TrainingTab.entries.firstOrNull { tab -> tab.name == route.tab }
+                    ?: TrainingTab.Today,
+                onBack = { navController.popBackStackInclusive<Training>() },
+                onEditExercise = { id -> navController.navigateSingleTop(WorkoutExerciseEditor(id)) },
+                onNewExercise = { cardio ->
+                    navController.navigateSingleTop(WorkoutExerciseEditor(null, cardio))
+                },
+                onGoals = { navController.navigateSingleTop(WorkoutGoals) },
+            )
+        }
+        forwardBackwardComposable<WorkoutExerciseEditor> {
+            val route = it.toRoute<WorkoutExerciseEditor>()
+            WorkoutExerciseEditorScreen(
+                exerciseId = route.exerciseId,
+                cardio = route.cardio,
+                onBack = { navController.popBackStackInclusive<WorkoutExerciseEditor>() },
+            )
+        }
+        forwardBackwardComposable<WorkoutGoals> {
+            WorkoutGoalsScreen(onBack = { navController.popBackStackInclusive<WorkoutGoals>() })
         }
         forwardBackwardComposable<StepExclusions> {
             val route = it.toRoute<StepExclusions>()
@@ -691,6 +726,14 @@ private data class ManualActivity(
 )
 
 @Serializable private data class StepExclusions(val epochDay: Long)
+
+@Serializable
+private data class Training(val epochDay: Long? = null, val tab: String = "Today")
+
+@Serializable
+private data class WorkoutExerciseEditor(val exerciseId: Long?, val cardio: Boolean = false)
+
+@Serializable private object WorkoutGoals
 
 @Serializable private object DatabaseSettings
 
