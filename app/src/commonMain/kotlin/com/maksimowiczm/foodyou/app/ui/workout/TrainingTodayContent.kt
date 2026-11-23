@@ -58,9 +58,14 @@ internal fun TrainingTodayContent(
     onAddCardio: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(12.dp),
+    archivedCount: Int = 0,
+    onShowArchived: () -> Unit = {},
 ) {
     if (plan.exerciseCount == 0) {
-        EmptyTraining(onAddStrength, onAddCardio, modifier.padding(contentPadding))
+        Column(modifier.padding(contentPadding)) {
+            EmptyTraining(onAddStrength, onAddCardio)
+            if (archivedCount > 0) ArchivedButton(archivedCount, onShowArchived)
+        }
         return
     }
     LazyColumn(
@@ -145,6 +150,9 @@ internal fun TrainingTodayContent(
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Text(stringResource(Res.string.workout_add_exercise), modifier = Modifier.padding(start = 8.dp))
             }
+        }
+        if (archivedCount > 0) {
+            item(key = "archived") { ArchivedButton(archivedCount, onShowArchived) }
         }
         item(key = "hint") {
             Text(
@@ -299,5 +307,12 @@ private fun EmptyTraining(onAddStrength: () -> Unit, onAddCardio: () -> Unit, mo
         OutlinedButton(onClick = onAddCardio, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
             Text(stringResource(Res.string.workout_add_cardio))
         }
+    }
+}
+
+@Composable
+private fun ArchivedButton(count: Int, onClick: () -> Unit) {
+    androidx.compose.material3.TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 48.dp)) {
+        Text(stringResource(Res.string.workout_archived_count, count))
     }
 }

@@ -68,6 +68,24 @@ class WorkoutPlanningTest {
     }
 
     @Test
+    fun anExercisePastItsOwnReminderIsSuggestedFirst() {
+        val exercises =
+            (1L..5L).map { exercise(it, "E$it") }.map {
+                if (it.id.value == 5L) it.copy(reminderDays = 2) else it
+            }
+        val entries =
+            listOf(
+                entry(1, LocalDate(2026, 11, 16)),
+                entry(2, LocalDate(2026, 11, 17)),
+                entry(3, LocalDate(2026, 11, 18)),
+                entry(4, LocalDate(2026, 11, 19)),
+                entry(5, LocalDate(2026, 11, 24)),
+            )
+        val plan = planWorkoutToday(exercises, entries, today)
+        assertEquals(listOf("E5", "E1"), plan.suggestions.map { it.exercise.name })
+    }
+
+    @Test
     fun searchAppearsFromTwelveExercisesAndFilters() {
         val exercises = (1L..12L).map { exercise(it, if (it == 7L) "Toter Hang" else "Übung $it") }
         val plan = planWorkoutToday(exercises, emptyList(), today, query = "hang")

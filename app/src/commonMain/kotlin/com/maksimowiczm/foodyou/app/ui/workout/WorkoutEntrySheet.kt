@@ -114,10 +114,22 @@ internal fun WorkoutEntrySheetContent(
 
         when (exercise.kind) {
             WorkoutKind.Strength -> StrengthFields(exercise, draft) { draft = it }
-            WorkoutKind.Cardio -> CardioFields(exercise, draft, bodyWeightKg, nowMinuteOfDay) { draft = it }
+            WorkoutKind.Cardio -> CardioFields(exercise, draft, bodyWeightKg, nowMinuteOfDay, today) { draft = it }
         }
 
         val kcal = draft.energyKcal(exercise, bodyWeightKg)
+        // A cardio session logged for another day needs its real start time, otherwise the
+        // wrong minutes of that day's steps would be left out.
+        val needsStartTime =
+            exercise.kind == WorkoutKind.Cardio && exercise.excludeSteps &&
+                draft.date != today && draft.minuteOfDay == null
+        if (needsStartTime) {
+            Text(
+                text = stringResource(Res.string.workout_pick_time_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         if (exercise.kind == WorkoutKind.Strength) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -160,7 +172,7 @@ internal fun WorkoutEntrySheetContent(
                 }
                 Button(
                     onClick = { onSave(draft, false) },
-                    enabled = draft.durationMinutes > 0,
+                    enabled = draft.durationMinutes > 0 && !needsStartTime,
                     modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                 ) {
                     Text(stringResource(Res.string.workout_save_kcal, kcalLabel(kcal)))
@@ -208,13 +220,12 @@ private fun WhenButton(
     var showTime by remember { mutableStateOf(false) }
     var pickedDate by remember { mutableStateOf(date) }
     val label =
-        if (date == today && minuteOfDay == null) stringResource(Res.string.workout_when_now)
-        else
-            stringResource(
-                Res.string.workout_when_at,
-                dayLabel(date, today),
-                minuteOfDay?.let(::minuteLabel) ?: stringResource(Res.string.workout_time_now),
-            )
+        when {
+            minuteOfDay != null ->
+                stringResource(Res.string.workout_when_at, dayLabel(date, today), minuteLabel(minuteOfDay))
+            date == today -> stringResource(Res.string.workout_when_now)
+            else -> stringResource(Res.string.workout_when_pick_time, dayLabel(date, today))
+        }
     OutlinedButton(onClick = { showDate = true }, modifier = Modifier.heightIn(min = 48.dp)) {
         Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
         Text(label, modifier = Modifier.padding(start = 8.dp))
@@ -277,7 +288,7 @@ private fun WhenButton(
                 TextButton(
                     onClick = {
                         showTime = false
-                        onChange(pickedDate, if (pickedDate == today) null else minuteOfDay ?: initial)
+                        onChange(pickedDate, if (pickedDate == today) null else minuteOfDay)
                     }
                 ) {
                     Text(stringResource(Res.string.workout_time_now))
@@ -379,7 +390,7 @@ private fun StrengthFields(
             val kcal = draft.kcalOverride ?: strengthSetKcal(exercise, draft.reps)
             DecimalField(
                 value = kcal,
-                onValue = { onChange(draft.copy(kcalOverride = it)) },
+                onValue = { onChange(draft.copy(kcalOverride = it ?: 0.0)) },
                 modifier = Modifier.width(112.dp),
                 suffix = stringResource(Res.string.workout_kcal),
             )
@@ -422,6 +433,7 @@ private fun CardioFields(
     draft: WorkoutEntryDraft,
     bodyWeightKg: Double?,
     nowMinuteOfDay: Int,
+    today: LocalDate,
     onChange: (WorkoutEntryDraft) -> Unit,
 ) {
     val separator = decimalSeparator()
@@ -496,7 +508,7 @@ private fun CardioFields(
         }
     }
 
-    if (exercise.excludeSteps && draft.durationMinutes > 0) {
+    if (exercise.excludeSteps && draft.durationMinutes > 0 && (draft.minuteOfDay != null || draft.date == today)) {
         val start = draft.minuteOfDay ?: startMinuteForNow(nowMinuteOfDay, draft.durationMinutes)
         val end = (start + draft.durationMinutes).coerceAtMost(24 * 60)
         Text(

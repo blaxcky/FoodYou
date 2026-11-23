@@ -21,6 +21,13 @@ data class WorkoutTodayItem(
 ) {
     val doneToday: Boolean
         get() = entriesToday.isNotEmpty()
+
+    /** True when the exercise has its own reminder and was not done for at least that long. */
+    val isOverdue: Boolean
+        get() {
+            val reminder = exercise.reminderDays ?: return false
+            return daysSinceLast == null || daysSinceLast >= reminder
+        }
 }
 
 data class WorkoutToday(
@@ -66,9 +73,14 @@ fun planWorkoutToday(
     val matching =
         if (normalizedQuery.isEmpty()) ordered
         else ordered.filter { it.exercise.name.lowercase().contains(normalizedQuery) }
+    // Exercises past their own reminder come first; otherwise the longest ago wins.
     val suggestions =
         if (active.size < WORKOUT_SUGGESTIONS_MIN_EXERCISES) emptyList()
-        else matching.filterNot { it.doneToday }.take(WORKOUT_SUGGESTION_COUNT)
+        else
+            matching
+                .filterNot { it.doneToday }
+                .sortedByDescending { it.isOverdue }
+                .take(WORKOUT_SUGGESTION_COUNT)
     return WorkoutToday(
         suggestions = suggestions,
         items = matching - suggestions.toSet(),

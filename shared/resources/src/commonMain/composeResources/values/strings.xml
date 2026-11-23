@@ -1248,4 +1248,11 @@
         <item quantity="one">%1$d entry</item>
         <item quantity="other">%1$d entries</item>
     </plurals>
+    <string name="workout_pick_time_hint">Pick the start time so the right minutes of that day's steps are left out.</string>
+    <string name="workout_archived_count">Archived exercises · %1$d</string>
+    <string name="workout_restore">Restore exercise</string>
+    <string name="workout_archive_confirm_title">Archive exercise?</string>
+    <string name="workout_archive_confirm_text">It disappears from the lists. Its entries and kcal stay in the history and in the diary.</string>
+    <string name="workout_archive_action">Archive</string>
+    <string name="workout_when_pick_time">%1$s · pick start time</string>
 </resources>

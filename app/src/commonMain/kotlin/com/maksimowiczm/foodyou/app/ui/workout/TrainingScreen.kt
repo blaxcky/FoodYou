@@ -86,6 +86,7 @@ fun TrainingScreen(
     var sheet by remember { mutableStateOf<EntrySheetTarget?>(null) }
     var pickExerciseForDate by remember { mutableStateOf<LocalDate?>(null) }
     var showHistoryDatePicker by remember { mutableStateOf(false) }
+    var showArchived by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -101,7 +102,7 @@ fun TrainingScreen(
                         exercise = exercise,
                         date = date,
                         lastEntry = last,
-                        minuteOfDay = if (date == current.today) null else viewModel.nowMinuteOfDay(),
+                        minuteOfDay = null,
                     ),
                 lastEntry = last,
                 entriesTodayCount = own.count { it.date == date },
@@ -173,6 +174,8 @@ fun TrainingScreen(
                         onAddStrength = { onNewExercise(false) },
                         onAddCardio = { onNewExercise(true) },
                         contentPadding = contentPadding,
+                        archivedCount = state.exercises.count { it.archived },
+                        onShowArchived = { showArchived = true },
                     )
                 TrainingTab.Week ->
                     TrainingWeekContent(
@@ -269,6 +272,35 @@ fun TrainingScreen(
                 TextButton(onClick = { pickExerciseForDate = null }) {
                     Text(stringResource(Res.string.action_cancel))
                 }
+            },
+        )
+    }
+
+    if (showArchived && state != null) {
+        AlertDialog(
+            onDismissRequest = { showArchived = false },
+            title = { Text(stringResource(Res.string.workout_archived_count, state.exercises.count { it.archived })) },
+            text = {
+                LazyColumn {
+                    items(state.exercises.filter { it.archived }, key = { it.id.value }) { exercise ->
+                        Text(
+                            text = exercise.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    .clickable {
+                                        showArchived = false
+                                        onEditExercise(exercise.id.value)
+                                    }
+                                    .padding(vertical = 12.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showArchived = false }) { Text(stringResource(Res.string.action_cancel)) }
             },
         )
     }

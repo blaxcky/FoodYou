@@ -99,6 +99,7 @@ fun WorkoutExerciseEditorScreen(
             latestWeightKg = weight,
             onUpdate = viewModel::update,
             onArchive = { viewModel.setArchived(true, onBack) },
+            onRestore = { viewModel.setArchived(false, onBack) },
             modifier = Modifier.fillMaxSize().padding(padding),
         )
     }
@@ -112,9 +113,11 @@ internal fun WorkoutExerciseEditorContent(
     onUpdate: (WorkoutExerciseForm.() -> WorkoutExerciseForm) -> Unit,
     onArchive: () -> Unit,
     modifier: Modifier = Modifier,
+    onRestore: () -> Unit = {},
 ) {
     val separator = decimalSeparator()
     var showAddWeight by remember { mutableStateOf(false) }
+    var confirmArchive by remember { mutableStateOf(false) }
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -297,12 +300,41 @@ internal fun WorkoutExerciseEditorContent(
 
         if (form.id != null && !form.archived) {
             TextButton(
-                onClick = onArchive,
+                onClick = { confirmArchive = true },
                 modifier = Modifier.align(Alignment.CenterHorizontally).heightIn(min = 48.dp),
             ) {
                 Text(stringResource(Res.string.workout_archive), color = MaterialTheme.colorScheme.error)
             }
         }
+        if (form.id != null && form.archived) {
+            Button(
+                onClick = onRestore,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            ) {
+                Text(stringResource(Res.string.workout_restore))
+            }
+        }
+    }
+
+    if (confirmArchive) {
+        AlertDialog(
+            onDismissRequest = { confirmArchive = false },
+            title = { Text(stringResource(Res.string.workout_archive_confirm_title)) },
+            text = { Text(stringResource(Res.string.workout_archive_confirm_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmArchive = false
+                        onArchive()
+                    }
+                ) {
+                    Text(stringResource(Res.string.workout_archive_action), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmArchive = false }) { Text(stringResource(Res.string.action_cancel)) }
+            },
+        )
     }
 
     if (showAddWeight) {
