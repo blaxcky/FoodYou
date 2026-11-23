@@ -8,4 +8,5 @@ data class DailyActivitySummary(
     val manualEnergyKcal: Double,
     val totalEnergyKcal: Double,
     val importedEnergyKcal: Double = 0.0,
+    val workoutEnergyKcal: Double = 0.0,
 )

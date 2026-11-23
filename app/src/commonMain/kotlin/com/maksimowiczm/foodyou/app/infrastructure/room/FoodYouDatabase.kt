@@ -14,6 +14,10 @@ import com.maksimowiczm.foodyou.app.infrastructure.room.migration.FoodSearchFtsM
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.LegacyMigrations
 import com.maksimowiczm.foodyou.app.infrastructure.room.migration.ActivityMigration
 import com.maksimowiczm.foodyou.training.*
+import com.maksimowiczm.foodyou.workout.infrastructure.WorkoutDao
+import com.maksimowiczm.foodyou.workout.infrastructure.WorkoutEntryEntity
+import com.maksimowiczm.foodyou.workout.infrastructure.WorkoutExerciseEntity
+import com.maksimowiczm.foodyou.workout.infrastructure.WorkoutMilestoneEntity
 import com.maksimowiczm.foodyou.activity.ActivityDatabase
 import com.maksimowiczm.foodyou.activity.infrastructure.room.DailyStepSummaryEntity
 import com.maksimowiczm.foodyou.activity.infrastructure.room.ManualActivityEntryEntity
@@ -99,6 +103,9 @@ import com.maksimowiczm.foodyou.weight.infrastructure.room.DailyWeightEntryEntit
             DailyWeightEntryEntity::class,
             ImportedTrainingActivityEntity::class,
             TrainingImportReceiptEntity::class,
+            WorkoutExerciseEntity::class,
+            WorkoutEntryEntity::class,
+            WorkoutMilestoneEntity::class,
         ],
     views = [RecipeAllIngredientsView::class, LatestMeasurementSuggestion::class],
     version = FoodYouDatabase.VERSION,
@@ -176,8 +183,10 @@ abstract class FoodYouDatabase :
 
     abstract val trainingImportDao: TrainingImportDao
 
+    abstract val workoutDao: WorkoutDao
+
     companion object {
-        const val VERSION = 56
+        const val VERSION = 57
 
         private val migrations: List<Migration> =
             listOf(
@@ -219,6 +228,7 @@ abstract class FoodYouDatabase :
                 ProductStandardPortionVisibilityMigration,
                 ProductPreferredMealMigration,
                 FddbHtmlEntityCleanupMigration,
+                WorkoutMigration,
             )
 
         fun Builder<FoodYouDatabase>.buildDatabase(
@@ -724,5 +734,26 @@ internal object FddbHtmlEntityCleanupMigration : Migration(55, 56) {
                 statement.step()
             }
         }
+    }
+}
+
+/** Adds the home training module: exercises, logged sets or sessions, and milestones. */
+internal object WorkoutMigration : Migration(56, 57) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `WorkoutExercise` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `kind` TEXT NOT NULL, `measure` TEXT NOT NULL, `usesWeight` INTEGER NOT NULL, `weightOptionsKg` TEXT NOT NULL, `note` TEXT NOT NULL, `kcalMode` TEXT NOT NULL, `kcalValue` REAL NOT NULL, `helpsWith` TEXT NOT NULL, `reminderDays` INTEGER, `cardioConversion` TEXT NOT NULL, `cardioFactor` REAL NOT NULL, `cardioDiscountPercent` REAL NOT NULL, `askDistance` INTEGER NOT NULL, `excludeSteps` INTEGER NOT NULL, `archived` INTEGER NOT NULL, `createdEpochSeconds` INTEGER NOT NULL)"
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `WorkoutEntry` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `exerciseId` INTEGER NOT NULL, `dateEpochDay` INTEGER NOT NULL, `minuteOfDay` INTEGER NOT NULL, `reps` INTEGER, `seconds` INTEGER, `level` INTEGER, `weightKg` REAL, `durationMinutes` INTEGER, `deviceKcal` REAL, `distanceMeters` INTEGER, `energyKcal` REAL NOT NULL, `feel` TEXT, `createdEpochSeconds` INTEGER NOT NULL, `updatedEpochSeconds` INTEGER NOT NULL, FOREIGN KEY(`exerciseId`) REFERENCES `WorkoutExercise`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_WorkoutEntry_dateEpochDay` ON `WorkoutEntry` (`dateEpochDay`)"
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_WorkoutEntry_exerciseId` ON `WorkoutEntry` (`exerciseId`)"
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `WorkoutMilestone` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `achieved` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL)"
+        )
     }
 }

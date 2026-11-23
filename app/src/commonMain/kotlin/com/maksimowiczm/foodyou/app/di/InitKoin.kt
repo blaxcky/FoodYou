@@ -14,6 +14,7 @@ import com.maksimowiczm.foodyou.poll.pollModule
 import com.maksimowiczm.foodyou.settings.settingsModule
 import com.maksimowiczm.foodyou.sponsorship.sponsorshipModule
 import com.maksimowiczm.foodyou.theme.themeModule
+import com.maksimowiczm.foodyou.workout.workoutModule
 import kotlinx.coroutines.CoroutineScope
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
@@ -27,6 +28,7 @@ fun initKoin(applicationCoroutineScope: CoroutineScope, config: KoinAppDeclarati
         modules(
             changelogModule,
             activityModule,
+            workoutModule,
             foodModule,
             foodSearchModule,
             foodDiaryModule,

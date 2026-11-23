@@ -12,7 +12,8 @@ val activityModule = module { activity() }
 fun Module.activity() {
     factory<ActivityRepository> { RoomActivityRepository(get(), get(), get(),
         get<com.maksimowiczm.foodyou.app.infrastructure.room.FoodYouDatabase>().trainingImportDao,
-        get<com.maksimowiczm.foodyou.training.TrainingSync>().account) }
+        get<com.maksimowiczm.foodyou.training.TrainingSync>().account,
+        get<com.maksimowiczm.foodyou.workout.domain.WorkoutRepository>()) }
     factory { get<ActivityDatabase>().manualActivityEntryDao }
     factory { get<ActivityDatabase>().dailyStepSummaryDao }
     factory { get<ActivityDatabase>().stepExclusionPeriodDao }

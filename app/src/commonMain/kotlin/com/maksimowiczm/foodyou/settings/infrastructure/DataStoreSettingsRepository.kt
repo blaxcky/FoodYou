@@ -117,6 +117,15 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
                     .coerceIn(GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE),
             crosstrainerCalorieDiscountPercent =
                 this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] ?: 0.0,
+            workoutStrengthDaysPerWeek =
+                (this[SettingsPreferencesKeys.workoutStrengthDaysPerWeek] ?: 4).coerceIn(1, 7),
+            workoutStrengthDayMinSets =
+                (this[SettingsPreferencesKeys.workoutStrengthDayMinSets] ?: 1).coerceIn(1, 20),
+            workoutCardioGoalEnabled = this[SettingsPreferencesKeys.workoutCardioGoalEnabled] ?: false,
+            workoutCardioDaysPerWeek =
+                (this[SettingsPreferencesKeys.workoutCardioDaysPerWeek] ?: 3).coerceIn(1, 7),
+            workoutCardioMinMinutes =
+                (this[SettingsPreferencesKeys.workoutCardioMinMinutes] ?: 10).coerceIn(1, 240),
             todayEnergyGoalAdjustment = this.getTodayEnergyGoalAdjustment(),
             defaultLockedDaySurplusKcal =
                 this[SettingsPreferencesKeys.defaultLockedDaySurplusKcal]
@@ -210,6 +219,15 @@ internal class DataStoreSettingsRepository(dataStore: DataStore<Preferences>) :
             updated.widgetGaugeMarkerGapDegrees.coerceIn(GOAL_GAUGE_MARKER_GAP_DEGREES_RANGE)
         this[SettingsPreferencesKeys.crosstrainerCalorieDiscountPercent] =
             updated.crosstrainerCalorieDiscountPercent
+        this[SettingsPreferencesKeys.workoutStrengthDaysPerWeek] =
+            updated.workoutStrengthDaysPerWeek.coerceIn(1, 7)
+        this[SettingsPreferencesKeys.workoutStrengthDayMinSets] =
+            updated.workoutStrengthDayMinSets.coerceIn(1, 20)
+        this[SettingsPreferencesKeys.workoutCardioGoalEnabled] = updated.workoutCardioGoalEnabled
+        this[SettingsPreferencesKeys.workoutCardioDaysPerWeek] =
+            updated.workoutCardioDaysPerWeek.coerceIn(1, 7)
+        this[SettingsPreferencesKeys.workoutCardioMinMinutes] =
+            updated.workoutCardioMinMinutes.coerceIn(1, 240)
         setTodayEnergyGoalAdjustment(updated.todayEnergyGoalAdjustment)
         this[SettingsPreferencesKeys.defaultLockedDaySurplusKcal] =
             updated.defaultLockedDaySurplusKcal.takeIf { it.isFinite() && it >= 0.0 }
@@ -574,6 +592,11 @@ private object SettingsPreferencesKeys {
     val widgetGaugeMarkerGapDegrees = intPreferencesKey("settings:widgetGaugeMarkerGapDegrees")
     val crosstrainerCalorieDiscountPercent =
         doublePreferencesKey("settings:crosstrainerCalorieDiscountPercent")
+    val workoutStrengthDaysPerWeek = intPreferencesKey("settings:workoutStrengthDaysPerWeek")
+    val workoutStrengthDayMinSets = intPreferencesKey("settings:workoutStrengthDayMinSets")
+    val workoutCardioGoalEnabled = booleanPreferencesKey("settings:workoutCardioGoalEnabled")
+    val workoutCardioDaysPerWeek = intPreferencesKey("settings:workoutCardioDaysPerWeek")
+    val workoutCardioMinMinutes = intPreferencesKey("settings:workoutCardioMinMinutes")
     val todayEnergyGoalAdjustmentEpochDay =
         longPreferencesKey("settings:todayEnergyGoalAdjustmentEpochDay")
     val todayEnergyGoalAdjustmentKcal =

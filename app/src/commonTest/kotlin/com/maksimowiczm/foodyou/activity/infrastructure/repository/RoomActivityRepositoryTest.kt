@@ -8,6 +8,12 @@ import com.maksimowiczm.foodyou.activity.infrastructure.room.ManualActivityEntry
 import com.maksimowiczm.foodyou.activity.infrastructure.room.ManualActivityEntryEntity
 import com.maksimowiczm.foodyou.activity.infrastructure.room.StepExclusionPeriodDao
 import com.maksimowiczm.foodyou.activity.infrastructure.room.StepExclusionPeriodEntity
+import com.maksimowiczm.foodyou.workout.FakeWorkoutRepository
+import com.maksimowiczm.foodyou.workout.domain.WorkoutEntry
+import com.maksimowiczm.foodyou.workout.domain.WorkoutEntryId
+import com.maksimowiczm.foodyou.workout.domain.WorkoutExercise
+import com.maksimowiczm.foodyou.workout.domain.WorkoutExerciseId
+import com.maksimowiczm.foodyou.workout.domain.WorkoutKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
@@ -83,6 +89,55 @@ class RoomActivityRepositoryTest {
 
         repository.replaceStepExclusionPeriods(date, emptyList())
         assertEquals(emptyList(), observed.first { it.isEmpty() })
+    }
+
+    @Test
+    fun workoutEnergyCountsAndCardioWindowsAreExcludedWithoutBeingStored() = runTest {
+        val exclusionDao = InMemoryExclusionDao()
+        val rowing =
+            WorkoutExercise(
+                id = WorkoutExerciseId(1),
+                name = "Rudern",
+                kind = WorkoutKind.Cardio,
+                createdAt = Instant.DISTANT_PAST,
+            )
+        val workouts =
+            FakeWorkoutRepository(
+                exercises = listOf(rowing),
+                entries =
+                    listOf(
+                        WorkoutEntry(
+                            id = WorkoutEntryId(1),
+                            exerciseId = rowing.id,
+                            date = date,
+                            minuteOfDay = 965,
+                            durationMinutes = 20,
+                            energyKcal = 238.0,
+                            createdAt = Instant.DISTANT_PAST,
+                            updatedAt = Instant.DISTANT_PAST,
+                        )
+                    ),
+            )
+        val repository =
+            RoomActivityRepository(
+                InMemoryManualDao(),
+                InMemoryStepSummaryDao(),
+                exclusionDao,
+                workoutRepository = workouts,
+            )
+        repository.replaceStepExclusionPeriods(date, listOf(StepExclusionPeriod(date, 480, 540)))
+
+        assertEquals(
+            listOf(StepExclusionPeriod(date, 480, 540), StepExclusionPeriod(date, 965, 985)),
+            repository.readStepExclusionPeriods(listOf(date)),
+        )
+        assertEquals(
+            listOf(StepExclusionPeriod(date, 480, 540)),
+            repository.observeStepExclusionPeriods(date).first(),
+        )
+        val summary = repository.observeDailySummary(date, kcalPerStep = null).first()
+        assertEquals(238.0, summary.workoutEnergyKcal)
+        assertEquals(238.0, summary.totalEnergyKcal)
     }
 }
 

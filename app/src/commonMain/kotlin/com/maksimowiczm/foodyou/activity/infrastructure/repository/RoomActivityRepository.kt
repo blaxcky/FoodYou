@@ -1,6 +1,7 @@
 package com.maksimowiczm.foodyou.activity.infrastructure.repository
 
 import com.maksimowiczm.foodyou.training.*
+import com.maksimowiczm.foodyou.workout.domain.WorkoutRepository
 import kotlinx.coroutines.flow.*
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyActivitySummary
 import com.maksimowiczm.foodyou.activity.domain.entity.DailyStepSummary
@@ -30,6 +31,7 @@ internal class RoomActivityRepository(
     private val exclusionDao: StepExclusionPeriodDao,
     private val trainingDao: TrainingImportDao? = null,
     private val trainingAccount: StateFlow<TrainingAccount?> = MutableStateFlow(null),
+    private val workoutRepository: WorkoutRepository? = null,
 ) : ActivityRepository {
     override fun observeImportedEntries(date: LocalDate): Flow<List<ImportedActivity>> = trainingAccount.flatMapLatest { account ->
         if (account == null || trainingDao == null) flowOf(emptyList())
@@ -74,19 +76,22 @@ internal class RoomActivityRepository(
             stepDao.observe(date.toEpochDays()),
             manualDao.observeEnergySum(date.toEpochDays()),
             observeImportedEntries(date),
-        ) { steps, manualEnergy, imports ->
+            workoutRepository?.observeEnergySum(date) ?: flowOf(0.0),
+        ) { steps, manualEnergy, imports, workoutEnergy ->
             val rawSteps = steps?.rawSteps ?: 0
             val excludedSteps = steps?.excludedSteps ?: 0
             val countedSteps = (rawSteps - excludedSteps).coerceAtLeast(0)
             val stepEnergy = calculateStepEnergyKcal(countedSteps, kcalPerStep)
+            val importedEnergy = imports.sumOf { it.energyKcal.toDouble() }
             DailyActivitySummary(
                 rawSteps = rawSteps,
                 excludedSteps = excludedSteps,
                 countedSteps = countedSteps,
                 stepEnergyKcal = stepEnergy,
                 manualEnergyKcal = manualEnergy,
-                totalEnergyKcal = stepEnergy + manualEnergy + imports.sumOf { it.energyKcal.toDouble() },
-                importedEnergyKcal = imports.sumOf { it.energyKcal.toDouble() },
+                totalEnergyKcal = stepEnergy + manualEnergy + importedEnergy + workoutEnergy,
+                importedEnergyKcal = importedEnergy,
+                workoutEnergyKcal = workoutEnergy,
             )
         }
 
@@ -104,8 +109,15 @@ internal class RoomActivityRepository(
         manualDao.delete(id.value)
     }
 
-    override suspend fun readStepExclusionPeriods(dates: List<LocalDate>): List<StepExclusionPeriod> =
-        exclusionDao.readAll(dates.distinct().map { it.toEpochDays() }).map { it.toModel() }
+    override suspend fun readStepExclusionPeriods(dates: List<LocalDate>): List<StepExclusionPeriod> {
+        val userPeriods = exclusionDao.readAll(dates.distinct().map { it.toEpochDays() }).map { it.toModel() }
+        // Cardio sessions exclude their own minutes; they are derived on read and never stored.
+        val workoutPeriods =
+            workoutRepository?.readStepExclusionWindows(dates).orEmpty().flatMap { (date, windows) ->
+                windows.map { StepExclusionPeriod(date, it.first, it.last + 1) }
+            }
+        return userPeriods + workoutPeriods
+    }
 
     override suspend fun upsertStepSummaries(summaries: List<DailyStepSummary>) {
         stepDao.upsertAll(summaries.map { it.toEntity() })
