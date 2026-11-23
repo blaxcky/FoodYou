@@ -5,7 +5,11 @@ import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.maksimowiczm.foodyou.app.ui.common.utility.AppConfigProvider
 import com.maksimowiczm.foodyou.common.compose.utility.AndroidClipboardManager
@@ -42,8 +46,13 @@ abstract class FoodYouAbstractActivity : AppCompatActivity() {
 
         with<AppCompatActivity, Unit>(this) {
             setContent {
-                ClipboardManagerProvider(clipboardManager) {
-                    DateFormatterProvider(dateFormatter) { AppConfigProvider(get()) { content() } }
+                // Edge-to-edge disables adjustResize, so the keyboard would cover the bottom of
+                // every screen. Shrinking the whole content here keeps forms scrollable above it;
+                // the insets are consumed, so screens with their own imePadding add nothing.
+                Box(Modifier.fillMaxSize().imePadding()) {
+                    ClipboardManagerProvider(clipboardManager) {
+                        DateFormatterProvider(dateFormatter) { AppConfigProvider(get()) { content() } }
+                    }
                 }
             }
         }
